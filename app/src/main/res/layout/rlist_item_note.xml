@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/rlist_item_note_img"
+        android:layout_marginStart="@dimen/margin_note_items"
+        android:layout_marginTop="@dimen/margin_note_items"
+        android:layout_marginBottom="@dimen/margin_note_items"
+        android:layout_width="@dimen/width_note_img"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:scaleType="centerCrop"
+        />
+
+    <TextView
+        android:id="@+id/rlist_item_note_text"
+        android:textSize="16sp"
+        android:layout_toEndOf="@id/rlist_item_note_img"
+        android:layout_marginStart="@dimen/margin_note_items"
+        android:layout_marginEnd="@dimen/margin_note_items"
+        android:layout_marginTop="@dimen/margin_note_items"
+        android:layout_marginBottom="@dimen/margin_note_items"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/rlist_item_note_time"
+        android:textSize="11sp"
+        android:layout_toEndOf="@id/rlist_item_note_img"
+        android:layout_below="@id/rlist_item_note_text"
+        android:layout_marginStart="@dimen/margin_note_items"
+        android:layout_marginEnd="@dimen/margin_note_items"
+        android:layout_marginTop="@dimen/margin_note_items"
+        android:layout_marginBottom="@dimen/margin_note_items"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/rlist_item_note_file_info"
+        android:textSize="11sp"
+        android:layout_toEndOf="@id/rlist_item_note_time"
+        android:layout_below="@id/rlist_item_note_text"
+        android:layout_marginStart="@dimen/margin_note_items"
+        android:layout_marginEnd="@dimen/margin_note_items"
+        android:layout_marginTop="@dimen/margin_note_items"
+        android:layout_marginBottom="@dimen/margin_note_items"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</RelativeLayout>
