@@ -12,7 +12,7 @@ A simple app for:
 
 ### UI
 
-* [ ] Notes list view ( Text, Image, File count, Reminding time, Other time list )
+* [x] Notes list view ( Text, Image, File count, Reminding time )
 * [ ] Notes detail view ( Change items above )
 * [ ] Side drawer ( Category changing, Setting )
 * [ ] Setting View
