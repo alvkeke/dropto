@@ -1,6 +1,5 @@
 package com.alvkeke.dropto.ui;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.util.Log;
@@ -111,7 +110,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             return;
         }
         holder.setText(note.getText());
-        holder.setImage(note.getBitmap());
+        holder.setImage(note.getImgThumb());
         holder.setTime(note.getTime(), note.isAlert());
         holder.setFileNum(note.getFileCount());
     }
