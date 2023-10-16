@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.NoteDetailActivity">
+
+    <EditText
+        android:id="@+id/note_detail_text"
+        android:layout_margin="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <Button
+        android:id="@+id/note_detail_btn_cancel"
+        android:text="@string/string_cancel"
+        android:layout_below="@id/note_detail_text"
+        android:layout_alignStart="@id/note_detail_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <Button
+        android:id="@+id/note_detail_btn_ok"
+        android:text="@string/string_ok"
+        android:layout_alignBaseline="@id/note_detail_btn_cancel"
+        android:layout_alignEnd="@id/note_detail_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</RelativeLayout>

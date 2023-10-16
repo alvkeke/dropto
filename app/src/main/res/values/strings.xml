@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">DropTo</string>
+    <string name="string_cancel">Cancel</string>
+    <string name="string_ok">OK</string>
 </resources>

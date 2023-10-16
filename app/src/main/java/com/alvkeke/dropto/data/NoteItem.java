@@ -12,9 +12,9 @@ public class NoteItem {
         _time_ms = -1;
     }
 
-    public NoteItem() {
-        _text = null;
-        _time_ms = -1;
+    public NoteItem(String text, long time) {
+        _text = text;
+        _time_ms = time;
     }
 
     public void setText(String text) {

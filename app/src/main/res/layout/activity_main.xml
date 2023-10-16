@@ -16,6 +16,16 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
 
+        <ImageButton
+            android:id="@+id/btn_note_add"
+            android:background="@drawable/img_btn_note_add"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_width="64sp"
+            android:layout_height="64sp"/>
+
     </RelativeLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
