@@ -27,4 +27,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
+    <ImageView
+        android:id="@+id/rlist_item_note_is_edited"
+        android:src="@drawable/img_note_item_edited"
+        android:layout_alignTop="@id/rlist_item_note_create_time"
+        android:layout_toStartOf="@id/rlist_item_note_create_time"
+        android:layout_marginEnd="@dimen/margin_note_items"
+        android:layout_width="10dp"
+        android:layout_height="10dp"/>
+
 </RelativeLayout>

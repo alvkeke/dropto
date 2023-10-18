@@ -19,12 +19,17 @@ import com.alvkeke.dropto.ui.NoteListAdapter;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
     private void dbg_fill_list(ArrayList<NoteItem> list) {
+        Random r = new Random();
         for (int i=0; i<10; i++) {
             NoteItem e = new NoteItem("ITEM" + i + i, new Date().getTime());
+            if (r.nextBoolean()) {
+                e.setText(e.getText(), true);
+            }
             list.add(e);
         }
     }

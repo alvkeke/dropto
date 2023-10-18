@@ -4,6 +4,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -29,11 +30,13 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
         private final TextView tvText;
         private final TextView tvCreateTime;
+        private final ImageView ivEdited;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvText = itemView.findViewById(R.id.rlist_item_note_text);
             tvCreateTime = itemView.findViewById(R.id.rlist_item_note_create_time);
+            ivEdited = itemView.findViewById(R.id.rlist_item_note_is_edited);
         }
 
         private void showView(View v) {
@@ -61,6 +64,16 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             tvCreateTime.setText(timeFormat(time));
         }
 
+        public void setIsEdited(boolean foo) {
+            tvCreateTime.measure(0, 0);
+            int he = tvCreateTime.getMeasuredHeight();
+            Log.e(this.toString(), "size: " + he);
+            ivEdited.getLayoutParams().height = he;
+            ivEdited.getLayoutParams().width = he;
+            ivEdited.requestLayout();
+            ivEdited.setVisibility(foo? View.VISIBLE : View.INVISIBLE);
+        }
+
     }
 
     @NonNull
@@ -80,6 +93,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
         holder.setText(note.getText());
         holder.setCreateTime(note.getCreateTime());
+        holder.setIsEdited(note.isEdited());
     }
 
     @Override

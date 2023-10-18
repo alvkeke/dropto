@@ -2,18 +2,28 @@ package com.alvkeke.dropto.data;
 
 import android.util.Size;
 
-public class NoteItem {
+public class NoteItem implements Cloneable{
 
     private String _text;
     private long _create_time_ms;
+    private NoteItem _history;
 
     public NoteItem(String text, long create_time) {
         _text = text;
         _create_time_ms = create_time;
+        _history = null;
     }
 
-    public void setText(String text) {
+    @Override
+    public NoteItem clone() {
+        return new NoteItem(_text, _create_time_ms);
+    }
+
+    public void setText(String text, boolean set_edited) {
         _text = text;
+        if (set_edited) {
+            _history = this.clone();
+        }
     }
 
     public String getText() {
@@ -56,6 +66,10 @@ public class NoteItem {
 
     public long getCreateTime() {
         return _create_time_ms;
+    }
+
+    public boolean isEdited() {
+        return !(_history == null);
     }
 
 }
