@@ -14,7 +14,6 @@ public class NoteDetailActivity extends AppCompatActivity {
 
 
     public static final String ITEM_INFO_TEXT = "ITEM_INFO_TEXT";
-    public static final String ITEM_INFO_TIME = "ITEM_INFO_TIME";
 
     private EditText etNoteItemText;
 

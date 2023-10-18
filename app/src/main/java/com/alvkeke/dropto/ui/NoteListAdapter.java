@@ -28,12 +28,12 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
         private final TextView tvText;
-        private final TextView tvTime;
+        private final TextView tvCreateTime;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvText = itemView.findViewById(R.id.rlist_item_note_text);
-            tvTime = itemView.findViewById(R.id.rlist_item_note_time);
+            tvCreateTime = itemView.findViewById(R.id.rlist_item_note_create_time);
         }
 
         private void showView(View v) {
@@ -52,13 +52,13 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             tvText.setText(text);
         }
 
-        public void setTime(long time) {
+        public void setCreateTime(long time) {
             if (time < 0) {
-                hideView(tvTime);
+                hideView(tvCreateTime);
                 return;
             }
-            showView(tvTime);
-            tvTime.setText(timeFormat(time));
+            showView(tvCreateTime);
+            tvCreateTime.setText(timeFormat(time));
         }
 
     }
@@ -79,7 +79,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             return;
         }
         holder.setText(note.getText());
-        holder.setTime(note.getTime());
+        holder.setCreateTime(note.getCreateTime());
     }
 
     @Override

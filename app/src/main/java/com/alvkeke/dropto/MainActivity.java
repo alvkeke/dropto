@@ -24,10 +24,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void dbg_fill_list(ArrayList<NoteItem> list) {
         for (int i=0; i<10; i++) {
-            NoteItem e = new NoteItem("ITEM" + i + i);
-            if (i % 2 == 0) {
-                e.setTime(new Date().getTime());
-            }
+            NoteItem e = new NoteItem("ITEM" + i + i, new Date().getTime());
             list.add(e);
         }
     }
@@ -78,10 +75,9 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 String text = intent.getStringExtra(NoteDetailActivity.ITEM_INFO_TEXT);
-                long time = intent.getLongExtra(NoteDetailActivity.ITEM_INFO_TIME, -1);
 
-                Log.d(this.toString(), "text: " + text + " , time: " + time);
-                NoteItem item = new NoteItem(text, time);
+                Log.d(this.toString(), "text: " + text);
+                NoteItem item = new NoteItem(text, new Date().getTime());
                 noteItems.add(item);
                 noteItemAdapter.notifyItemInserted(noteItemAdapter.getItemCount());
 

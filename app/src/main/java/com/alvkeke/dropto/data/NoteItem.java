@@ -5,16 +5,11 @@ import android.util.Size;
 public class NoteItem {
 
     private String _text;
-    private long _time_ms;
+    private long _create_time_ms;
 
-    public NoteItem(String text) {
+    public NoteItem(String text, long create_time) {
         _text = text;
-        _time_ms = -1;
-    }
-
-    public NoteItem(String text, long time) {
-        _text = text;
-        _time_ms = time;
+        _create_time_ms = create_time;
     }
 
     public void setText(String text) {
@@ -55,12 +50,12 @@ public class NoteItem {
         return new Size((int)newW, (int)newH);
     }
 
-    public void setTime(long ms) {
-        this._time_ms = ms;
+    public void setCreateTime(long ms) {
+        this._create_time_ms = ms;
     }
 
-    public long getTime() {
-        return _time_ms;
+    public long getCreateTime() {
+        return _create_time_ms;
     }
 
 }
