@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         noteList.setAdapter(noteItemAdapter);
         noteList.setLayoutManager(layoutManager);
         noteList.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
+        noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
 
@@ -62,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    ActivityResultLauncher<Intent> NoteAddActivityLauncher = registerForActivityResult(
+    ActivityResultLauncher<Intent> noteDetailActivityLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 int resultCode = result.getResultCode();
@@ -79,12 +80,28 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                String text = intent.getStringExtra(NoteDetailActivity.ITEM_INFO_TEXT);
+                int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
+                NoteItem item = (NoteItem) intent.getSerializableExtra(NoteDetailActivity.ITEM_OBJECT);
 
-                Log.d(this.toString(), "text: " + text);
-                NoteItem item = new NoteItem(text, new Date().getTime());
-                noteItems.add(item);
-                noteItemAdapter.notifyItemInserted(noteItemAdapter.getItemCount());
+                if (item == null) {
+                    Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
+                    return;
+                }
+
+                if (index == -1) {
+                    index = noteItems.size();
+                    noteItems.add(item);
+                    noteItemAdapter.notifyItemInserted(noteItemAdapter.getItemCount());
+                    noteItemAdapter.notifyItemInserted(index);
+                } else {
+                    NoteItem e = noteItems.get(index);
+                    if (e == null) {
+                        Log.e(this.toString(), "Failed to get note item at: "+ index);
+                        return;
+                    }
+                    e.setText(item.getText(), true);
+                    noteItemAdapter.notifyItemChanged(index);
+                }
 
             }
     );
@@ -96,7 +113,29 @@ public class MainActivity extends AppCompatActivity {
             Log.e(this.toString(), "add btn clicked");
 
             Intent intent = new Intent(MainActivity.this, NoteDetailActivity.class);
-            NoteAddActivityLauncher.launch(intent);
+            noteDetailActivityLauncher.launch(intent);
+        }
+    }
+
+    void triggerItemEdit(NoteItem e, int pos) {
+        Log.d(this.toString(), "item editing triggered");
+
+        Intent intent = new Intent(MainActivity.this, NoteDetailActivity.class);
+        intent.putExtra(NoteDetailActivity.ITEM_INDEX, pos);
+        intent.putExtra(NoteDetailActivity.ITEM_OBJECT, e.clone());
+        noteDetailActivityLauncher.launch(intent);
+    }
+
+    class onListItemClick implements NoteListAdapter.OnItemClickListener {
+
+        @Override
+        public void onItemClick(int index) {
+            NoteItem e = noteItems.get(index);
+            if (e == null) {
+                Log.e(this.toString(), "Failed to get note item at " + index);
+                return;
+            }
+            triggerItemEdit(e, index);
         }
     }
 

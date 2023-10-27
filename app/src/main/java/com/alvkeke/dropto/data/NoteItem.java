@@ -2,7 +2,9 @@ package com.alvkeke.dropto.data;
 
 import android.util.Size;
 
-public class NoteItem implements Cloneable{
+import java.io.Serializable;
+
+public class NoteItem implements Cloneable, Serializable {
 
     private String _text;
     private long _create_time_ms;
