@@ -135,8 +135,8 @@ public class MainActivity extends AppCompatActivity {
     private void handleItemAdd(NoteItem item) {
         int index = noteItems.size();
         noteItems.add(item);
-        noteItemAdapter.notifyItemInserted(noteItemAdapter.getItemCount());
         noteItemAdapter.notifyItemInserted(index);
+        noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
     }
 
     class onItemAddClick implements View.OnClickListener {
