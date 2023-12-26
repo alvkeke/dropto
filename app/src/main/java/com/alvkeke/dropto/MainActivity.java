@@ -72,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
                     Log.i(this.toString(), "Add NoteItem canceled.");
                     return;
                 }
-                assert resultCode == RESULT_OK;
 
                 Intent intent = result.getData();
                 if (intent == null) {
@@ -80,31 +79,65 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
-                NoteItem item = (NoteItem) intent.getSerializableExtra(NoteDetailActivity.ITEM_OBJECT);
+                if (RESULT_OK == resultCode) {
+                    int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
+                    NoteItem item = (NoteItem) intent.getSerializableExtra(NoteDetailActivity.ITEM_OBJECT);
 
-                if (item == null) {
-                    Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
-                    return;
-                }
-
-                if (index == -1) {
-                    index = noteItems.size();
-                    noteItems.add(item);
-                    noteItemAdapter.notifyItemInserted(noteItemAdapter.getItemCount());
-                    noteItemAdapter.notifyItemInserted(index);
-                } else {
-                    NoteItem e = noteItems.get(index);
-                    if (e == null) {
-                        Log.e(this.toString(), "Failed to get note item at: "+ index);
+                    if (item == null) {
+                        Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
                         return;
                     }
-                    e.setText(item.getText(), true);
-                    noteItemAdapter.notifyItemChanged(index);
+
+                    if (index == -1) {
+                        // cannot get index, it's going to create a new item;
+                        handleItemAdd(item);
+                    } else {
+                        handleItemEdit(index, item);
+                    }
+                } else if (NoteDetailActivity.RESULT_DELETED == resultCode) {
+                    int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
+                    handleItemDelete(index);
+                } else {
+                    Log.e(this.toString(), "got a wrong resultCode: " + resultCode);
                 }
 
             }
     );
+
+    private void handleItemDelete(int index) {
+        Log.d(this.toString(), "trying to delete item: " + index);
+
+        if (index == -1) {
+            Log.e(this.toString(), "Failed to get item index for deleting");
+            return;
+        }
+
+        try {
+            noteItems.remove(index);
+            noteItemAdapter.notifyItemRemoved(index);
+            noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
+        } catch (IndexOutOfBoundsException e) {
+            Log.e(this.toString(), "Failed to remove item at index: " + index);
+            e.printStackTrace();
+        }
+    }
+
+    private void handleItemEdit(int index, NoteItem item) {
+        NoteItem e = noteItems.get(index);
+        if (e == null) {
+            Log.e(this.toString(), "Failed to get note item at: "+ index);
+            return;
+        }
+        e.setText(item.getText(), true);
+        noteItemAdapter.notifyItemChanged(index);
+    }
+
+    private void handleItemAdd(NoteItem item) {
+        int index = noteItems.size();
+        noteItems.add(item);
+        noteItemAdapter.notifyItemInserted(noteItemAdapter.getItemCount());
+        noteItemAdapter.notifyItemInserted(index);
+    }
 
     class onItemAddClick implements View.OnClickListener {
 

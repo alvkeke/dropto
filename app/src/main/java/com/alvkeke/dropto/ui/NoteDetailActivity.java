@@ -18,6 +18,7 @@ public class NoteDetailActivity extends AppCompatActivity {
 
     public static final String ITEM_OBJECT = "ITEM_OBJECT";
     public static final String ITEM_INDEX = "ITEM_INDEX";
+    public static final int RESULT_DELETED = RESULT_FIRST_USER;
 
     private EditText etNoteItemText;
     private NoteItem item = null;
@@ -31,6 +32,7 @@ public class NoteDetailActivity extends AppCompatActivity {
 
         Button btnOk = findViewById(R.id.note_detail_btn_ok);
         Button btnCancel = findViewById(R.id.note_detail_btn_cancel);
+        Button btnDel = findViewById(R.id.note_detail_btn_del);
         etNoteItemText = findViewById(R.id.note_detail_text);
 
         btnOk.setOnClickListener(new ItemAddOk());
@@ -39,9 +41,15 @@ public class NoteDetailActivity extends AppCompatActivity {
         Intent intent = getIntent();
         targetIndex = intent.getIntExtra(ITEM_INDEX, ITEM_INDEX_NONE);
         if (targetIndex != ITEM_INDEX_NONE) {
+            // edit exist item
             item = (NoteItem) intent.getSerializableExtra(ITEM_OBJECT);
             assert item != null;
             loadItemData(item);
+
+            btnDel.setOnClickListener(new ItemDelete());
+        } else {
+            // create a new item
+            btnDel.setVisibility(View.INVISIBLE);
         }
 
     }
@@ -81,6 +89,19 @@ public class NoteDetailActivity extends AppCompatActivity {
         @Override
         public void onClick(View v) {
             setResult(RESULT_CANCELED);
+            NoteDetailActivity.this.finish();
+        }
+    }
+
+    class ItemDelete implements View.OnClickListener {
+
+        @Override
+        public void onClick(View v) {
+            Intent intent = getIntent();
+
+            intent.putExtra(ITEM_INDEX, targetIndex);
+
+            setResult(RESULT_DELETED, intent);
             NoteDetailActivity.this.finish();
         }
     }
