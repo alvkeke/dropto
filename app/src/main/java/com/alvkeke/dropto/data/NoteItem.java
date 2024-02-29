@@ -8,12 +8,11 @@ public class NoteItem implements Cloneable, Serializable {
 
     private String _text;
     private long _create_time_ms;
-    private NoteItem _history;
+    private boolean _is_edited;
 
     public NoteItem(String text, long create_time) {
         _text = text;
         _create_time_ms = create_time;
-        _history = null;
     }
 
     @Override
@@ -24,7 +23,7 @@ public class NoteItem implements Cloneable, Serializable {
     public void setText(String text, boolean set_edited) {
         _text = text;
         if (set_edited) {
-            _history = this.clone();
+            _is_edited = true;
         }
     }
 
@@ -71,7 +70,7 @@ public class NoteItem implements Cloneable, Serializable {
     }
 
     public boolean isEdited() {
-        return !(_history == null);
+        return _is_edited;
     }
 
 }
