@@ -1,7 +1,9 @@
 package com.alvkeke.dropto.data;
 
-import android.util.Size;
+import android.graphics.Bitmap;
+import android.util.Log;
 
+import java.io.File;
 import java.io.Serializable;
 
 public class NoteItem implements Cloneable, Serializable {
@@ -9,6 +11,7 @@ public class NoteItem implements Cloneable, Serializable {
     private String _text;
     private long _create_time_ms;
     private boolean _is_edited;
+    private File _img_file;
 
     public NoteItem(String text, long create_time) {
         _text = text;
@@ -31,36 +34,6 @@ public class NoteItem implements Cloneable, Serializable {
         return _text;
     }
 
-    private Size adjustSize(float w, float h) {
-        final float MAX_SIZE = 200;
-        float newW, newH;
-        float ratio;
-        if (w <= MAX_SIZE && h <= MAX_SIZE) {
-            newW = w;
-            newH = h;
-        } else if (w >= MAX_SIZE && h <= MAX_SIZE) {
-            newW = MAX_SIZE;
-            ratio = w / h;
-            newH = MAX_SIZE/ratio;
-        } else if (w <= MAX_SIZE) {
-            newH = MAX_SIZE;
-            ratio = w / h;
-            newW = ratio * MAX_SIZE;
-        } else {
-            if (h > w) {
-                newH = MAX_SIZE;
-                ratio = w / h;
-                newW = ratio * MAX_SIZE;
-            } else {
-                newW = MAX_SIZE;
-                ratio = w / h;
-                newH = MAX_SIZE/ratio;
-            }
-        }
-
-        return new Size((int)newW, (int)newH);
-    }
-
     public void setCreateTime(long ms) {
         this._create_time_ms = ms;
     }
@@ -68,6 +41,37 @@ public class NoteItem implements Cloneable, Serializable {
     public long getCreateTime() {
         return _create_time_ms;
     }
+
+    public boolean setImageFile(File img) {
+
+        if (img == null) {
+            Log.d(this.toString(), "add image abort, null");
+            return false;
+        }
+        if (!img.exists()) {
+            Log.d(this.toString(), "add image abort, file not exist: " + img);
+            return false;
+        }
+        if (!img.isFile()) {
+            Log.d(this.toString(), "add image abort, not a file: " + img);
+            return false;
+        }
+
+        this._img_file = img;
+
+        return true;
+    }
+
+    public File getImageFile() {
+        return this._img_file;
+    }
+
+    public Bitmap loadImage() {
+        if (_img_file == null) return null;
+
+        return null;
+    }
+
 
     public boolean isEdited() {
         return _is_edited;

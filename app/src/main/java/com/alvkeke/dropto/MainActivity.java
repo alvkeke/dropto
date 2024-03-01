@@ -17,6 +17,7 @@ import com.alvkeke.dropto.data.NoteItem;
 import com.alvkeke.dropto.ui.NoteDetailActivity;
 import com.alvkeke.dropto.ui.NoteListAdapter;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
@@ -24,11 +25,29 @@ import java.util.Random;
 public class MainActivity extends AppCompatActivity {
 
     private void dbg_fill_list(ArrayList<NoteItem> list) {
+
+        final String[] imglist = { "Screenshot_20240301_215505.png",
+                "Screenshot_20240301_215513.png", "Screenshot_20240301_215520.png",
+                "Screenshot_20240301_235659.png", "Screenshot_20240302_000246.png",
+                "Screenshot_20240302_001052.png",
+        };
+        int idx = 0;
         Random r = new Random();
-        for (int i=0; i<10; i++) {
+        File img_folder = this.getExternalFilesDir("imgs");
+        Log.d(this.toString(), "image folder path: " + img_folder);
+        if (img_folder != null && !img_folder.exists() && img_folder.mkdir()) {
+            Log.e(this.toString(), "failed to create folder: " + img_folder);
+        }
+
+        for (int i=0; i<15; i++) {
             NoteItem e = new NoteItem("ITEM" + i + i, new Date().getTime());
             if (r.nextBoolean()) {
                 e.setText(e.getText(), true);
+            }
+            if (idx < imglist.length && r.nextBoolean()) {
+                File img_file = new File(img_folder, imglist[idx++]);
+                Log.d(this.toString(), "add image file: " + img_file);
+                e.setImageFile(img_file);
             }
             list.add(e);
         }

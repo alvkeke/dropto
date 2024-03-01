@@ -18,11 +18,35 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
+    <LinearLayout
+        android:id="@+id/rlist_item_note_img_container"
+        android:layout_alignStart="@id/rlist_item_note_text"
+        android:layout_below="@id/rlist_item_note_text"
+        android:layout_alignEnd="@id/rlist_item_note_text"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/rlist_item_note_img_view"
+            android:adjustViewBounds="true"
+            android:maxHeight="280dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/rlist_item_note_img_file"
+            android:text="IMGIMGIMG"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+    </LinearLayout>
+
     <TextView
         android:id="@+id/rlist_item_note_create_time"
         android:text="2023-01-01"
         android:textSize="11sp"
-        android:layout_below="@id/rlist_item_note_text"
+        android:layout_below="@id/rlist_item_note_img_container"
         android:layout_alignEnd="@id/rlist_item_note_text"
         android:layout_marginBottom="@dimen/margin_note_items"
         android:layout_width="wrap_content"

@@ -1,10 +1,13 @@
 package com.alvkeke.dropto.ui;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -13,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.alvkeke.dropto.R;
 import com.alvkeke.dropto.data.NoteItem;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -37,6 +41,8 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         private final TextView tvText;
         private final TextView tvCreateTime;
         private final ImageView ivEdited;
+        private final TextView tvImageFile;
+        private final ImageView ivImage;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -44,6 +50,8 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             tvText = itemView.findViewById(R.id.rlist_item_note_text);
             tvCreateTime = itemView.findViewById(R.id.rlist_item_note_create_time);
             ivEdited = itemView.findViewById(R.id.rlist_item_note_is_edited);
+            tvImageFile = itemView.findViewById(R.id.rlist_item_note_img_file);
+            ivImage = itemView.findViewById(R.id.rlist_item_note_img_view);
         }
 
         private void showView(View v) {
@@ -81,6 +89,31 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             ivEdited.setVisibility(foo? View.VISIBLE : View.INVISIBLE);
         }
 
+        private void resizeImage(Bitmap bitmap) {
+            final int minHeight = 200;
+
+            if (bitmap.getHeight() < minHeight) {
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) ivImage.getLayoutParams();
+                params.height = minHeight;
+                ivImage.setLayoutParams(params);
+            }
+        }
+
+        public void setImageFile(File imgfile) {
+            if (imgfile == null) {
+                tvImageFile.setVisibility(View.GONE);
+                ivImage.setVisibility(View.GONE);
+                return;
+            }
+            Log.d(this.toString(), "Set image file: " + imgfile.getPath());
+            Bitmap bitmap = BitmapFactory.decodeFile(imgfile.getAbsolutePath());
+            resizeImage(bitmap);
+            ivImage.setImageBitmap(bitmap);
+            ivImage.setVisibility(View.VISIBLE);
+            tvImageFile.setText(imgfile.getName());
+            tvImageFile.setVisibility(View.VISIBLE);
+        }
+
         public void setClickListener(OnItemClickListener listener, int pos) {
             parent.setOnClickListener(v -> listener.onItemClick(pos));
         }
@@ -104,6 +137,11 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setText(note.getText());
         holder.setCreateTime(note.getCreateTime());
         holder.setIsEdited(note.isEdited());
+        if (note.getImageFile() != null) {
+            holder.setImageFile(note.getImageFile());
+        } else {
+            holder.setImageFile(null);
+        }
         if (itemClickListener!=null) {
             holder.setClickListener(itemClickListener, position);
         }
