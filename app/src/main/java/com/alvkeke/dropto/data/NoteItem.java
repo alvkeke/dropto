@@ -5,6 +5,7 @@ import android.util.Log;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.Date;
 
 public class NoteItem implements Cloneable, Serializable {
 
@@ -13,6 +14,21 @@ public class NoteItem implements Cloneable, Serializable {
     private boolean _is_edited;
     private File _img_file;
 
+    /**
+     * construct a new NoteItem instance, with auto generated create_time
+     * @param text the content of the item
+     */
+    public NoteItem(String text) {
+        this._text = text;
+        this._create_time_ms = new Date().getTime();
+    }
+
+    /**
+     * construct a new NoteItem instance, with a specific create_time
+     * this should be use to restore the items from database
+     * @param text content of the item
+     * @param create_time the specific create_time
+     */
     public NoteItem(String text, long create_time) {
         _text = text;
         _create_time_ms = create_time;

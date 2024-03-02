@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageButton;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -55,22 +56,25 @@ public class MainActivity extends AppCompatActivity {
 
     ArrayList<NoteItem> noteItems;
     NoteListAdapter noteItemAdapter;
+    private EditText etInputText;
+    private RecyclerView rlNoteList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        RecyclerView noteList = findViewById(R.id.rlist_notes);
-        ImageButton btnAddNote = findViewById(R.id.btn_note_add);
+        rlNoteList = findViewById(R.id.rlist_notes);
+        ImageButton btnAddNote = findViewById(R.id.input_send);
+        etInputText = findViewById(R.id.input_text);
 
         noteItems = new ArrayList<>();
         noteItemAdapter = new NoteListAdapter(noteItems);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
 
-        noteList.setAdapter(noteItemAdapter);
-        noteList.setLayoutManager(layoutManager);
-        noteList.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
+        rlNoteList.setAdapter(noteItemAdapter);
+        rlNoteList.setLayoutManager(layoutManager);
+        rlNoteList.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
@@ -86,20 +90,25 @@ public class MainActivity extends AppCompatActivity {
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 int resultCode = result.getResultCode();
-                Log.d(this.toString(), "add note item result code: " + resultCode);
+                Log.d(this.toString(), "NoteItem modify result code: " + resultCode);
                 if (resultCode == RESULT_CANCELED) {
-                    Log.i(this.toString(), "Add NoteItem canceled.");
+                    Log.i(this.toString(), "NoteItem modify canceled.");
                     return;
                 }
 
                 Intent intent = result.getData();
                 if (intent == null) {
-                    Log.e(this.toString(), "Failed to get Intent instance, item adding abort");
+                    Log.e(this.toString(), "Failed to get Intent instance, item modify abort");
+                    return;
+                }
+
+                int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
+                if (index == -1) {
+                    Log.e(this.toString(), "Failed to get item index, abort!");
                     return;
                 }
 
                 if (RESULT_OK == resultCode) {
-                    int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
                     NoteItem item = (NoteItem) intent.getSerializableExtra(NoteDetailActivity.ITEM_OBJECT);
 
                     if (item == null) {
@@ -107,14 +116,8 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
 
-                    if (index == -1) {
-                        // cannot get index, it's going to create a new item;
-                        handleItemAdd(item);
-                    } else {
-                        handleItemEdit(index, item);
-                    }
+                    handleItemEdit(index, item);
                 } else if (NoteDetailActivity.RESULT_DELETED == resultCode) {
-                    int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
                     handleItemDelete(index);
                 } else {
                     Log.e(this.toString(), "got a wrong resultCode: " + resultCode);
@@ -163,9 +166,13 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onClick(View v) {
             Log.e(this.toString(), "add btn clicked");
-
-            Intent intent = new Intent(MainActivity.this, NoteDetailActivity.class);
-            noteDetailActivityLauncher.launch(intent);
+            String content = etInputText.getText().toString();
+            NoteItem item = new NoteItem(content);
+            handleItemAdd(item);
+            // clear input box
+            etInputText.setText("");
+            // scroll to bottom
+            rlNoteList.smoothScrollToPosition(noteItemAdapter.getItemCount()-1);
         }
     }
 
