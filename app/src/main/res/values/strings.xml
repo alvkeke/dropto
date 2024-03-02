@@ -3,4 +3,7 @@
     <string name="string_cancel">Cancel</string>
     <string name="string_ok">OK</string>
     <string name="string_delete">Delete</string>
+    <string name="title_item_pop_menu_edit">Edit</string>
+    <string name="title_item_pop_menu_delete">Delete</string>
+    <string name="title_item_pop_menu_pin">Pin</string>
 </resources>

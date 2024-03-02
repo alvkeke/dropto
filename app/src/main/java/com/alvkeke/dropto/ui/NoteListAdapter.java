@@ -28,7 +28,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
     private OnItemClickListener itemClickListener = null;
 
     public interface OnItemClickListener {
-        void onItemClick(int index);
+        void onItemClick(int index, View v);
     }
 
     public NoteListAdapter(ArrayList<NoteItem> list) {
@@ -116,7 +116,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
 
         public void setClickListener(OnItemClickListener listener, int pos) {
-            parent.setOnClickListener(v -> listener.onItemClick(pos));
+            parent.setOnClickListener(v -> listener.onItemClick(pos, v));
         }
     }
 

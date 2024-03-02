@@ -1,11 +1,16 @@
 package com.alvkeke.dropto;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.PopupMenu;
+import android.widget.PopupWindow;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -185,16 +190,40 @@ public class MainActivity extends AppCompatActivity {
         noteDetailActivityLauncher.launch(intent);
     }
 
+    private void showItemPopMenu(int index, View v) {
+        PopupMenu menu = new PopupMenu(this, v);
+        menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                switch (item.getItemId()) {
+                    case R.id.item_pop_m_delete:
+                        Log.d(this.toString(), "try to delete item");
+                        return true;
+                    case R.id.item_pop_m_pin:
+                        Log.d(this.toString(), "Pin");
+                        return true;
+                    case R.id.item_pop_m_edit:
+                        NoteItem e = noteItems.get(index);
+                        if (e == null) {
+                            Log.e(this.toString(), "Failed to get note item at " + index);
+                            return false;
+                        }
+                        triggerItemEdit(e, index);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        });
+        menu.inflate(R.menu.item_pop_menu);
+        menu.show();
+    }
+
     class onListItemClick implements NoteListAdapter.OnItemClickListener {
 
         @Override
-        public void onItemClick(int index) {
-            NoteItem e = noteItems.get(index);
-            if (e == null) {
-                Log.e(this.toString(), "Failed to get note item at " + index);
-                return;
-            }
-            triggerItemEdit(e, index);
+        public void onItemClick(int index, View v) {
+            showItemPopMenu(index, v);
         }
     }
 
