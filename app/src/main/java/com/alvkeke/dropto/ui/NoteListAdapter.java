@@ -92,11 +92,13 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         private void resizeImage(Bitmap bitmap) {
             final int minHeight = 200;
 
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) ivImage.getLayoutParams();
             if (bitmap.getHeight() < minHeight) {
-                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) ivImage.getLayoutParams();
                 params.height = minHeight;
-                ivImage.setLayoutParams(params);
+            } else {
+                params.height = LinearLayout.LayoutParams.WRAP_CONTENT;
             }
+            ivImage.setLayoutParams(params);
         }
 
         public void setImageFile(File imgfile) {
