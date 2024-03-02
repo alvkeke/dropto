@@ -82,7 +82,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         public void setIsEdited(boolean foo) {
             tvCreateTime.measure(0, 0);
             int he = tvCreateTime.getMeasuredHeight();
-            Log.e(this.toString(), "size: " + he);
             ivEdited.getLayoutParams().height = he;
             ivEdited.getLayoutParams().width = he;
             ivEdited.requestLayout();
