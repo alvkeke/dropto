@@ -1,19 +1,16 @@
 package com.alvkeke.dropto;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
-import android.widget.PopupWindow;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -78,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
 //        File img_folder = this.getExternalFilesDir("imgs");
         File img_folder = new File(Environment.getExternalStorageDirectory(), "dbgtmp/imgs");
         Log.d(this.toString(), "image folder path: " + img_folder);
-        if (img_folder != null && !img_folder.exists() && img_folder.mkdir()) {
+        if (!img_folder.exists() && img_folder.mkdir()) {
             Log.e(this.toString(), "failed to create folder: " + img_folder);
         }
 
@@ -186,7 +183,6 @@ public class MainActivity extends AppCompatActivity {
             noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
         } catch (IndexOutOfBoundsException e) {
             Log.e(this.toString(), "Failed to remove item at index: " + index);
-            e.printStackTrace();
         }
     }
 
@@ -236,25 +232,22 @@ public class MainActivity extends AppCompatActivity {
         menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                switch (item.getItemId()) {
-                    case R.id.item_pop_m_delete:
-                        handleItemDelete(index);
-                        Log.d(this.toString(), "try to delete item at " + index);
-                        return true;
-                    case R.id.item_pop_m_pin:
-                        Log.d(this.toString(), "Pin");
-                        return true;
-                    case R.id.item_pop_m_edit:
-                        NoteItem e = noteItems.get(index);
-                        if (e == null) {
-                            Log.e(this.toString(), "Failed to get note item at " + index);
-                            return false;
-                        }
-                        triggerItemEdit(e, index);
-                        return true;
-                    default:
+                if (R.id.item_pop_m_delete == item.getItemId()) {
+                    Log.d(this.toString(), "try to delete item at " + index);
+                    handleItemDelete(index);
+                } else if (R.id.item_pop_m_pin == item.getItemId()) {
+                    Log.d(this.toString(), "try to Pin item at " + index);
+                } else if (R.id.item_pop_m_edit == item.getItemId()) {
+                    NoteItem e = noteItems.get(index);
+                    if (e == null) {
+                        Log.e(this.toString(), "Failed to get note item at " + index);
                         return false;
+                    }
+                    triggerItemEdit(e, index);
+                } else {
+                    return false;
                 }
+                return true;
             }
         });
         menu.inflate(R.menu.item_pop_menu);
