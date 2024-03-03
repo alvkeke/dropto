@@ -238,7 +238,8 @@ public class MainActivity extends AppCompatActivity {
             public boolean onMenuItemClick(MenuItem item) {
                 switch (item.getItemId()) {
                     case R.id.item_pop_m_delete:
-                        Log.d(this.toString(), "try to delete item");
+                        handleItemDelete(index);
+                        Log.d(this.toString(), "try to delete item at " + index);
                         return true;
                     case R.id.item_pop_m_pin:
                         Log.d(this.toString(), "Pin");
