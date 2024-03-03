@@ -1,8 +1,11 @@
 package com.alvkeke.dropto;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MenuItem;
@@ -14,7 +17,10 @@ import android.widget.PopupWindow;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,6 +36,33 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int REQUEST_STORAGE_PERMISSION = 100;
+    private boolean grantStorageReadPermission() {
+        if (PackageManager.PERMISSION_GRANTED !=
+                ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                        REQUEST_STORAGE_PERMISSION);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_STORAGE_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, perform your task
+                dbg_fill_list(noteItems);
+            } else {
+                // Permission denied, handle the scenario accordingly
+                Log.e(this.toString(), "Failed to get permission, don't fill list for debug");
+            }
+        }
+    }
+
     private void dbg_fill_list(ArrayList<NoteItem> list) {
 
         final String[] imglist = { "Screenshot_20240301_215505.png",
@@ -37,9 +70,13 @@ public class MainActivity extends AppCompatActivity {
                 "Screenshot_20240301_235659.png", "Screenshot_20240302_000246.png",
                 "Screenshot_20240302_001052.png",
         };
+
+        Log.e(this.toString(), "sdcard: " + Environment.getExternalStorageDirectory());
+
         int idx = 0;
         Random r = new Random();
-        File img_folder = this.getExternalFilesDir("imgs");
+//        File img_folder = this.getExternalFilesDir("imgs");
+        File img_folder = new File(Environment.getExternalStorageDirectory(), "dbgtmp/imgs");
         Log.d(this.toString(), "image folder path: " + img_folder);
         if (img_folder != null && !img_folder.exists() && img_folder.mkdir()) {
             Log.e(this.toString(), "failed to create folder: " + img_folder);
@@ -56,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
                 e.setImageFile(img_file);
             }
             list.add(e);
+            noteItemAdapter.notifyItemInserted(i);
         }
     }
 
@@ -85,8 +123,11 @@ public class MainActivity extends AppCompatActivity {
         btnAddNote.setOnClickListener(new onItemAddClick());
 
         if (BuildConfig.DEBUG) {
-            dbg_fill_list(noteItems);
-            noteItemAdapter.notifyDataSetChanged();
+            if (grantStorageReadPermission()) {
+                dbg_fill_list(noteItems);
+            } else {
+                Log.i(this.toString(), "deffer debug list fill for permission requesting");
+            }
         }
 
     }
