@@ -1,5 +1,8 @@
 package com.alvkeke.dropto;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -261,18 +264,35 @@ public class MainActivity extends AppCompatActivity {
         menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                if (R.id.item_pop_m_delete == item.getItemId()) {
+                int item_id = item.getItemId();
+                if (R.id.item_pop_m_delete == item_id) {
                     Log.d(this.toString(), "try to delete item at " + index);
                     handleItemDelete(index);
-                } else if (R.id.item_pop_m_pin == item.getItemId()) {
+                } else if (R.id.item_pop_m_pin == item_id) {
                     Log.d(this.toString(), "try to Pin item at " + index);
-                } else if (R.id.item_pop_m_edit == item.getItemId()) {
+                } else if (R.id.item_pop_m_edit == item_id) {
                     NoteItem e = noteItems.get(index);
                     if (e == null) {
                         Log.e(this.toString(), "Failed to get note item at " + index);
                         return false;
                     }
                     triggerItemEdit(e, index);
+                } else if (R.id.item_pop_m_copy_text == item_id) {
+                    NoteItem e = noteItems.get(index);
+                    if (e == null) {
+                        Log.e(this.toString(), "Failed to get note item at " + index);
+                        return false;
+                    }
+                    Log.d(this.toString(), "copy item text at " + index +
+                            ", content: " + e.getText());
+                    ClipboardManager clipboardManager =
+                            (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboardManager == null) {
+                        Log.e(this.toString(), "Failed to get ClipboardManager");
+                        return false;
+                    }
+                    ClipData data = ClipData.newPlainText("text", e.getText());
+                    clipboardManager.setPrimaryClip(data);
                 } else {
                     return false;
                 }

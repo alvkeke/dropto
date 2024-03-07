@@ -1,6 +1,9 @@
 <!-- res/menu/popup_menu.xml -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/item_pop_m_copy_text"
+        android:title="@string/title_item_pop_menu_copy_text"/>
+    <item
         android:id="@+id/item_pop_m_edit"
         android:title="@string/title_item_pop_menu_edit" />
     <item
