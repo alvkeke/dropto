@@ -261,6 +261,46 @@ public class MainActivity extends AppCompatActivity {
         noteDetailActivityLauncher.launch(intent);
     }
 
+    private boolean handleItemCopy(NoteItem item) {
+        ClipboardManager clipboardManager =
+                (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboardManager == null) {
+            Log.e(this.toString(), "Failed to get ClipboardManager");
+            return false;
+        }
+        ClipData data = ClipData.newPlainText("text", item.getText());
+        clipboardManager.setPrimaryClip(data);
+        return true;
+    }
+
+    private boolean handleItemShare(NoteItem item) {
+        Intent sendIntent = new Intent(Intent.ACTION_SEND);
+
+        // add item text for sharing
+        sendIntent.setType("text/plain");
+        sendIntent.putExtra(Intent.EXTRA_TEXT, item.getText());
+        Log.d(this.toString(), "no image, share text: " + item.getText());
+
+        if (item.getImageFile() != null) {
+            // add item image for sharing if exist
+            sendIntent.setType("image/*");
+            Uri fileUri = FileProvider.getUriForFile(MainActivity.this,
+                    getPackageName() + ".fileprovider", item.getImageFile());
+            sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+            sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Log.d(this.toString(), "share image Uri: " + fileUri);
+        }
+        Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
+
+        try {
+            MainActivity.this.startActivity(shareIntent);
+        } catch (Exception e) {
+            Log.e(this.toString(), "Failed to create share Intent: " + e);
+            return false;
+        }
+        return true;
+    }
+
     private void showItemPopMenu(int index, View v) {
         PopupMenu menu = new PopupMenu(this, v);
         NoteItem noteItem = noteItems.get(index);
@@ -282,39 +322,9 @@ public class MainActivity extends AppCompatActivity {
                 } else if (R.id.item_pop_m_copy_text == item_id) {
                     Log.d(this.toString(), "copy item text at " + index +
                             ", content: " + noteItem.getText());
-                    ClipboardManager clipboardManager =
-                            (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (clipboardManager == null) {
-                        Log.e(this.toString(), "Failed to get ClipboardManager");
-                        return false;
-                    }
-                    ClipData data = ClipData.newPlainText("text", noteItem.getText());
-                    clipboardManager.setPrimaryClip(data);
+                    return handleItemCopy(noteItem);
                 } else if (R.id.item_pop_m_share == item_id) {
-                    Intent sendIntent = new Intent(Intent.ACTION_SEND);
-
-                    // add item text for sharing
-                    sendIntent.setType("text/plain");
-                    sendIntent.putExtra(Intent.EXTRA_TEXT, noteItem.getText());
-                    Log.d(this.toString(), "no image, share text: " + noteItem.getText());
-
-                    if (noteItem.getImageFile() != null) {
-                        // add item image for sharing if exist
-                        sendIntent.setType("image/*");
-                        Uri fileUri = FileProvider.getUriForFile(MainActivity.this,
-                                getPackageName() + ".fileprovider",
-                                noteItem.getImageFile());
-                        sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
-                        sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        Log.d(this.toString(), "share image Uri: " + fileUri);
-                    }
-                    Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
-
-                    try {
-                        MainActivity.this.startActivity(shareIntent);
-                    } catch (Exception e) {
-                        Log.e(this.toString(), "Failed to create share Intent: " + e);
-                    }
+                    return handleItemShare(noteItem);
                 } else {
                     Log.e(this.toString(),
                             "Unknown menu id: " + getResources().getResourceEntryName(item_id));
