@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -17,6 +18,7 @@ import android.widget.PopupMenu;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -261,39 +263,61 @@ public class MainActivity extends AppCompatActivity {
 
     private void showItemPopMenu(int index, View v) {
         PopupMenu menu = new PopupMenu(this, v);
+        NoteItem noteItem = noteItems.get(index);
+        if (noteItem == null) {
+            Log.e(this.toString(), "Failed to get note item at " + index + ", abort");
+            return;
+        }
         menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                int item_id = item.getItemId();
+            public boolean onMenuItemClick(MenuItem menuItem) {
+                int item_id = menuItem.getItemId();
                 if (R.id.item_pop_m_delete == item_id) {
                     Log.d(this.toString(), "try to delete item at " + index);
                     handleItemDelete(index);
                 } else if (R.id.item_pop_m_pin == item_id) {
                     Log.d(this.toString(), "try to Pin item at " + index);
                 } else if (R.id.item_pop_m_edit == item_id) {
-                    NoteItem e = noteItems.get(index);
-                    if (e == null) {
-                        Log.e(this.toString(), "Failed to get note item at " + index);
-                        return false;
-                    }
-                    triggerItemEdit(e, index);
+                    triggerItemEdit(noteItem, index);
                 } else if (R.id.item_pop_m_copy_text == item_id) {
-                    NoteItem e = noteItems.get(index);
-                    if (e == null) {
-                        Log.e(this.toString(), "Failed to get note item at " + index);
-                        return false;
-                    }
                     Log.d(this.toString(), "copy item text at " + index +
-                            ", content: " + e.getText());
+                            ", content: " + noteItem.getText());
                     ClipboardManager clipboardManager =
                             (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                     if (clipboardManager == null) {
                         Log.e(this.toString(), "Failed to get ClipboardManager");
                         return false;
                     }
-                    ClipData data = ClipData.newPlainText("text", e.getText());
+                    ClipData data = ClipData.newPlainText("text", noteItem.getText());
                     clipboardManager.setPrimaryClip(data);
+                } else if (R.id.item_pop_m_share == item_id) {
+                    Intent sendIntent = new Intent(Intent.ACTION_SEND);
+
+                    // add item text for sharing
+                    sendIntent.setType("text/plain");
+                    sendIntent.putExtra(Intent.EXTRA_TEXT, noteItem.getText());
+                    Log.d(this.toString(), "no image, share text: " + noteItem.getText());
+
+                    if (noteItem.getImageFile() != null) {
+                        // add item image for sharing if exist
+                        sendIntent.setType("image/*");
+                        Uri fileUri = FileProvider.getUriForFile(MainActivity.this,
+                                getPackageName() + ".fileprovider",
+                                noteItem.getImageFile());
+                        sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+                        sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        Log.d(this.toString(), "share image Uri: " + fileUri);
+                    }
+                    Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
+
+                    try {
+                        MainActivity.this.startActivity(shareIntent);
+                    } catch (Exception e) {
+                        Log.e(this.toString(), "Failed to create share Intent: " + e);
+                    }
                 } else {
+                    Log.e(this.toString(),
+                            "Unknown menu id: " + getResources().getResourceEntryName(item_id));
                     return false;
                 }
                 return true;
