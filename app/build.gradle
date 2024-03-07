@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.alvkeke.dropto'
+    namespace 'cn.alvkeke.dropto'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.alvkeke.dropto'
+        applicationId 'cn.alvkeke.dropto'
         minSdk 25
         targetSdk 33
         versionCode 1

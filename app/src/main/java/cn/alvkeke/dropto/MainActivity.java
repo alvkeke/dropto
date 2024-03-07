@@ -1,4 +1,4 @@
-package com.alvkeke.dropto;
+package cn.alvkeke.dropto;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -23,9 +23,9 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.alvkeke.dropto.data.NoteItem;
-import com.alvkeke.dropto.ui.NoteDetailActivity;
-import com.alvkeke.dropto.ui.NoteListAdapter;
+import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.ui.NoteDetailActivity;
+import cn.alvkeke.dropto.ui.NoteListAdapter;
 
 import java.io.File;
 import java.io.IOException;

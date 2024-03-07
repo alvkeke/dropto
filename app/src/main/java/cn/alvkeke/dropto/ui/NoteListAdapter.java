@@ -1,4 +1,4 @@
-package com.alvkeke.dropto.ui;
+package cn.alvkeke.dropto.ui;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -13,8 +13,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.alvkeke.dropto.R;
-import com.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.NoteItem;
 
 import java.io.File;
 import java.text.SimpleDateFormat;

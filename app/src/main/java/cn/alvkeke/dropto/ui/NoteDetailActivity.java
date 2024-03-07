@@ -1,4 +1,4 @@
-package com.alvkeke.dropto.ui;
+package cn.alvkeke.dropto.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -8,8 +8,8 @@ import android.widget.EditText;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.alvkeke.dropto.R;
-import com.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.NoteItem;
 
 import java.util.Date;
 
