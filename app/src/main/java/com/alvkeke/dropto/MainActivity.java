@@ -1,8 +1,7 @@
 package com.alvkeke.dropto;
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -14,10 +13,7 @@ import android.widget.PopupMenu;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -27,66 +23,103 @@ import com.alvkeke.dropto.ui.NoteDetailActivity;
 import com.alvkeke.dropto.ui.NoteListAdapter;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int REQUEST_STORAGE_PERMISSION = 100;
-    private boolean grantStorageReadPermission() {
-        if (PackageManager.PERMISSION_GRANTED !=
-                ContextCompat.checkSelfPermission(this,
-                        Manifest.permission.READ_EXTERNAL_STORAGE)) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        REQUEST_STORAGE_PERMISSION);
+    private boolean extract_raw_file(int id, File o_file) {
+        if (o_file.exists()) {
+            // file exist, return true to indicate can be load
+            Log.d(this.toString(), "file exist, don't extract:" + o_file);
+            return true;
+        }
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+            Log.e(this.toString(), "SDK_VERSION error: " + Build.VERSION.SDK_INT);
+            return false;
+        }
+        byte[] buffer = new byte[1024];
+        try {
+            InputStream is = getResources().openRawResource(id);
+            OutputStream os = Files.newOutputStream(o_file.toPath());
+            int len;
+            while((len = is.read(buffer)) > 0) {
+                os.write(buffer, 0, len);
+            }
+            os.flush();
+            os.close();
+            is.close();
+        } catch (IOException e) {
+            Log.e(this.toString(), "Failed to extract res: " +
+                    getResources().getResourceEntryName(id) + " to " + o_file);
             return false;
         }
         return true;
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_STORAGE_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, perform your task
-                dbg_fill_list(noteItems);
-            } else {
-                // Permission denied, handle the scenario accordingly
-                Log.e(this.toString(), "Failed to get permission, don't fill list for debug");
+    private List<File> try_extract_res_images(File folder) {
+
+        List<Integer> rawIds = new ArrayList<>();
+        Field[] fields = R.raw.class.getFields();
+        for (Field f : fields) {
+            if (f.getType() == int.class) {
+                try {
+                    int id = f.getInt(null);
+                    rawIds.add(id);
+                } catch (IllegalAccessException e) {
+                    Log.e(this.toString(), "failed to get resource ID of raw:" + f);
+                }
             }
         }
+
+        List<File> ret_files = new ArrayList<>();
+        for (int id : rawIds) {
+            File o_file = new File(folder, getResources().getResourceEntryName(id) + ".png");
+            if (extract_raw_file(id, o_file))
+                ret_files.add(o_file);
+        }
+
+        return ret_files;
     }
 
     private void dbg_fill_list(ArrayList<NoteItem> list) {
-
-        final String[] imglist = { "Screenshot_20240301_215505.png",
-                "Screenshot_20240301_215513.png", "Screenshot_20240301_215520.png",
-                "Screenshot_20240301_235659.png", "Screenshot_20240302_000246.png",
-                "Screenshot_20240302_001052.png",
-        };
 
         Log.e(this.toString(), "sdcard: " + Environment.getExternalStorageDirectory());
 
         int idx = 0;
         Random r = new Random();
-//        File img_folder = this.getExternalFilesDir("imgs");
-        File img_folder = new File(Environment.getExternalStorageDirectory(), "dbgtmp/imgs");
+        File img_folder = this.getExternalFilesDir("imgs");
+        if (img_folder == null) {
+            Log.e(this.toString(), "Failed to get image folder, exit!!");
+            return;
+        }
         Log.d(this.toString(), "image folder path: " + img_folder);
         if (!img_folder.exists() && img_folder.mkdir()) {
             Log.e(this.toString(), "failed to create folder: " + img_folder);
         }
+        List<File> img_files = try_extract_res_images(img_folder);
 
         for (int i=0; i<15; i++) {
             NoteItem e = new NoteItem("ITEM" + i + i, new Date().getTime());
             if (r.nextBoolean()) {
                 e.setText(e.getText(), true);
             }
-            if (idx < imglist.length && r.nextBoolean()) {
-                File img_file = new File(img_folder, imglist[idx++]);
-                Log.d(this.toString(), "add image file: " + img_file);
+            if (idx < img_files.size() && r.nextBoolean()) {
+                File img_file = img_files.get(idx);
+                idx++;
+                if (img_file.exists()) {
+                    Log.d(this.toString(), "add image file: " + img_file);
+                } else {
+                    Log.e(this.toString(), "add image file failed, not exist: " + img_file);
+                }
+
                 e.setImageFile(img_file);
             }
             list.add(e);
@@ -120,11 +153,7 @@ public class MainActivity extends AppCompatActivity {
         btnAddNote.setOnClickListener(new onItemAddClick());
 
         if (BuildConfig.DEBUG) {
-            if (grantStorageReadPermission()) {
-                dbg_fill_list(noteItems);
-            } else {
-                Log.i(this.toString(), "deffer debug list fill for permission requesting");
-            }
+            dbg_fill_list(noteItems);
         }
 
     }
