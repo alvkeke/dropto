@@ -8,4 +8,5 @@
     <string name="title_item_pop_menu_pin">Pin</string>
     <string name="title_item_pop_menu_copy_text">Copy Text</string>
     <string name="title_item_pop_menu_share">Share</string>
+    <string name="string_category_icon_description">Category Icon</string>
 </resources>
