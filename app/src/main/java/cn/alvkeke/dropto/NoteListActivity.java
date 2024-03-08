@@ -38,7 +38,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
-public class MainActivity extends AppCompatActivity {
+public class NoteListActivity extends AppCompatActivity {
 
     private boolean extract_raw_file(int id, File o_file) {
         if (o_file.exists()) {
@@ -140,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_note_list);
 
         rlNoteList = findViewById(R.id.rlist_notes);
         ImageButton btnAddNote = findViewById(R.id.input_send);
@@ -255,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
     void triggerItemEdit(NoteItem e, int pos) {
         Log.d(this.toString(), "item editing triggered");
 
-        Intent intent = new Intent(MainActivity.this, NoteDetailActivity.class);
+        Intent intent = new Intent(NoteListActivity.this, NoteDetailActivity.class);
         intent.putExtra(NoteDetailActivity.ITEM_INDEX, pos);
         intent.putExtra(NoteDetailActivity.ITEM_OBJECT, e.clone());
         noteDetailActivityLauncher.launch(intent);
@@ -284,7 +284,7 @@ public class MainActivity extends AppCompatActivity {
         if (item.getImageFile() != null) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
-            Uri fileUri = FileProvider.getUriForFile(MainActivity.this,
+            Uri fileUri = FileProvider.getUriForFile(NoteListActivity.this,
                     getPackageName() + ".fileprovider", item.getImageFile());
             sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -293,7 +293,7 @@ public class MainActivity extends AppCompatActivity {
         Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
 
         try {
-            MainActivity.this.startActivity(shareIntent);
+            NoteListActivity.this.startActivity(shareIntent);
         } catch (Exception e) {
             Log.e(this.toString(), "Failed to create share Intent: " + e);
             return false;
