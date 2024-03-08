@@ -5,9 +5,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,114 +21,16 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
+
+import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.NoteDetailActivity;
 import cn.alvkeke.dropto.ui.NoteListAdapter;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Field;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-
 public class NoteListActivity extends AppCompatActivity {
 
-    private boolean extract_raw_file(int id, File o_file) {
-        if (o_file.exists()) {
-            // file exist, return true to indicate can be load
-            Log.d(this.toString(), "file exist, don't extract:" + o_file);
-            return true;
-        }
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
-            Log.e(this.toString(), "SDK_VERSION error: " + Build.VERSION.SDK_INT);
-            return false;
-        }
-        byte[] buffer = new byte[1024];
-        try {
-            InputStream is = getResources().openRawResource(id);
-            OutputStream os = Files.newOutputStream(o_file.toPath());
-            int len;
-            while((len = is.read(buffer)) > 0) {
-                os.write(buffer, 0, len);
-            }
-            os.flush();
-            os.close();
-            is.close();
-        } catch (IOException e) {
-            Log.e(this.toString(), "Failed to extract res: " +
-                    getResources().getResourceEntryName(id) + " to " + o_file);
-            return false;
-        }
-        return true;
-    }
-
-    private List<File> try_extract_res_images(File folder) {
-
-        List<Integer> rawIds = new ArrayList<>();
-        Field[] fields = R.raw.class.getFields();
-        for (Field f : fields) {
-            if (f.getType() == int.class) {
-                try {
-                    int id = f.getInt(null);
-                    rawIds.add(id);
-                } catch (IllegalAccessException e) {
-                    Log.e(this.toString(), "failed to get resource ID of raw:" + f);
-                }
-            }
-        }
-
-        List<File> ret_files = new ArrayList<>();
-        for (int id : rawIds) {
-            File o_file = new File(folder, getResources().getResourceEntryName(id) + ".png");
-            if (extract_raw_file(id, o_file))
-                ret_files.add(o_file);
-        }
-
-        return ret_files;
-    }
-
-    private void dbg_fill_list(ArrayList<NoteItem> list) {
-
-        Log.e(this.toString(), "sdcard: " + Environment.getExternalStorageDirectory());
-
-        int idx = 0;
-        Random r = new Random();
-        File img_folder = this.getExternalFilesDir("imgs");
-        if (img_folder == null) {
-            Log.e(this.toString(), "Failed to get image folder, exit!!");
-            return;
-        }
-        Log.d(this.toString(), "image folder path: " + img_folder);
-        if (!img_folder.exists() && img_folder.mkdir()) {
-            Log.e(this.toString(), "failed to create folder: " + img_folder);
-        }
-        List<File> img_files = try_extract_res_images(img_folder);
-
-        for (int i=0; i<15; i++) {
-            NoteItem e = new NoteItem("ITEM" + i + i, new Date().getTime());
-            if (r.nextBoolean()) {
-                e.setText(e.getText(), true);
-            }
-            if (idx < img_files.size() && r.nextBoolean()) {
-                File img_file = img_files.get(idx);
-                idx++;
-                if (img_file.exists()) {
-                    Log.d(this.toString(), "add image file: " + img_file);
-                } else {
-                    Log.e(this.toString(), "add image file failed, not exist: " + img_file);
-                }
-
-                e.setImageFile(img_file);
-            }
-            list.add(e);
-            noteItemAdapter.notifyItemInserted(i);
-        }
-    }
+    public static final String CATEGORY_INDEX = "CATEGORY_INDEX";
 
     ArrayList<NoteItem> noteItems;
     NoteListAdapter noteItemAdapter;
@@ -146,7 +46,18 @@ public class NoteListActivity extends AppCompatActivity {
         ImageButton btnAddNote = findViewById(R.id.input_send);
         etInputText = findViewById(R.id.input_text);
 
-        noteItems = new ArrayList<>();
+        Intent intent = getIntent();
+        int index = intent.getIntExtra(CATEGORY_INDEX, -1);
+        if (index == -1) {
+            Log.e(this.toString(), "Failed to get category index!!");
+            return;
+        }
+        noteItems = Global.getInstance().getCategories().get(index).getNoteItems();
+        if (noteItems == null) {
+            Log.e(this.toString(), "Failed to get note list!!");
+            return;
+        }
+
         noteItemAdapter = new NoteListAdapter(noteItems);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
 
@@ -156,10 +67,6 @@ public class NoteListActivity extends AppCompatActivity {
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
-
-        if (BuildConfig.DEBUG) {
-            dbg_fill_list(noteItems);
-        }
 
     }
 
