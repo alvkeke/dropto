@@ -9,7 +9,7 @@
     <TextView
         android:id="@+id/rlist_item_note_text"
         android:text="TEXTTEXTTEXT"
-        android:textColor="@color/black"
+        android:textColor="@color/colorMainTitle"
         android:textSize="18sp"
         android:layout_marginStart="@dimen/margin_note_items"
         android:layout_marginEnd="@dimen/margin_note_items"

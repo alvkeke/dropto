@@ -21,7 +21,7 @@
         app:layout_constraintStart_toEndOf="@id/item_category_icon"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_margin="8dp"
-        android:textColor="@color/black"
+        android:textColor="@color/colorMainTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
