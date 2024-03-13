@@ -103,6 +103,7 @@ public class CategoryActivity extends AppCompatActivity {
         if (!img_folder.exists() && img_folder.mkdir()) {
             Log.e(this.toString(), "failed to create folder: " + img_folder);
         }
+        Global.getInstance().setFileStoreFolder(img_folder);
         List<File> img_files = try_extract_res_images(img_folder);
 
         for (int i=0; i<15; i++) {

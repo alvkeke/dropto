@@ -1,10 +1,12 @@
 package cn.alvkeke.dropto.data;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class Global {
     private static final Global _instance = new Global();
     private final ArrayList<Category> categories = new ArrayList<>();
+    private File fileStorage;
 
     private Global() {
     }
@@ -15,6 +17,14 @@ public class Global {
 
     public ArrayList<Category> getCategories() {
         return categories;
+    }
+
+    public File getFileStoreFolder() {
+        return fileStorage;
+    }
+
+    public void setFileStoreFolder(File fileStorage) {
+        this.fileStorage = fileStorage;
     }
 
 }
