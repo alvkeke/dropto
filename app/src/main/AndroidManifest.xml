@@ -17,7 +17,7 @@
 
         <activity
             android:name=".ui.ShareRecvActivity"
-            android:theme="@style/Theme.MaterialComponents.Dialog"
+            android:label="Choose category to drop"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
