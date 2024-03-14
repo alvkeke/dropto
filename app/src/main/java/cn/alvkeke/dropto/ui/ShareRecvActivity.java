@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -43,47 +44,67 @@ public class ShareRecvActivity extends AppCompatActivity {
         rlCategory.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
 
         Intent intent = getIntent();
-        String action = intent.getAction();
-        String type = intent.getType();
+
 
         adapter.setItemClickListener(new CategoryListAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(int index, View v) {
-                if (! Intent.ACTION_SEND.equals(action)) {
-                    Log.e(this.toString(), "Wrong action: " + action);
-                    return;
-                }
-                if (type == null) {
-                    Log.e(this.toString(), "Cannot get type");
+                Category category = Global.getInstance().getCategories().get(index);
+                if (category == null) {
+                    Log.e(this.toString(), "Failed to get category at : " + index);
+                    finish();
                     return;
                 }
 
-                if (type.startsWith("text/")) {
-                    handleText(index, intent);
-                } else if (type.startsWith("image/")) {
-                    handleImage(index, intent);
+                NoteItem item = handleSharedInfo(intent);
+                if (item == null) {
+                    Log.e(this.toString(), "Failed to generated a new noteItem");
+                    finish();
+                    return;
                 }
 
+                category.addNoteItem(item);
                 finish();
             }
         });
     }
 
-    void handleText(int index, Intent intent) {
+    NoteItem handleSharedInfo(Intent intent) {
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        if (! Intent.ACTION_SEND.equals(action)) {
+            Log.e(this.toString(), "Wrong action: " + action);
+            Toast.makeText(ShareRecvActivity.this,
+                    "Got wrong action: " + action, Toast.LENGTH_SHORT).show();
+            return null;
+        }
+
+        if (type == null) {
+            Log.e(this.toString(), "Cannot get type");
+            Toast.makeText(ShareRecvActivity.this,
+                    "Cannot get type", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+
+        if (type.startsWith("text/")) {
+            return handleText(intent);
+        } else if (type.startsWith("image/")) {
+            return handleImage(intent);
+        } else {
+            Log.e(this.toString(), "Got unsupported type: " + type);
+        }
+        return null;
+    }
+
+    NoteItem handleText(Intent intent) {
         String text = intent.getStringExtra(Intent.EXTRA_TEXT);
         if (text == null) {
             Log.e(this.toString(), "Failed to get shared text");
-            return;
+            return null;
         }
 
-        Category category = Global.getInstance().getCategories().get(index);
-        if (category == null) {
-            Log.e(this.toString(), "Failed to get category at : " + index);
-            return;
-        }
-
-        NoteItem item = new NoteItem(text);
-        category.addNoteItem(item);
+        return new NoteItem(text);
     }
 
     private static final int BUFFER_SIZE = 1024;
@@ -145,23 +166,17 @@ public class ShareRecvActivity extends AppCompatActivity {
         return sb.toString();
     }
 
-    void handleImage(int index, Intent intent) {
+    NoteItem handleImage(Intent intent) {
         File storeFolder = Global.getInstance().getFileStoreFolder();
         if (storeFolder == null) {
             Log.e(this.toString(), "Failed to get storage folder");
-            return;
+            return null;
         }
 
         Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
         if (uri == null) {
             Log.e(this.toString(), "Failed to get Uri");
-            return;
-        }
-
-        Category category = Global.getInstance().getCategories().get(index);
-        if (category == null) {
-            Log.e(this.toString(), "Failed to get category at : " + index);
-            return;
+            return null;
         }
 
         ParcelFileDescriptor inputPFD;
@@ -169,20 +184,21 @@ public class ShareRecvActivity extends AppCompatActivity {
             inputPFD = getContentResolver().openFileDescriptor(uri, "r");
             if (inputPFD == null) {
                 Log.e(this.toString(), "Failed to get ParcelFileDescriptor");
-                return;
+                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(this.toString(), "Failed to get file fd");
-            return;
+            return null;
         }
 
         FileDescriptor fd = inputPFD.getFileDescriptor();
         File retFile = saveFileWithMd5Name(fd, storeFolder);
         Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
 
-        NoteItem item = new NoteItem("");
+        String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
+        NoteItem item = new NoteItem(ext_str == null ? "" : ext_str);
         item.setImageFile(retFile);
-        category.addNoteItem(item);
+        return item;
     }
 }
