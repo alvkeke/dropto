@@ -16,6 +16,7 @@ public class Category {
     private final Type type;
     private String previewText = null;
     private final ArrayList<NoteItem> noteItems;
+    private boolean needUpdate = false;
 
     public Category(String title, Type type) {
         this.id = new Date().getTime();
@@ -31,6 +32,15 @@ public class Category {
     public void addNoteItem(NoteItem item) {
         noteItems.add(item);
         previewText = item.getText();
+        needUpdate = true;
+    }
+
+    public void setUpdated() {
+        needUpdate = false;
+    }
+
+    public boolean needUpdate() {
+        return needUpdate;
     }
 
     public String getPreviewText() {

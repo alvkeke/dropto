@@ -25,6 +25,20 @@ public class CategoryActivity extends AppCompatActivity {
     private CategoryListAdapter categoryListAdapter;
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        ArrayList<Category> categories = Global.getInstance().getCategories();
+        for (int i=0; i<categories.size(); i++) {
+            Category c = categories.get(i);
+            if (c.needUpdate()) {
+                categoryListAdapter.notifyItemChanged(i);
+                c.setUpdated();
+            }
+        }
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_category);
