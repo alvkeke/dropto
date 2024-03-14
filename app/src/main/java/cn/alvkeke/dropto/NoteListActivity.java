@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 
+import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.NoteDetailActivity;
@@ -52,9 +53,18 @@ public class NoteListActivity extends AppCompatActivity {
             Log.e(this.toString(), "Failed to get category index!!");
             return;
         }
-        noteItems = Global.getInstance().getCategories().get(index).getNoteItems();
+        Category category = Global.getInstance().getCategories().get(index);
+        if (category == null) {
+            Log.e(this.toString(), "Failed to get category at " + index);
+            finish();
+            return;
+        }
+        setTitle(category.getTitle());
+
+        noteItems = category.getNoteItems();
         if (noteItems == null) {
             Log.e(this.toString(), "Failed to get note list!!");
+            finish();
             return;
         }
 
