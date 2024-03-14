@@ -44,7 +44,11 @@ public class ShareRecvActivity extends AppCompatActivity {
         rlCategory.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
 
         Intent intent = getIntent();
-
+        if (intent == null) {
+            Log.e(this.toString(), "Failed to get intent");
+            finish();
+            return;
+        }
 
         adapter.setItemClickListener(new CategoryListAdapter.OnItemClickListener() {
             @Override
