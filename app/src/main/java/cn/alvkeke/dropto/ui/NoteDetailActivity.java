@@ -11,8 +11,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
 
-import java.util.Date;
-
 public class NoteDetailActivity extends AppCompatActivity {
 
 
@@ -72,7 +70,7 @@ public class NoteDetailActivity extends AppCompatActivity {
 
             String text = etNoteItemText.getText().toString();
             if (item == null) {
-                item = new NoteItem(text, new Date().getTime());
+                item = new NoteItem(text, System.currentTimeMillis());
             } else {
                 item.setText(text, true);
             }

@@ -12,7 +12,6 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
@@ -89,7 +88,7 @@ public class DebugFunction {
         List<File> img_files = try_extract_res_images(context, img_folder);
 
         for (int i=0; i<15; i++) {
-            NoteItem e = new NoteItem("ITEM" + i + i, new Date().getTime());
+            NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
             if (r.nextBoolean()) {
                 e.setText(e.getText(), true);
             }

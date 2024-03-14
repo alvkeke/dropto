@@ -20,7 +20,6 @@ import java.io.FileOutputStream;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Date;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
@@ -90,7 +89,7 @@ public class ShareRecvActivity extends AppCompatActivity {
     private static final int BUFFER_SIZE = 1024;
     File saveFileWithMd5Name(FileDescriptor fd, File storeFolder) {
 
-        String tempName = "tmp_" + new Date().getTime();
+        String tempName = "tmp_" + System.nanoTime();
         int name_idx = 0;
         File fileTmp = new File(storeFolder, tempName);
         while (fileTmp.exists()) {

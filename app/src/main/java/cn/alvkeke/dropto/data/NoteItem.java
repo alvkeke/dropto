@@ -3,9 +3,10 @@ package cn.alvkeke.dropto.data;
 import android.graphics.Bitmap;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import java.io.File;
 import java.io.Serializable;
-import java.util.Date;
 
 public class NoteItem implements Cloneable, Serializable {
 
@@ -20,7 +21,7 @@ public class NoteItem implements Cloneable, Serializable {
      */
     public NoteItem(String text) {
         this._text = text;
-        this._create_time_ms = new Date().getTime();
+        this._create_time_ms = System.currentTimeMillis();
     }
 
     /**
@@ -34,6 +35,7 @@ public class NoteItem implements Cloneable, Serializable {
         _create_time_ms = create_time;
     }
 
+    @NonNull
     @Override
     public NoteItem clone() {
         return new NoteItem(_text, _create_time_ms);

@@ -1,7 +1,6 @@
 package cn.alvkeke.dropto.data;
 
 import java.util.ArrayList;
-import java.util.Date;
 
 public class Category {
 
@@ -19,7 +18,7 @@ public class Category {
     private boolean needUpdate = false;
 
     public Category(String title, Type type) {
-        this.id = new Date().getTime();
+        this.id = System.currentTimeMillis();
         this.title = title;
         this.type = type;
         this.noteItems = new ArrayList<>();
