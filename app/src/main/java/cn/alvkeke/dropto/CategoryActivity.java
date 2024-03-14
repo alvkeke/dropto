@@ -54,7 +54,7 @@ public class CategoryActivity extends AppCompatActivity {
         if (BuildConfig.DEBUG) {
             Category categoryDebug;
             categoryDebug = new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY);
-            DebugFunction.dbg_fill_list(this, categoryDebug.getNoteItems(), img_folder);
+            DebugFunction.dbg_fill_list(this, categoryDebug, img_folder);
             categories.add(categoryDebug);
             categoryListAdapter.notifyItemInserted(categories.size()-1);
 

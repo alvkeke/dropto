@@ -90,7 +90,7 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
         }
 
         viewHolder.setTitle(c.getTitle());
-        viewHolder.setPreview("test preview");
+        viewHolder.setPreview(c.getPreviewText());
         viewHolder.setType(c.getType());
         if (itemClickListener!=null) {
             viewHolder.setClickListener(itemClickListener, i);

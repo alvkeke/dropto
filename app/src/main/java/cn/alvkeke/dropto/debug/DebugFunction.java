@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Random;
 
 import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 
 public class DebugFunction {
@@ -74,7 +75,7 @@ public class DebugFunction {
         return ret_files;
     }
 
-    public static void dbg_fill_list(Context context, ArrayList<NoteItem> list, File img_folder) {
+    public static void dbg_fill_list(Context context, Category category, File img_folder) {
 
         Log.e("DebugFunction", "sdcard: " + Environment.getExternalStorageDirectory());
 
@@ -103,7 +104,7 @@ public class DebugFunction {
 
                 e.setImageFile(img_file);
             }
-            list.add(e);
+            category.addNoteItem(e);
         }
     }
 

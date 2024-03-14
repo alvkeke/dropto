@@ -14,6 +14,7 @@ public class Category {
     private final long id;
     private final String title;
     private final Type type;
+    private String previewText = null;
     private final ArrayList<NoteItem> noteItems;
 
     public Category(String title, Type type) {
@@ -25,6 +26,15 @@ public class Category {
 
     public ArrayList<NoteItem> getNoteItems() {
         return noteItems;
+    }
+
+    public void addNoteItem(NoteItem item) {
+        noteItems.add(item);
+        previewText = item.getText();
+    }
+
+    public String getPreviewText() {
+        return previewText == null ? "" : previewText;
     }
 
     public String getTitle() {

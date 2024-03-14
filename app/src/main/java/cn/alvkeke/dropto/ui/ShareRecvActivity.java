@@ -84,7 +84,7 @@ public class ShareRecvActivity extends AppCompatActivity {
         }
 
         NoteItem item = new NoteItem(text);
-        category.getNoteItems().add(item);
+        category.addNoteItem(item);
     }
 
     private static final int BUFFER_SIZE = 1024;
@@ -184,6 +184,6 @@ public class ShareRecvActivity extends AppCompatActivity {
 
         NoteItem item = new NoteItem("");
         item.setImageFile(retFile);
-        category.getNoteItems().add(item);
+        category.addNoteItem(item);
     }
 }
