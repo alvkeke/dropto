@@ -1,5 +1,7 @@
 package cn.alvkeke.dropto.data;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 
 public class Category {
@@ -19,6 +21,7 @@ public class Category {
 
     public Category(String title, Type type) {
         this.id = System.currentTimeMillis();
+        Log.d(this.toString(), "new Category id: " + this.id);
         this.title = title;
         this.type = type;
         this.noteItems = new ArrayList<>();
