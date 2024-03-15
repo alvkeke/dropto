@@ -36,6 +36,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String NOTE_COLUMN_IMG_NAME_TYPE = "TEXT";
 
     private Context context;
+    private SQLiteDatabase db = null;
 
     public DataBaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -74,14 +75,27 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         context.deleteDatabase(DATABASE_NAME);
     }
 
+    public void start() {
+        if (db != null) return;
+        db = this.getWritableDatabase();
+    }
+
+    public void finish() {
+        if (db != null) {
+            db.close();
+            db = null;
+        }
+    }
+
     public void insertCategory(Category c, boolean genID) {
-        SQLiteDatabase db = this.getWritableDatabase();
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return;
+        }
         ContentValues values = new ContentValues();
         if (!genID) values.put(CATEGORY_COLUMN_ID, c.getId());
         values.put(CATEGORY_COLUMN_NAME, c.getTitle());
         values.put(CATEGORY_COLUMN_PREVIEW, c.getPreviewText());
         db.insert(TABLE_CATEGORY, null, values);
-
-        db.close();
     }
 }

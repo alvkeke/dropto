@@ -69,6 +69,8 @@ public class CategoryActivity extends AppCompatActivity {
         if (BuildConfig.DEBUG) {
             DataBaseHelper dbHelper = new DataBaseHelper(this);
             dbHelper.destroyDatabase();
+            dbHelper.start();
+
             Category categoryDebug;
             categoryDebug = new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY);
             DebugFunction.dbg_fill_list(this, categoryDebug, img_folder);
@@ -85,6 +87,8 @@ public class CategoryActivity extends AppCompatActivity {
             categories.add(categoryDebug);
             dbHelper.insertCategory(categoryDebug, false);
             categoryListAdapter.notifyItemInserted(categories.size()-1);
+
+            dbHelper.finish();
         }
     }
 
