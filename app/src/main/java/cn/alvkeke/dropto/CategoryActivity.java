@@ -76,16 +76,16 @@ public class CategoryActivity extends AppCompatActivity {
             DebugFunction.dbg_fill_list(this, categoryDebug, img_folder);
             categories.add(categoryDebug);
             categoryListAdapter.notifyItemInserted(categories.size()-1);
-            dbHelper.insertCategory(categoryDebug, false);
+            dbHelper.insertCategory(categoryDebug, true);
 
             categoryDebug = new Category("REMOTE USERS", Category.Type.REMOTE_USERS);
             categories.add(categoryDebug);
-            dbHelper.insertCategory(categoryDebug, false);
+            dbHelper.insertCategory(categoryDebug, true);
             categoryListAdapter.notifyItemInserted(categories.size()-1);
 
             categoryDebug = new Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV);
             categories.add(categoryDebug);
-            dbHelper.insertCategory(categoryDebug, false);
+            dbHelper.insertCategory(categoryDebug, true);
             categoryListAdapter.notifyItemInserted(categories.size()-1);
 
             dbHelper.finish();

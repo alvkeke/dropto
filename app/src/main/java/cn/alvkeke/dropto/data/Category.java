@@ -12,7 +12,7 @@ public class Category {
         REMOTE_USERS,
     }
 
-    private final long id;
+    private long id;
     private final String title;
     private final Type type;
     private String previewText = null;
@@ -61,4 +61,7 @@ public class Category {
         return id;
     }
 
+    public void setId(long id) {
+        this.id = id;
+    }
 }
