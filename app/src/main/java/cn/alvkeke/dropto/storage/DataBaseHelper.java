@@ -95,6 +95,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         if (!genID) values.put(CATEGORY_COLUMN_ID, c.getId());
         values.put(CATEGORY_COLUMN_NAME, c.getTitle());
+        values.put(CATEGORY_COLUMN_TYPE, c.getType().ordinal());
         values.put(CATEGORY_COLUMN_PREVIEW, c.getPreviewText());
         db.insert(TABLE_CATEGORY, null, values);
     }
