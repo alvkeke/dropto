@@ -1,10 +1,10 @@
 package cn.alvkeke.dropto.data;
 
-import android.util.Log;
-
 import java.util.ArrayList;
 
 public class Category {
+
+    public static final long ID_NOT_ASSIGNED = -1;
 
     public enum Type {
         LOCAL_CATEGORY,
@@ -19,16 +19,8 @@ public class Category {
     private final ArrayList<NoteItem> noteItems;
     private boolean needUpdate = false;
 
-    public Category(long id, String title, Type type) {
-        this.id = id;
-        this.title = title;
-        this.type = type;
-        this.noteItems = new ArrayList<>();
-    }
-
     public Category(String title, Type type) {
-        this.id = System.currentTimeMillis();
-        Log.d(this.toString(), "new Category id: " + this.id);
+        this.id = ID_NOT_ASSIGNED;
         this.title = title;
         this.type = type;
         this.noteItems = new ArrayList<>();

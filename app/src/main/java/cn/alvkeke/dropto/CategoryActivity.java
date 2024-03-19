@@ -98,7 +98,7 @@ public class CategoryActivity extends AppCompatActivity {
 
                     e.setImageFile(img_file);
                 }
-                e.setId(dbHelper.insertNote(e, true));
+                e.setId(dbHelper.insertNote(e));
             }
 
             dbHelper.queryCategory(-1, categories);

@@ -124,10 +124,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_CATEGORY, null, values);
     }
 
-    public long insertCategory(Category c, boolean genNewId) {
+    public long insertCategory(Category c) {
 
         long id;
-        if (genNewId) {
+        if (c.getId() == Category.ID_NOT_ASSIGNED) {
             id = insertCategory(c.getId(), c.getTitle(), c.getType(), c.getPreviewText());
         } else {
             id = insertCategory(c.getTitle(), c.getType(), c.getPreviewText());
@@ -180,7 +180,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             }
             Category.Type type = Category.Type.values()[type_num];
 
-            Category c = new Category(id, name, type);
+            Category c = new Category(name, type);
+            c.setId(id);
             c.setPreviewText(preview);
             categories.add(c);
             n_category++;
@@ -220,10 +221,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_NOTE, null, values);
     }
 
-    public long insertNote(NoteItem n, boolean genNewId) {
+    public long insertNote(NoteItem n) {
         long id;
         String img_name = n.getImageFile() == null ? "" : n.getImageFile().getName();
-        if (genNewId) {
+        if (n.getId() == NoteItem.ID_NOT_ASSIGNED) {
             id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(),
                     img_name, "");
         } else {

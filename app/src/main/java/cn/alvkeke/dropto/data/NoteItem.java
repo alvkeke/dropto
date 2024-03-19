@@ -10,6 +10,7 @@ import java.io.Serializable;
 
 public class NoteItem implements Cloneable, Serializable {
 
+    public static final long ID_NOT_ASSIGNED = -1;
     private long id;
     private long category_id;
     private String _text;
@@ -22,6 +23,7 @@ public class NoteItem implements Cloneable, Serializable {
      * @param text the content of the item
      */
     public NoteItem(String text) {
+        this.id = ID_NOT_ASSIGNED;
         this._text = text;
         this._create_time_ms = System.currentTimeMillis();
     }
@@ -33,6 +35,7 @@ public class NoteItem implements Cloneable, Serializable {
      * @param create_time the specific create_time
      */
     public NoteItem(String text, long create_time) {
+        this.id = ID_NOT_ASSIGNED;
         _text = text;
         _create_time_ms = create_time;
     }
