@@ -149,9 +149,12 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             return;
         }
         Category.Type[] vv = Category.Type.values();
+
+        int n_category = 0;
         while(cursor.moveToNext()) {
             int idx;
 
+            if (max_num > 0 && n_category >= max_num ) break;
             idx = cursor.getColumnIndex(CATEGORY_COLUMN_ID);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
             long id = cursor.getLong(idx);
@@ -173,6 +176,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             Category c = new Category(id, name, type);
             c.setPreviewText(preview);
             categories.add(c);
+            n_category++;
         }
 
         cursor.close();
