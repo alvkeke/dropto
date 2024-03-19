@@ -2,9 +2,12 @@ package cn.alvkeke.dropto.storage;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
+
+import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
 
@@ -87,17 +90,91 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    public void insertCategory(Category c, boolean genNewId) {
+    public long insertCategory(long id, String title, Category.Type type, String preview) {
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return -1;
+        }
+        ContentValues values = new ContentValues();
+        values.put(CATEGORY_COLUMN_ID, id);
+        values.put(CATEGORY_COLUMN_NAME, title);
+        values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
+        values.put(CATEGORY_COLUMN_PREVIEW, preview);
+
+        return db.insert(TABLE_CATEGORY, null, values);
+    }
+
+    public long insertCategory(String title, Category.Type type, String preview) {
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return -1;
+        }
+        ContentValues values = new ContentValues();
+        values.put(CATEGORY_COLUMN_NAME, title);
+        values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
+        values.put(CATEGORY_COLUMN_PREVIEW, preview);
+
+        return db.insert(TABLE_CATEGORY, null, values);
+    }
+
+    public long insertCategory(Category c, boolean genNewId) {
+
+        long id;
+        if (genNewId) {
+            id = insertCategory(c.getId(), c.getTitle(), c.getType(), c.getPreviewText());
+        } else {
+            id = insertCategory(c.getTitle(), c.getType(), c.getPreviewText());
+        }
+        if (id < 0) {
+            Log.e(this.toString(), "Failed to insert category");
+            return -1;
+        }
+        c.setId(id);
+        return id;
+    }
+
+    public void queryCategory(int max_num, ArrayList<Category> categories) {
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return;
         }
-        ContentValues values = new ContentValues();
-        values.put(CATEGORY_COLUMN_NAME, c.getTitle());
-        values.put(CATEGORY_COLUMN_TYPE, c.getType().ordinal());
-        values.put(CATEGORY_COLUMN_PREVIEW, c.getPreviewText());
-        if (!genNewId) values.put(CATEGORY_COLUMN_ID, c.getId());
-        long id = db.insert(TABLE_CATEGORY, null, values);
-        if (genNewId) c.setId(id);
+        if (categories == null) {
+            Log.i(this.toString(), "uninitialized category list");
+            return;
+        }
+
+        Cursor cursor = db.query(TABLE_CATEGORY, null, null, null, null, null, null);
+        if (cursor == null) {
+            Log.e(this.toString(), "Failed to get cursor");
+            return;
+        }
+        Category.Type[] vv = Category.Type.values();
+        while(cursor.moveToNext()) {
+            int idx;
+
+            idx = cursor.getColumnIndex(CATEGORY_COLUMN_ID);
+            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
+            long id = cursor.getLong(idx);
+            idx = cursor.getColumnIndex(CATEGORY_COLUMN_NAME);
+            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
+            String name = cursor.getString(idx);
+            idx = cursor.getColumnIndex(CATEGORY_COLUMN_PREVIEW);
+            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
+            String preview = cursor.getString(idx);
+            idx = cursor.getColumnIndex(CATEGORY_COLUMN_TYPE);
+            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
+            int type_num = cursor.getInt(idx);
+            if (type_num < 0 || type_num >= vv.length) {
+                Log.e(this.toString(), "invalid type_num: " + type_num);
+                continue;
+            }
+            Category.Type type = Category.Type.values()[type_num];
+
+            Category c = new Category(id, name, type);
+            c.setPreviewText(preview);
+            categories.add(c);
+        }
+
+        cursor.close();
     }
 }

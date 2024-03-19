@@ -1,6 +1,7 @@
 package cn.alvkeke.dropto;
 
 import android.content.Intent;
+import android.database.sqlite.SQLiteException;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
-import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.CategoryListAdapter;
 
@@ -71,24 +71,13 @@ public class CategoryActivity extends AppCompatActivity {
             dbHelper.destroyDatabase();
             dbHelper.start();
 
-            Category categoryDebug;
-            categoryDebug = new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY);
-            DebugFunction.dbg_fill_list(this, categoryDebug, img_folder);
-            categories.add(categoryDebug);
-            categoryListAdapter.notifyItemInserted(categories.size()-1);
-            dbHelper.insertCategory(categoryDebug, true);
+            dbHelper.insertCategory("Local(Debug)", Category.Type.LOCAL_CATEGORY, "");
+            dbHelper.insertCategory("REMOTE USERS", Category.Type.REMOTE_USERS, "");
+            dbHelper.insertCategory("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "");
 
-            categoryDebug = new Category("REMOTE USERS", Category.Type.REMOTE_USERS);
-            categories.add(categoryDebug);
-            dbHelper.insertCategory(categoryDebug, true);
-            categoryListAdapter.notifyItemInserted(categories.size()-1);
-
-            categoryDebug = new Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV);
-            categories.add(categoryDebug);
-            dbHelper.insertCategory(categoryDebug, true);
-            categoryListAdapter.notifyItemInserted(categories.size()-1);
-
+            dbHelper.queryCategory(-1, categories);
             dbHelper.finish();
+            categoryListAdapter.notifyItemRangeChanged(0, categories.size()-1);
         }
     }
 

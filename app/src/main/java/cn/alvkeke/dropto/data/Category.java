@@ -19,6 +19,13 @@ public class Category {
     private final ArrayList<NoteItem> noteItems;
     private boolean needUpdate = false;
 
+    public Category(long id, String title, Type type) {
+        this.id = id;
+        this.title = title;
+        this.type = type;
+        this.noteItems = new ArrayList<>();
+    }
+
     public Category(String title, Type type) {
         this.id = System.currentTimeMillis();
         Log.d(this.toString(), "new Category id: " + this.id);
@@ -43,6 +50,10 @@ public class Category {
 
     public boolean needUpdate() {
         return needUpdate;
+    }
+
+    public void setPreviewText(String previewText) {
+        this.previewText = previewText;
     }
 
     public String getPreviewText() {
