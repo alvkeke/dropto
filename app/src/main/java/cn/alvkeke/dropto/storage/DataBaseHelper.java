@@ -128,9 +128,9 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
         long id;
         if (c.getId() == Category.ID_NOT_ASSIGNED) {
-            id = insertCategory(c.getId(), c.getTitle(), c.getType(), c.getPreviewText());
-        } else {
             id = insertCategory(c.getTitle(), c.getType(), c.getPreviewText());
+        } else {
+            id = insertCategory(c.getId(), c.getTitle(), c.getType(), c.getPreviewText());
         }
         if (id < 0) {
             Log.e(this.toString(), "Failed to insert category");
