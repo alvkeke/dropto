@@ -1,5 +1,7 @@
 package cn.alvkeke.dropto.data;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 
 public class Category {
@@ -10,15 +12,23 @@ public class Category {
         REMOTE_USERS,
     }
 
-    private final long id;
+    private long id;
     private final String title;
     private final Type type;
     private String previewText = null;
     private final ArrayList<NoteItem> noteItems;
     private boolean needUpdate = false;
 
+    public Category(long id, String title, Type type) {
+        this.id = id;
+        this.title = title;
+        this.type = type;
+        this.noteItems = new ArrayList<>();
+    }
+
     public Category(String title, Type type) {
         this.id = System.currentTimeMillis();
+        Log.d(this.toString(), "new Category id: " + this.id);
         this.title = title;
         this.type = type;
         this.noteItems = new ArrayList<>();
@@ -42,6 +52,10 @@ public class Category {
         return needUpdate;
     }
 
+    public void setPreviewText(String previewText) {
+        this.previewText = previewText;
+    }
+
     public String getPreviewText() {
         return previewText == null ? "" : previewText;
     }
@@ -58,4 +72,7 @@ public class Category {
         return id;
     }
 
+    public void setId(long id) {
+        this.id = id;
+    }
 }

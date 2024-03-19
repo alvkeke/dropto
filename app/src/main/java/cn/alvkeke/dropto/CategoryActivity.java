@@ -14,10 +14,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
+import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.CategoryListAdapter;
 
 public class CategoryActivity extends AppCompatActivity {
@@ -66,16 +70,41 @@ public class CategoryActivity extends AppCompatActivity {
         Global.getInstance().setFileStoreFolder(img_folder);
 
         if (BuildConfig.DEBUG) {
-            Category categoryDebug;
-            categoryDebug = new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY);
-            DebugFunction.dbg_fill_list(this, categoryDebug, img_folder);
-            categories.add(categoryDebug);
-            categoryListAdapter.notifyItemInserted(categories.size()-1);
+            DataBaseHelper dbHelper = new DataBaseHelper(this);
+            dbHelper.destroyDatabase();
+            dbHelper.start();
 
-            categories.add(new Category("REMOTE USERS", Category.Type.REMOTE_USERS));
-            categoryListAdapter.notifyItemInserted(categories.size()-1);
-            categories.add(new Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV));
-            categoryListAdapter.notifyItemInserted(categories.size()-1);
+            long parentId = dbHelper.insertCategory("Local(Debug)", Category.Type.LOCAL_CATEGORY, "");
+            dbHelper.insertCategory("REMOTE USERS", Category.Type.REMOTE_USERS, "");
+            dbHelper.insertCategory("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "");
+
+            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
+            Random r = new Random();
+            int idx = 0;
+            for (int i=0; i<15; i++) {
+                NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
+                e.setCategoryId(parentId);
+                if (r.nextBoolean()) {
+                    e.setText(e.getText(), true);
+                }
+                if (idx < img_files.size() && r.nextBoolean()) {
+                    File img_file = img_files.get(idx);
+                    idx++;
+                    if (img_file.exists()) {
+                        Log.d("DebugFunction", "add image file: " + img_file);
+                    } else {
+                        Log.e("DebugFunction", "add image file failed, not exist: " + img_file);
+                    }
+
+                    e.setImageFile(img_file);
+                }
+                e.setId(dbHelper.insertNote(e, true));
+            }
+
+            dbHelper.queryCategory(-1, categories);
+            dbHelper.queryNote(-1, categories.get(0).getNoteItems());
+            dbHelper.finish();
+            categoryListAdapter.notifyItemRangeChanged(0, categories.size()-1);
         }
     }
 
