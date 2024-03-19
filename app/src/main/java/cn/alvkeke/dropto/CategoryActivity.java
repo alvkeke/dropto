@@ -1,7 +1,6 @@
 package cn.alvkeke.dropto;
 
 import android.content.Intent;
-import android.database.sqlite.SQLiteException;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -15,9 +14,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.CategoryListAdapter;
 
@@ -71,11 +74,35 @@ public class CategoryActivity extends AppCompatActivity {
             dbHelper.destroyDatabase();
             dbHelper.start();
 
-            dbHelper.insertCategory("Local(Debug)", Category.Type.LOCAL_CATEGORY, "");
+            long parentId = dbHelper.insertCategory("Local(Debug)", Category.Type.LOCAL_CATEGORY, "");
             dbHelper.insertCategory("REMOTE USERS", Category.Type.REMOTE_USERS, "");
             dbHelper.insertCategory("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "");
 
+            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
+            Random r = new Random();
+            int idx = 0;
+            for (int i=0; i<15; i++) {
+                NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
+                e.setCategoryId(parentId);
+                if (r.nextBoolean()) {
+                    e.setText(e.getText(), true);
+                }
+                if (idx < img_files.size() && r.nextBoolean()) {
+                    File img_file = img_files.get(idx);
+                    idx++;
+                    if (img_file.exists()) {
+                        Log.d("DebugFunction", "add image file: " + img_file);
+                    } else {
+                        Log.e("DebugFunction", "add image file failed, not exist: " + img_file);
+                    }
+
+                    e.setImageFile(img_file);
+                }
+                e.setId(dbHelper.insertNote(e, true));
+            }
+
             dbHelper.queryCategory(-1, categories);
+            dbHelper.queryNote(-1, categories.get(0).getNoteItems());
             dbHelper.finish();
             categoryListAdapter.notifyItemRangeChanged(0, categories.size()-1);
         }

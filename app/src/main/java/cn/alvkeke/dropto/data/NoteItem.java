@@ -10,6 +10,8 @@ import java.io.Serializable;
 
 public class NoteItem implements Cloneable, Serializable {
 
+    private long id;
+    private long category_id;
     private String _text;
     private long _create_time_ms;
     private boolean _is_edited;
@@ -95,4 +97,19 @@ public class NoteItem implements Cloneable, Serializable {
         return _is_edited;
     }
 
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public long getId() {
+        return this.id;
+    }
+
+    public void setCategoryId(long id) {
+        this.category_id = id;
+    }
+
+    public long getCategoryId() {
+        return this.category_id;
+    }
 }
