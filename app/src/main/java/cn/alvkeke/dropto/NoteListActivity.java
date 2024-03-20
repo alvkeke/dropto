@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto;
 
+import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -52,8 +53,7 @@ public class NoteListActivity extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        Context context = getContext();
-        assert context != null;
+        Activity activity = requireActivity();
 
         rlNoteList = view.findViewById(R.id.rlist_notes);
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
@@ -61,8 +61,7 @@ public class NoteListActivity extends Fragment {
 
         // TODO: check if this need to be fix
         Bundle bundle = getArguments();
-//        Intent intent = getIntent();
-//        int index = intent.getIntExtra(CATEGORY_INDEX, -1);
+        assert bundle != null;
         int index = bundle.getInt(CATEGORY_INDEX, -1);
         if (index == -1) {
             Log.e(this.toString(), "Failed to get category index!!");
@@ -74,8 +73,7 @@ public class NoteListActivity extends Fragment {
             getParentFragmentManager().popBackStack();
             return;
         }
-        // TODO: fix getActivity()
-        getActivity().setTitle(category.getTitle());
+        activity.setTitle(category.getTitle());
 
         noteItems = category.getNoteItems();
         if (noteItems == null) {
@@ -85,13 +83,11 @@ public class NoteListActivity extends Fragment {
         }
 
         noteItemAdapter = new NoteListAdapter(noteItems);
-        // TODO: fix getContext()
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getContext());
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(activity);
 
         rlNoteList.setAdapter(noteItemAdapter);
         rlNoteList.setLayoutManager(layoutManager);
-        // TODO: fix getContext()
-        rlNoteList.addItemDecoration(new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL));
+        rlNoteList.addItemDecoration(new DividerItemDecoration(activity, DividerItemDecoration.VERTICAL));
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
@@ -201,7 +197,7 @@ public class NoteListActivity extends Fragment {
     private boolean handleItemCopy(NoteItem item) {
         // TODO: fix getContext()
         ClipboardManager clipboardManager =
-                (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboardManager == null) {
             Log.e(this.toString(), "Failed to get ClipboardManager");
             return false;
@@ -219,12 +215,14 @@ public class NoteListActivity extends Fragment {
         sendIntent.putExtra(Intent.EXTRA_TEXT, item.getText());
         Log.d(this.toString(), "no image, share text: " + item.getText());
 
+        Context context = requireContext();
+
         if (item.getImageFile() != null) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
             // TODO: fix getContext()
-            Uri fileUri = FileProvider.getUriForFile(getContext(),
-                    getContext().getPackageName() + ".fileprovider", item.getImageFile());
+            Uri fileUri = FileProvider.getUriForFile(context,
+                    context.getPackageName() + ".fileprovider", item.getImageFile());
             sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             Log.d(this.toString(), "share image Uri: " + fileUri);
@@ -241,8 +239,7 @@ public class NoteListActivity extends Fragment {
     }
 
     private void showItemPopMenu(int index, View v) {
-        // TODO: fix getContext()
-        PopupMenu menu = new PopupMenu(getContext(), v);
+        PopupMenu menu = new PopupMenu(requireContext(), v);
         NoteItem noteItem = noteItems.get(index);
         if (noteItem == null) {
             Log.e(this.toString(), "Failed to get note item at " + index + ", abort");
