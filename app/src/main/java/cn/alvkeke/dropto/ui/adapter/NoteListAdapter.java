@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui;
+package cn.alvkeke.dropto.ui.adapter;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;

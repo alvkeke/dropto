@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui;
+package cn.alvkeke.dropto.ui.adapter;
 
 import android.util.Log;
 import android.view.LayoutInflater;

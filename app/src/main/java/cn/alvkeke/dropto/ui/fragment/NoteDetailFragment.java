@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui;
+package cn.alvkeke.dropto.ui.fragment;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -15,7 +15,7 @@ import androidx.fragment.app.FragmentManager;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
 
-public class NoteDetailActivity extends Fragment {
+public class NoteDetailFragment extends Fragment {
 
 
     public static final String REQUEST_KEY = "NoteDetailRequestKey";
@@ -37,7 +37,7 @@ public class NoteDetailActivity extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.activity_note_detail, container, false);
+        return inflater.inflate(R.layout.fragment_note_detail, container, false);
     }
 
     @Override

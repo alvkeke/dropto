@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto;
+package cn.alvkeke.dropto.ui.fragment;
 
 import android.app.Activity;
 import android.content.ClipData;
@@ -27,13 +27,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 
+import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.ui.NoteDetailActivity;
-import cn.alvkeke.dropto.ui.NoteListAdapter;
+import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
-public class NoteListActivity extends Fragment {
+public class NoteListFragment extends Fragment {
 
     public static final String CATEGORY_INDEX = "CATEGORY_INDEX";
 
@@ -45,7 +45,7 @@ public class NoteListActivity extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.activity_note_list, container, false);
+        return inflater.inflate(R.layout.fragment_note_list, container, false);
     }
 
     @Override
@@ -87,7 +87,7 @@ public class NoteListActivity extends Fragment {
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
-        getParentFragmentManager().setFragmentResultListener(NoteDetailActivity.REQUEST_KEY,
+        getParentFragmentManager().setFragmentResultListener(NoteDetailFragment.REQUEST_KEY,
                 this, new NoteDetailResultListener());
 
     }
@@ -96,21 +96,21 @@ public class NoteListActivity extends Fragment {
 
         @Override
         public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
-            int operation = result.getInt(NoteDetailActivity.ITEM_OPERATION);
+            int operation = result.getInt(NoteDetailFragment.ITEM_OPERATION);
             Log.d(this.toString(), "NoteItem modify result code: " + operation);
-            if (operation == NoteDetailActivity.Operation.CANCELED.ordinal()) {
+            if (operation == NoteDetailFragment.Operation.CANCELED.ordinal()) {
                 Log.i(this.toString(), "NoteItem modify canceled.");
                 return;
             }
 
-            int index = result.getInt(NoteDetailActivity.ITEM_INDEX, -1);
+            int index = result.getInt(NoteDetailFragment.ITEM_INDEX, -1);
             if (index == -1) {
                 Log.e(this.toString(), "Failed to get item index, abort!");
                 return;
             }
 
-            if (NoteDetailActivity.Operation.OK.ordinal() == operation) {
-                NoteItem item = (NoteItem) result.getSerializable(NoteDetailActivity.ITEM_OBJECT);
+            if (NoteDetailFragment.Operation.OK.ordinal() == operation) {
+                NoteItem item = (NoteItem) result.getSerializable(NoteDetailFragment.ITEM_OBJECT);
 
                 if (item == null) {
                     Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
@@ -118,7 +118,7 @@ public class NoteListActivity extends Fragment {
                 }
 
                 handleItemEdit(index, item);
-            } else if (NoteDetailActivity.Operation.DELETE.ordinal() == operation) {
+            } else if (NoteDetailFragment.Operation.DELETE.ordinal() == operation) {
                 handleItemDelete(index);
             } else {
                 Log.e(this.toString(), "got a wrong operation: " + operation);
@@ -179,9 +179,9 @@ public class NoteListActivity extends Fragment {
         Log.d(this.toString(), "item editing triggered");
 
         Bundle bundle = new Bundle();
-        bundle.putInt(NoteDetailActivity.ITEM_INDEX, pos);
-        bundle.putSerializable(NoteDetailActivity.ITEM_OBJECT, e.clone());
-        NoteDetailActivity fragment = new NoteDetailActivity();
+        bundle.putInt(NoteDetailFragment.ITEM_INDEX, pos);
+        bundle.putSerializable(NoteDetailFragment.ITEM_OBJECT, e.clone());
+        NoteDetailFragment fragment = new NoteDetailFragment();
         fragment.setArguments(bundle);
         getParentFragmentManager().beginTransaction()
                 .replace(R.id.fragment_container, fragment)
@@ -223,7 +223,7 @@ public class NoteListActivity extends Fragment {
         Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
 
         try {
-            NoteListActivity.this.startActivity(shareIntent);
+            NoteListFragment.this.startActivity(shareIntent);
         } catch (Exception e) {
             Log.e(this.toString(), "Failed to create share Intent: " + e);
             return false;

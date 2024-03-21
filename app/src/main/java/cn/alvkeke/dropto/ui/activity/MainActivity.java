@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto;
+package cn.alvkeke.dropto.ui.activity;
 
 import android.os.Bundle;
 import android.util.Log;
@@ -11,11 +11,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 
+import cn.alvkeke.dropto.BuildConfig;
+import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -76,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, new CategoryActivity())
+                    .replace(R.id.fragment_container, new CategoryFragment())
                     .commitNow();
         }
     }

@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto;
+package cn.alvkeke.dropto.ui.fragment;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -16,11 +16,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 
+import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
-import cn.alvkeke.dropto.ui.CategoryListAdapter;
+import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
-public class CategoryActivity extends Fragment {
+public class CategoryFragment extends Fragment {
 
     private CategoryListAdapter categoryListAdapter;
 
@@ -41,7 +42,7 @@ public class CategoryActivity extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.activity_category, container, false);
+        return inflater.inflate(R.layout.fragment_category, container, false);
     }
 
     @Override
@@ -72,8 +73,8 @@ public class CategoryActivity extends Fragment {
         public void onItemClick(int index, View v) {
             Log.d(this.toString(), "Category clicked on " + index);
             Bundle bundle = new Bundle();
-            bundle.putInt(NoteListActivity.CATEGORY_INDEX, index);
-            NoteListActivity fragment = new NoteListActivity();
+            bundle.putInt(NoteListFragment.CATEGORY_INDEX, index);
+            NoteListFragment fragment = new NoteListFragment();
             fragment.setArguments(bundle);
             getParentFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, fragment)

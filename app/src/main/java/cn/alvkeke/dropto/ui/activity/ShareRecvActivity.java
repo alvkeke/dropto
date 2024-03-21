@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui;
+package cn.alvkeke.dropto.ui.activity;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -26,6 +26,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
 public class ShareRecvActivity extends AppCompatActivity {
 
