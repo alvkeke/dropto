@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 import cn.alvkeke.dropto.data.Category;
@@ -22,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Objects.requireNonNull(getSupportActionBar()).hide();
 
         ArrayList<Category> categories = Global.getInstance().getCategories();
 
