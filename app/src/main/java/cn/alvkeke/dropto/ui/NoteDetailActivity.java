@@ -1,46 +1,61 @@
 package cn.alvkeke.dropto.ui;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
 
-public class NoteDetailActivity extends AppCompatActivity {
+public class NoteDetailActivity extends Fragment {
 
 
+    public static final String REQUEST_KEY = "NoteDetailRequestKey";
+    public static final String ITEM_OPERATION = "ITEM_OPERATION";
     public static final String ITEM_OBJECT = "ITEM_OBJECT";
     public static final String ITEM_INDEX = "ITEM_INDEX";
-    public static final int RESULT_DELETED = RESULT_FIRST_USER;
+
+    public enum Operation {
+        CANCELED,
+        OK,
+        DELETE,
+    }
 
     private EditText etNoteItemText;
     private NoteItem item = null;
     private int targetIndex;
     public static final int ITEM_INDEX_NONE = -1;
 
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_note_detail);
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.activity_note_detail, container, false);
+    }
 
-        Button btnOk = findViewById(R.id.note_detail_btn_ok);
-        Button btnCancel = findViewById(R.id.note_detail_btn_cancel);
-        Button btnDel = findViewById(R.id.note_detail_btn_del);
-        etNoteItemText = findViewById(R.id.note_detail_text);
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        Button btnOk = view.findViewById(R.id.note_detail_btn_ok);
+        Button btnCancel = view.findViewById(R.id.note_detail_btn_cancel);
+        Button btnDel = view.findViewById(R.id.note_detail_btn_del);
+        etNoteItemText = view.findViewById(R.id.note_detail_text);
 
         btnOk.setOnClickListener(new ItemAddOk());
         btnCancel.setOnClickListener(new ItemAddCanceled());
 
-        Intent intent = getIntent();
-        targetIndex = intent.getIntExtra(ITEM_INDEX, ITEM_INDEX_NONE);
+        Bundle bundle = requireArguments();
+        targetIndex = bundle.getInt(ITEM_INDEX, ITEM_INDEX_NONE);
         if (targetIndex != ITEM_INDEX_NONE) {
-            // edit exist item
-            item = (NoteItem) intent.getSerializableExtra(ITEM_OBJECT);
+            item = (NoteItem) bundle.getSerializable(ITEM_OBJECT);
             assert item != null;
             loadItemData(item);
 
@@ -66,7 +81,7 @@ public class NoteDetailActivity extends AppCompatActivity {
         @Override
         public void onClick(View v) {
 
-            Intent intent = getIntent();
+            Bundle bundle = requireArguments();
 
             String text = etNoteItemText.getText().toString();
             if (item == null) {
@@ -74,11 +89,14 @@ public class NoteDetailActivity extends AppCompatActivity {
             } else {
                 item.setText(text, true);
             }
-            intent.putExtra(ITEM_OBJECT, item);
-            intent.putExtra(ITEM_INDEX, targetIndex);
+            bundle.putInt(ITEM_OPERATION, Operation.OK.ordinal());
+            bundle.putInt(ITEM_INDEX, targetIndex);
+            bundle.putSerializable(ITEM_OBJECT, item);
 
-            setResult(RESULT_OK, intent);
-            NoteDetailActivity.this.finish();
+
+            FragmentManager manager = getParentFragmentManager();
+            manager.setFragmentResult(REQUEST_KEY, bundle);
+            manager.popBackStack();
         }
     }
 
@@ -86,8 +104,11 @@ public class NoteDetailActivity extends AppCompatActivity {
 
         @Override
         public void onClick(View v) {
-            setResult(RESULT_CANCELED);
-            NoteDetailActivity.this.finish();
+            Bundle bundle = requireArguments();
+            bundle.putInt(ITEM_OPERATION, Operation.CANCELED.ordinal());
+            FragmentManager manager = getParentFragmentManager();
+            manager.setFragmentResult(REQUEST_KEY, bundle);
+            manager.popBackStack();
         }
     }
 
@@ -95,12 +116,12 @@ public class NoteDetailActivity extends AppCompatActivity {
 
         @Override
         public void onClick(View v) {
-            Intent intent = getIntent();
-
-            intent.putExtra(ITEM_INDEX, targetIndex);
-
-            setResult(RESULT_DELETED, intent);
-            NoteDetailActivity.this.finish();
+            Bundle bundle = requireArguments();
+            bundle.putInt(ITEM_OPERATION, Operation.DELETE.ordinal());
+            bundle.putInt(ITEM_INDEX, targetIndex);
+            FragmentManager manager = getParentFragmentManager();
+            manager.setFragmentResult(REQUEST_KEY, bundle);
+            manager.popBackStack();
         }
     }
 }

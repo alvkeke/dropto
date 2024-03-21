@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto;
 
+import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -7,16 +8,19 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentResultListener;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,7 +33,7 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.NoteDetailActivity;
 import cn.alvkeke.dropto.ui.NoteListAdapter;
 
-public class NoteListActivity extends AppCompatActivity {
+public class NoteListActivity extends Fragment {
 
     public static final String CATEGORY_INDEX = "CATEGORY_INDEX";
 
@@ -38,17 +42,23 @@ public class NoteListActivity extends AppCompatActivity {
     private EditText etInputText;
     private RecyclerView rlNoteList;
 
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_note_list);
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.activity_note_list, container, false);
+    }
 
-        rlNoteList = findViewById(R.id.rlist_notes);
-        ImageButton btnAddNote = findViewById(R.id.input_send);
-        etInputText = findViewById(R.id.input_text);
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        Activity activity = requireActivity();
 
-        Intent intent = getIntent();
-        int index = intent.getIntExtra(CATEGORY_INDEX, -1);
+        rlNoteList = view.findViewById(R.id.rlist_notes);
+        ImageButton btnAddNote = view.findViewById(R.id.input_send);
+        etInputText = view.findViewById(R.id.input_text);
+
+        Bundle bundle = requireArguments();
+        int index = bundle.getInt(CATEGORY_INDEX, -1);
         if (index == -1) {
             Log.e(this.toString(), "Failed to get category index!!");
             return;
@@ -56,69 +66,65 @@ public class NoteListActivity extends AppCompatActivity {
         Category category = Global.getInstance().getCategories().get(index);
         if (category == null) {
             Log.e(this.toString(), "Failed to get category at " + index);
-            finish();
+            getParentFragmentManager().popBackStack();
             return;
         }
-        setTitle(category.getTitle());
+        activity.setTitle(category.getTitle());
 
         noteItems = category.getNoteItems();
         if (noteItems == null) {
             Log.e(this.toString(), "Failed to get note list!!");
-            finish();
+            getParentFragmentManager().popBackStack();
             return;
         }
 
         noteItemAdapter = new NoteListAdapter(noteItems);
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(activity);
 
         rlNoteList.setAdapter(noteItemAdapter);
         rlNoteList.setLayoutManager(layoutManager);
-        rlNoteList.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
+        rlNoteList.addItemDecoration(new DividerItemDecoration(activity, DividerItemDecoration.VERTICAL));
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
+        getParentFragmentManager().setFragmentResultListener(NoteDetailActivity.REQUEST_KEY,
+                this, new NoteDetailResultListener());
 
     }
 
-    ActivityResultLauncher<Intent> noteDetailActivityLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                int resultCode = result.getResultCode();
-                Log.d(this.toString(), "NoteItem modify result code: " + resultCode);
-                if (resultCode == RESULT_CANCELED) {
-                    Log.i(this.toString(), "NoteItem modify canceled.");
-                    return;
-                }
+    class NoteDetailResultListener implements FragmentResultListener {
 
-                Intent intent = result.getData();
-                if (intent == null) {
-                    Log.e(this.toString(), "Failed to get Intent instance, item modify abort");
-                    return;
-                }
-
-                int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
-                if (index == -1) {
-                    Log.e(this.toString(), "Failed to get item index, abort!");
-                    return;
-                }
-
-                if (RESULT_OK == resultCode) {
-                    NoteItem item = (NoteItem) intent.getSerializableExtra(NoteDetailActivity.ITEM_OBJECT);
-
-                    if (item == null) {
-                        Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
-                        return;
-                    }
-
-                    handleItemEdit(index, item);
-                } else if (NoteDetailActivity.RESULT_DELETED == resultCode) {
-                    handleItemDelete(index);
-                } else {
-                    Log.e(this.toString(), "got a wrong resultCode: " + resultCode);
-                }
-
+        @Override
+        public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
+            int operation = result.getInt(NoteDetailActivity.ITEM_OPERATION);
+            Log.d(this.toString(), "NoteItem modify result code: " + operation);
+            if (operation == NoteDetailActivity.Operation.CANCELED.ordinal()) {
+                Log.i(this.toString(), "NoteItem modify canceled.");
+                return;
             }
-    );
+
+            int index = result.getInt(NoteDetailActivity.ITEM_INDEX, -1);
+            if (index == -1) {
+                Log.e(this.toString(), "Failed to get item index, abort!");
+                return;
+            }
+
+            if (NoteDetailActivity.Operation.OK.ordinal() == operation) {
+                NoteItem item = (NoteItem) result.getSerializable(NoteDetailActivity.ITEM_OBJECT);
+
+                if (item == null) {
+                    Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
+                    return;
+                }
+
+                handleItemEdit(index, item);
+            } else if (NoteDetailActivity.Operation.DELETE.ordinal() == operation) {
+                handleItemDelete(index);
+            } else {
+                Log.e(this.toString(), "got a wrong operation: " + operation);
+            }
+        }
+    }
 
     private void handleItemDelete(int index) {
         Log.d(this.toString(), "trying to delete item: " + index);
@@ -172,15 +178,20 @@ public class NoteListActivity extends AppCompatActivity {
     void triggerItemEdit(NoteItem e, int pos) {
         Log.d(this.toString(), "item editing triggered");
 
-        Intent intent = new Intent(NoteListActivity.this, NoteDetailActivity.class);
-        intent.putExtra(NoteDetailActivity.ITEM_INDEX, pos);
-        intent.putExtra(NoteDetailActivity.ITEM_OBJECT, e.clone());
-        noteDetailActivityLauncher.launch(intent);
+        Bundle bundle = new Bundle();
+        bundle.putInt(NoteDetailActivity.ITEM_INDEX, pos);
+        bundle.putSerializable(NoteDetailActivity.ITEM_OBJECT, e.clone());
+        NoteDetailActivity fragment = new NoteDetailActivity();
+        fragment.setArguments(bundle);
+        getParentFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack(null)
+                .commit();
     }
 
     private boolean handleItemCopy(NoteItem item) {
         ClipboardManager clipboardManager =
-                (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboardManager == null) {
             Log.e(this.toString(), "Failed to get ClipboardManager");
             return false;
@@ -198,11 +209,13 @@ public class NoteListActivity extends AppCompatActivity {
         sendIntent.putExtra(Intent.EXTRA_TEXT, item.getText());
         Log.d(this.toString(), "no image, share text: " + item.getText());
 
+        Context context = requireContext();
+
         if (item.getImageFile() != null) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
-            Uri fileUri = FileProvider.getUriForFile(NoteListActivity.this,
-                    getPackageName() + ".fileprovider", item.getImageFile());
+            Uri fileUri = FileProvider.getUriForFile(context,
+                    context.getPackageName() + ".fileprovider", item.getImageFile());
             sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             Log.d(this.toString(), "share image Uri: " + fileUri);
@@ -219,7 +232,7 @@ public class NoteListActivity extends AppCompatActivity {
     }
 
     private void showItemPopMenu(int index, View v) {
-        PopupMenu menu = new PopupMenu(this, v);
+        PopupMenu menu = new PopupMenu(requireContext(), v);
         NoteItem noteItem = noteItems.get(index);
         if (noteItem == null) {
             Log.e(this.toString(), "Failed to get note item at " + index + ", abort");
