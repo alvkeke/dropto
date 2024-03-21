@@ -38,6 +38,7 @@ public class NoteListFragment extends Fragment {
 
     public static final String CATEGORY_INDEX = "CATEGORY_INDEX";
 
+    Category category;
     ArrayList<NoteItem> noteItems;
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
@@ -64,7 +65,7 @@ public class NoteListFragment extends Fragment {
             Log.e(this.toString(), "Failed to get category index!!");
             return;
         }
-        Category category = Global.getInstance().getCategories().get(index);
+        category = Global.getInstance().getCategories().get(index);
         if (category == null) {
             Log.e(this.toString(), "Failed to get category at " + index);
             getParentFragmentManager().popBackStack();
@@ -182,6 +183,17 @@ public class NoteListFragment extends Fragment {
             Log.e(this.toString(), "add btn clicked");
             String content = etInputText.getText().toString();
             NoteItem item = new NoteItem(content);
+            item.setCategoryId(category.getId());
+
+            try (DataBaseHelper dataBaseHelper = new DataBaseHelper(requireContext())) {
+                dataBaseHelper.start();
+                item.setId(dataBaseHelper.insertNote(item));
+                dataBaseHelper.finish();
+            } catch (Exception e) {
+                Log.e(this.toString(), "Failed to add new item to database!");
+                return;
+            }
+
             handleItemAdd(item);
             // clear input box
             etInputText.setText("");

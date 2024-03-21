@@ -221,6 +221,12 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return db.insert(TABLE_NOTE, null, values);
     }
 
+    /**
+     * insert a note item into database, if noteItem.getId() == ID_NOT_ASSIGNED, will generate a
+     * new ID for it, and return that new id
+     * @param n the noteItem need to be insert
+     * @return the id in database
+     */
     public long insertNote(NoteItem n) {
         long id;
         String img_name = n.getImageFile() == null ? "" : n.getImageFile().getName();
