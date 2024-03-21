@@ -238,7 +238,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                     img_name, "");
         }
         if (id < 0) {
-            Log.e(this.toString(), "Failed to insert category");
+            Log.e(this.toString(), "Failed to insert note");
             return -1;
         }
         n.setId(id);

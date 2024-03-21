@@ -95,9 +95,10 @@ public class DebugFunction {
         try (DataBaseHelper dbHelper = new DataBaseHelper(context)) {
             dbHelper.start();
 
-            dbHelper.insertCategory("Local(Debug)", Category.Type.LOCAL_CATEGORY, "");
-            dbHelper.insertCategory("REMOTE USERS", Category.Type.REMOTE_USERS, "");
-            dbHelper.insertCategory("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "");
+            // fix the category id, make sure it will not create multiple times
+            dbHelper.insertCategory(1, "Local(Debug)", Category.Type.LOCAL_CATEGORY, "");
+            dbHelper.insertCategory(2, "REMOTE USERS", Category.Type.REMOTE_USERS, "");
+            dbHelper.insertCategory(3, "REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "");
 
             dbHelper.finish();
         } catch (Exception e) {
@@ -130,9 +131,12 @@ public class DebugFunction {
                     }
 
                 }
-                e.setId(dataBaseHelper.insertNote(e));
+                e.setId(i+1);
+                dataBaseHelper.insertNote(e);
             }
             dataBaseHelper.finish();
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Failed to perform debug database filling for note");
         }
     }
 

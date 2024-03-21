@@ -42,9 +42,6 @@ public class MainActivity extends AppCompatActivity {
 
         // TODO: for debug only, remember to remove.
         if (BuildConfig.DEBUG) {
-            try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
-                dataBaseHelper.destroyDatabase();
-            }
             DebugFunction.fill_database_for_category(this);
             List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
             DebugFunction.fill_database_for_note(this, img_files, 1);
