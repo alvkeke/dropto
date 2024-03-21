@@ -20,9 +20,9 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentResultListener;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -91,49 +91,44 @@ public class NoteListActivity extends Fragment {
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
+        getParentFragmentManager().setFragmentResultListener(NoteDetailActivity.REQUEST_KEY,
+                this, new NoteDetailResultListener());
 
     }
 
-    // TODO: fix this broken function
-//    ActivityResultLauncher<Intent> noteDetailActivityLauncher = registerForActivityResult(
-//            new ActivityResultContracts.StartActivityForResult(),
-//            result -> {
-//                int resultCode = result.getResultCode();
-//                Log.d(this.toString(), "NoteItem modify result code: " + resultCode);
-//                if (resultCode == RESULT_CANCELED) {
-//                    Log.i(this.toString(), "NoteItem modify canceled.");
-//                    return;
-//                }
-//
-//                Intent intent = result.getData();
-//                if (intent == null) {
-//                    Log.e(this.toString(), "Failed to get Intent instance, item modify abort");
-//                    return;
-//                }
-//
-//                int index = intent.getIntExtra(NoteDetailActivity.ITEM_INDEX, -1);
-//                if (index == -1) {
-//                    Log.e(this.toString(), "Failed to get item index, abort!");
-//                    return;
-//                }
-//
-//                if (RESULT_OK == resultCode) {
-//                    NoteItem item = (NoteItem) intent.getSerializableExtra(NoteDetailActivity.ITEM_OBJECT);
-//
-//                    if (item == null) {
-//                        Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
-//                        return;
-//                    }
-//
-//                    handleItemEdit(index, item);
-//                } else if (NoteDetailActivity.RESULT_DELETED == resultCode) {
-//                    handleItemDelete(index);
-//                } else {
-//                    Log.e(this.toString(), "got a wrong resultCode: " + resultCode);
-//                }
-//
-//            }
-//    );
+    class NoteDetailResultListener implements FragmentResultListener {
+
+        @Override
+        public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
+            int operation = result.getInt(NoteDetailActivity.ITEM_OPERATION);
+            Log.d(this.toString(), "NoteItem modify result code: " + operation);
+            if (operation == NoteDetailActivity.Operation.CANCELED.ordinal()) {
+                Log.i(this.toString(), "NoteItem modify canceled.");
+                return;
+            }
+
+            int index = result.getInt(NoteDetailActivity.ITEM_INDEX, -1);
+            if (index == -1) {
+                Log.e(this.toString(), "Failed to get item index, abort!");
+                return;
+            }
+
+            if (NoteDetailActivity.Operation.OK.ordinal() == operation) {
+                NoteItem item = (NoteItem) result.getSerializable(NoteDetailActivity.ITEM_OBJECT);
+
+                if (item == null) {
+                    Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
+                    return;
+                }
+
+                handleItemEdit(index, item);
+            } else if (NoteDetailActivity.Operation.DELETE.ordinal() == operation) {
+                handleItemDelete(index);
+            } else {
+                Log.e(this.toString(), "got a wrong operation: " + operation);
+            }
+        }
+    }
 
     private void handleItemDelete(int index) {
         Log.d(this.toString(), "trying to delete item: " + index);
@@ -187,11 +182,15 @@ public class NoteListActivity extends Fragment {
     void triggerItemEdit(NoteItem e, int pos) {
         Log.d(this.toString(), "item editing triggered");
 
-        // TODO: fix this broken function
-//        Intent intent = new Intent(NoteListActivity.this, NoteDetailActivity.class);
-//        intent.putExtra(NoteDetailActivity.ITEM_INDEX, pos);
-//        intent.putExtra(NoteDetailActivity.ITEM_OBJECT, e.clone());
-//        noteDetailActivityLauncher.launch(intent);
+        Bundle bundle = new Bundle();
+        bundle.putInt(NoteDetailActivity.ITEM_INDEX, pos);
+        bundle.putSerializable(NoteDetailActivity.ITEM_OBJECT, e.clone());
+        NoteDetailActivity fragment = new NoteDetailActivity();
+        fragment.setArguments(bundle);
+        getParentFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack(null)
+                .commit();
     }
 
     private boolean handleItemCopy(NoteItem item) {
