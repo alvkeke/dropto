@@ -26,6 +26,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
 public class ShareRecvActivity extends AppCompatActivity {
@@ -67,8 +68,17 @@ public class ShareRecvActivity extends AppCompatActivity {
                     finish();
                     return;
                 }
+                item.setCategoryId(category.getId());
+                try (DataBaseHelper dbHelper = new DataBaseHelper(ShareRecvActivity.this)) {
+                    dbHelper.start();
+                    item.setId(dbHelper.insertNote(item));
+                    dbHelper.finish();
+                } catch (Exception e) {
+                    Log.e(this.toString(), "Failed to add item to database, abort");
+                    return;
+                }
 
-                category.addNoteItem(item);
+                // no need to add item in noteItem list, item will be retrieved when list load
                 finish();
             }
         });
