@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
@@ -97,7 +98,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    public long insertCategory(long id, String title, Category.Type type, String preview) {
+    public long insertCategory(long id, String title, Category.Type type, String preview) throws SQLiteException{
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -108,10 +109,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
         values.put(CATEGORY_COLUMN_PREVIEW, preview);
 
-        return db.insert(TABLE_CATEGORY, null, values);
+        return db.insertOrThrow(TABLE_CATEGORY, null, values);
     }
 
-    public long insertCategory(String title, Category.Type type, String preview) {
+    public long insertCategory(String title, Category.Type type, String preview) throws SQLiteException{
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -121,10 +122,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
         values.put(CATEGORY_COLUMN_PREVIEW, preview);
 
-        return db.insert(TABLE_CATEGORY, null, values);
+        return db.insertOrThrow(TABLE_CATEGORY, null, values);
     }
 
-    public long insertCategory(Category c) {
+    public long insertCategory(Category c) throws SQLiteException{
 
         long id;
         if (c.getId() == Category.ID_NOT_ASSIGNED) {
@@ -191,7 +192,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     }
 
     public long insertNote(long id, long categoryId, String text, long ctime,
-                           String img_file, String img_name) {
+                           String img_file, String img_name) throws SQLiteException{
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -203,11 +204,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_C_TIME, ctime);
         values.put(NOTE_COLUMN_IMG_FILE, img_file);
         values.put(NOTE_COLUMN_IMG_NAME, img_name);
-        return db.insert(TABLE_NOTE, null, values);
+        return db.insertOrThrow(TABLE_NOTE, null, values);
     }
 
     public long insertNote(long categoryId, String text, long ctime,
-                           String img_file, String img_name) {
+                           String img_file, String img_name) throws SQLiteException {
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -218,7 +219,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_C_TIME, ctime);
         values.put(NOTE_COLUMN_IMG_FILE, img_file);
         values.put(NOTE_COLUMN_IMG_NAME, img_name);
-        return db.insert(TABLE_NOTE, null, values);
+        return db.insertOrThrow(TABLE_NOTE, null, values);
     }
 
     /**
@@ -227,7 +228,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param n the noteItem need to be insert
      * @return the id in database
      */
-    public long insertNote(NoteItem n) {
+    public long insertNote(NoteItem n) throws SQLiteException{
         long id;
         String img_name = n.getImageFile() == null ? "" : n.getImageFile().getName();
         if (n.getId() == NoteItem.ID_NOT_ASSIGNED) {
