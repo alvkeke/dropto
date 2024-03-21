@@ -239,7 +239,13 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return id;
     }
 
-    public void queryNote(int max_num, ArrayList<NoteItem> noteItems) {
+    /**
+     * retrieve note data from database
+     * @param max_num max count of retrieve items, -1 for unlimited
+     * @param target_category_id id of specific category, -1 for unspecific
+     * @param noteItems the list to receive the result
+     */
+    public void queryNote(int max_num, long target_category_id, ArrayList<NoteItem> noteItems) {
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return;
@@ -249,7 +255,13 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             return;
         }
 
-        Cursor cursor = db.query(TABLE_NOTE, null, null, null, null, null, null);
+        String selection = null;
+        String[] selectionArgs = null;
+        if (target_category_id != -1) {
+            selection = NOTE_COLUMN_CATE_ID + " = ?";
+            selectionArgs = new String[]{ String.valueOf(target_category_id), };
+        }
+        Cursor cursor = db.query(TABLE_NOTE, null, selection, selectionArgs, null, null, null);
         if (cursor == null) {
             Log.e(this.toString(), "Failed to get cursor");
             return;

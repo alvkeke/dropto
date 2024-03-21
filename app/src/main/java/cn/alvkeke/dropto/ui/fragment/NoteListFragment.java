@@ -31,6 +31,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
 public class NoteListFragment extends Fragment {
@@ -78,6 +79,13 @@ public class NoteListFragment extends Fragment {
             return;
         }
 
+        // TODO: use a pool to store the data, don't retrieve data so frequently
+        try (DataBaseHelper dataBaseHelper = new DataBaseHelper(requireContext())) {
+            dataBaseHelper.start();
+            dataBaseHelper.queryNote(-1, category.getId(), noteItems);
+            dataBaseHelper.finish();
+        }
+
         noteItemAdapter = new NoteListAdapter(noteItems);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(activity);
 
@@ -90,6 +98,13 @@ public class NoteListFragment extends Fragment {
         getParentFragmentManager().setFragmentResultListener(NoteDetailFragment.REQUEST_KEY,
                 this, new NoteDetailResultListener());
 
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // TODO: use a pool, don't clear data so frequently
+        noteItems.clear();
     }
 
     class NoteDetailResultListener implements FragmentResultListener {

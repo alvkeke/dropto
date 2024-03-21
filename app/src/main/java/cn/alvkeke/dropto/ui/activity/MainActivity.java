@@ -60,17 +60,6 @@ public class MainActivity extends AppCompatActivity {
             Log.e(this.toString(), "failed to retrieve data from database:" + e);
         }
 
-        if (BuildConfig.DEBUG) {
-            // TODO: for debug only, remember to remove.
-            try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
-                dbHelper.start();
-                dbHelper.queryNote(-1, categories.get(0).getNoteItems());
-                dbHelper.finish();
-            } catch (Exception e) {
-                Log.e(this.toString(), "failed to retrieve data from database:" + e);
-            }
-        }
-
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, new CategoryFragment())
