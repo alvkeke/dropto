@@ -246,6 +246,20 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * delete a noteItem in database with specific id
+     * @param id ID of target noteItem
+     * @return number of deleted entries
+     */
+    public int deleteNote(long id) {
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return 0;
+        }
+        String[] args = { String.valueOf(id) };
+        return db.delete(TABLE_NOTE, NOTE_COLUMN_ID + " = ?", args);
+    }
+
+    /**
      * retrieve note data from database
      * @param max_num max count of retrieve items, -1 for unlimited
      * @param target_category_id id of specific category, -1 for unspecific

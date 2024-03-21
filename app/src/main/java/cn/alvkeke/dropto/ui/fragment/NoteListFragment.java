@@ -150,12 +150,18 @@ public class NoteListFragment extends Fragment {
             return;
         }
 
-        try {
+        try (DataBaseHelper dbHelper = new DataBaseHelper(requireContext())){
+            NoteItem item = noteItems.get(index);
+            dbHelper.start();
+            if (0 == dbHelper.deleteNote(item.getId()))
+                Log.e(this.toString(), "no row be deleted");
+            dbHelper.finish();
             noteItems.remove(index);
             noteItemAdapter.notifyItemRemoved(index);
             noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
-        } catch (IndexOutOfBoundsException e) {
-            Log.e(this.toString(), "Failed to remove item at index: " + index);
+        } catch (Exception e) {
+            Log.e(this.toString(), "Failed to remove item at index: " +
+                    index + ", exception: " + e);
         }
     }
 
