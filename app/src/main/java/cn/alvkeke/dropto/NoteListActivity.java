@@ -16,8 +16,6 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
@@ -194,7 +192,6 @@ public class NoteListActivity extends Fragment {
     }
 
     private boolean handleItemCopy(NoteItem item) {
-        // TODO: fix getContext()
         ClipboardManager clipboardManager =
                 (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboardManager == null) {
@@ -219,7 +216,6 @@ public class NoteListActivity extends Fragment {
         if (item.getImageFile() != null) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
-            // TODO: fix getContext()
             Uri fileUri = FileProvider.getUriForFile(context,
                     context.getPackageName() + ".fileprovider", item.getImageFile());
             sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);

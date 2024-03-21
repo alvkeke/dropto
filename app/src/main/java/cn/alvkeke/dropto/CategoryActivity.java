@@ -1,16 +1,12 @@
 package cn.alvkeke.dropto;
 
 import android.app.Activity;
-import android.content.Context;
-import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -18,16 +14,10 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
-import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.debug.DebugFunction;
-import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.CategoryListAdapter;
 
 public class CategoryActivity extends Fragment {
