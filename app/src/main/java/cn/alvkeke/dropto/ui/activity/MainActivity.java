@@ -40,41 +40,35 @@ public class MainActivity extends AppCompatActivity {
         }
         Global.getInstance().setFileStoreFolder(img_folder);
 
+        // TODO: for debug only, remember to remove.
         if (BuildConfig.DEBUG) {
-            DataBaseHelper dbHelper = new DataBaseHelper(this);
-            dbHelper.destroyDatabase();
-            dbHelper.start();
-
-            long parentId = dbHelper.insertCategory("Local(Debug)", Category.Type.LOCAL_CATEGORY, "");
-            dbHelper.insertCategory("REMOTE USERS", Category.Type.REMOTE_USERS, "");
-            dbHelper.insertCategory("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "");
-
-            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
-            Random r = new Random();
-            int idx = 0;
-            for (int i=0; i<15; i++) {
-                NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
-                e.setCategoryId(parentId);
-                if (r.nextBoolean()) {
-                    e.setText(e.getText(), true);
-                }
-                if (idx < img_files.size() && r.nextBoolean()) {
-                    File img_file = img_files.get(idx);
-                    idx++;
-                    if (img_file.exists()) {
-                        Log.d("DebugFunction", "add image file: " + img_file);
-                    } else {
-                        Log.e("DebugFunction", "add image file failed, not exist: " + img_file);
-                    }
-
-                    e.setImageFile(img_file);
-                }
-                e.setId(dbHelper.insertNote(e));
+            try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
+                dataBaseHelper.destroyDatabase();
             }
+            DebugFunction.fill_database_for_category(this);
+            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
+            DebugFunction.fill_database_for_note(this, img_files, 1);
+        }
 
-            dbHelper.queryCategory(-2, categories);
-            dbHelper.queryNote(-2, categories.get(0).getNoteItems());
+        // retrieve all categories from database always, since they will not take up
+        // too many memory
+        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
+            dbHelper.start();
+            dbHelper.queryCategory(-1, categories);
             dbHelper.finish();
+        } catch (Exception e) {
+            Log.e(this.toString(), "failed to retrieve data from database:" + e);
+        }
+
+        if (BuildConfig.DEBUG) {
+            // TODO: for debug only, remember to remove.
+            try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
+                dbHelper.start();
+                dbHelper.queryNote(-1, categories.get(0).getNoteItems());
+                dbHelper.finish();
+            } catch (Exception e) {
+                Log.e(this.toString(), "failed to retrieve data from database:" + e);
+            }
         }
 
         if (savedInstanceState == null) {

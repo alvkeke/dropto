@@ -279,11 +279,13 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             String img_name = cursor.getString(idx);
             Log.d(this.toString(), "image name: " + img_name);
 
-            File f_img_file = new File(Global.getInstance().getFileStoreFolder(), img_file);
             NoteItem e = new NoteItem(text, ctime);
             e.setId(id);
             e.setCategoryId(category_id);
-            e.setImageFile(f_img_file);
+            if (!img_file.isEmpty()) {
+                File f_img_file = new File(Global.getInstance().getFileStoreFolder(), img_file);
+                e.setImageFile(f_img_file);
+            }
             noteItems.add(e);
             n_notes++;
         }
