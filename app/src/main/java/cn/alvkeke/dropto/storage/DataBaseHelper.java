@@ -44,7 +44,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String NOTE_COLUMN_IMG_NAME = "img_name";
     private static final String NOTE_COLUMN_IMG_NAME_TYPE = "TEXT";
 
-    private Context context;
+    private final Context context;
     private SQLiteDatabase db = null;
 
     public DataBaseHelper(Context context) {
@@ -82,6 +82,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 NOTE_COLUMN_IMG_NAME, NOTE_COLUMN_IMG_NAME_TYPE));
     }
 
+    @SuppressWarnings("unused")
     public void destroyDatabase() {
         context.deleteDatabase(DATABASE_NAME);
     }
@@ -125,6 +126,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return db.insertOrThrow(TABLE_CATEGORY, null, values);
     }
 
+    @SuppressWarnings("unused")
     public long insertCategory(Category c) throws SQLiteException{
 
         long id;
@@ -348,15 +350,18 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             String img_file = cursor.getString(idx);
             idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_NAME);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
+            @SuppressWarnings("unused")
             String img_name = cursor.getString(idx);
-            Log.d(this.toString(), "image name: " + img_name);
+//            Log.d(this.toString(), "image name: " + img_name);
 
             NoteItem e = new NoteItem(text, ctime);
             e.setId(id);
             e.setCategoryId(category_id);
             if (!img_file.isEmpty()) {
                 File f_img_file = new File(Global.getInstance().getFileStoreFolder(), img_file);
-                e.setImageFile(f_img_file);
+                if (!e.setImageFile(f_img_file)) {
+                    Log.e(this.toString(), "Failed to set image file: " + img_file);
+                }
             }
             noteItems.add(e);
             n_notes++;

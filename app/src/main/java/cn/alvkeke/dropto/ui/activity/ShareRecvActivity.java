@@ -166,7 +166,7 @@ public class ShareRecvActivity extends AppCompatActivity {
             }
             Log.d(this.toString(), "Operation result: " + ret);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(this.toString(), "Failed to copy file: " + e);
             return null;
         }
 
@@ -194,26 +194,21 @@ public class ShareRecvActivity extends AppCompatActivity {
             return null;
         }
 
-        ParcelFileDescriptor inputPFD;
-        try {
-            inputPFD = getContentResolver().openFileDescriptor(uri, "r");
+        try (ParcelFileDescriptor inputPFD = getContentResolver().openFileDescriptor(uri, "r")) {
             if (inputPFD == null) {
                 Log.e(this.toString(), "Failed to get ParcelFileDescriptor");
                 return null;
             }
+            FileDescriptor fd = inputPFD.getFileDescriptor();
+            File retFile = saveFileWithMd5Name(fd, storeFolder);
+            Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
+            String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
+            NoteItem item = new NoteItem(ext_str == null ? "" : ext_str);
+            item.setImageFile(retFile);
+            return item;
         } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(this.toString(), "Failed to get file fd");
-            return null;
+            Log.e(this.toString(), "Failed to get file fd: " + e);
         }
-
-        FileDescriptor fd = inputPFD.getFileDescriptor();
-        File retFile = saveFileWithMd5Name(fd, storeFolder);
-        Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
-
-        String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
-        NoteItem item = new NoteItem(ext_str == null ? "" : ext_str);
-        item.setImageFile(retFile);
-        return item;
+        return null;
     }
 }

@@ -30,6 +30,7 @@ public class Category {
         return noteItems;
     }
 
+    @SuppressWarnings("unused")
     public void addNoteItem(NoteItem item) {
         noteItems.add(item);
         previewText = item.getText();

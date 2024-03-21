@@ -100,8 +100,8 @@ public class NoteItem implements Cloneable, Serializable {
         return this._img_file;
     }
 
+    @SuppressWarnings("unused")
     public Bitmap loadImage() {
-        if (_img_file == null) return null;
 
         return null;
     }

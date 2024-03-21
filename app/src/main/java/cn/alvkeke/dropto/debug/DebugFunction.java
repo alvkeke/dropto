@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.debug;
 
 import android.content.Context;
 import android.os.Build;
-import android.os.Environment;
 import android.util.Log;
 
 import java.io.File;
