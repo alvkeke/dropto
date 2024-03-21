@@ -57,9 +57,7 @@ public class NoteListActivity extends Fragment {
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
         etInputText = view.findViewById(R.id.input_text);
 
-        // TODO: check if this need to be fix
-        Bundle bundle = getArguments();
-        assert bundle != null;
+        Bundle bundle = requireArguments();
         int index = bundle.getInt(CATEGORY_INDEX, -1);
         if (index == -1) {
             Log.e(this.toString(), "Failed to get category index!!");
