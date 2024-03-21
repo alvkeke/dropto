@@ -165,13 +165,26 @@ public class NoteListFragment extends Fragment {
         }
     }
 
-    private void handleItemEdit(int index, NoteItem item) {
-        NoteItem e = noteItems.get(index);
-        if (e == null) {
+    private void handleItemEdit(int index, NoteItem newItem) {
+        NoteItem oldItem = noteItems.get(index);
+        if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item at: "+ index);
             return;
         }
-        e.setText(item.getText(), true);
+        newItem.setId(oldItem.getId());
+        try (DataBaseHelper dbHelper = new DataBaseHelper(requireContext())) {
+            dbHelper.start();
+            if (0 == dbHelper.updateNote(newItem)) {
+                Log.i(this.toString(), "no item was updated");
+            }
+            dbHelper.finish();
+        } catch (Exception exception) {
+            Log.e(this.toString(), "Failed to update note item in database: " + exception);
+            return;
+        }
+
+        Log.e(this.toString(), "category id: " + newItem.getCategoryId());
+        oldItem.update(newItem, true);
         noteItemAdapter.notifyItemChanged(index);
     }
 

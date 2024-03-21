@@ -43,7 +43,18 @@ public class NoteItem implements Cloneable, Serializable {
     @NonNull
     @Override
     public NoteItem clone() {
-        return new NoteItem(_text, _create_time_ms);
+        NoteItem item = new NoteItem(_text, _create_time_ms);
+        item.setId(this.id);
+        item.setCategoryId(this.category_id);
+        item.setImageFile(this._img_file);
+        return item;
+    }
+
+    public void update(NoteItem item, boolean set_edited) {
+        setText(item.getText(), set_edited);
+        setCreateTime(item.getCreateTime());
+        setImageFile(item.getImageFile());
+        setCategoryId(item.getCategoryId());
     }
 
     public void setText(String text, boolean set_edited) {

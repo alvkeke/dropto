@@ -191,6 +191,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         cursor.close();
     }
 
+    private static final String NOTE_WHERE_CLAUSE_ID = NOTE_COLUMN_ID + " = ?";
     public long insertNote(long id, long categoryId, String text, long ctime,
                            String img_file, String img_name) throws SQLiteException{
         if (db == null) {
@@ -257,7 +258,45 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             return 0;
         }
         String[] args = { String.valueOf(id) };
-        return db.delete(TABLE_NOTE, NOTE_COLUMN_ID + " = ?", args);
+        return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_ID, args);
+    }
+
+    /**
+     * update note info in database with specific ID, all data apart of ID will be changed
+     * @param id ID of noteItem need to be updated
+     * @param categoryId the ID of the new category
+     * @param text new note text
+     * @param ctime new create time
+     * @param img_file new image file
+     * @param img_name new name of the file
+     * @return count of affected rows
+     */
+    public int updateNote(long id, long categoryId, String text, long ctime,
+                           String img_file, String img_name){
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return 0;
+        }
+        ContentValues values = new ContentValues();
+        values.put(NOTE_COLUMN_CATE_ID, categoryId);
+        values.put(NOTE_COLUMN_TEXT, text);
+        values.put(NOTE_COLUMN_C_TIME, ctime);
+        values.put(NOTE_COLUMN_IMG_FILE, img_file);
+        values.put(NOTE_COLUMN_IMG_NAME, img_name);
+        String[] args = { String.valueOf(id) };
+        return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args);
+    }
+
+    /**
+     * update note info in database with specific ID, all data apart of ID will be changed
+     * @param item item object contain updated info
+     * @return count of affected rows
+     */
+    public int updateNote(NoteItem item) {
+        File img_file = item.getImageFile();
+        String s_img_file = img_file == null ? "" : img_file.getName();
+        return updateNote(item.getId(), item.getCategoryId(), item.getText(),
+                item.getCreateTime(), s_img_file, "");
     }
 
     /**
