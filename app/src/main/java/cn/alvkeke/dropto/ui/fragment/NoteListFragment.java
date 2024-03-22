@@ -20,7 +20,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentResultListener;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,7 +28,6 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
@@ -37,26 +35,27 @@ import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 public class NoteListFragment extends Fragment {
 
     public interface NoteListEventListener {
-        void onExit();
+        void onNoteListClose();
         void onListDetailShow(int index, NoteItem item);
     }
 
-    public static final String CATEGORY_INDEX = "CATEGORY_INDEX";
-
     Category category;
+    int index;
     ArrayList<NoteItem> noteItems;
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
     private RecyclerView rlNoteList;
 
+    public NoteListFragment(int index, Category category) {
+        assert category != null;
+        this.category = category;
+        this.index = index;
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_note_list, container, false);
-    }
-
-    public void setCategory(Category c) {
-        this.category = c;
     }
 
     @Override
@@ -68,17 +67,12 @@ public class NoteListFragment extends Fragment {
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
         etInputText = view.findViewById(R.id.input_text);
 
-        if (category == null) {
-            Log.e(this.toString(), "Category not set!!");
-            ((NoteListEventListener)requireContext()).onExit();
-            return;
-        }
         activity.setTitle(category.getTitle());
 
         noteItems = category.getNoteItems();
         if (noteItems == null) {
             Log.e(this.toString(), "Failed to get note list!!");
-            ((NoteListEventListener)requireContext()).onExit();
+            ((NoteListEventListener)requireContext()).onNoteListClose();
             return;
         }
 
@@ -98,8 +92,6 @@ public class NoteListFragment extends Fragment {
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
-        getParentFragmentManager().setFragmentResultListener(NoteDetailFragment.REQUEST_KEY,
-                this, new NoteDetailResultListener());
 
     }
 
@@ -110,41 +102,7 @@ public class NoteListFragment extends Fragment {
         noteItems.clear();
     }
 
-    class NoteDetailResultListener implements FragmentResultListener {
-
-        @Override
-        public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
-            int operation = result.getInt(NoteDetailFragment.ITEM_OPERATION);
-            Log.d(this.toString(), "NoteItem modify result code: " + operation);
-            if (operation == NoteDetailFragment.Operation.CANCELED.ordinal()) {
-                Log.i(this.toString(), "NoteItem modify canceled.");
-                return;
-            }
-
-            int index = result.getInt(NoteDetailFragment.ITEM_INDEX, -1);
-            if (index == -1) {
-                Log.e(this.toString(), "Failed to get item index, abort!");
-                return;
-            }
-
-            if (NoteDetailFragment.Operation.OK.ordinal() == operation) {
-                NoteItem item = (NoteItem) result.getSerializable(NoteDetailFragment.ITEM_OBJECT);
-
-                if (item == null) {
-                    Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
-                    return;
-                }
-
-                handleItemEdit(index, item);
-            } else if (NoteDetailFragment.Operation.DELETE.ordinal() == operation) {
-                handleItemDelete(index);
-            } else {
-                Log.e(this.toString(), "got a wrong operation: " + operation);
-            }
-        }
-    }
-
-    private void handleItemDelete(int index) {
+    public void handleItemDelete(int index) {
         Log.d(this.toString(), "trying to delete item: " + index);
 
         if (index == -1) {
@@ -167,7 +125,7 @@ public class NoteListFragment extends Fragment {
         }
     }
 
-    private void handleItemEdit(int index, NoteItem newItem) {
+    public void handleItemEdit(int index, NoteItem newItem) {
         NoteItem oldItem = noteItems.get(index);
         if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item at: "+ index);
@@ -190,7 +148,7 @@ public class NoteListFragment extends Fragment {
         noteItemAdapter.notifyItemChanged(index);
     }
 
-    private void handleItemAdd(NoteItem item) {
+    public void handleItemAdd(NoteItem item) {
         int index = noteItems.size();
         noteItems.add(item);
         noteItemAdapter.notifyItemInserted(index);

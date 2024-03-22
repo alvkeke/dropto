@@ -1,11 +1,12 @@
 package cn.alvkeke.dropto.ui.adapter;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
+
+import java.util.HashMap;
+import java.util.Objects;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
@@ -15,39 +16,57 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 
 public class MainFragmentAdapter extends FragmentStateAdapter {
 
-    private final Fragment[] fragments = {
-            new CategoryFragment(),
-            new NoteListFragment(),
-            new NoteDetailFragment(),
-    };
+    public enum FragmentType {
+        CategoryList,
+        NoteList,
+        NoteDetail,
+    }
 
-    private final CategoryFragment categoryFragment = (CategoryFragment) fragments[0];
-    private final NoteListFragment noteListFragment = (NoteListFragment) fragments[1];
-    private final NoteDetailFragment noteDetailFragment = (NoteDetailFragment) fragments[2];
+    private final HashMap<Integer, Fragment> fragments = new HashMap<>();
 
     public MainFragmentAdapter(@NonNull FragmentActivity fragmentActivity) {
         super(fragmentActivity);
+        CategoryFragment fragment = new CategoryFragment();
+        fragments.put(FragmentType.CategoryList.ordinal(), fragment);
     }
 
     @NonNull
     @Override
     public Fragment createFragment(int i) {
-        if (i < fragments.length) {
-            return fragments[i];
-        }
-        return fragments[0];
+        Fragment fragment = fragments.get(i);
+        if (fragment == null)
+            return Objects.requireNonNull(fragments.get(0));
+        return fragment;
     }
 
     @Override
     public int getItemCount() {
-        return fragments.length;
+        return fragments.size();
     }
 
-    public void setCurrentCategory(int index, Category c) {
-        noteListFragment.setCategory(c);
+    public void createNoteListFragment(int index, Category c) {
+        NoteListFragment fragment = new NoteListFragment(index, c);
+        removeFragment(FragmentType.NoteList);
+        fragments.put(FragmentType.NoteList.ordinal(), fragment);
+        notifyItemChanged(FragmentType.NoteList.ordinal());
     }
 
-    public void setCurrentNote(int index, NoteItem e) {
-        noteDetailFragment.setItem(index, e);
+    public void createNoteDetailFragment(int index, NoteItem item) {
+        NoteDetailFragment fragment = new NoteDetailFragment(index, item);
+        removeFragment(FragmentType.NoteDetail);
+        fragments.put(FragmentType.NoteDetail.ordinal(), fragment);
+        notifyItemChanged(FragmentType.NoteDetail.ordinal());
     }
+
+    public void removeFragment(FragmentType type) {
+        Fragment fragment = fragments.get(type.ordinal());
+        if (fragment == null) return;
+        fragments.remove(type.ordinal());
+        notifyItemRemoved(type.ordinal());
+    }
+
+    public NoteListFragment getNoteListFragment() {
+        return (NoteListFragment) fragments.get(FragmentType.NoteList.ordinal());
+    }
+
 }

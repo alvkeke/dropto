@@ -77,41 +77,39 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onNoteListShow(int index, Category category) {
-        Log.e(this.toString(), "Try to show category list: " + index);
-        fragmentAdapter.setCurrentCategory(index, category);
+        fragmentAdapter.createNoteListFragment(index, category);
         viewPager.setCurrentItem(1);
     }
 
     @Override
-    public void onExit() {
+    public void onNoteListClose() {
         viewPager.setCurrentItem(0);
+        fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteList);
     }
 
     @Override
     public void onListDetailShow(int index, NoteItem item) {
-        fragmentAdapter.setCurrentNote(index, item);
+        fragmentAdapter.createNoteDetailFragment(index, item);
         viewPager.setCurrentItem(2);
     }
 
     @Override
     public void onNoteEdit(int index, NoteItem newNote) {
-        Log.e(this.toString(), "Note in "+ index + " was edited");
-        // TODO: implement the real function;
+        fragmentAdapter.getNoteListFragment().handleItemEdit(index, newNote);
     }
 
     @Override
     public void onNoteDelete(int index, NoteItem noteItem) {
-        Log.e(this.toString(), "Note in " + index + " was removed");
-        // TODO: implement the real function;
+        fragmentAdapter.getNoteListFragment().handleItemDelete(index);
     }
 
     @Override
-    public void onNoteCancel(int index, NoteItem noteItem) {
-        // TODO: implement the real function;
+    public void onNoteExit() {
+        fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteDetail);
     }
 
     @Override
     public void onNoteAdd(NoteItem item) {
-        // TODO: implement the real function;
+        fragmentAdapter.getNoteListFragment().handleItemAdd(item);
     }
 }
