@@ -36,6 +36,11 @@ import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
 public class NoteListFragment extends Fragment {
 
+    public interface NoteListEventListener {
+        void onExit();
+        void onListDetailShow(int index, NoteItem item);
+    }
+
     public static final String CATEGORY_INDEX = "CATEGORY_INDEX";
 
     Category category;
@@ -50,6 +55,10 @@ public class NoteListFragment extends Fragment {
         return inflater.inflate(R.layout.fragment_note_list, container, false);
     }
 
+    public void setCategory(Category c) {
+        this.category = c;
+    }
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -59,16 +68,9 @@ public class NoteListFragment extends Fragment {
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
         etInputText = view.findViewById(R.id.input_text);
 
-        Bundle bundle = requireArguments();
-        int index = bundle.getInt(CATEGORY_INDEX, -1);
-        if (index == -1) {
-            Log.e(this.toString(), "Failed to get category index!!");
-            return;
-        }
-        category = Global.getInstance().getCategories().get(index);
         if (category == null) {
-            Log.e(this.toString(), "Failed to get category at " + index);
-            getParentFragmentManager().popBackStack();
+            Log.e(this.toString(), "Category not set!!");
+            ((NoteListEventListener)requireContext()).onExit();
             return;
         }
         activity.setTitle(category.getTitle());
@@ -76,7 +78,7 @@ public class NoteListFragment extends Fragment {
         noteItems = category.getNoteItems();
         if (noteItems == null) {
             Log.e(this.toString(), "Failed to get note list!!");
-            getParentFragmentManager().popBackStack();
+            ((NoteListEventListener)requireContext()).onExit();
             return;
         }
 
@@ -223,16 +225,8 @@ public class NoteListFragment extends Fragment {
 
     void triggerItemEdit(NoteItem e, int pos) {
         Log.d(this.toString(), "item editing triggered");
-
-        Bundle bundle = new Bundle();
-        bundle.putInt(NoteDetailFragment.ITEM_INDEX, pos);
-        bundle.putSerializable(NoteDetailFragment.ITEM_OBJECT, e.clone());
-        NoteDetailFragment fragment = new NoteDetailFragment();
-        fragment.setArguments(bundle);
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .addToBackStack(null)
-                .commit();
+        NoteListEventListener listener = (NoteListEventListener) requireContext();
+        listener.onListDetailShow(pos, e);
     }
 
     private boolean handleItemCopy(NoteItem item) {

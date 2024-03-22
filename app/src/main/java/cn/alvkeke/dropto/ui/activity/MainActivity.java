@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.viewpager2.widget.ViewPager2;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -14,11 +15,20 @@ import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
 import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
+import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
+import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements CategoryFragment.CategoryEventListener, NoteListFragment.NoteListEventListener,
+        NoteDetailFragment.NoteEventListener {
+
+    private ViewPager2 viewPager;
+    private MainFragmentAdapter fragmentAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,10 +65,53 @@ public class MainActivity extends AppCompatActivity {
             Log.e(this.toString(), "failed to retrieve data from database:" + e);
         }
 
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, new CategoryFragment())
-                    .commitNow();
+        viewPager = findViewById(R.id.main_viewpager);
+        fragmentAdapter = new MainFragmentAdapter(this);
+        viewPager.setAdapter(fragmentAdapter);
+
+        if (savedInstanceState != null) {
+            int index = savedInstanceState.getInt("currentPageIndex");
+            viewPager.setCurrentItem(index);
         }
+    }
+
+    @Override
+    public void onNoteListShow(int index, Category category) {
+        Log.e(this.toString(), "Try to show category list: " + index);
+        fragmentAdapter.setCurrentCategory(index, category);
+        viewPager.setCurrentItem(1);
+    }
+
+    @Override
+    public void onExit() {
+        viewPager.setCurrentItem(0);
+    }
+
+    @Override
+    public void onListDetailShow(int index, NoteItem item) {
+        fragmentAdapter.setCurrentNote(index, item);
+        viewPager.setCurrentItem(2);
+    }
+
+    @Override
+    public void onNoteEdit(int index, NoteItem newNote) {
+        Log.e(this.toString(), "Note in "+ index + " was edited");
+        // TODO: implement the real function;
+    }
+
+    @Override
+    public void onNoteDelete(int index, NoteItem noteItem) {
+        Log.e(this.toString(), "Note in " + index + " was removed");
+        // TODO: implement the real function;
+    }
+
+    @Override
+    public void onNoteCancel(int index, NoteItem noteItem) {
+        // TODO: implement the real function;
+    }
+
+    @Override
+    public void onNoteAdd(NoteItem item) {
+        // TODO: implement the real function;
     }
 }

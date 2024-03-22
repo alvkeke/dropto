@@ -1,6 +1,7 @@
 package cn.alvkeke.dropto.ui.fragment;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,9 +20,14 @@ import java.util.ArrayList;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
 public class CategoryFragment extends Fragment {
+
+    public interface CategoryEventListener {
+        void onNoteListShow(int index, Category category);
+    }
 
     private CategoryListAdapter categoryListAdapter;
 
@@ -72,14 +78,9 @@ public class CategoryFragment extends Fragment {
         @Override
         public void onItemClick(int index, View v) {
             Log.d(this.toString(), "Category clicked on " + index);
-            Bundle bundle = new Bundle();
-            bundle.putInt(NoteListFragment.CATEGORY_INDEX, index);
-            NoteListFragment fragment = new NoteListFragment();
-            fragment.setArguments(bundle);
-            getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
-                    .addToBackStack(null)
-                    .commit();
+            CategoryEventListener listener = (CategoryEventListener) requireContext();
+            Category e = Global.getInstance().getCategories().get(index);
+            listener.onNoteListShow(index, e);
         }
     }
 }

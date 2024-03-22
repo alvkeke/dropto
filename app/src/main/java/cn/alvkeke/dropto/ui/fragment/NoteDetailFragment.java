@@ -10,13 +10,18 @@ import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
 
 public class NoteDetailFragment extends Fragment {
 
+    public interface NoteEventListener {
+        void onNoteEdit(int index, NoteItem newNote);
+        void onNoteDelete(int index, NoteItem noteItem);
+        void onNoteCancel(int index, NoteItem noteItem);
+        void onNoteAdd(NoteItem item);
+    }
 
     public static final String REQUEST_KEY = "NoteDetailRequestKey";
     public static final String ITEM_OPERATION = "ITEM_OPERATION";
@@ -29,9 +34,10 @@ public class NoteDetailFragment extends Fragment {
         DELETE,
     }
 
+    private NoteEventListener listener;
     private EditText etNoteItemText;
     private NoteItem item = null;
-    private int targetIndex;
+    private int index = ITEM_INDEX_NONE;
     public static final int ITEM_INDEX_NONE = -1;
 
     @Nullable
@@ -49,22 +55,16 @@ public class NoteDetailFragment extends Fragment {
         Button btnDel = view.findViewById(R.id.note_detail_btn_del);
         etNoteItemText = view.findViewById(R.id.note_detail_text);
 
+        listener = (NoteEventListener) requireContext();
+
         btnOk.setOnClickListener(new ItemAddOk());
         btnCancel.setOnClickListener(new ItemAddCanceled());
+        btnDel.setOnClickListener(new ItemDelete());
+    }
 
-        Bundle bundle = requireArguments();
-        targetIndex = bundle.getInt(ITEM_INDEX, ITEM_INDEX_NONE);
-        if (targetIndex != ITEM_INDEX_NONE) {
-            item = (NoteItem) bundle.getSerializable(ITEM_OBJECT);
-            assert item != null;
-            loadItemData(item);
-
-            btnDel.setOnClickListener(new ItemDelete());
-        } else {
-            // create a new item
-            btnDel.setVisibility(View.INVISIBLE);
-        }
-
+    public void setItem(int index, NoteItem item) {
+        this.index = index;
+        this.item = item;
     }
 
     /**
@@ -80,23 +80,13 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-
-            Bundle bundle = requireArguments();
-
             String text = etNoteItemText.getText().toString();
             if (item == null) {
                 item = new NoteItem(text, System.currentTimeMillis());
             } else {
                 item.setText(text, true);
             }
-            bundle.putInt(ITEM_OPERATION, Operation.OK.ordinal());
-            bundle.putInt(ITEM_INDEX, targetIndex);
-            bundle.putSerializable(ITEM_OBJECT, item);
-
-
-            FragmentManager manager = getParentFragmentManager();
-            manager.setFragmentResult(REQUEST_KEY, bundle);
-            manager.popBackStack();
+            listener.onNoteEdit(index, item);
         }
     }
 
@@ -104,11 +94,7 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            Bundle bundle = requireArguments();
-            bundle.putInt(ITEM_OPERATION, Operation.CANCELED.ordinal());
-            FragmentManager manager = getParentFragmentManager();
-            manager.setFragmentResult(REQUEST_KEY, bundle);
-            manager.popBackStack();
+            listener.onNoteCancel(index, item);
         }
     }
 
@@ -116,12 +102,7 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            Bundle bundle = requireArguments();
-            bundle.putInt(ITEM_OPERATION, Operation.DELETE.ordinal());
-            bundle.putInt(ITEM_INDEX, targetIndex);
-            FragmentManager manager = getParentFragmentManager();
-            manager.setFragmentResult(REQUEST_KEY, bundle);
-            manager.popBackStack();
+            listener.onNoteDelete(index, item);
         }
     }
 }
