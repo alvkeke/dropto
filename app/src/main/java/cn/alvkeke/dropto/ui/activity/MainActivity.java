@@ -18,6 +18,7 @@ import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
 import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
@@ -72,6 +73,15 @@ public class MainActivity extends AppCompatActivity
         if (savedInstanceState != null) {
             int index = savedInstanceState.getInt("currentPageIndex");
             viewPager.setCurrentItem(index);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        int index = viewPager.getCurrentItem();
+        SystemKeyListener listener = (SystemKeyListener) fragmentAdapter.getFragmentAt(index);
+        if (!listener.onBackPressed()) {
+            super.onBackPressed();
         }
     }
 

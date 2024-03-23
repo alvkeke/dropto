@@ -29,9 +29,10 @@ import java.util.ArrayList;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
-public class NoteListFragment extends Fragment {
+public class NoteListFragment extends Fragment implements SystemKeyListener {
 
     public interface NoteListEventListener {
         void onNoteListClose();
@@ -104,6 +105,12 @@ public class NoteListFragment extends Fragment {
 
         btnAddNote.setOnClickListener(new onItemAddClick());
 
+    }
+
+    @Override
+    public boolean onBackPressed() {
+        listener.onNoteListClose();
+        return true;
     }
 
     private boolean handleItemCreate(NoteItem item) {

@@ -13,8 +13,9 @@ import androidx.fragment.app.Fragment;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.ui.SystemKeyListener;
 
-public class NoteDetailFragment extends Fragment {
+public class NoteDetailFragment extends Fragment implements SystemKeyListener {
 
     public enum Result {
         CANCELED,
@@ -56,6 +57,12 @@ public class NoteDetailFragment extends Fragment {
         btnOk.setOnClickListener(new ItemAddOk());
         btnCancel.setOnClickListener(new ItemAddCanceled());
         btnDel.setOnClickListener(new ItemDelete());
+    }
+
+    @Override
+    public boolean onBackPressed() {
+        listener.onNoteDetailExit(Result.CANCELED, item);
+        return true;
     }
 
     /**
