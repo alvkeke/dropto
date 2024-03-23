@@ -1,9 +1,15 @@
 package cn.alvkeke.dropto.ui.activity;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import java.io.File;
@@ -141,6 +147,48 @@ public class MainActivity extends AppCompatActivity
             return -1;
         }
         return index;
+    }
+
+    @Override
+    public boolean onNoteItemShare(NoteItem item) {
+        Intent sendIntent = new Intent(Intent.ACTION_SEND);
+
+        // add item text for sharing
+        sendIntent.setType("text/plain");
+        sendIntent.putExtra(Intent.EXTRA_TEXT, item.getText());
+        Log.d(this.toString(), "no image, share text: " + item.getText());
+
+        if (item.getImageFile() != null) {
+            // add item image for sharing if exist
+            sendIntent.setType("image/*");
+            Uri fileUri = FileProvider.getUriForFile(this,
+                    getPackageName() + ".fileprovider", item.getImageFile());
+            sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+            sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Log.d(this.toString(), "share image Uri: " + fileUri);
+        }
+        Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
+
+        try {
+            this.startActivity(shareIntent);
+        } catch (Exception e) {
+            Log.e(this.toString(), "Failed to create share Intent: " + e);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onNoteItemCopy(NoteItem e) {
+        ClipboardManager clipboardManager =
+                (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboardManager == null) {
+            Log.e(this.toString(), "Failed to get ClipboardManager");
+            return false;
+        }
+        ClipData data = ClipData.newPlainText("text", e.getText());
+        clipboardManager.setPrimaryClip(data);
+        return true;
     }
 
     @Override
