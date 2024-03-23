@@ -10,29 +10,30 @@ import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
 
 public class NoteDetailFragment extends Fragment {
 
-
-    public static final String REQUEST_KEY = "NoteDetailRequestKey";
-    public static final String ITEM_OPERATION = "ITEM_OPERATION";
-    public static final String ITEM_OBJECT = "ITEM_OBJECT";
-    public static final String ITEM_INDEX = "ITEM_INDEX";
-
-    public enum Operation {
+    public enum Result {
         CANCELED,
-        OK,
-        DELETE,
+        CREATED,
+        REMOVED,
+        MODIFIED,
     }
 
+    public interface NoteEventListener {
+        void onNoteDetailExit(Result result, NoteItem e);
+    }
+
+    private NoteEventListener listener;
     private EditText etNoteItemText;
-    private NoteItem item = null;
-    private int targetIndex;
-    public static final int ITEM_INDEX_NONE = -1;
+    private NoteItem item;
+
+    public NoteDetailFragment(NoteItem item) {
+        this.item = item;
+    }
 
     @Nullable
     @Override
@@ -48,23 +49,13 @@ public class NoteDetailFragment extends Fragment {
         Button btnCancel = view.findViewById(R.id.note_detail_btn_cancel);
         Button btnDel = view.findViewById(R.id.note_detail_btn_del);
         etNoteItemText = view.findViewById(R.id.note_detail_text);
+        if (item != null) loadItemData(item);
+
+        listener = (NoteEventListener) requireContext();
 
         btnOk.setOnClickListener(new ItemAddOk());
         btnCancel.setOnClickListener(new ItemAddCanceled());
-
-        Bundle bundle = requireArguments();
-        targetIndex = bundle.getInt(ITEM_INDEX, ITEM_INDEX_NONE);
-        if (targetIndex != ITEM_INDEX_NONE) {
-            item = (NoteItem) bundle.getSerializable(ITEM_OBJECT);
-            assert item != null;
-            loadItemData(item);
-
-            btnDel.setOnClickListener(new ItemDelete());
-        } else {
-            // create a new item
-            btnDel.setVisibility(View.INVISIBLE);
-        }
-
+        btnDel.setOnClickListener(new ItemDelete());
     }
 
     /**
@@ -80,23 +71,14 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-
-            Bundle bundle = requireArguments();
-
             String text = etNoteItemText.getText().toString();
             if (item == null) {
                 item = new NoteItem(text, System.currentTimeMillis());
+                listener.onNoteDetailExit(Result.CREATED, item);
             } else {
                 item.setText(text, true);
+                listener.onNoteDetailExit(Result.MODIFIED, item);
             }
-            bundle.putInt(ITEM_OPERATION, Operation.OK.ordinal());
-            bundle.putInt(ITEM_INDEX, targetIndex);
-            bundle.putSerializable(ITEM_OBJECT, item);
-
-
-            FragmentManager manager = getParentFragmentManager();
-            manager.setFragmentResult(REQUEST_KEY, bundle);
-            manager.popBackStack();
         }
     }
 
@@ -104,11 +86,7 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            Bundle bundle = requireArguments();
-            bundle.putInt(ITEM_OPERATION, Operation.CANCELED.ordinal());
-            FragmentManager manager = getParentFragmentManager();
-            manager.setFragmentResult(REQUEST_KEY, bundle);
-            manager.popBackStack();
+            listener.onNoteDetailExit(Result.CANCELED, item);
         }
     }
 
@@ -116,12 +94,7 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            Bundle bundle = requireArguments();
-            bundle.putInt(ITEM_OPERATION, Operation.DELETE.ordinal());
-            bundle.putInt(ITEM_INDEX, targetIndex);
-            FragmentManager manager = getParentFragmentManager();
-            manager.setFragmentResult(REQUEST_KEY, bundle);
-            manager.popBackStack();
+            listener.onNoteDetailExit(Result.REMOVED, item);
         }
     }
 }

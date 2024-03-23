@@ -20,7 +20,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentResultListener;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,20 +28,44 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
 public class NoteListFragment extends Fragment {
 
-    public static final String CATEGORY_INDEX = "CATEGORY_INDEX";
+    public interface NoteListEventListener {
+        void onNoteListClose();
+        void onNoteListLoad(Category c);
 
+        /**
+         * handle item creating
+         * @param c target category
+         * @param e new item
+         * @return index for the new item, -1 for failed to create
+         */
+        int onNoteItemCreate(Category c, NoteItem e);
+
+        /**
+         * handle item deleting
+         * @param c target category
+         * @param e target item to delete
+         * @return index for deleted item, -1 for failed to delete
+         */
+        int onNoteItemDelete(Category c, NoteItem e);
+        void onNoteDetailShow(NoteItem item);
+    }
+
+    private NoteListEventListener listener;
     Category category;
     ArrayList<NoteItem> noteItems;
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
     private RecyclerView rlNoteList;
+
+    public NoteListFragment(Category category) {
+        assert category != null;
+        this.category = category;
+    }
 
     @Nullable
     @Override
@@ -59,32 +82,16 @@ public class NoteListFragment extends Fragment {
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
         etInputText = view.findViewById(R.id.input_text);
 
-        Bundle bundle = requireArguments();
-        int index = bundle.getInt(CATEGORY_INDEX, -1);
-        if (index == -1) {
-            Log.e(this.toString(), "Failed to get category index!!");
-            return;
-        }
-        category = Global.getInstance().getCategories().get(index);
-        if (category == null) {
-            Log.e(this.toString(), "Failed to get category at " + index);
-            getParentFragmentManager().popBackStack();
-            return;
-        }
         activity.setTitle(category.getTitle());
+
+        listener = (NoteListEventListener) requireContext();
+        listener.onNoteListLoad(category);
 
         noteItems = category.getNoteItems();
         if (noteItems == null) {
             Log.e(this.toString(), "Failed to get note list!!");
-            getParentFragmentManager().popBackStack();
+            listener.onNoteListClose();
             return;
-        }
-
-        // TODO: use a pool to store the data, don't retrieve data so frequently
-        try (DataBaseHelper dataBaseHelper = new DataBaseHelper(requireContext())) {
-            dataBaseHelper.start();
-            dataBaseHelper.queryNote(-1, category.getId(), noteItems);
-            dataBaseHelper.finish();
         }
 
         noteItemAdapter = new NoteListAdapter(noteItems);
@@ -96,103 +103,17 @@ public class NoteListFragment extends Fragment {
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
-        getParentFragmentManager().setFragmentResultListener(NoteDetailFragment.REQUEST_KEY,
-                this, new NoteDetailResultListener());
 
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        // TODO: use a pool, don't clear data so frequently
-        noteItems.clear();
-    }
-
-    class NoteDetailResultListener implements FragmentResultListener {
-
-        @Override
-        public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
-            int operation = result.getInt(NoteDetailFragment.ITEM_OPERATION);
-            Log.d(this.toString(), "NoteItem modify result code: " + operation);
-            if (operation == NoteDetailFragment.Operation.CANCELED.ordinal()) {
-                Log.i(this.toString(), "NoteItem modify canceled.");
-                return;
-            }
-
-            int index = result.getInt(NoteDetailFragment.ITEM_INDEX, -1);
-            if (index == -1) {
-                Log.e(this.toString(), "Failed to get item index, abort!");
-                return;
-            }
-
-            if (NoteDetailFragment.Operation.OK.ordinal() == operation) {
-                NoteItem item = (NoteItem) result.getSerializable(NoteDetailFragment.ITEM_OBJECT);
-
-                if (item == null) {
-                    Log.e(this.toString(), "Null item for result, should not happen, FIX THIS!!");
-                    return;
-                }
-
-                handleItemEdit(index, item);
-            } else if (NoteDetailFragment.Operation.DELETE.ordinal() == operation) {
-                handleItemDelete(index);
-            } else {
-                Log.e(this.toString(), "got a wrong operation: " + operation);
-            }
-        }
-    }
-
-    private void handleItemDelete(int index) {
-        Log.d(this.toString(), "trying to delete item: " + index);
-
+    private boolean handleItemCreate(NoteItem item) {
+        int index = listener.onNoteItemCreate(category, item);
         if (index == -1) {
-            Log.e(this.toString(), "Failed to get item index for deleting");
-            return;
+            return false;
         }
-
-        try (DataBaseHelper dbHelper = new DataBaseHelper(requireContext())){
-            NoteItem item = noteItems.get(index);
-            dbHelper.start();
-            if (0 == dbHelper.deleteNote(item.getId()))
-                Log.e(this.toString(), "no row be deleted");
-            dbHelper.finish();
-            noteItems.remove(index);
-            noteItemAdapter.notifyItemRemoved(index);
-            noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
-        } catch (Exception e) {
-            Log.e(this.toString(), "Failed to remove item at index: " +
-                    index + ", exception: " + e);
-        }
-    }
-
-    private void handleItemEdit(int index, NoteItem newItem) {
-        NoteItem oldItem = noteItems.get(index);
-        if (oldItem == null) {
-            Log.e(this.toString(), "Failed to get note item at: "+ index);
-            return;
-        }
-        newItem.setId(oldItem.getId());
-        try (DataBaseHelper dbHelper = new DataBaseHelper(requireContext())) {
-            dbHelper.start();
-            if (0 == dbHelper.updateNote(newItem)) {
-                Log.i(this.toString(), "no item was updated");
-            }
-            dbHelper.finish();
-        } catch (Exception exception) {
-            Log.e(this.toString(), "Failed to update note item in database: " + exception);
-            return;
-        }
-
-        Log.e(this.toString(), "category id: " + newItem.getCategoryId());
-        oldItem.update(newItem, true);
-        noteItemAdapter.notifyItemChanged(index);
-    }
-
-    private void handleItemAdd(NoteItem item) {
-        int index = noteItems.size();
-        noteItems.add(item);
         noteItemAdapter.notifyItemInserted(index);
         noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
+        return true;
     }
 
     class onItemAddClick implements View.OnClickListener {
@@ -204,35 +125,13 @@ public class NoteListFragment extends Fragment {
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
 
-            try (DataBaseHelper dataBaseHelper = new DataBaseHelper(requireContext())) {
-                dataBaseHelper.start();
-                item.setId(dataBaseHelper.insertNote(item));
-                dataBaseHelper.finish();
-            } catch (Exception e) {
-                Log.e(this.toString(), "Failed to add new item to database!");
-                return;
+            if (handleItemCreate(item)) {
+                // clear input box
+                etInputText.setText("");
+                // scroll to bottom
+                rlNoteList.smoothScrollToPosition(noteItemAdapter.getItemCount()-1);
             }
-
-            handleItemAdd(item);
-            // clear input box
-            etInputText.setText("");
-            // scroll to bottom
-            rlNoteList.smoothScrollToPosition(noteItemAdapter.getItemCount()-1);
         }
-    }
-
-    void triggerItemEdit(NoteItem e, int pos) {
-        Log.d(this.toString(), "item editing triggered");
-
-        Bundle bundle = new Bundle();
-        bundle.putInt(NoteDetailFragment.ITEM_INDEX, pos);
-        bundle.putSerializable(NoteDetailFragment.ITEM_OBJECT, e.clone());
-        NoteDetailFragment fragment = new NoteDetailFragment();
-        fragment.setArguments(bundle);
-        getParentFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .addToBackStack(null)
-                .commit();
     }
 
     private boolean handleItemCopy(NoteItem item) {
@@ -277,6 +176,16 @@ public class NoteListFragment extends Fragment {
         return true;
     }
 
+    private boolean handleItemDelete(NoteItem noteItem) {
+        int index = listener.onNoteItemDelete(category, noteItem);
+        if (index == -1) {
+            return false;
+        }
+        noteItemAdapter.notifyItemRemoved(index);
+        noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
+        return true;
+    }
+
     private void showItemPopMenu(int index, View v) {
         PopupMenu menu = new PopupMenu(requireContext(), v);
         NoteItem noteItem = noteItems.get(index);
@@ -290,11 +199,11 @@ public class NoteListFragment extends Fragment {
                 int item_id = menuItem.getItemId();
                 if (R.id.item_pop_m_delete == item_id) {
                     Log.d(this.toString(), "try to delete item at " + index);
-                    handleItemDelete(index);
+                    return handleItemDelete(noteItem);
                 } else if (R.id.item_pop_m_pin == item_id) {
                     Log.d(this.toString(), "try to Pin item at " + index);
                 } else if (R.id.item_pop_m_edit == item_id) {
-                    triggerItemEdit(noteItem, index);
+                    listener.onNoteDetailShow(noteItem);
                 } else if (R.id.item_pop_m_copy_text == item_id) {
                     Log.d(this.toString(), "copy item text at " + index +
                             ", content: " + noteItem.getText());
@@ -318,6 +227,34 @@ public class NoteListFragment extends Fragment {
         @Override
         public void onItemClick(int index, View v) {
             showItemPopMenu(index, v);
+        }
+    }
+
+    public enum ItemListState {
+        NONE,
+        CREATE,
+        REMOVE,
+        MODIFY,
+    }
+
+    public void notifyItemListChanged(ItemListState state, int index, NoteItem note) {
+        if (noteItems.get(index) != note) {
+            Log.e(this.toString(), "target NoteItem not exist in current category");
+            return;
+        }
+        switch (state) {
+            case CREATE:
+                noteItemAdapter.notifyItemInserted(index);
+                noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount()-1);
+                break;
+            case MODIFY:
+                noteItemAdapter.notifyItemChanged(index);
+                break;
+            case REMOVE:
+                noteItemAdapter.notifyItemRemoved(index);
+                noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount()-1);
+                break;
+            default:
         }
     }
 

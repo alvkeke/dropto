@@ -37,6 +37,24 @@ public class Category {
         needUpdate = true;
     }
 
+    public int indexNoteItem(NoteItem e) {
+        return noteItems.indexOf(e);
+    }
+
+    public void delNoteItem(NoteItem item) {
+        noteItems.remove(item);
+        // TODO: update previewText
+        needUpdate = true;
+    }
+
+    public NoteItem findNoteItem(long id) {
+        for (NoteItem e: noteItems) {
+            if (e.getId() == id) return e;
+        }
+        return null;
+    }
+
+
     public void setUpdated() {
         needUpdate = false;
     }
