@@ -24,26 +24,21 @@ public class FileHelper {
         return sb.toString();
     }
 
-    public static byte[] calculateMD5(FileDescriptor fd) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            try (FileInputStream fis = new FileInputStream(fd)){
-                fis.getChannel().position(0);
-                byte[] buffer = new byte[BUFFER_SIZE];
-                int n_bytes;
-                while ((n_bytes = fis.read(buffer)) != -1) {
-                    md.update(buffer, 0, n_bytes);
-                }
+    public static byte[] calculateMD5(FileDescriptor fd) throws Exception{
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        try (FileInputStream fis = new FileInputStream(fd)){
+            fis.getChannel().position(0);
+            byte[] buffer = new byte[BUFFER_SIZE];
+            int n_bytes;
+            while ((n_bytes = fis.read(buffer)) != -1) {
+                md.update(buffer, 0, n_bytes);
             }
-
-            byte[] digest = md.digest();
-            Log.e(LOG_TAG, "result digest: " + Arrays.toString(digest));
-
-            return digest;
-        } catch (Exception e) {
-            Log.e(LOG_TAG, "Failed to calc md5 of file: " + e);
-            return null;
         }
+
+        byte[] digest = md.digest();
+        Log.e(LOG_TAG, "result digest: " + Arrays.toString(digest));
+
+        return digest;
     }
 
     public static File md5ToFile(File folder, byte[] md5) {
@@ -51,21 +46,17 @@ public class FileHelper {
         return new File(folder, name);
     }
 
-    public static void copyFileTo(FileDescriptor fd, File dest) {
-        try {
-            FileInputStream fis = new FileInputStream(fd);
-            FileChannel srcChannel = fis.getChannel().position(0);
-            FileOutputStream fos = new FileOutputStream(dest);
-            FileChannel destChannel = fos.getChannel();
-            // do data copy
-            destChannel.transferFrom(srcChannel, 0, srcChannel.size());
-            srcChannel.close();
-            destChannel.close();
-            fis.close();
-            fos.close();
-        } catch (IOException e) {
-            Log.e(LOG_TAG, "Failed to copy file to: " + dest.getName());
-        }
+    public static void copyFileTo(FileDescriptor fd, File dest) throws IOException {
+        FileInputStream fis = new FileInputStream(fd);
+        FileChannel srcChannel = fis.getChannel().position(0);
+        FileOutputStream fos = new FileOutputStream(dest);
+        FileChannel destChannel = fos.getChannel();
+        // do data copy
+        destChannel.transferFrom(srcChannel, 0, srcChannel.size());
+        srcChannel.close();
+        destChannel.close();
+        fis.close();
+        fos.close();
     }
 
 }
