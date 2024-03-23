@@ -19,9 +19,10 @@ import java.util.ArrayList;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
-public class CategoryFragment extends Fragment {
+public class CategoryFragment extends Fragment implements SystemKeyListener {
 
     public interface CategoryEventListener {
         void onNoteListShow(Category category);
@@ -69,6 +70,11 @@ public class CategoryFragment extends Fragment {
         rlCategory.addItemDecoration(new DividerItemDecoration(activity, DividerItemDecoration.VERTICAL));
         categoryListAdapter.setItemClickListener(new onListItemClick());
 
+    }
+
+    @Override
+    public boolean onBackPressed() {
+        return false;
     }
 
     class onListItemClick implements CategoryListAdapter.OnItemClickListener {
