@@ -13,13 +13,8 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 
 import cn.alvkeke.dropto.R;
@@ -27,6 +22,7 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
 public class ShareRecvActivity extends AppCompatActivity {
@@ -122,65 +118,6 @@ public class ShareRecvActivity extends AppCompatActivity {
         return new NoteItem(text);
     }
 
-    private static final int BUFFER_SIZE = 1024;
-    File saveFileWithMd5Name(FileDescriptor fd, File storeFolder) {
-
-        String tempName = "tmp_" + System.nanoTime();
-        int name_idx = 0;
-        File fileTmp = new File(storeFolder, tempName);
-        while (fileTmp.exists()) {
-            fileTmp = new File(storeFolder, tempName + "_" + name_idx++);
-            if (name_idx >= 1000 ) {
-                Log.e(this.toString(), "Try names so many times, abort!!");
-                return null;
-            }
-        }
-        Log.d(this.toString(), "target name: " + fileTmp.getName());
-
-        byte[] buffer = new byte[BUFFER_SIZE];
-        int lenRead;
-        File fileTarget;
-        try {
-            FileInputStream fis = new FileInputStream(fd);
-            BufferedInputStream bis = new BufferedInputStream(fis);
-            DigestInputStream dis = new DigestInputStream(bis,
-                    MessageDigest.getInstance("MD5"));
-            FileOutputStream fos = new FileOutputStream(fileTmp);
-
-            while ((lenRead = dis.read(buffer)) != -1) {
-                fos.write(buffer, 0, lenRead);
-            }
-            fos.flush();
-            fos.close();
-            dis.close();
-
-            byte[] digest = dis.getMessageDigest().digest();
-            String md5 = bytesToHex(digest);
-            fileTarget = new File(storeFolder, md5);
-            boolean ret;
-            if (fileTarget.exists()) {
-                Log.i(this.toString(), "file with md5:" + md5 + " already exist, delete");
-                ret = fileTmp.delete();
-            } else {
-                ret = fileTmp.renameTo(fileTarget);
-            }
-            Log.d(this.toString(), "Operation result: " + ret);
-        } catch (Exception e) {
-            Log.e(this.toString(), "Failed to copy file: " + e);
-            return null;
-        }
-
-        return fileTarget;
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b & 0xff));
-        }
-        return sb.toString();
-    }
-
     NoteItem handleImage(Intent intent) {
         File storeFolder = Global.getInstance().getFileStoreFolder();
         if (storeFolder == null) {
@@ -200,8 +137,14 @@ public class ShareRecvActivity extends AppCompatActivity {
                 return null;
             }
             FileDescriptor fd = inputPFD.getFileDescriptor();
-            File retFile = saveFileWithMd5Name(fd, storeFolder);
-            Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
+            byte[] md5sum = FileHelper.calculateMD5(fd);
+            File retFile = FileHelper.md5ToFile(storeFolder, md5sum);
+            if (retFile.isFile() && retFile.exists()) {
+                Log.d(this.toString(), "File exist");
+            } else {
+                Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
+                FileHelper.copyFileTo(fd, retFile);
+            }
             String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
             NoteItem item = new NoteItem(ext_str == null ? "" : ext_str);
             item.setImageFile(retFile);

@@ -1,0 +1,71 @@
+package cn.alvkeke.dropto.storage;
+
+import android.util.Log;
+
+import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.util.Arrays;
+
+public class FileHelper {
+
+    private static final String LOG_TAG = "FileHelper";
+    private static final int BUFFER_SIZE = 1024;
+
+    public static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b & 0xff));
+        }
+        return sb.toString();
+    }
+
+    public static byte[] calculateMD5(FileDescriptor fd) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            try (FileInputStream fis = new FileInputStream(fd)){
+                fis.getChannel().position(0);
+                byte[] buffer = new byte[BUFFER_SIZE];
+                int n_bytes;
+                while ((n_bytes = fis.read(buffer)) != -1) {
+                    md.update(buffer, 0, n_bytes);
+                }
+            }
+
+            byte[] digest = md.digest();
+            Log.e(LOG_TAG, "result digest: " + Arrays.toString(digest));
+
+            return digest;
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Failed to calc md5 of file: " + e);
+            return null;
+        }
+    }
+
+    public static File md5ToFile(File folder, byte[] md5) {
+        String name = bytesToHex(md5);
+        return new File(folder, name);
+    }
+
+    public static void copyFileTo(FileDescriptor fd, File dest) {
+        try {
+            FileInputStream fis = new FileInputStream(fd);
+            FileChannel srcChannel = fis.getChannel().position(0);
+            FileOutputStream fos = new FileOutputStream(dest);
+            FileChannel destChannel = fos.getChannel();
+            // do data copy
+            destChannel.transferFrom(srcChannel, 0, srcChannel.size());
+            srcChannel.close();
+            destChannel.close();
+            fis.close();
+            fos.close();
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "Failed to copy file to: " + dest.getName());
+        }
+    }
+
+}
