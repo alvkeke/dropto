@@ -10,6 +10,7 @@ import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
@@ -153,7 +154,17 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             return;
         }
 
-        Cursor cursor = db.query(TABLE_CATEGORY, null, null, null, null, null, null);
+        String selection = null;
+        String[] args = null;
+        if (!categories.isEmpty()) {
+            selection = "_id NOT IN (" +  "?,".repeat(categories.size()-1) + "?)";
+            args = new String[categories.size()];
+            for (int i=0; i<args.length; i++) {
+                args[i] = String.valueOf(categories.get(i).getId());
+            }
+            Log.e(this.toString(), "args result: " + Arrays.toString(args));
+        }
+        Cursor cursor = db.query(TABLE_CATEGORY, null, selection, args, null, null, null);
         if (cursor == null) {
             Log.e(this.toString(), "Failed to get cursor");
             return;
