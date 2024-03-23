@@ -102,7 +102,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
         public void setImageFile(File imgfile) {
             if (imgfile == null) {
-                tvImageFile.setVisibility(View.GONE);
                 ivImage.setVisibility(View.GONE);
                 return;
             }
@@ -115,7 +114,14 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             resizeImage(bitmap);
             ivImage.setImageBitmap(bitmap);
             ivImage.setVisibility(View.VISIBLE);
-            tvImageFile.setText(imgfile.getName());
+        }
+
+        public void setImageName(String name) {
+            if (name == null) {
+                tvImageFile.setVisibility(View.GONE);
+                return;
+            }
+            tvImageFile.setText(name);
             tvImageFile.setVisibility(View.VISIBLE);
         }
 
@@ -142,11 +148,8 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setText(note.getText());
         holder.setCreateTime(note.getCreateTime());
         holder.setIsEdited(note.isEdited());
-        if (note.getImageFile() != null) {
-            holder.setImageFile(note.getImageFile());
-        } else {
-            holder.setImageFile(null);
-        }
+        holder.setImageFile(note.getImageFile());
+        holder.setImageName(note.getImageName());
         if (itemClickListener!=null) {
             holder.setClickListener(itemClickListener, position);
         }

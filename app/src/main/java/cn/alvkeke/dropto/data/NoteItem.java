@@ -17,6 +17,7 @@ public class NoteItem implements Cloneable, Serializable {
     private long _create_time_ms;
     private boolean _is_edited;
     private File _img_file;
+    private String _img_name;
 
     /**
      * construct a new NoteItem instance, with auto generated create_time
@@ -98,6 +99,14 @@ public class NoteItem implements Cloneable, Serializable {
 
     public File getImageFile() {
         return this._img_file;
+    }
+
+    public void setImageName(String name) {
+        this._img_name = name;
+    }
+
+    public String getImageName() {
+        return this._img_name;
     }
 
     @SuppressWarnings("unused")

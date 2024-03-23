@@ -1,9 +1,12 @@
 package cn.alvkeke.dropto.ui.activity;
 
+import android.content.ContentResolver;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -118,6 +121,23 @@ public class ShareRecvActivity extends AppCompatActivity {
         return new NoteItem(text);
     }
 
+    // TODO: seems ugly implementation, seek if there is better implementation
+    private String getFileNameFromUri(Uri uri) {
+        // ContentResolver to resolve the content Uri
+        ContentResolver resolver = getContentResolver();
+        // Query the file name from the content Uri
+        Cursor cursor = resolver.query(uri, null, null, null, null);
+        String fileName = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            if (index != -1) {
+                fileName = cursor.getString(index);
+            }
+            cursor.close();
+        }
+        return fileName;
+    }
+
     NoteItem handleImage(Intent intent) {
         File storeFolder = Global.getInstance().getFileStoreFolder();
         if (storeFolder == null) {
@@ -148,9 +168,10 @@ public class ShareRecvActivity extends AppCompatActivity {
             String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
             NoteItem item = new NoteItem(ext_str == null ? "" : ext_str);
             item.setImageFile(retFile);
+            item.setImageName(getFileNameFromUri(uri));
             return item;
         } catch (Exception e) {
-            Log.e(this.toString(), "Failed to get file fd: " + e);
+            Log.e(this.toString(), "Failed to store shared file: " + e);
         }
         return null;
     }

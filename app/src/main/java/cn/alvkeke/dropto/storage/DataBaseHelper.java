@@ -236,10 +236,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         String img_name = n.getImageFile() == null ? "" : n.getImageFile().getName();
         if (n.getId() == NoteItem.ID_NOT_ASSIGNED) {
             id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(),
-                    img_name, "");
+                    img_name, n.getImageName());
         } else {
             id = insertNote(n.getId(), n.getCategoryId(), n.getText(), n.getCreateTime(),
-                    img_name, "");
+                    img_name, n.getImageName());
         }
         if (id < 0) {
             Log.e(this.toString(), "Failed to insert note");
@@ -298,7 +298,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         File img_file = item.getImageFile();
         String s_img_file = img_file == null ? "" : img_file.getName();
         return updateNote(item.getId(), item.getCategoryId(), item.getText(),
-                item.getCreateTime(), s_img_file, "");
+                item.getCreateTime(), s_img_file, item.getImageName());
     }
 
     /**
@@ -352,7 +352,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
             @SuppressWarnings("unused")
             String img_name = cursor.getString(idx);
-//            Log.d(this.toString(), "image name: " + img_name);
 
             NoteItem e = new NoteItem(text, ctime);
             e.setId(id);
@@ -363,6 +362,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                     Log.e(this.toString(), "Failed to set image file: " + img_file);
                 }
             }
+            e.setImageName(img_name.isEmpty()? null : img_name);
             noteItems.add(e);
             n_notes++;
         }
