@@ -44,15 +44,15 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
         return fragments.size();
     }
 
-    public void createNoteListFragment(int index, Category c) {
-        NoteListFragment fragment = new NoteListFragment(index, c);
+    public void createNoteListFragment(Category c) {
+        NoteListFragment fragment = new NoteListFragment(c);
         removeFragment(FragmentType.NoteList);
         fragments.put(FragmentType.NoteList.ordinal(), fragment);
         notifyItemChanged(FragmentType.NoteList.ordinal());
     }
 
-    public void createNoteDetailFragment(int index, NoteItem item) {
-        NoteDetailFragment fragment = new NoteDetailFragment(index, item);
+    public void createNoteDetailFragment(NoteItem item) {
+        NoteDetailFragment fragment = new NoteDetailFragment(item);
         removeFragment(FragmentType.NoteDetail);
         fragments.put(FragmentType.NoteDetail.ordinal(), fragment);
         notifyItemChanged(FragmentType.NoteDetail.ordinal());

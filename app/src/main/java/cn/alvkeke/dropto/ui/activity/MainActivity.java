@@ -76,8 +76,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onNoteListShow(int index, Category category) {
-        fragmentAdapter.createNoteListFragment(index, category);
+    public void onNoteListShow(Category category) {
+        fragmentAdapter.createNoteListFragment(category);
         viewPager.setCurrentItem(1);
     }
 
@@ -88,28 +88,117 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onListDetailShow(int index, NoteItem item) {
-        fragmentAdapter.createNoteDetailFragment(index, item);
+    public void onNoteListLoad(Category c) {
+        if (!c.getNoteItems().isEmpty()) return;
+
+        try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
+            dataBaseHelper.start();
+            dataBaseHelper.queryNote(-1, c.getId(), c.getNoteItems());
+            dataBaseHelper.finish();
+        }
+    }
+
+    @Override
+    public int onNoteItemCreate(Category c, NoteItem newItem) {
+        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
+            dbHelper.start();
+            newItem.setId(dbHelper.insertNote(newItem));
+            dbHelper.finish();
+        } catch (Exception ex) {
+            Log.e(this.toString(), "Failed to add new item to database!");
+            return -1;
+        }
+
+        c.addNoteItem(newItem);
+        return c.getNoteItems().size()-1;
+    }
+
+    @Override
+    public int onNoteItemDelete(Category c, NoteItem e) {
+        int index = c.indexNoteItem(e);
+        if (index == -1) return -1;
+
+        try (DataBaseHelper dbHelper = new DataBaseHelper(this)){
+            dbHelper.start();
+            if (0 == dbHelper.deleteNote(e.getId()))
+                Log.e(this.toString(), "no row be deleted");
+            dbHelper.finish();
+            c.delNoteItem(e);
+        } catch (Exception ex) {
+            Log.e(this.toString(), "Failed to remove item with id " +
+                    e.getId() + ", exception: " + e);
+            return -1;
+        }
+        return index;
+    }
+
+    @Override
+    public void onNoteDetailShow(NoteItem item) {
+        fragmentAdapter.createNoteDetailFragment(item);
         viewPager.setCurrentItem(2);
     }
 
-    @Override
-    public void onNoteEdit(int index, NoteItem newNote) {
-        fragmentAdapter.getNoteListFragment().handleItemEdit(index, newNote);
+    public int onNoteItemModify(Category c, NoteItem newItem) {
+        NoteItem oldItem = c.findNoteItem(newItem.getId());
+        if (oldItem == null) {
+            Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
+            return -1;
+        }
+        Log.e(this.toString(), "newItem == oldItem: " + newItem.equals(oldItem));
+        int index = c.indexNoteItem(oldItem);
+        newItem.setId(oldItem.getId());
+        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
+            dbHelper.start();
+            if (0 == dbHelper.updateNote(newItem)) {
+                Log.i(this.toString(), "no item was updated");
+                return -1;
+            }
+            dbHelper.finish();
+        } catch (Exception exception) {
+            Log.e(this.toString(), "Failed to update note item in database: " + exception);
+            return -1;
+        }
+
+        Log.e(this.toString(), "category id: " + newItem.getCategoryId());
+        oldItem.update(newItem, true);
+        return index;
+    }
+
+    private Category findCategoryById(long id) {
+        ArrayList<Category> categories = Global.getInstance().getCategories();
+        for (Category c : categories) {
+            if (c.getId() == id) return c;
+        }
+        return null;
     }
 
     @Override
-    public void onNoteDelete(int index, NoteItem noteItem) {
-        fragmentAdapter.getNoteListFragment().handleItemDelete(index);
-    }
-
-    @Override
-    public void onNoteExit() {
+    public void onNoteDetailExit(NoteDetailFragment.Result result, NoteItem item) {
         fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteDetail);
-    }
-
-    @Override
-    public void onNoteAdd(NoteItem item) {
-        fragmentAdapter.getNoteListFragment().handleItemAdd(item);
+        NoteListFragment.ItemListState state;
+        Category c = findCategoryById(item.getCategoryId());
+        if (c == null) {
+            Log.e(this.toString(), "Failed to get Category of noteItem");
+            return;
+        }
+        int index = -1;
+        switch (result) {
+            case CREATED:
+                state = NoteListFragment.ItemListState.CREATE;
+                index = onNoteItemCreate(c, item);
+                break;
+            case MODIFIED:
+                state = NoteListFragment.ItemListState.MODIFY;
+                index = onNoteItemModify(c, item);
+                break;
+            case REMOVED:
+                state = NoteListFragment.ItemListState.REMOVE;
+                index = onNoteItemDelete(c, item);
+                break;
+            default:
+                state = NoteListFragment.ItemListState.NONE;
+        }
+        if (index == -1) return;
+        fragmentAdapter.getNoteListFragment().notifyItemListChanged(state, index, item);
     }
 }

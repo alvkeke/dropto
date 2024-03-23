@@ -24,7 +24,7 @@ import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 public class CategoryFragment extends Fragment {
 
     public interface CategoryEventListener {
-        void onNoteListShow(int index, Category category);
+        void onNoteListShow(Category category);
     }
 
     private CategoryListAdapter categoryListAdapter;
@@ -78,7 +78,7 @@ public class CategoryFragment extends Fragment {
             Log.d(this.toString(), "Category clicked on " + index);
             CategoryEventListener listener = (CategoryEventListener) requireContext();
             Category e = Global.getInstance().getCategories().get(index);
-            listener.onNoteListShow(index, e);
+            listener.onNoteListShow(e);
         }
     }
 }

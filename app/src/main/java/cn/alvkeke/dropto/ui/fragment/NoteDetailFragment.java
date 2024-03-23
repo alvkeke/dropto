@@ -16,20 +16,22 @@ import cn.alvkeke.dropto.data.NoteItem;
 
 public class NoteDetailFragment extends Fragment {
 
+    public enum Result {
+        CANCELED,
+        CREATED,
+        REMOVED,
+        MODIFIED,
+    }
+
     public interface NoteEventListener {
-        void onNoteEdit(int index, NoteItem newNote);
-        void onNoteDelete(int index, NoteItem noteItem);
-        void onNoteExit();
-        void onNoteAdd(NoteItem item);
+        void onNoteDetailExit(Result result, NoteItem e);
     }
 
     private NoteEventListener listener;
     private EditText etNoteItemText;
     private NoteItem item;
-    private final int index;
 
-    public NoteDetailFragment(int index, NoteItem item) {
-        this.index = index;
+    public NoteDetailFragment(NoteItem item) {
         this.item = item;
     }
 
@@ -72,12 +74,11 @@ public class NoteDetailFragment extends Fragment {
             String text = etNoteItemText.getText().toString();
             if (item == null) {
                 item = new NoteItem(text, System.currentTimeMillis());
-                listener.onNoteAdd(item);
+                listener.onNoteDetailExit(Result.CREATED, item);
             } else {
                 item.setText(text, true);
-                listener.onNoteEdit(index, item);
+                listener.onNoteDetailExit(Result.MODIFIED, item);
             }
-            listener.onNoteExit();
         }
     }
 
@@ -85,7 +86,7 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            listener.onNoteExit();
+            listener.onNoteDetailExit(Result.CANCELED, item);
         }
     }
 
@@ -93,8 +94,7 @@ public class NoteDetailFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            listener.onNoteDelete(index, item);
-            listener.onNoteExit();
+            listener.onNoteDetailExit(Result.REMOVED, item);
         }
     }
 }
