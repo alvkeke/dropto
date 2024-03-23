@@ -87,6 +87,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onNoteListShow(Category category) {
+        onNoteDetailExit(NoteDetailFragment.Result.CANCELED, null);
         fragmentAdapter.createNoteListFragment(category);
         viewPager.setCurrentItem(1);
     }
@@ -185,6 +186,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onNoteDetailExit(NoteDetailFragment.Result result, NoteItem item) {
         fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteDetail);
+        if (result == NoteDetailFragment.Result.CANCELED) return;
         NoteListFragment.ItemListState state;
         Category c = findCategoryById(item.getCategoryId());
         if (c == null) {
