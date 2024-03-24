@@ -27,6 +27,7 @@ import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
+import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
@@ -106,6 +107,20 @@ public class MainActivity extends AppCompatActivity
         onNoteDetailExit(NoteDetailFragment.Result.CANCELED, null);
         fragmentAdapter.createNoteListFragment(category);
         viewPager.setCurrentItem(1);
+    }
+
+    @Override
+    public void OnCategoryAdd() {
+        getSupportFragmentManager().beginTransaction()
+                .add(new CategoryDetailFragment(), null)
+                .commit();
+//        CategoryDetailFragment fragment = new CategoryDetailFragment();
+//        fragment.show(getSupportFragmentManager(), "log");
+    }
+
+    @Override
+    public void onCategoryDetail(Category c) {
+
     }
 
     @Override
