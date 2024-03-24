@@ -361,7 +361,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             String img_file = cursor.getString(idx);
             idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_NAME);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            @SuppressWarnings("unused")
             String img_name = cursor.getString(idx);
 
             NoteItem e = new NoteItem(text, ctime);
