@@ -228,7 +228,6 @@ public class MainActivity extends AppCompatActivity
             return -1;
         }
 
-        Log.e(this.toString(), "category id: " + newItem.getCategoryId());
         oldItem.update(newItem, true);
         return index;
     }

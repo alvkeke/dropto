@@ -55,6 +55,7 @@ public class NoteItem implements Cloneable, Serializable {
         setText(item.getText(), set_edited);
         setCreateTime(item.getCreateTime());
         setImageFile(item.getImageFile());
+        setImageName(item.getImageName());
         setCategoryId(item.getCategoryId());
     }
 
@@ -80,8 +81,9 @@ public class NoteItem implements Cloneable, Serializable {
     public boolean setImageFile(File img) {
 
         if (img == null) {
-            Log.d(this.toString(), "add image abort, null");
-            return false;
+            Log.d(this.toString(), "clear image");
+            this._img_file = null;
+            return true;
         }
         if (!img.exists()) {
             Log.d(this.toString(), "add image abort, file not exist: " + img);

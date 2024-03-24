@@ -9,4 +9,6 @@
     <string name="title_item_pop_menu_copy_text">Copy Text</string>
     <string name="title_item_pop_menu_share">Share</string>
     <string name="string_category_icon_description">Category Icon</string>
+    <string name="content_description_image_remove">Remove Image</string>
+    <string name="content_description_image_content">Image Content of NoteItem</string>
 </resources>
