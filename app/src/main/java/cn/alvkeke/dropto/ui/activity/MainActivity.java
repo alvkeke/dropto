@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.viewpager2.widget.ViewPager2;
@@ -72,6 +73,9 @@ public class MainActivity extends AppCompatActivity
             Log.e(this.toString(), "failed to retrieve data from database:" + e);
         }
 
+        getOnBackPressedDispatcher().
+                addCallback(this, new OnFragmentBackPressed(true));
+
         viewPager = findViewById(R.id.main_viewpager);
         fragmentAdapter = new MainFragmentAdapter(this);
         viewPager.setAdapter(fragmentAdapter);
@@ -82,12 +86,18 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        int index = viewPager.getCurrentItem();
-        SystemKeyListener listener = (SystemKeyListener) fragmentAdapter.getFragmentAt(index);
-        if (!listener.onBackPressed()) {
-            super.onBackPressed();
+    class OnFragmentBackPressed extends OnBackPressedCallback {
+        public OnFragmentBackPressed(boolean enabled) {
+            super(enabled);
+        }
+
+        @Override
+        public void handleOnBackPressed() {
+            int index = viewPager.getCurrentItem();
+            SystemKeyListener listener = (SystemKeyListener) fragmentAdapter.getFragmentAt(index);
+            if (!listener.onBackPressed()) {
+                MainActivity.this.finish();
+            }
         }
     }
 
