@@ -355,7 +355,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             String text = cursor.getString(idx);
             idx = cursor.getColumnIndex(NOTE_COLUMN_C_TIME);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            long ctime = cursor.getInt(idx);
+            long ctime = cursor.getLong(idx);
             idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_FILE);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
             String img_file = cursor.getString(idx);
