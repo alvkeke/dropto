@@ -4,15 +4,19 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.appbar.MaterialToolbar;
 
 import java.util.ArrayList;
 
@@ -56,9 +60,11 @@ public class CategoryFragment extends Fragment implements SystemKeyListener {
 
         Activity activity = requireActivity();
 
-        activity.setTitle("");
-
         RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
+        MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);
+
+        toolbar.inflateMenu(R.menu.category_toolbar);
+        toolbar.setOnMenuItemClickListener(new CategoryMenuListener());
 
         ArrayList<Category> categories = Global.getInstance().getCategories();
         categoryListAdapter = new CategoryListAdapter(categories);
@@ -70,6 +76,23 @@ public class CategoryFragment extends Fragment implements SystemKeyListener {
         rlCategory.addItemDecoration(new DividerItemDecoration(activity, DividerItemDecoration.VERTICAL));
         categoryListAdapter.setItemClickListener(new onListItemClick());
 
+    }
+
+    class CategoryMenuListener implements Toolbar.OnMenuItemClickListener {
+
+        @Override
+        public boolean onMenuItemClick(MenuItem item) {
+            int menuId = item.getItemId();
+            if (menuId == R.id.category_menu_item_add) {
+                Log.e(this.toString(), "Try add category");
+            } else if (menuId == R.id.category_menu_item_edit) {
+                Log.e(this.toString(), "Try edit categories");
+            } else {
+                Log.e(this.toString(), "Unknown menu id: " + menuId);
+                return false;
+            }
+            return true;
+        }
     }
 
     @Override

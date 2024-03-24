@@ -11,4 +11,6 @@
     <string name="string_category_icon_description">Category Icon</string>
     <string name="content_description_image_remove">Remove Image</string>
     <string name="content_description_image_content">Image Content of NoteItem</string>
+    <string name="category_menu_title_edit">Edit</string>
+    <string name="category_menu_title_add">Add</string>
 </resources>
