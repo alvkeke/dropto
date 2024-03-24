@@ -30,9 +30,12 @@ public class CategoryFragment extends Fragment implements SystemKeyListener {
 
     public interface CategoryEventListener {
         void onNoteListShow(Category category);
+        void OnCategoryAdd();
+        void onCategoryDetail(Category c);
     }
 
     private CategoryListAdapter categoryListAdapter;
+    private CategoryEventListener listener;
 
     @Override
     public void onResume() {
@@ -59,6 +62,7 @@ public class CategoryFragment extends Fragment implements SystemKeyListener {
         super.onViewCreated(view, savedInstanceState);
 
         Activity activity = requireActivity();
+        listener = (CategoryEventListener) activity;
 
         RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
         MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);
@@ -85,6 +89,7 @@ public class CategoryFragment extends Fragment implements SystemKeyListener {
             int menuId = item.getItemId();
             if (menuId == R.id.category_menu_item_add) {
                 Log.e(this.toString(), "Try add category");
+                listener.OnCategoryAdd();
             } else if (menuId == R.id.category_menu_item_edit) {
                 Log.e(this.toString(), "Try edit categories");
             } else {
