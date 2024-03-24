@@ -373,7 +373,9 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                     Log.e(this.toString(), "Failed to set image file: " + img_file);
                 }
             }
-            e.setImageName(img_name.isEmpty()? null : img_name);
+            if (img_name == null || img_name.isEmpty())
+                img_name = null;
+            e.setImageName(img_name);
             noteItems.add(e);
             n_notes++;
         }
