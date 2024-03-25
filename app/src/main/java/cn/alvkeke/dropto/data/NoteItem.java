@@ -12,12 +12,12 @@ public class NoteItem implements Cloneable, Serializable {
 
     public static final long ID_NOT_ASSIGNED = -1;
     private long id;
-    private long category_id;
-    private String _text;
-    private long _create_time_ms;
-    private boolean _is_edited;
-    private File _img_file;
-    private String _img_name;
+    private long categoryId;
+    private String text;
+    private long createTimeMs;
+    private boolean isEdited;
+    private File imgFile;
+    private String imgName;
 
     /**
      * construct a new NoteItem instance, with auto generated create_time
@@ -25,8 +25,8 @@ public class NoteItem implements Cloneable, Serializable {
      */
     public NoteItem(String text) {
         this.id = ID_NOT_ASSIGNED;
-        this._text = text;
-        this._create_time_ms = System.currentTimeMillis();
+        this.text = text;
+        this.createTimeMs = System.currentTimeMillis();
     }
 
     /**
@@ -37,17 +37,18 @@ public class NoteItem implements Cloneable, Serializable {
      */
     public NoteItem(String text, long create_time) {
         this.id = ID_NOT_ASSIGNED;
-        _text = text;
-        _create_time_ms = create_time;
+        this.text = text;
+        createTimeMs = create_time;
     }
 
     @NonNull
     @Override
     public NoteItem clone() {
-        NoteItem item = new NoteItem(_text, _create_time_ms);
+        NoteItem item = new NoteItem(text, createTimeMs);
         item.setId(this.id);
-        item.setCategoryId(this.category_id);
-        item.setImageFile(this._img_file);
+        item.setCategoryId(this.categoryId);
+        item.setImageFile(this.imgFile);
+        item.setImageName(this.imgName);
         return item;
     }
 
@@ -60,29 +61,29 @@ public class NoteItem implements Cloneable, Serializable {
     }
 
     public void setText(String text, boolean set_edited) {
-        _text = text;
+        this.text = text;
         if (set_edited) {
-            _is_edited = true;
+            isEdited = true;
         }
     }
 
     public String getText() {
-        return _text;
+        return text;
     }
 
     public void setCreateTime(long ms) {
-        this._create_time_ms = ms;
+        this.createTimeMs = ms;
     }
 
     public long getCreateTime() {
-        return _create_time_ms;
+        return createTimeMs;
     }
 
     public boolean setImageFile(File img) {
 
         if (img == null) {
             Log.d(this.toString(), "clear image");
-            this._img_file = null;
+            this.imgFile = null;
             return true;
         }
         if (!img.exists()) {
@@ -94,21 +95,21 @@ public class NoteItem implements Cloneable, Serializable {
             return false;
         }
 
-        this._img_file = img;
+        this.imgFile = img;
 
         return true;
     }
 
     public File getImageFile() {
-        return this._img_file;
+        return this.imgFile;
     }
 
     public void setImageName(String name) {
-        this._img_name = name;
+        this.imgName = name;
     }
 
     public String getImageName() {
-        return this._img_name;
+        return this.imgName;
     }
 
     @SuppressWarnings("unused")
@@ -119,7 +120,7 @@ public class NoteItem implements Cloneable, Serializable {
 
 
     public boolean isEdited() {
-        return _is_edited;
+        return isEdited;
     }
 
     public void setId(long id) {
@@ -131,10 +132,10 @@ public class NoteItem implements Cloneable, Serializable {
     }
 
     public void setCategoryId(long id) {
-        this.category_id = id;
+        this.categoryId = id;
     }
 
     public long getCategoryId() {
-        return this.category_id;
+        return this.categoryId;
     }
 }
