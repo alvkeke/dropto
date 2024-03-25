@@ -34,7 +34,7 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 
 public class MainActivity extends AppCompatActivity
         implements CategoryFragment.CategoryEventListener, NoteListFragment.NoteListEventListener,
-        NoteDetailFragment.NoteEventListener {
+        NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent {
 
     private ViewPager2 viewPager;
     private MainFragmentAdapter fragmentAdapter;
@@ -114,8 +114,59 @@ public class MainActivity extends AppCompatActivity
         getSupportFragmentManager().beginTransaction()
                 .add(new CategoryDetailFragment(), null)
                 .commit();
-//        CategoryDetailFragment fragment = new CategoryDetailFragment();
-//        fragment.show(getSupportFragmentManager(), "log");
+    }
+
+    private void createCategory(Category category) {
+        if (category == null) {
+            Log.e(this.toString(), "null category, abort creating");
+            return;
+        }
+
+        try (DataBaseHelper helper = new DataBaseHelper(this)) {
+            helper.start();
+            category.setId(helper.insertCategory(category));
+            helper.finish();
+            Global.getInstance().getCategories().add(category);
+        } catch (Exception ex) {
+            Log.e(this.toString(), "Failed to add new category to database");
+        }
+    }
+
+    private void deleteCategory(Category category) {
+        if (category == null) {
+            Log.e(this.toString(), "null category, abort deleting");
+            return;
+        }
+        ArrayList<Category> categories = Global.getInstance().getCategories();
+        if (!categories.contains(category)) {
+            Log.i(this.toString(), "category not exist in list, abort");
+            return;
+        }
+
+        try (DataBaseHelper helper = new DataBaseHelper(this)) {
+            helper.start();
+            if (0 == helper.deleteCategory(category.getId()))
+                Log.e(this.toString(), "no category row be deleted in database");
+            helper.finish();
+            categories.remove(category);
+        } catch (Exception ex) {
+            Log.e(this.toString(), "Failed to remove category with id " +
+                            category.getId() + ", exception: " + ex);
+        }
+    }
+
+    @Override
+    public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
+        switch (result) {
+            case CREATE:
+                createCategory(category);
+                break;
+            case DELETE:
+                deleteCategory(category);
+                break;
+            default:
+                Log.d(this.toString(), "other result: " + result);
+        }
     }
 
     @Override
