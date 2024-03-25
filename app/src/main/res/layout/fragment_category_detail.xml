@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.fragment.CategoryFragment">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/category_detail_toolbar"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="@color/design_default_color_primary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"/>
+
+    <EditText
+        android:id="@+id/category_detail_title"
+        app:layout_constraintTop_toBottomOf="@id/category_detail_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:minWidth="300dp"
+        android:hint="@string/hint_category_detail_name"
+        android:layout_margin="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        tools:ignore="TextFields"
+        android:importantForAutofill="no" />
+
+    <Button
+        android:id="@+id/category_detail_ok"
+        android:text="@string/string_ok"
+        app:layout_constraintTop_toBottomOf="@id/category_detail_title"
+        app:layout_constraintEnd_toEndOf="@id/category_detail_title"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/category_detail_cancel"
+        android:text="@string/string_cancel"
+        app:layout_constraintStart_toStartOf="@id/category_detail_title"
+        app:layout_constraintTop_toTopOf="@id/category_detail_ok"
+        android:backgroundTint="@color/design_default_color_error"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

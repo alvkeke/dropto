@@ -100,6 +100,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    private static final String CATEGORY_WHERE_CLAUSE_ID = CATEGORY_COLUMN_ID + " = ?";
     public long insertCategory(long id, String title, Category.Type type, String preview) throws SQLiteException{
         if (db == null) {
             Log.e(this.toString(), "database not opened");
@@ -142,6 +143,15 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         }
         c.setId(id);
         return id;
+    }
+
+    public int deleteCategory(long id) {
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return 0;
+        }
+        String[] args = { String.valueOf(id) };
+        return db.delete(TABLE_CATEGORY, CATEGORY_WHERE_CLAUSE_ID, args);
     }
 
     public void queryCategory(int max_num, ArrayList<Category> categories) {

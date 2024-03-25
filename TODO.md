@@ -1,7 +1,7 @@
 # TODO
 
 1. Category management
-   * [ ] category creating
+   * [x] category creating
    * [ ] category removing
    * [ ] category modifying
 2. Optimize procedure of loading data from database

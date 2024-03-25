@@ -27,13 +27,14 @@ import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
+import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 
 public class MainActivity extends AppCompatActivity
         implements CategoryFragment.CategoryEventListener, NoteListFragment.NoteListEventListener,
-        NoteDetailFragment.NoteEventListener {
+        NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent {
 
     private ViewPager2 viewPager;
     private MainFragmentAdapter fragmentAdapter;
@@ -106,6 +107,71 @@ public class MainActivity extends AppCompatActivity
         onNoteDetailExit(NoteDetailFragment.Result.CANCELED, null);
         fragmentAdapter.createNoteListFragment(category);
         viewPager.setCurrentItem(1);
+    }
+
+    @Override
+    public void OnCategoryAdd() {
+        getSupportFragmentManager().beginTransaction()
+                .add(new CategoryDetailFragment(), null)
+                .commit();
+    }
+
+    private void createCategory(Category category) {
+        if (category == null) {
+            Log.e(this.toString(), "null category, abort creating");
+            return;
+        }
+
+        try (DataBaseHelper helper = new DataBaseHelper(this)) {
+            helper.start();
+            category.setId(helper.insertCategory(category));
+            helper.finish();
+            Global.getInstance().getCategories().add(category);
+        } catch (Exception ex) {
+            Log.e(this.toString(), "Failed to add new category to database");
+        }
+    }
+
+    private void deleteCategory(Category category) {
+        if (category == null) {
+            Log.e(this.toString(), "null category, abort deleting");
+            return;
+        }
+        ArrayList<Category> categories = Global.getInstance().getCategories();
+        if (!categories.contains(category)) {
+            Log.i(this.toString(), "category not exist in list, abort");
+            return;
+        }
+
+        try (DataBaseHelper helper = new DataBaseHelper(this)) {
+            helper.start();
+            if (0 == helper.deleteCategory(category.getId()))
+                Log.e(this.toString(), "no category row be deleted in database");
+            helper.finish();
+            categories.remove(category);
+        } catch (Exception ex) {
+            Log.e(this.toString(), "Failed to remove category with id " +
+                            category.getId() + ", exception: " + ex);
+        }
+    }
+
+    @Override
+    public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
+        switch (result) {
+            case CREATE:
+                createCategory(category);
+                break;
+            case DELETE:
+                deleteCategory(category);
+                break;
+            default:
+                Log.d(this.toString(), "other result: " + result);
+        }
+    }
+
+    @Override
+    public void onCategoryDetail(Category c) {
+
     }
 
     @Override
