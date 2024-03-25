@@ -4,12 +4,12 @@
 
     <item android:id="@+id/category_menu_item_add"
         app:showAsAction="ifRoom"
-        android:icon="@drawable/icon_category_add"
+        android:icon="@drawable/icon_common_add"
         android:title="@string/category_menu_title_add"/>
 
     <item android:id="@+id/category_menu_item_edit"
         app:showAsAction="ifRoom"
-        android:icon="@drawable/icon_category_edit"
+        android:icon="@drawable/icon_common_edit"
         android:title="@string/category_menu_title_edit" />
 
 </menu>

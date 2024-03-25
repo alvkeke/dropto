@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+    <item
+        android:id="@+id/note_detail_menu_item_delete"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/icon_common_remove"
+        android:title="@string/string_delete" />
+
+    <item
+        android:id="@+id/note_detail_menu_item_ok"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/icon_common_check"
+        android:title="@string/string_ok" />
+
+</menu>

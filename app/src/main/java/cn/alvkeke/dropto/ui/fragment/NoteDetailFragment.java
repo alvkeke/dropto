@@ -5,17 +5,20 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.appbar.MaterialToolbar;
 
 import java.io.File;
 
@@ -60,9 +63,7 @@ public class NoteDetailFragment extends Fragment implements SystemKeyListener {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        Button btnOk = view.findViewById(R.id.note_detail_btn_ok);
-        Button btnCancel = view.findViewById(R.id.note_detail_btn_cancel);
-        Button btnDel = view.findViewById(R.id.note_detail_btn_del);
+        MaterialToolbar toolbar = view.findViewById(R.id.note_detail_toolbar);
         etNoteItemText = view.findViewById(R.id.note_detail_text);
         image_container = view.findViewById(R.id.note_detail_image_container);
         image_view = view.findViewById(R.id.note_detail_image_view);
@@ -74,9 +75,49 @@ public class NoteDetailFragment extends Fragment implements SystemKeyListener {
 
         listener = (NoteEventListener) requireContext();
 
-        btnOk.setOnClickListener(new ItemAddOk());
-        btnCancel.setOnClickListener(new ItemAddCanceled());
-        btnDel.setOnClickListener(new ItemDelete());
+        toolbar.inflateMenu(R.menu.note_detail_toolbar);
+        toolbar.setOnMenuItemClickListener(new NoteDetailMenuListener());
+        toolbar.setNavigationIcon(R.drawable.icon_common_back);
+        toolbar.setNavigationOnClickListener(new BackNavigationClick());
+    }
+
+    private class BackNavigationClick implements View.OnClickListener {
+        @Override
+        public void onClick(View view) {
+            listener.onNoteDetailExit(Result.CANCELED, item);
+        }
+    }
+
+    private void handleOk() {
+        String text = etNoteItemText.getText().toString();
+        if (item == null) {
+            item = new NoteItem(text, System.currentTimeMillis());
+            listener.onNoteDetailExit(Result.CREATED, item);
+        } else {
+            item.setText(text, true);
+            if (isRemoveImage) {
+                item.setImageName(null);
+                item.setImageFile(null);
+            }
+            listener.onNoteDetailExit(Result.MODIFIED, item);
+        }
+    }
+
+    private class NoteDetailMenuListener implements Toolbar.OnMenuItemClickListener {
+        @Override
+        public boolean onMenuItemClick(MenuItem menuItem) {
+            int menuId = menuItem.getItemId();
+            if (R.id.note_detail_menu_item_ok == menuId) {
+                handleOk();
+            } else if (R.id.note_detail_menu_item_delete == menuId) {
+                Log.d(this.toString(), "remove item");
+                listener.onNoteDetailExit(Result.REMOVED, item);
+            } else {
+                Log.e(this.toString(), "got unknown menu id: " + menuId);
+                return false;
+            }
+            return true;
+        }
     }
 
     @Override
@@ -112,38 +153,4 @@ public class NoteDetailFragment extends Fragment implements SystemKeyListener {
         image_view.setImageBitmap(bitmap);
     }
 
-    class ItemAddOk implements View.OnClickListener{
-
-        @Override
-        public void onClick(View v) {
-            String text = etNoteItemText.getText().toString();
-            if (item == null) {
-                item = new NoteItem(text, System.currentTimeMillis());
-                listener.onNoteDetailExit(Result.CREATED, item);
-            } else {
-                item.setText(text, true);
-                if (isRemoveImage) {
-                    item.setImageName(null);
-                    item.setImageFile(null);
-                }
-                listener.onNoteDetailExit(Result.MODIFIED, item);
-            }
-        }
-    }
-
-    class ItemAddCanceled implements View.OnClickListener {
-
-        @Override
-        public void onClick(View v) {
-            listener.onNoteDetailExit(Result.CANCELED, item);
-        }
-    }
-
-    class ItemDelete implements View.OnClickListener {
-
-        @Override
-        public void onClick(View v) {
-            listener.onNoteDetailExit(Result.REMOVED, item);
-        }
-    }
 }
