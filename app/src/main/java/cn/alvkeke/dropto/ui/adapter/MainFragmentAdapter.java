@@ -5,9 +5,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
-import java.util.HashMap;
-import java.util.Objects;
-
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
@@ -15,55 +12,63 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 public class MainFragmentAdapter extends FragmentStateAdapter {
 
     public enum FragmentType {
-        CategoryList,
+        Category,
         NoteList,
     }
 
-    private final HashMap<Integer, Fragment> fragments = new HashMap<>();
+    private final Fragment[] fragments = new Fragment[2];
 
     public MainFragmentAdapter(@NonNull FragmentActivity fragmentActivity) {
         super(fragmentActivity);
         CategoryFragment fragment = new CategoryFragment();
-        fragments.put(FragmentType.CategoryList.ordinal(), fragment);
+        fragments[FragmentType.Category.ordinal()] = fragment;
     }
 
     @NonNull
     @Override
     public Fragment createFragment(int i) {
-        Fragment fragment = fragments.get(i);
+        assert i < fragments.length;
+        Fragment fragment = fragments[i];
         if (fragment == null)
-            return Objects.requireNonNull(fragments.get(0));
+            return fragments[FragmentType.Category.ordinal()];
         return fragment;
     }
 
     @Override
     public int getItemCount() {
-        return fragments.size();
+        int n = 0;
+        for (Fragment f : fragments) {
+            if (f ==null) break;
+            n++;
+        }
+        return n;
     }
 
     public void createNoteListFragment(Category c) {
         NoteListFragment fragment = new NoteListFragment(c);
         removeFragment(FragmentType.NoteList);
-        fragments.put(FragmentType.NoteList.ordinal(), fragment);
+        fragments[FragmentType.NoteList.ordinal()] = fragment;
         notifyItemChanged(FragmentType.NoteList.ordinal());
     }
 
     public void removeFragment(FragmentType type) {
-        Fragment fragment = fragments.get(type.ordinal());
+        Fragment fragment = fragments[type.ordinal()];
         if (fragment == null) return;
-        fragments.remove(type.ordinal());
+        fragments[type.ordinal()].onDestroy();
+        fragments[type.ordinal()] = null;
+        // TODO: release the memory for fragment that no-need anymore, or try to not create new fragment
         notifyItemRemoved(type.ordinal());
     }
 
     public NoteListFragment getNoteListFragment() {
-        return (NoteListFragment) fragments.get(FragmentType.NoteList.ordinal());
+        return (NoteListFragment) fragments[FragmentType.NoteList.ordinal()];
     }
 
     public CategoryFragment getCategoryFragment() {
-        return (CategoryFragment) fragments.get(FragmentType.CategoryList.ordinal());
+        return (CategoryFragment) fragments[FragmentType.Category.ordinal()];
     }
 
     public Fragment getFragmentAt(int pos) {
-        return fragments.get(pos);
+        return fragments[pos];
     }
 }
