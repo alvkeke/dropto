@@ -24,7 +24,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
-import cn.alvkeke.dropto.ui.SystemKeyListener;
+import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
 public class NoteListFragment extends Fragment implements SystemKeyListener, ListNotification {

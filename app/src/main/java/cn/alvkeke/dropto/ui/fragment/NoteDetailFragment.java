@@ -24,7 +24,7 @@ import java.io.File;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.ui.SystemKeyListener;
+import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
 public class NoteDetailFragment extends Fragment implements SystemKeyListener {
 
