@@ -128,7 +128,7 @@ public class CategoryFragment extends Fragment implements SystemKeyListener, Lis
     public void notifyItemListChanged(ListNotification.Notify notify, int index, Object object) {
         ArrayList<Category> categories = Global.getInstance().getCategories();
         Category category = (Category) object;
-        if (categories.get(index) != category) {
+        if (notify != Notify.REMOVED && categories.get(index) != category) {
             Log.e(this.toString(), "target Category not exist");
             return;
         }

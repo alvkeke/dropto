@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.fragment;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -9,6 +10,7 @@ import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
@@ -47,20 +49,24 @@ public class CategoryDetailFragment extends DialogFragment{
         super.onViewCreated(view, savedInstanceState);
 
         MaterialToolbar toolbar = view.findViewById(R.id.category_detail_toolbar);
-        Button btnOk = view.findViewById(R.id.category_detail_ok);
-        Button btnCancel = view.findViewById(R.id.category_detail_cancel);
         etCategoryTitle = view.findViewById(R.id.category_detail_title);
+        Button btnDel = view.findViewById(R.id.category_detail_delete);
 
         listener = (CategoryDetailEvent) requireContext();
 
         if (category == null) {
             toolbar.setTitle("New Category:");
+            btnDel.setEnabled(false);
         } else {
             toolbar.setTitle("Edit Category:");
             loadCategory();
+            btnDel.setOnClickListener(new DeleteButtonClick());
         }
-        btnOk.setOnClickListener(new CategoryDetailOk());
-        btnCancel.setOnClickListener(new CategoryDetailCancel());
+        toolbar.inflateMenu(R.menu.fragment_category_detail);
+        toolbar.setNavigationIcon(R.drawable.icon_common_cross);
+        toolbar.setNavigationOnClickListener(view1 -> finish());
+
+        toolbar.setOnMenuItemClickListener(new MenuListener());
     }
 
     private void loadCategory() {
@@ -72,25 +78,36 @@ public class CategoryDetailFragment extends DialogFragment{
                 .remove(this).commit();
     }
 
-    private class CategoryDetailOk implements View.OnClickListener {
+    public void handleOkClick() {
+        String title = etCategoryTitle.getText().toString();
+        // TODO: fix category type
+        if (category == null) {
+            category = new Category(title, Category.Type.LOCAL_CATEGORY);
+            listener.onCategoryDetailFinish(Result.CREATE, category);
+        } else {
+            category.setTitle(title);
+            listener.onCategoryDetailFinish(Result.MODIFY, category);
+        }
+        finish();
+    }
+
+    private class MenuListener implements Toolbar.OnMenuItemClickListener {
         @Override
-        public void onClick(View view) {
-            String title = etCategoryTitle.getText().toString();
-            // TODO: fix category type
-            if (category == null) {
-                category = new Category(title, Category.Type.LOCAL_CATEGORY);
-                listener.onCategoryDetailFinish(Result.CREATE, category);
+        public boolean onMenuItemClick(MenuItem item) {
+            int menuId = item.getItemId();
+            if (R.id.category_detail_menu_ok == menuId) {
+                handleOkClick();
             } else {
-                category.setTitle(title);
-                listener.onCategoryDetailFinish(Result.MODIFY, category);
+                return false;
             }
-            finish();
+            return true;
         }
     }
 
-    private class CategoryDetailCancel implements View.OnClickListener {
+    private class DeleteButtonClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
+            listener.onCategoryDetailFinish(Result.DELETE, category);
             finish();
         }
     }
