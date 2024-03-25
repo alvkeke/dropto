@@ -80,6 +80,11 @@ public class ShareRecvActivity extends AppCompatActivity {
                 // no need to add item in noteItem list, item will be retrieved when list load
                 finish();
             }
+
+            @Override
+            public boolean onItemLongClick(int index, View v) {
+                return false;
+            }
         });
     }
 

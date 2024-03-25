@@ -13,7 +13,7 @@ public class Category {
     }
 
     private long id;
-    private final String title;
+    private String title;
     private final Type type;
     private String previewText = null;
     private final ArrayList<NoteItem> noteItems;
@@ -73,6 +73,10 @@ public class Category {
 
     public String getTitle() {
         return this.title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public Type getType() {

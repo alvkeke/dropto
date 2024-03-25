@@ -154,6 +154,24 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return db.delete(TABLE_CATEGORY, CATEGORY_WHERE_CLAUSE_ID, args);
     }
 
+    public int updateCategory(long id, String title, Category.Type type, String previewText) {
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return -1;
+        }
+        ContentValues values = new ContentValues();
+        values.put(CATEGORY_COLUMN_NAME, title);
+        values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
+        values.put(CATEGORY_COLUMN_PREVIEW, previewText);
+        String[] args = { String.valueOf(id) };
+        return db.update(TABLE_CATEGORY, values, CATEGORY_WHERE_CLAUSE_ID, args);
+    }
+
+    public int updateCategory(Category category) {
+        return updateCategory(category.getId(), category.getTitle(),
+                category.getType(), category.getPreviewText());
+    }
+
     public void queryCategory(int max_num, ArrayList<Category> categories) {
         if (db == null) {
             Log.e(this.toString(), "database not opened");

@@ -114,5 +114,42 @@ public class CategoryFragment extends Fragment implements SystemKeyListener {
             Category e = Global.getInstance().getCategories().get(index);
             listener.onNoteListShow(e);
         }
+
+        @Override
+        public boolean onItemLongClick(int index, View v) {
+            Category e = Global.getInstance().getCategories().get(index);
+            listener.onCategoryDetail(e);
+            return true;
+        }
     }
+
+    public enum CategoryNotify {
+        CREATED,
+        REMOVED,
+        MODIFIED,
+    }
+
+    public void notifyItemListChanged(CategoryNotify state, int index, Category category) {
+        ArrayList<Category> categories = Global.getInstance().getCategories();
+        if (categories.get(index) != category) {
+            Log.e(this.toString(), "target Category not exist");
+            return;
+        }
+
+        switch (state) {
+            case CREATED:
+                categoryListAdapter.notifyItemInserted(index);
+                categoryListAdapter.notifyItemRangeChanged(index, categoryListAdapter.getItemCount()-1);
+                break;
+            case MODIFIED:
+                categoryListAdapter.notifyItemChanged(index);
+                break;
+            case REMOVED:
+                categoryListAdapter.notifyItemRemoved(index);
+                categoryListAdapter.notifyItemRangeChanged(index, categoryListAdapter.getItemCount()-1);
+                break;
+            default:
+        }
+    }
+
 }

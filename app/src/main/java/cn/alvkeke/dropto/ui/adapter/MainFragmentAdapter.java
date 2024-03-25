@@ -69,6 +69,10 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
         return (NoteListFragment) fragments.get(FragmentType.NoteList.ordinal());
     }
 
+    public CategoryFragment getCategoryFragment() {
+        return (CategoryFragment) fragments.get(FragmentType.CategoryList.ordinal());
+    }
+
     public Fragment getFragmentAt(int pos) {
         return fragments.get(pos);
     }

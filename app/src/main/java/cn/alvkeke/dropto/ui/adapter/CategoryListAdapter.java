@@ -22,6 +22,7 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
 
     public interface OnItemClickListener {
         void onItemClick(int index, View v);
+        boolean onItemLongClick(int index, View v);
     }
 
     public CategoryListAdapter(ArrayList<Category> categories) {
@@ -70,6 +71,7 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
 
         public void setClickListener(OnItemClickListener listener, int pos) {
             parent.setOnClickListener(v -> listener.onItemClick(pos, v));
+            parent.setOnLongClickListener(v -> listener.onItemLongClick(pos, v));
         }
     }
 

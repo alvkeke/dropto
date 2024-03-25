@@ -112,7 +112,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void OnCategoryAdd() {
         getSupportFragmentManager().beginTransaction()
-                .add(new CategoryDetailFragment(), null)
+                .add(new CategoryDetailFragment(null), null)
                 .commit();
     }
 
@@ -155,23 +155,55 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
-        switch (result) {
-            case CREATE:
-                createCategory(category);
-                break;
-            case DELETE:
-                deleteCategory(category);
-                break;
-            default:
-                Log.d(this.toString(), "other result: " + result);
+    private void modifyCategory(Category category) {
+        if (category == null) {
+            Log.e(this.toString(), "null category, abort modifying");
+            return;
+        }
+        ArrayList<Category> categories = Global.getInstance().getCategories();
+        if (!categories.contains(category)) {
+            Log.e(this.toString(), "category not exist in list, arbot");
+            return;
+        }
+
+        try (DataBaseHelper helper = new DataBaseHelper(this)) {
+            helper.start();
+            if (0 == helper.updateCategory(category)) {
+                Log.e(this.toString(), "no category row be updated");
+            }
+            helper.finish();
         }
     }
 
     @Override
-    public void onCategoryDetail(Category c) {
+    public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
+        int index = Global.getInstance().getCategories().indexOf(category);
+        CategoryFragment.CategoryNotify state;
+        switch (result) {
+            case CREATE:
+                createCategory(category);
+                state = CategoryFragment.CategoryNotify.CREATED;
+                break;
+            case DELETE:
+                deleteCategory(category);
+                state = CategoryFragment.CategoryNotify.REMOVED;
+                break;
+            case MODIFY:
+                modifyCategory(category);
+                state = CategoryFragment.CategoryNotify.MODIFIED;
+                break;
+            default:
+                Log.d(this.toString(), "other result: " + result);
+                return;
+        }
+        fragmentAdapter.getCategoryFragment().notifyItemListChanged(state, index, category);
+    }
 
+    @Override
+    public void onCategoryDetail(Category c) {
+        getSupportFragmentManager().beginTransaction()
+                .add(new CategoryDetailFragment(c), null)
+                .commit();
     }
 
     @Override

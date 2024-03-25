@@ -20,6 +20,7 @@ public class CategoryDetailFragment extends DialogFragment{
 
     public enum Result {
         CREATE,
+        MODIFY,
         DELETE,
     }
 
@@ -29,6 +30,11 @@ public class CategoryDetailFragment extends DialogFragment{
 
     private CategoryDetailEvent listener;
     private EditText etCategoryTitle;
+    private Category category;
+
+    public CategoryDetailFragment(Category category) {
+        this.category = category;
+    }
 
     @Nullable
     @Override
@@ -47,9 +53,18 @@ public class CategoryDetailFragment extends DialogFragment{
 
         listener = (CategoryDetailEvent) requireContext();
 
-        toolbar.setTitle("New Category:");
+        if (category == null) {
+            toolbar.setTitle("New Category:");
+        } else {
+            toolbar.setTitle("Edit Category:");
+            loadCategory();
+        }
         btnOk.setOnClickListener(new CategoryDetailOk());
         btnCancel.setOnClickListener(new CategoryDetailCancel());
+    }
+
+    private void loadCategory() {
+        etCategoryTitle.setText(category.getTitle());
     }
 
     private void finish() {
@@ -62,8 +77,13 @@ public class CategoryDetailFragment extends DialogFragment{
         public void onClick(View view) {
             String title = etCategoryTitle.getText().toString();
             // TODO: fix category type
-            Category category = new Category(title, Category.Type.LOCAL_CATEGORY);
-            listener.onCategoryDetailFinish(Result.CREATE, category);
+            if (category == null) {
+                category = new Category(title, Category.Type.LOCAL_CATEGORY);
+                listener.onCategoryDetailFinish(Result.CREATE, category);
+            } else {
+                category.setTitle(title);
+                listener.onCategoryDetailFinish(Result.MODIFY, category);
+            }
             finish();
         }
     }
