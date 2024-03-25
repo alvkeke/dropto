@@ -117,31 +117,35 @@ public class MainActivity extends AppCompatActivity
                 .commit();
     }
 
-    private void createCategory(Category category) {
+    private int createCategory(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort creating");
-            return;
+            return -1;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
             category.setId(helper.insertCategory(category));
             helper.finish();
-            Global.getInstance().getCategories().add(category);
+            ArrayList<Category> categories = Global.getInstance().getCategories();
+            categories.add(category);
+            return categories.indexOf(category);
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to add new category to database");
+            return -1;
         }
     }
 
-    private void deleteCategory(Category category) {
+    private int deleteCategory(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort deleting");
-            return;
+            return -1;
         }
         ArrayList<Category> categories = Global.getInstance().getCategories();
-        if (!categories.contains(category)) {
+        int index;
+        if ((index = categories.indexOf(category)) == -1) {
             Log.i(this.toString(), "category not exist in list, abort");
-            return;
+            return -1;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -153,18 +157,21 @@ public class MainActivity extends AppCompatActivity
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to remove category with id " +
                             category.getId() + ", exception: " + ex);
+            return -1;
         }
+        return index;
     }
 
-    private void modifyCategory(Category category) {
+    private int modifyCategory(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort modifying");
-            return;
+            return -1;
         }
         ArrayList<Category> categories = Global.getInstance().getCategories();
-        if (!categories.contains(category)) {
+        int index;
+        if (-1 != (index = categories.indexOf(category))) {
             Log.e(this.toString(), "category not exist in list, arbot");
-            return;
+            return -1;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -173,24 +180,28 @@ public class MainActivity extends AppCompatActivity
                 Log.e(this.toString(), "no category row be updated");
             }
             helper.finish();
+        } catch (Exception ex) {
+            Log.e(this.toString(), "Failed to modify Category");
+            return -1;
         }
+        return index;
     }
 
     @Override
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
-        int index = Global.getInstance().getCategories().indexOf(category);
         ListNotification.Notify notify;
+        int index;
         switch (result) {
             case CREATE:
-                createCategory(category);
+                index = createCategory(category);
                 notify = ListNotification.Notify.CREATED;
                 break;
             case DELETE:
-                deleteCategory(category);
+                index = deleteCategory(category);
                 notify = ListNotification.Notify.REMOVED;
                 break;
             case MODIFY:
-                modifyCategory(category);
+                index = modifyCategory(category);
                 notify = ListNotification.Notify.MODIFIED;
                 break;
             default:
