@@ -25,6 +25,7 @@ import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
@@ -178,25 +179,25 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
         int index = Global.getInstance().getCategories().indexOf(category);
-        CategoryFragment.CategoryNotify state;
+        ListNotification.Notify notify;
         switch (result) {
             case CREATE:
                 createCategory(category);
-                state = CategoryFragment.CategoryNotify.CREATED;
+                notify = ListNotification.Notify.CREATED;
                 break;
             case DELETE:
                 deleteCategory(category);
-                state = CategoryFragment.CategoryNotify.REMOVED;
+                notify = ListNotification.Notify.REMOVED;
                 break;
             case MODIFY:
                 modifyCategory(category);
-                state = CategoryFragment.CategoryNotify.MODIFIED;
+                notify = ListNotification.Notify.MODIFIED;
                 break;
             default:
                 Log.d(this.toString(), "other result: " + result);
                 return;
         }
-        fragmentAdapter.getCategoryFragment().notifyItemListChanged(state, index, category);
+        fragmentAdapter.getCategoryFragment().notifyItemListChanged(notify, index, category);
     }
 
     @Override
@@ -342,30 +343,29 @@ public class MainActivity extends AppCompatActivity
     public void onNoteDetailExit(NoteDetailFragment.Result result, NoteItem item) {
         fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteDetail);
         if (result == NoteDetailFragment.Result.CANCELED) return;
-        NoteListFragment.ItemListState state;
         Category c = findCategoryById(item.getCategoryId());
         if (c == null) {
             Log.e(this.toString(), "Failed to get Category of noteItem");
             return;
         }
-        int index = -1;
+        int index;
+        ListNotification.Notify state;
         switch (result) {
             case CREATED:
-                state = NoteListFragment.ItemListState.CREATE;
+                state = ListNotification.Notify.CREATED;
                 index = onNoteItemCreate(c, item);
                 break;
             case MODIFIED:
-                state = NoteListFragment.ItemListState.MODIFY;
+                state = ListNotification.Notify.MODIFIED;
                 index = onNoteItemModify(c, item);
                 break;
             case REMOVED:
-                state = NoteListFragment.ItemListState.REMOVE;
+                state = ListNotification.Notify.REMOVED;
                 index = onNoteItemDelete(c, item);
                 break;
             default:
-                state = NoteListFragment.ItemListState.NONE;
+                return;
         }
-        if (index == -1) return;
         fragmentAdapter.getNoteListFragment().notifyItemListChanged(state, index, item);
     }
 }

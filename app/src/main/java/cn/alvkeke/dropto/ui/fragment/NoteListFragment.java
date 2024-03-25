@@ -23,10 +23,11 @@ import java.util.ArrayList;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
-public class NoteListFragment extends Fragment implements SystemKeyListener {
+public class NoteListFragment extends Fragment implements SystemKeyListener, ListNotification {
 
     public interface NoteListEventListener {
         void onNoteListClose();
@@ -189,27 +190,22 @@ public class NoteListFragment extends Fragment implements SystemKeyListener {
         }
     }
 
-    public enum ItemListState {
-        NONE,
-        CREATE,
-        REMOVE,
-        MODIFY,
-    }
-
-    public void notifyItemListChanged(ItemListState state, int index, NoteItem note) {
+    @Override
+    public void notifyItemListChanged(Notify notify, int index, Object object) {
+        NoteItem note = (NoteItem) object;
         if (noteItems.get(index) != note) {
             Log.e(this.toString(), "target NoteItem not exist in current category");
             return;
         }
-        switch (state) {
-            case CREATE:
+        switch (notify) {
+            case CREATED:
                 noteItemAdapter.notifyItemInserted(index);
                 noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount()-1);
                 break;
-            case MODIFY:
+            case MODIFIED:
                 noteItemAdapter.notifyItemChanged(index);
                 break;
-            case REMOVE:
+            case REMOVED:
                 noteItemAdapter.notifyItemRemoved(index);
                 noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount()-1);
                 break;

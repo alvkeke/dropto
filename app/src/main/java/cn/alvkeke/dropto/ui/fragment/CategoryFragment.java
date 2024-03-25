@@ -23,10 +23,11 @@ import java.util.ArrayList;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.SystemKeyListener;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
-public class CategoryFragment extends Fragment implements SystemKeyListener {
+public class CategoryFragment extends Fragment implements SystemKeyListener, ListNotification {
 
     public interface CategoryEventListener {
         void onNoteListShow(Category category);
@@ -123,20 +124,16 @@ public class CategoryFragment extends Fragment implements SystemKeyListener {
         }
     }
 
-    public enum CategoryNotify {
-        CREATED,
-        REMOVED,
-        MODIFIED,
-    }
-
-    public void notifyItemListChanged(CategoryNotify state, int index, Category category) {
+    @Override
+    public void notifyItemListChanged(ListNotification.Notify notify, int index, Object object) {
         ArrayList<Category> categories = Global.getInstance().getCategories();
+        Category category = (Category) object;
         if (categories.get(index) != category) {
             Log.e(this.toString(), "target Category not exist");
             return;
         }
 
-        switch (state) {
+        switch (notify) {
             case CREATED:
                 categoryListAdapter.notifyItemInserted(index);
                 categoryListAdapter.notifyItemRangeChanged(index, categoryListAdapter.getItemCount()-1);
