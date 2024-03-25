@@ -80,6 +80,10 @@ public class CategoryDetailFragment extends DialogFragment{
 
     public void handleOkClick() {
         String title = etCategoryTitle.getText().toString();
+        if (title.isEmpty()) {
+            finish();
+            return;
+        }
         // TODO: fix category type
         if (category == null) {
             category = new Category(title, Category.Type.LOCAL_CATEGORY);
