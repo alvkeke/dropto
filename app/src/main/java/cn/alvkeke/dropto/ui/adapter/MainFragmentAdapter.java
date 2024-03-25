@@ -9,9 +9,7 @@ import java.util.HashMap;
 import java.util.Objects;
 
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
-import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 
 public class MainFragmentAdapter extends FragmentStateAdapter {
@@ -19,7 +17,6 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
     public enum FragmentType {
         CategoryList,
         NoteList,
-        NoteDetail,
     }
 
     private final HashMap<Integer, Fragment> fragments = new HashMap<>();
@@ -49,13 +46,6 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
         removeFragment(FragmentType.NoteList);
         fragments.put(FragmentType.NoteList.ordinal(), fragment);
         notifyItemChanged(FragmentType.NoteList.ordinal());
-    }
-
-    public void createNoteDetailFragment(NoteItem item) {
-        NoteDetailFragment fragment = new NoteDetailFragment(item);
-        removeFragment(FragmentType.NoteDetail);
-        fragments.put(FragmentType.NoteDetail.ordinal(), fragment);
-        notifyItemChanged(FragmentType.NoteDetail.ordinal());
     }
 
     public void removeFragment(FragmentType type) {

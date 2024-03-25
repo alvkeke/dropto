@@ -105,7 +105,6 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onNoteListShow(Category category) {
-        onNoteDetailExit(NoteDetailFragment.Result.CANCELED, null);
         fragmentAdapter.createNoteListFragment(category);
         viewPager.setCurrentItem(1);
     }
@@ -313,8 +312,9 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onNoteDetailShow(NoteItem item) {
-        fragmentAdapter.createNoteDetailFragment(item);
-        viewPager.setCurrentItem(2);
+        getSupportFragmentManager().beginTransaction()
+                .add(new NoteDetailFragment(item), null)
+                .commit();
     }
 
     public int onNoteItemModify(Category c, NoteItem newItem) {
@@ -351,9 +351,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onNoteDetailExit(NoteDetailFragment.Result result, NoteItem item) {
-        fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteDetail);
-        if (result == NoteDetailFragment.Result.CANCELED) return;
+    public void onNoteDetailFinish(NoteDetailFragment.Result result, NoteItem item) {
         Category c = findCategoryById(item.getCategoryId());
         if (c == null) {
             Log.e(this.toString(), "Failed to get Category of noteItem");
@@ -362,15 +360,15 @@ public class MainActivity extends AppCompatActivity
         int index;
         ListNotification.Notify state;
         switch (result) {
-            case CREATED:
+            case CREATE:
                 state = ListNotification.Notify.CREATED;
                 index = onNoteItemCreate(c, item);
                 break;
-            case MODIFIED:
+            case MODIFY:
                 state = ListNotification.Notify.MODIFIED;
                 index = onNoteItemModify(c, item);
                 break;
-            case REMOVED:
+            case REMOVE:
                 state = ListNotification.Notify.REMOVED;
                 index = onNoteItemDelete(c, item);
                 break;

@@ -16,7 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.fragment.app.Fragment;
+import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
@@ -24,19 +24,17 @@ import java.io.File;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
-public class NoteDetailFragment extends Fragment implements SystemKeyListener {
+public class NoteDetailFragment extends DialogFragment {
 
     public enum Result {
-        CANCELED,
-        CREATED,
-        REMOVED,
-        MODIFIED,
+        CREATE,
+        REMOVE,
+        MODIFY,
     }
 
     public interface NoteEventListener {
-        void onNoteDetailExit(Result result, NoteItem e);
+        void onNoteDetailFinish(Result result, NoteItem e);
     }
 
     private NoteEventListener listener;
@@ -81,25 +79,30 @@ public class NoteDetailFragment extends Fragment implements SystemKeyListener {
         toolbar.setNavigationOnClickListener(new BackNavigationClick());
     }
 
+    private void finish() {
+        requireActivity().getSupportFragmentManager().beginTransaction()
+                .remove(this).commit();
+    }
+
     private class BackNavigationClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            listener.onNoteDetailExit(Result.CANCELED, item);
+            finish();
         }
     }
 
     private void handleOk() {
         String text = etNoteItemText.getText().toString();
         if (item == null) {
-            item = new NoteItem(text, System.currentTimeMillis());
-            listener.onNoteDetailExit(Result.CREATED, item);
+            item = new NoteItem(text);
+            listener.onNoteDetailFinish(Result.CREATE, item);
         } else {
             item.setText(text, true);
             if (isRemoveImage) {
                 item.setImageName(null);
                 item.setImageFile(null);
             }
-            listener.onNoteDetailExit(Result.MODIFIED, item);
+            listener.onNoteDetailFinish(Result.MODIFY, item);
         }
     }
 
@@ -111,19 +114,14 @@ public class NoteDetailFragment extends Fragment implements SystemKeyListener {
                 handleOk();
             } else if (R.id.note_detail_menu_item_delete == menuId) {
                 Log.d(this.toString(), "remove item");
-                listener.onNoteDetailExit(Result.REMOVED, item);
+                listener.onNoteDetailFinish(Result.REMOVE, item);
             } else {
                 Log.e(this.toString(), "got unknown menu id: " + menuId);
                 return false;
             }
+            finish();
             return true;
         }
-    }
-
-    @Override
-    public boolean onBackPressed() {
-        listener.onNoteDetailExit(Result.CANCELED, item);
-        return true;
     }
 
     /**

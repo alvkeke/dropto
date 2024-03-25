@@ -193,7 +193,7 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
     @Override
     public void notifyItemListChanged(Notify notify, int index, Object object) {
         NoteItem note = (NoteItem) object;
-        if (noteItems.get(index) != note) {
+        if (notify != Notify.REMOVED && noteItems.get(index) != note) {
             Log.e(this.toString(), "target NoteItem not exist in current category");
             return;
         }
