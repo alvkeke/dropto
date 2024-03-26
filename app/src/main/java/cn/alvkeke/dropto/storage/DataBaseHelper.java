@@ -362,7 +362,9 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             selection = NOTE_COLUMN_CATE_ID + " = ?";
             selectionArgs = new String[]{ String.valueOf(target_category_id), };
         }
-        Cursor cursor = db.query(TABLE_NOTE, null, selection, selectionArgs, null, null, null);
+        Cursor cursor = db.query(TABLE_NOTE, null, selection, selectionArgs,
+                null, null, NOTE_COLUMN_C_TIME + " DESC");
+        // reverse query by C_TIME, make sure the latest added item can be got
         if (cursor == null) {
             Log.e(this.toString(), "Failed to get cursor");
             return;

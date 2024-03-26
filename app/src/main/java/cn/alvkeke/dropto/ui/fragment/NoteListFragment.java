@@ -93,7 +93,8 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
         }
 
         noteItemAdapter = new NoteListAdapter(noteItems);
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(activity);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(activity);
+        layoutManager.setReverseLayout(true);
 
         rlNoteList.setAdapter(noteItemAdapter);
         rlNoteList.setLayoutManager(layoutManager);
@@ -110,14 +111,15 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
         return true;
     }
 
-    private boolean handleItemCreate(NoteItem item) {
+    private void handleItemCreate(NoteItem item) {
         int index = listener.onNoteItemCreate(category, item);
         if (index == -1) {
-            return false;
+            return;
         }
         noteItemAdapter.notifyItemInserted(index);
         noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
-        return true;
+        etInputText.setText("");    // clear input box
+        rlNoteList.smoothScrollToPosition(index);   // scroll to new item
     }
 
     class onItemAddClick implements View.OnClickListener {
@@ -129,12 +131,7 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
 
-            if (handleItemCreate(item)) {
-                // clear input box
-                etInputText.setText("");
-                // scroll to bottom
-                rlNoteList.smoothScrollToPosition(noteItemAdapter.getItemCount()-1);
-            }
+            handleItemCreate(item);
         }
     }
 

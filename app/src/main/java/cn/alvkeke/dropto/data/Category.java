@@ -30,11 +30,16 @@ public class Category {
         return noteItems;
     }
 
-    @SuppressWarnings("unused")
-    public void addNoteItem(NoteItem item) {
-        noteItems.add(item);
+    /**
+     * add a new item into category, and return its new index
+     * @param item new item object
+     * @return index of the new item
+     */
+    public int addNoteItem(NoteItem item) {
+        noteItems.add(0, item);
         previewText = item.getText();
         needUpdate = true;
+        return 0;   // return the index of the new item
     }
 
     public int indexNoteItem(NoteItem e) {

@@ -245,8 +245,7 @@ public class MainActivity extends AppCompatActivity
             return -1;
         }
 
-        c.addNoteItem(newItem);
-        return c.getNoteItems().size()-1;
+        return c.addNoteItem(newItem);
     }
 
     @Override
