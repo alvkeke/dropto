@@ -15,7 +15,7 @@ public class Category {
     private long id;
     private String title;
     private final Type type;
-    private String previewText = null;
+    private String previewText = "";
     private final ArrayList<NoteItem> noteItems;
     private boolean needUpdate = false;
 
@@ -48,7 +48,10 @@ public class Category {
 
     public void delNoteItem(NoteItem item) {
         noteItems.remove(item);
-        // TODO: update previewText
+        if (!noteItems.isEmpty()) {
+            NoteItem e = noteItems.get(0);
+            previewText = e.getText();
+        }
         needUpdate = true;
     }
 
@@ -77,7 +80,7 @@ public class Category {
     }
 
     public String getPreviewText() {
-        return previewText == null ? "" : previewText;
+        return previewText;
     }
 
     public String getTitle() {
