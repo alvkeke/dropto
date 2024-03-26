@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -24,6 +25,7 @@ public class CategoryDetailFragment extends DialogFragment{
         CREATE,
         MODIFY,
         DELETE,
+        FULL_DELETE,
     }
 
     public interface CategoryDetailEvent {
@@ -61,6 +63,7 @@ public class CategoryDetailFragment extends DialogFragment{
             toolbar.setTitle("Edit Category:");
             loadCategory();
             btnDel.setOnClickListener(new DeleteButtonClick());
+            btnDel.setOnLongClickListener(new DeleteButtonLongClick());
         }
         toolbar.inflateMenu(R.menu.fragment_category_detail);
         toolbar.setNavigationIcon(R.drawable.icon_common_cross);
@@ -108,11 +111,42 @@ public class CategoryDetailFragment extends DialogFragment{
         }
     }
 
+    private void showWarningDialog(Result result) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        String title, message;
+        switch (result) {
+            case FULL_DELETE:
+                title = "FULL_DELETE";
+                message = "Do you really want to delete this category, include its all noteItems?";
+                break;
+            case DELETE:
+                title = "DELETE";
+                message = "Do you want to delete this category(keep noteItems)";
+                break;
+            default:
+                return;
+        }
+        builder.setTitle(title)
+                .setMessage(message)
+                .setNegativeButton(R.string.string_cancel, null)
+                .setPositiveButton(R.string.string_ok, (dialogInterface, i) -> {
+                    listener.onCategoryDetailFinish(result, category);
+                    finish();
+                }).create().show();
+    }
+
     private class DeleteButtonClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            listener.onCategoryDetailFinish(Result.DELETE, category);
-            finish();
+            showWarningDialog(Result.DELETE);
+        }
+    }
+
+    private class DeleteButtonLongClick implements View.OnLongClickListener {
+        @Override
+        public boolean onLongClick(View view) {
+            showWarningDialog(Result.FULL_DELETE);
+            return true;
         }
     }
 }

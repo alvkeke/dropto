@@ -186,6 +186,20 @@ public class MainActivity extends AppCompatActivity
         return index;
     }
 
+    private int deleteCategoryRecursion(Category category) {
+        NoteItem e;
+        try (DataBaseHelper helper = new DataBaseHelper(this)) {
+            helper.start();
+            while (null != (e = category.getNoteItem(0))) {
+                if (0 == helper.deleteNote(e.getId()))
+                    Log.i(this.toString(), "no row be deleted");
+                category.delNoteItem(e);
+            }
+            helper.finish();
+        }
+        return deleteCategory(category);
+    }
+
     @Override
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
         ListNotification.Notify notify;
@@ -197,6 +211,10 @@ public class MainActivity extends AppCompatActivity
                 break;
             case DELETE:
                 index = deleteCategory(category);
+                notify = ListNotification.Notify.REMOVED;
+                break;
+            case FULL_DELETE:
+                index = deleteCategoryRecursion(category);
                 notify = ListNotification.Notify.REMOVED;
                 break;
             case MODIFY:

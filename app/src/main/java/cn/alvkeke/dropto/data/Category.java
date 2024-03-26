@@ -59,6 +59,10 @@ public class Category {
         return null;
     }
 
+    public NoteItem getNoteItem(int index) {
+        if (index >= noteItems.size()) return null;
+        return noteItems.get(index);
+    }
 
     public void setUpdated() {
         needUpdate = false;
