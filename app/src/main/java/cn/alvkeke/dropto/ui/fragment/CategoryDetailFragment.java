@@ -1,6 +1,7 @@
 package cn.alvkeke.dropto.ui.fragment;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -12,14 +13,16 @@ import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
-import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 
-public class CategoryDetailFragment extends DialogFragment{
+public class CategoryDetailFragment extends BottomSheetDialogFragment {
 
     public enum Result {
         CREATE,
@@ -38,6 +41,26 @@ public class CategoryDetailFragment extends DialogFragment{
 
     public CategoryDetailFragment(Category category) {
         this.category = category;
+    }
+
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+        BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+        dialog.setOnShowListener(dialogInterface -> {
+            // TODO: find another way, this seems ugly
+            View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            assert sheet != null;
+            int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
+            int peekHei = (int) (displayHei* 0.35);
+            BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
+            behavior.setPeekHeight(peekHei);
+
+            ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
+            layoutParams.height = displayHei;
+        });
+
+        return dialog;
     }
 
     @Nullable

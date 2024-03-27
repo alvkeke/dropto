@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -16,16 +17,18 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import java.io.File;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
 
-public class NoteDetailFragment extends DialogFragment {
+public class NoteDetailFragment extends BottomSheetDialogFragment {
 
     public enum Result {
         CREATE,
@@ -49,6 +52,26 @@ public class NoteDetailFragment extends DialogFragment {
 
     public NoteDetailFragment(NoteItem item) {
         this.item = item;
+    }
+
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+        BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+        dialog.setOnShowListener(dialogInterface -> {
+            // TODO: find another way, this seems ugly
+            View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            assert sheet != null;
+            int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
+            int peekHei = (int) (displayHei* 0.35);
+            BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
+            behavior.setPeekHeight(peekHei);
+
+            ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
+            layoutParams.height = displayHei;
+        });
+
+        return dialog;
     }
 
     @Nullable
