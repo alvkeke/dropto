@@ -1,12 +1,13 @@
 package cn.alvkeke.dropto.ui.fragment;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
@@ -54,24 +55,21 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
 
         MaterialToolbar toolbar = view.findViewById(R.id.category_detail_toolbar);
         etCategoryTitle = view.findViewById(R.id.category_detail_title);
-        Button btnDel = view.findViewById(R.id.category_detail_delete);
 
         listener = (CategoryDetailEvent) requireContext();
         setPeekHeight();
 
         if (category == null) {
             toolbar.setTitle("New Category:");
-            btnDel.setEnabled(false);
+            toolbar.setNavigationIcon(R.drawable.icon_common_cross);
+            toolbar.setNavigationOnClickListener(view1 -> finish());
         } else {
             toolbar.setTitle("Edit Category:");
+            toolbar.setNavigationIcon(R.drawable.icon_common_remove);
             loadCategory();
-            btnDel.setOnClickListener(new DeleteButtonClick());
-            btnDel.setOnLongClickListener(new DeleteButtonLongClick());
+            toolbar.setNavigationOnClickListener(new DeleteButtonClick());
         }
         toolbar.inflateMenu(R.menu.fragment_category_detail);
-        toolbar.setNavigationIcon(R.drawable.icon_common_cross);
-        toolbar.setNavigationOnClickListener(view1 -> finish());
-
         toolbar.setOnMenuItemClickListener(new MenuListener());
     }
 
@@ -127,42 +125,30 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         }
     }
 
-    private void showWarningDialog(Result result) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        String title, message;
-        switch (result) {
-            case FULL_DELETE:
-                title = "FULL_DELETE";
-                message = "Do you really want to delete this category, include its all noteItems?";
-                break;
-            case DELETE:
-                title = "DELETE";
-                message = "Do you want to delete this category(keep noteItems)";
-                break;
-            default:
-                return;
-        }
-        builder.setTitle(title)
-                .setMessage(message)
-                .setNegativeButton(R.string.string_cancel, null)
-                .setPositiveButton(R.string.string_ok, (dialogInterface, i) -> {
-                    listener.onCategoryDetailFinish(result, category);
-                    finish();
-                }).create().show();
+    private void showDeletingConfirm() {
+        Context context = requireContext();
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View dialog = inflater.inflate(R.layout.dialog_category_deleting, null);
+        builder.setView(dialog);
+
+        builder.setTitle("Delete category");
+        builder.setNegativeButton(R.string.string_cancel, null);
+        builder.setPositiveButton(R.string.string_ok, (dialogInterface, i) -> {
+            CheckBox checkBox = dialog.findViewById(R.id.dialog_category_delete_checkbox);
+            boolean full = checkBox.isChecked();
+            listener.onCategoryDetailFinish(full ? Result.FULL_DELETE : Result.DELETE, category);
+            finish();
+        });
+
+        builder.create().show();
     }
 
     private class DeleteButtonClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            showWarningDialog(Result.DELETE);
+            showDeletingConfirm();
         }
     }
 
-    private class DeleteButtonLongClick implements View.OnLongClickListener {
-        @Override
-        public boolean onLongClick(View view) {
-            showWarningDialog(Result.FULL_DELETE);
-            return true;
-        }
-    }
 }
