@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.ui.fragment;
 
-import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -54,26 +53,6 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         this.item = item;
     }
 
-    @NonNull
-    @Override
-    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
-        dialog.setOnShowListener(dialogInterface -> {
-            // TODO: find another way, this seems ugly
-            View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            assert sheet != null;
-            int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
-            int peekHei = (int) (displayHei* 0.35);
-            BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
-            behavior.setPeekHeight(peekHei);
-
-            ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
-            layoutParams.height = displayHei;
-        });
-
-        return dialog;
-    }
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -92,6 +71,8 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         image_name = view.findViewById(R.id.note_detail_image_name);
         image_md5 = view.findViewById(R.id.note_detail_image_md5);
 
+        setPeekHeight();
+
         if (item != null) loadItemData();
 
         listener = (NoteEventListener) requireContext();
@@ -100,6 +81,20 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         toolbar.setOnMenuItemClickListener(new NoteDetailMenuListener());
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
         toolbar.setNavigationOnClickListener(new BackNavigationClick());
+    }
+
+    private void setPeekHeight() {
+        // TODO: find another way, this seems ugly
+        BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
+        View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        assert sheet != null;
+        int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
+        int peekHei = (int) (displayHei* 0.35);
+        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
+        behavior.setPeekHeight(peekHei);
+
+        ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
+        layoutParams.height = displayHei;
     }
 
     private void finish() {

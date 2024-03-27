@@ -1,7 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -43,26 +42,6 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         this.category = category;
     }
 
-    @NonNull
-    @Override
-    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
-        dialog.setOnShowListener(dialogInterface -> {
-            // TODO: find another way, this seems ugly
-            View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            assert sheet != null;
-            int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
-            int peekHei = (int) (displayHei* 0.35);
-            BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
-            behavior.setPeekHeight(peekHei);
-
-            ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
-            layoutParams.height = displayHei;
-        });
-
-        return dialog;
-    }
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -78,6 +57,7 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         Button btnDel = view.findViewById(R.id.category_detail_delete);
 
         listener = (CategoryDetailEvent) requireContext();
+        setPeekHeight();
 
         if (category == null) {
             toolbar.setTitle("New Category:");
@@ -93,6 +73,20 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         toolbar.setNavigationOnClickListener(view1 -> finish());
 
         toolbar.setOnMenuItemClickListener(new MenuListener());
+    }
+
+    private void setPeekHeight() {
+        // TODO: find another way, this seems ugly
+        BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
+        View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        assert sheet != null;
+        int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
+        int peekHei = (int) (displayHei* 0.35);
+        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
+        behavior.setPeekHeight(peekHei);
+
+        ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
+        layoutParams.height = displayHei;
     }
 
     private void loadCategory() {
