@@ -103,8 +103,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     }
 
     private void finish() {
-        requireActivity().getSupportFragmentManager().beginTransaction()
-                .remove(this).commit();
+        this.dismiss();
     }
 
     private class BackNavigationClick implements View.OnClickListener {

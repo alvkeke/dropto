@@ -100,8 +100,7 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
     }
 
     private void finish() {
-        requireActivity().getSupportFragmentManager().beginTransaction()
-                .remove(this).commit();
+        this.dismiss();
     }
 
     public void handleOkClick() {
