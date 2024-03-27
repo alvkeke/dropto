@@ -136,14 +136,16 @@ public class CategoryFragment extends Fragment implements SystemKeyListener, Lis
         switch (notify) {
             case CREATED:
                 categoryListAdapter.notifyItemInserted(index);
-                categoryListAdapter.notifyItemRangeChanged(index, categoryListAdapter.getItemCount()-1);
+                categoryListAdapter.notifyItemRangeChanged(index,
+                        categoryListAdapter.getItemCount()-index);
                 break;
             case MODIFIED:
                 categoryListAdapter.notifyItemChanged(index);
                 break;
             case REMOVED:
                 categoryListAdapter.notifyItemRemoved(index);
-                categoryListAdapter.notifyItemRangeChanged(index, categoryListAdapter.getItemCount()-1);
+                categoryListAdapter.notifyItemRangeChanged(index,
+                        categoryListAdapter.getItemCount()-index);
                 break;
             default:
         }
