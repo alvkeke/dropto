@@ -136,7 +136,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         ArrayList<Category> categories = Global.getInstance().getCategories();
         int index;
-        if (-1 != (index = categories.indexOf(category))) {
+        if (-1 == (index = categories.indexOf(category))) {
             Log.e(this.toString(), "category not exist in list, abort");
             return;
         }
@@ -148,9 +148,9 @@ public class MainActivity extends AppCompatActivity implements
             }
             helper.finish();
             fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-                    ListNotification.Notify.MODIFIED, index, categories);
+                    ListNotification.Notify.MODIFIED, index, category);
         } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to modify Category");
+            Log.e(this.toString(), "Failed to modify Category: " + ex);
         }
     }
 
