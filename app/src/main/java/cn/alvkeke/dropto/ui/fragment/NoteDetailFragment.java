@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -66,11 +67,13 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         MaterialToolbar toolbar = view.findViewById(R.id.note_detail_toolbar);
         etNoteItemText = view.findViewById(R.id.note_detail_text);
         image_container = view.findViewById(R.id.note_detail_image_container);
+        ScrollView scroll_view = view.findViewById(R.id.note_detail_scroll);
         image_view = view.findViewById(R.id.note_detail_image_view);
         image_remove = view.findViewById(R.id.note_detail_image_remove);
         image_name = view.findViewById(R.id.note_detail_image_name);
         image_md5 = view.findViewById(R.id.note_detail_image_md5);
 
+        initEssentialVars();
         setPeekHeight();
 
         if (item != null) loadItemData();
@@ -81,19 +84,44 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         toolbar.setOnMenuItemClickListener(new NoteDetailMenuListener());
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
         toolbar.setNavigationOnClickListener(new BackNavigationClick());
+        scroll_view.setOnScrollChangeListener(new ScrollViewListener());
+    }
+
+    private boolean isDraggable = true;
+
+    class ScrollViewListener implements View.OnScrollChangeListener {
+
+        @Override
+        public void onScrollChange(View view, int x, int y, int i2, int i3) {
+            if (y <= 0) {
+                if (!isDraggable) {
+                    isDraggable = true;
+                    behavior.setDraggable(true);
+                }
+            } else {
+                if (isDraggable) {
+                    isDraggable = false;
+                    behavior.setDraggable(false);
+                }
+            }
+        }
+    }
+
+    View bottomSheet;
+    BottomSheetBehavior<View> behavior;
+    private void initEssentialVars() {
+        BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
+        bottomSheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        assert bottomSheet != null;
+        behavior = BottomSheetBehavior.from(bottomSheet);
     }
 
     private void setPeekHeight() {
         // TODO: find another way, this seems ugly
-        BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
-        View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-        assert sheet != null;
         int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
         int peekHei = (int) (displayHei* 0.35);
-        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
         behavior.setPeekHeight(peekHei);
-
-        ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
+        ViewGroup.LayoutParams layoutParams = bottomSheet.getLayoutParams();
         layoutParams.height = displayHei;
     }
 
