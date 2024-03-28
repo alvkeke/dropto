@@ -82,6 +82,7 @@ public class MainActivity extends AppCompatActivity implements
         Intent intent = getIntent();
         String action = intent.getAction();
         if (action == null) {
+            Toast.makeText(this, "action is null", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
