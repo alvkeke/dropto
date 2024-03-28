@@ -92,6 +92,7 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
             String content = etInputText.getText().toString();
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
+            setPendingItem(item);
             listener.onAttemptRecv(AttemptListener.Attempt.CREATE, category, item);
         }
     }
@@ -134,6 +135,14 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
         }
     }
 
+    private NoteItem pendingNoteItem = null;
+    private void setPendingItem(NoteItem item) {
+        pendingNoteItem = item;
+    }
+    private void clearPendingItem() {
+        pendingNoteItem = null;
+    }
+
     @Override
     public void notifyItemListChanged(Notify notify, int index, Object object) {
         NoteItem note = (NoteItem) object;
@@ -147,6 +156,11 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
                 noteItemAdapter.notifyItemRangeChanged(index,
                         noteItemAdapter.getItemCount() - index);
                 rlNoteList.smoothScrollToPosition(index);
+                if (note == pendingNoteItem) {
+                    clearPendingItem();
+                    // clear input box text for manually added item
+                    etInputText.setText("");
+                }
                 break;
             case MODIFIED:
                 noteItemAdapter.notifyItemChanged(index);
