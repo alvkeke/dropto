@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
@@ -29,7 +30,7 @@ import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
 public class MainActivity extends AppCompatActivity
-        implements CategoryFragment.CategoryEventListener, NoteListFragment.NoteListEventListener,
+        implements CategoryFragment.CategoryEventListener,
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent {
 
     private ViewPager2 viewPager;
@@ -71,7 +72,8 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onNoteListShow(Category category) {
-        fragmentAdapter.createNoteListFragment(category);
+        handleNoteLoad(category);
+        fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
         viewPager.setCurrentItem(1);
     }
 
@@ -201,14 +203,12 @@ public class MainActivity extends AppCompatActivity
                 .commit();
     }
 
-    @Override
-    public void onNoteListClose() {
+    private void handleNoteListExit() {
         viewPager.setCurrentItem(0);
         fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteList);
     }
 
-    @Override
-    public void onNoteListLoad(Category c) {
+    private void handleNoteLoad(Category c) {
         if (!c.getNoteItems().isEmpty()) return;
 
         try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
@@ -218,24 +218,24 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public int onNoteItemCreate(Category c, NoteItem newItem) {
+    private void handleNoteCreate(Category c, NoteItem newItem) {
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
             dbHelper.start();
             newItem.setId(dbHelper.insertNote(newItem));
             dbHelper.finish();
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to add new item to database!");
-            return -1;
+            return;
         }
 
-        return c.addNoteItem(newItem);
+        int index = c.addNoteItem(newItem);
+        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
+                ListNotification.Notify.CREATED, index, newItem);
     }
 
-    @Override
-    public int onNoteItemDelete(Category c, NoteItem e) {
+    private void handleNoteRemove(Category c, NoteItem e) {
         int index = c.indexNoteItem(e);
-        if (index == -1) return -1;
+        if (index == -1) return;
 
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)){
             dbHelper.start();
@@ -246,13 +246,14 @@ public class MainActivity extends AppCompatActivity
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to remove item with id " +
                     e.getId() + ", exception: " + e);
-            return -1;
+            return;
         }
-        return index;
+
+        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
+                ListNotification.Notify.REMOVED, index, e);
     }
 
-    @Override
-    public boolean onNoteItemShare(NoteItem item) {
+    private void handleNoteShare(NoteItem item) {
         Intent sendIntent = new Intent(Intent.ACTION_SEND);
 
         // add item text for sharing
@@ -275,36 +276,31 @@ public class MainActivity extends AppCompatActivity
             this.startActivity(shareIntent);
         } catch (Exception e) {
             Log.e(this.toString(), "Failed to create share Intent: " + e);
-            return false;
         }
-        return true;
     }
 
-    @Override
-    public boolean onNoteItemCopy(NoteItem e) {
+    private void handleNoteCopy(NoteItem e) {
         ClipboardManager clipboardManager =
                 (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboardManager == null) {
             Log.e(this.toString(), "Failed to get ClipboardManager");
-            return false;
+            return;
         }
         ClipData data = ClipData.newPlainText("text", e.getText());
         clipboardManager.setPrimaryClip(data);
-        return true;
     }
 
-    @Override
-    public void onNoteDetailShow(NoteItem item) {
+    private void handleNoteDetailShow(NoteItem item) {
         getSupportFragmentManager().beginTransaction()
                 .add(new NoteDetailFragment(item), null)
                 .commit();
     }
 
-    public int onNoteItemModify(Category c, NoteItem newItem) {
+    private void handleNoteUpdate(Category c, NoteItem newItem) {
         NoteItem oldItem = c.findNoteItem(newItem.getId());
         if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
-            return -1;
+            return;
         }
         Log.e(this.toString(), "newItem == oldItem: " + newItem.equals(oldItem));
         int index = c.indexNoteItem(oldItem);
@@ -313,16 +309,50 @@ public class MainActivity extends AppCompatActivity
             dbHelper.start();
             if (0 == dbHelper.updateNote(newItem)) {
                 Log.i(this.toString(), "no item was updated");
-                return -1;
+                return;
             }
             dbHelper.finish();
         } catch (Exception exception) {
             Log.e(this.toString(), "Failed to update note item in database: " + exception);
-            return -1;
+            return;
         }
 
         oldItem.update(newItem, true);
-        return index;
+        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
+                ListNotification.Notify.MODIFIED, index, newItem);
+    }
+
+    class NoteListAttemptListener implements NoteListFragment.AttemptListener {
+        @Override
+        public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
+            switch (attempt) {
+                case REMOVE:
+                    handleNoteRemove(c, e);
+                    break;
+                case CREATE:
+                    handleNoteCreate(c, e);
+                    break;
+                case DETAIL:
+                    handleNoteDetailShow(e);
+                    break;
+                case COPY:
+                    handleNoteCopy(e);
+                    break;
+                case EXIT:
+                    handleNoteListExit();
+                    break;
+                case SHARE:
+                    handleNoteShare(e);
+                    break;
+                case UPDATE:
+                    break;
+            }
+        }
+
+        @Override
+        public void onErrorRecv(String errorMessage) {
+            Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private Category findCategoryById(long id) {
@@ -340,24 +370,16 @@ public class MainActivity extends AppCompatActivity
             Log.e(this.toString(), "Failed to get Category of noteItem");
             return;
         }
-        int index;
-        ListNotification.Notify state;
         switch (result) {
             case CREATE:
-                state = ListNotification.Notify.CREATED;
-                index = onNoteItemCreate(c, item);
+                handleNoteCreate(c, item);
                 break;
             case MODIFY:
-                state = ListNotification.Notify.MODIFIED;
-                index = onNoteItemModify(c, item);
+                handleNoteUpdate(c, item);
                 break;
             case REMOVE:
-                state = ListNotification.Notify.REMOVED;
-                index = onNoteItemDelete(c, item);
+                handleNoteRemove(c, item);
                 break;
-            default:
-                return;
         }
-        fragmentAdapter.getNoteListFragment().notifyItemListChanged(state, index, item);
     }
 }

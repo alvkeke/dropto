@@ -44,8 +44,8 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
         return n;
     }
 
-    public void createNoteListFragment(Category c) {
-        NoteListFragment fragment = new NoteListFragment(c);
+    public void createNoteListFragment(NoteListFragment.AttemptListener listener, Category c) {
+        NoteListFragment fragment = new NoteListFragment(listener, c);
         removeFragment(FragmentType.NoteList);
         fragments[FragmentType.NoteList.ordinal()] = fragment;
         notifyItemChanged(FragmentType.NoteList.ordinal());
