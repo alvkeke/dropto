@@ -23,14 +23,13 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
-import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
+import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
-public class MainActivity extends AppCompatActivity
-        implements CategoryFragment.CategoryEventListener,
+public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent {
 
     private ViewPager2 viewPager;
@@ -47,6 +46,8 @@ public class MainActivity extends AppCompatActivity
 
         viewPager = findViewById(R.id.main_viewpager);
         fragmentAdapter = new MainFragmentAdapter(this);
+        fragmentAdapter.createCategoryListFragment(new CategoryListAttemptListener(),
+                Global.getInstance().getCategories());
         viewPager.setAdapter(fragmentAdapter);
 
         if (savedInstanceState != null) {
@@ -70,24 +71,16 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onNoteListShow(Category category) {
+    public void handleCategoryExpand(Category category) {
         handleNoteLoad(category);
         fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
         viewPager.setCurrentItem(1);
     }
 
-    @Override
-    public void OnCategoryAdd() {
-        getSupportFragmentManager().beginTransaction()
-                .add(new CategoryDetailFragment(null), null)
-                .commit();
-    }
-
-    private int createCategory(Category category) {
+    private void handleCategoryCreate(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort creating");
-            return -1;
+            return;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -96,23 +89,30 @@ public class MainActivity extends AppCompatActivity
             helper.finish();
             ArrayList<Category> categories = Global.getInstance().getCategories();
             categories.add(category);
-            return categories.indexOf(category);
+            int index = categories.indexOf(category);
+            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
+                    ListNotification.Notify.CREATED, index, categories);
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to add new category to database");
-            return -1;
         }
     }
 
-    private int deleteCategory(Category category) {
+    public void showCategoryCreatingDialog() {
+        getSupportFragmentManager().beginTransaction()
+                .add(new CategoryDetailFragment(null), null)
+                .commit();
+    }
+
+    private void handleCategoryRemove(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort deleting");
-            return -1;
+            return;
         }
         ArrayList<Category> categories = Global.getInstance().getCategories();
         int index;
         if ((index = categories.indexOf(category)) == -1) {
             Log.i(this.toString(), "category not exist in list, abort");
-            return -1;
+            return;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -121,24 +121,24 @@ public class MainActivity extends AppCompatActivity
                 Log.e(this.toString(), "no category row be deleted in database");
             helper.finish();
             categories.remove(category);
+            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
+                    ListNotification.Notify.REMOVED, index, category);
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to remove category with id " +
                             category.getId() + ", exception: " + ex);
-            return -1;
         }
-        return index;
     }
 
-    private int modifyCategory(Category category) {
+    private void handleCategoryUpdate(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort modifying");
-            return -1;
+            return;
         }
         ArrayList<Category> categories = Global.getInstance().getCategories();
         int index;
         if (-1 != (index = categories.indexOf(category))) {
-            Log.e(this.toString(), "category not exist in list, arbot");
-            return -1;
+            Log.e(this.toString(), "category not exist in list, abort");
+            return;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -147,14 +147,14 @@ public class MainActivity extends AppCompatActivity
                 Log.e(this.toString(), "no category row be updated");
             }
             helper.finish();
+            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
+                    ListNotification.Notify.MODIFIED, index, categories);
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to modify Category");
-            return -1;
         }
-        return index;
     }
 
-    private int deleteCategoryRecursion(Category category) {
+    private void deleteCategoryRecursion(Category category) {
         NoteItem e;
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
@@ -165,42 +165,56 @@ public class MainActivity extends AppCompatActivity
             }
             helper.finish();
         }
-        return deleteCategory(category);
+        handleCategoryRemove(category);
     }
 
     @Override
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
-        ListNotification.Notify notify;
-        int index;
         switch (result) {
             case CREATE:
-                index = createCategory(category);
-                notify = ListNotification.Notify.CREATED;
+                handleCategoryCreate(category);
                 break;
             case DELETE:
-                index = deleteCategory(category);
-                notify = ListNotification.Notify.REMOVED;
+                handleCategoryRemove(category);
                 break;
             case FULL_DELETE:
-                index = deleteCategoryRecursion(category);
-                notify = ListNotification.Notify.REMOVED;
+                deleteCategoryRecursion(category);
                 break;
             case MODIFY:
-                index = modifyCategory(category);
-                notify = ListNotification.Notify.MODIFIED;
+                handleCategoryUpdate(category);
                 break;
             default:
                 Log.d(this.toString(), "other result: " + result);
-                return;
         }
-        fragmentAdapter.getCategoryFragment().notifyItemListChanged(notify, index, category);
     }
 
-    @Override
-    public void onCategoryDetail(Category c) {
+    private void handleCategoryDetailShow(Category c) {
         getSupportFragmentManager().beginTransaction()
                 .add(new CategoryDetailFragment(c), null)
                 .commit();
+    }
+
+    class CategoryListAttemptListener implements CategoryListFragment.AttemptListener {
+
+        @Override
+        public void onAttemptRecv(Attempt attempt, Category category) {
+            switch (attempt) {
+                case DETAIL:
+                    handleCategoryDetailShow(category);
+                    break;
+                case CREATE:
+                    showCategoryCreatingDialog();
+                    break;
+                case EXPAND:
+                    handleCategoryExpand(category);
+                    break;
+            }
+        }
+
+        @Override
+        public void onErrorRecv(String errorMessage) {
+            Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void handleNoteListExit() {

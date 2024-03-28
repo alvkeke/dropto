@@ -5,8 +5,10 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
+import java.util.ArrayList;
+
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.ui.fragment.CategoryFragment;
+import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 
 public class MainFragmentAdapter extends FragmentStateAdapter {
@@ -20,8 +22,6 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
 
     public MainFragmentAdapter(@NonNull FragmentActivity fragmentActivity) {
         super(fragmentActivity);
-        CategoryFragment fragment = new CategoryFragment();
-        fragments[FragmentType.Category.ordinal()] = fragment;
     }
 
     @NonNull
@@ -44,6 +44,13 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
         return n;
     }
 
+    public void createCategoryListFragment(CategoryListFragment.AttemptListener listener, ArrayList<Category> categories) {
+        if (fragments[FragmentType.Category.ordinal()] != null) return;
+        CategoryListFragment fragment = new CategoryListFragment(listener, categories);
+        fragments[FragmentType.Category.ordinal()] = fragment;
+        notifyItemInserted(FragmentType.Category.ordinal());
+    }
+
     public void createNoteListFragment(NoteListFragment.AttemptListener listener, Category c) {
         NoteListFragment fragment = new NoteListFragment(listener, c);
         removeFragment(FragmentType.NoteList);
@@ -64,8 +71,8 @@ public class MainFragmentAdapter extends FragmentStateAdapter {
         return (NoteListFragment) fragments[FragmentType.NoteList.ordinal()];
     }
 
-    public CategoryFragment getCategoryFragment() {
-        return (CategoryFragment) fragments[FragmentType.Category.ordinal()];
+    public CategoryListFragment getCategoryFragment() {
+        return (CategoryListFragment) fragments[FragmentType.Category.ordinal()];
     }
 
     public Fragment getFragmentAt(int pos) {
