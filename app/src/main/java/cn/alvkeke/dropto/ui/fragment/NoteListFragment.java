@@ -1,10 +1,9 @@
 package cn.alvkeke.dropto.ui.fragment;
 
-import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -18,50 +17,38 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.ArrayList;
-
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
-import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 
 public class NoteListFragment extends Fragment implements SystemKeyListener, ListNotification {
 
-    public interface NoteListEventListener {
-        void onNoteListClose();
-        void onNoteListLoad(Category c);
-
-        /**
-         * handle item creating
-         * @param c target category
-         * @param e new item
-         * @return index for the new item, -1 for failed to create
-         */
-        int onNoteItemCreate(Category c, NoteItem e);
-
-        /**
-         * handle item deleting
-         * @param c target category
-         * @param e target item to delete
-         * @return index for deleted item, -1 for failed to delete
-         */
-        int onNoteItemDelete(Category c, NoteItem e);
-        boolean onNoteItemShare(NoteItem e);
-        boolean onNoteItemCopy(NoteItem e);
-        void onNoteDetailShow(NoteItem item);
+    public interface AttemptListener {
+        enum Attempt {
+            EXIT,
+            CREATE,
+            REMOVE,
+            UPDATE,
+            DETAIL,
+            COPY,
+            SHARE,
+        }
+        void onAttemptRecv(Attempt attempt, Category category, NoteItem e);
+        void onErrorRecv(String errorMessage);
     }
 
-    private NoteListEventListener listener;
+    private Context context;
+    private final AttemptListener listener;
     Category category;
-    ArrayList<NoteItem> noteItems;
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
     private RecyclerView rlNoteList;
 
-    public NoteListFragment(Category category) {
-        assert category != null;
+    public NoteListFragment(@NonNull AttemptListener listener, @NonNull Category category) {
+        this.listener = listener;
         this.category = category;
     }
 
@@ -74,106 +61,66 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        Activity activity = requireActivity();
+        context = requireContext();
 
         rlNoteList = view.findViewById(R.id.rlist_notes);
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
         etInputText = view.findViewById(R.id.input_text);
 
-        activity.setTitle(category.getTitle());
-
-        listener = (NoteListEventListener) requireContext();
-        listener.onNoteListLoad(category);
-
-        noteItems = category.getNoteItems();
-        if (noteItems == null) {
-            Log.e(this.toString(), "Failed to get note list!!");
-            listener.onNoteListClose();
-            return;
-        }
-
-        noteItemAdapter = new NoteListAdapter(noteItems);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(activity);
+        noteItemAdapter = new NoteListAdapter(category.getNoteItems());
+        LinearLayoutManager layoutManager = new LinearLayoutManager(context);
         layoutManager.setReverseLayout(true);
 
         rlNoteList.setAdapter(noteItemAdapter);
         rlNoteList.setLayoutManager(layoutManager);
-        rlNoteList.addItemDecoration(new DividerItemDecoration(activity, DividerItemDecoration.VERTICAL));
+        rlNoteList.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
-
     }
 
     @Override
     public boolean onBackPressed() {
-        listener.onNoteListClose();
+        listener.onAttemptRecv(AttemptListener.Attempt.EXIT, category, null);
         return true;
-    }
-
-    private void handleItemCreate(NoteItem item) {
-        int index = listener.onNoteItemCreate(category, item);
-        if (index == -1) {
-            return;
-        }
-        noteItemAdapter.notifyItemInserted(index);
-        noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
-        etInputText.setText("");    // clear input box
-        rlNoteList.smoothScrollToPosition(index);   // scroll to new item
     }
 
     class onItemAddClick implements View.OnClickListener {
 
         @Override
         public void onClick(View v) {
-            Log.e(this.toString(), "add btn clicked");
             String content = etInputText.getText().toString();
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
-
-            handleItemCreate(item);
+            listener.onAttemptRecv(AttemptListener.Attempt.CREATE, category, item);
         }
-    }
-
-    private boolean handleItemDelete(NoteItem noteItem) {
-        int index = listener.onNoteItemDelete(category, noteItem);
-        if (index == -1) {
-            return false;
-        }
-        noteItemAdapter.notifyItemRemoved(index);
-        noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount());
-        return true;
     }
 
     private void showItemPopMenu(int index, View v) {
-        PopupMenu menu = new PopupMenu(requireContext(), v);
-        NoteItem noteItem = noteItems.get(index);
+        PopupMenu menu = new PopupMenu(context, v);
+        NoteItem noteItem = category.getNoteItem(index);
         if (noteItem == null) {
-            Log.e(this.toString(), "Failed to get note item at " + index + ", abort");
+            listener.onErrorRecv("Failed to get note item at " + index + ", abort");
             return;
         }
-        menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                int item_id = menuItem.getItemId();
-                if (R.id.item_pop_m_delete == item_id) {
-                    Log.d(this.toString(), "try to delete item at " + index);
-                    return handleItemDelete(noteItem);
-                } else if (R.id.item_pop_m_pin == item_id) {
-                    Log.d(this.toString(), "try to Pin item at " + index);
-                } else if (R.id.item_pop_m_edit == item_id) {
-                    listener.onNoteDetailShow(noteItem);
-                } else if (R.id.item_pop_m_copy_text == item_id) {
-                    return listener.onNoteItemCopy(noteItem);
-                } else if (R.id.item_pop_m_share == item_id) {
-                    return listener.onNoteItemShare(noteItem);
-                } else {
-                    Log.e(this.toString(),
-                            "Unknown menu id: " + getResources().getResourceEntryName(item_id));
-                    return false;
-                }
-                return true;
+        menu.setOnMenuItemClickListener(menuItem -> {
+            int item_id = menuItem.getItemId();
+            if (R.id.item_pop_m_delete == item_id) {
+                listener.onAttemptRecv(AttemptListener.Attempt.REMOVE, category, noteItem);
+            } else if (R.id.item_pop_m_pin == item_id) {
+                listener.onErrorRecv("try to Pin item at " + index);
+            } else if (R.id.item_pop_m_edit == item_id) {
+                listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, category, noteItem);
+            } else if (R.id.item_pop_m_copy_text == item_id) {
+                listener.onAttemptRecv(AttemptListener.Attempt.COPY, category, noteItem);
+            } else if (R.id.item_pop_m_share == item_id) {
+                listener.onAttemptRecv(AttemptListener.Attempt.SHARE, category, noteItem);
+            } else {
+                listener.onErrorRecv( "Unknown menu id: " +
+                        getResources().getResourceEntryName(item_id));
+                return false;
             }
+            return true;
         });
         menu.inflate(R.menu.item_pop_menu);
         menu.show();
@@ -190,21 +137,24 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
     @Override
     public void notifyItemListChanged(Notify notify, int index, Object object) {
         NoteItem note = (NoteItem) object;
-        if (notify != Notify.REMOVED && noteItems.get(index) != note) {
+        if (note.getCategoryId() != category.getId()) {
             Log.e(this.toString(), "target NoteItem not exist in current category");
             return;
         }
         switch (notify) {
             case CREATED:
                 noteItemAdapter.notifyItemInserted(index);
-                noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount()-1);
+                noteItemAdapter.notifyItemRangeChanged(index,
+                        noteItemAdapter.getItemCount() - index);
+                rlNoteList.smoothScrollToPosition(index);
                 break;
             case MODIFIED:
                 noteItemAdapter.notifyItemChanged(index);
                 break;
             case REMOVED:
                 noteItemAdapter.notifyItemRemoved(index);
-                noteItemAdapter.notifyItemRangeChanged(index, noteItemAdapter.getItemCount()-1);
+                noteItemAdapter.notifyItemRangeChanged(index,
+                        noteItemAdapter.getItemCount() - index);
                 break;
             default:
         }

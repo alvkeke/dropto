@@ -1,8 +1,7 @@
 package cn.alvkeke.dropto.ui.fragment;
 
-import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -22,27 +21,35 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
-import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 
-public class CategoryFragment extends Fragment implements SystemKeyListener, ListNotification {
+public class CategoryListFragment extends Fragment implements SystemKeyListener, ListNotification {
 
-    public interface CategoryEventListener {
-        void onNoteListShow(Category category);
-        void OnCategoryAdd();
-        void onCategoryDetail(Category c);
+    public interface AttemptListener {
+        enum Attempt {
+            CREATE,
+            DETAIL,
+            EXPAND,
+        }
+        void onAttemptRecv(AttemptListener.Attempt attempt, Category category);
+        void onErrorRecv(String errorMessage);
     }
 
+    private final AttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
-    private CategoryEventListener listener;
+    private final ArrayList<Category> categories;
+
+    public CategoryListFragment(AttemptListener listener, ArrayList<Category> categories) {
+        this.listener = listener;
+        this.categories = categories;
+    }
 
     @Override
     public void onResume() {
         super.onResume();
 
-        ArrayList<Category> categories = Global.getInstance().getCategories();
         for (int i=0; i<categories.size(); i++) {
             Category c = categories.get(i);
             if (c.needUpdate()) {
@@ -55,15 +62,13 @@ public class CategoryFragment extends Fragment implements SystemKeyListener, Lis
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_category, container, false);
+        return inflater.inflate(R.layout.fragment_category_list, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        Activity activity = requireActivity();
-        listener = (CategoryEventListener) activity;
+        Context context = requireContext();
 
         RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
         MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);
@@ -71,14 +76,13 @@ public class CategoryFragment extends Fragment implements SystemKeyListener, Lis
         toolbar.inflateMenu(R.menu.category_toolbar);
         toolbar.setOnMenuItemClickListener(new CategoryMenuListener());
 
-        ArrayList<Category> categories = Global.getInstance().getCategories();
         categoryListAdapter = new CategoryListAdapter(categories);
         categoryListAdapter.setCategories(categories);
 
         rlCategory.setAdapter(categoryListAdapter);
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(activity);
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
         rlCategory.setLayoutManager(layoutManager);
-        rlCategory.addItemDecoration(new DividerItemDecoration(activity, DividerItemDecoration.VERTICAL));
+        rlCategory.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
         categoryListAdapter.setItemClickListener(new onListItemClick());
 
     }
@@ -89,12 +93,11 @@ public class CategoryFragment extends Fragment implements SystemKeyListener, Lis
         public boolean onMenuItemClick(MenuItem item) {
             int menuId = item.getItemId();
             if (menuId == R.id.category_menu_item_add) {
-                Log.e(this.toString(), "Try add category");
-                listener.OnCategoryAdd();
+                listener.onAttemptRecv(AttemptListener.Attempt.CREATE, null);
             } else if (menuId == R.id.category_menu_item_edit) {
-                Log.e(this.toString(), "Try edit categories");
+                listener.onErrorRecv("Try edit categories");
             } else {
-                Log.e(this.toString(), "Unknown menu id: " + menuId);
+                listener.onErrorRecv("Unknown menu id: " + menuId);
                 return false;
             }
             return true;
@@ -110,26 +113,23 @@ public class CategoryFragment extends Fragment implements SystemKeyListener, Lis
 
         @Override
         public void onItemClick(int index, View v) {
-            Log.d(this.toString(), "Category clicked on " + index);
-            CategoryEventListener listener = (CategoryEventListener) requireContext();
-            Category e = Global.getInstance().getCategories().get(index);
-            listener.onNoteListShow(e);
+            Category e = categories.get(index);
+            listener.onAttemptRecv(AttemptListener.Attempt.EXPAND, e);
         }
 
         @Override
         public boolean onItemLongClick(int index, View v) {
-            Category e = Global.getInstance().getCategories().get(index);
-            listener.onCategoryDetail(e);
+            Category e = categories.get(index);
+            listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, e);
             return true;
         }
     }
 
     @Override
     public void notifyItemListChanged(ListNotification.Notify notify, int index, Object object) {
-        ArrayList<Category> categories = Global.getInstance().getCategories();
         Category category = (Category) object;
         if (notify != Notify.REMOVED && categories.get(index) != category) {
-            Log.e(this.toString(), "target Category not exist");
+            listener.onErrorRecv("target Category not exist");
             return;
         }
 

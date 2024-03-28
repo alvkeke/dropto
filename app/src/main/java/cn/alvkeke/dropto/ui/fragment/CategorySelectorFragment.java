@@ -26,20 +26,16 @@ import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 public class CategorySelectorFragment extends BottomSheetDialogFragment {
 
     public interface CategorySelectListener {
-        enum Result {
-            NONE,
-            SELECTED,
-            ERROR,
-        }
-        void onShareRecvResult(Result result, int index, Category category);
+        void onSelected(int index, Category category);
+        void onError(String error);
     }
 
     private final Context context;
     private final CategorySelectListener listener;
 
-    public CategorySelectorFragment(Context context) {
+    public CategorySelectorFragment(Context context, CategorySelectListener listener) {
         this.context = context;
-        this.listener = (CategorySelectListener) context;
+        this.listener = listener;
     }
 
     @Nullable
@@ -68,12 +64,12 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
             public void onItemClick(int index, View v) {
                 Category category = Global.getInstance().getCategories().get(index);
                 if (category == null) {
-                    listener.onShareRecvResult(CategorySelectListener.Result.ERROR, index, null);
+                    listener.onError("Failed to get category in index " + index);
                     finish();
                     return;
                 }
 
-                listener.onShareRecvResult(CategorySelectListener.Result.SELECTED, index, category);
+                listener.onSelected(index, category);
             }
 
             @Override
@@ -104,6 +100,5 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        listener.onShareRecvResult(CategorySelectListener.Result.NONE, -1, null);
     }
 }
