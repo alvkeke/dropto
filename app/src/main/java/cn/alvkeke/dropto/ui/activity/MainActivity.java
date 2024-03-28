@@ -410,6 +410,7 @@ public class MainActivity extends AppCompatActivity implements
             dataBaseHelper.start();
             dataBaseHelper.queryNote(-1, c.getId(), c.getNoteItems());
             dataBaseHelper.finish();
+            c.setInitialized(true);
         }
     }
 
@@ -424,7 +425,15 @@ public class MainActivity extends AppCompatActivity implements
             return;
         }
 
+        if (!c.isInitialized()) {
+            Log.i(this.toString(), "category not initialized, not add new item in the list");
+            return;
+        }
         int index = c.addNoteItem(newItem);
+        if (fragmentAdapter == null) {
+            Log.i(this.toString(), "fragmentAdapter not initialized, skip for now");
+            return;
+        }
         NoteListFragment fragment = fragmentAdapter.getNoteListFragment();
         if (fragment == null) return;
         fragment.notifyItemListChanged(ListNotification.Notify.CREATED, index, newItem);

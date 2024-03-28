@@ -18,6 +18,7 @@ public class Category {
     private String previewText = "";
     private final ArrayList<NoteItem> noteItems;
     private boolean needUpdate = false;
+    private boolean isInitialized = false;
 
     public Category(String title, Type type) {
         this.id = ID_NOT_ASSIGNED;
@@ -65,6 +66,14 @@ public class Category {
     public NoteItem getNoteItem(int index) {
         if (index >= noteItems.size()) return null;
         return noteItems.get(index);
+    }
+
+    public boolean isInitialized() {
+        return isInitialized;
+    }
+
+    public void setInitialized(boolean initialized) {
+        isInitialized = initialized;
     }
 
     public void setUpdated() {
