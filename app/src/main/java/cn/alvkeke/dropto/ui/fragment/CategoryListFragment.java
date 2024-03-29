@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.fragment;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,6 +24,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
+import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
 public class CategoryListFragment extends Fragment implements SystemKeyListener, ListNotification {
@@ -37,6 +39,7 @@ public class CategoryListFragment extends Fragment implements SystemKeyListener,
         void onErrorRecv(String errorMessage);
     }
 
+    private Context context;
     private final AttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
     private final ArrayList<Category> categories;
@@ -57,6 +60,13 @@ public class CategoryListFragment extends Fragment implements SystemKeyListener,
                 c.setUpdated();
             }
         }
+
+        if (context instanceof SysBarColorNotify) {
+            SysBarColorNotify notify = (SysBarColorNotify) context;
+            TypedValue value = new TypedValue();
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimary, value, true);
+            notify.setNavigationBarColor(value.data);
+        }
     }
 
     @Nullable
@@ -68,7 +78,7 @@ public class CategoryListFragment extends Fragment implements SystemKeyListener,
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        Context context = requireContext();
+        context = requireContext();
 
         RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
         MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);

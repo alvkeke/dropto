@@ -38,10 +38,12 @@ import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
+import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
 public class MainActivity extends AppCompatActivity implements
-        NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent {
+        NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
+        SysBarColorNotify {
 
     private ViewPager2 viewPager;
     private MainFragmentAdapter fragmentAdapter;
@@ -112,6 +114,16 @@ public class MainActivity extends AppCompatActivity implements
         getSupportFragmentManager().beginTransaction()
                 .add(new CategorySelectorFragment(this, new ShareRecvHandler(recvNote)), null)
                 .commit();
+    }
+
+    @Override
+    public void setStatusBarColor(int color) {
+        getWindow().setStatusBarColor(color);
+    }
+
+    @Override
+    public void setNavigationBarColor(int color) {
+        getWindow().setNavigationBarColor(color);
     }
 
     class ShareRecvHandler implements CategorySelectorFragment.CategorySelectListener {
