@@ -44,7 +44,6 @@ import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
-import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 import cn.alvkeke.dropto.ui.service.CoreService;
@@ -177,7 +176,7 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void onSelected(int index, Category category) {
-            binder.getService().handleNoteCreate(category, recvNote);
+            binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, category, recvNote);
             finish();
         }
 
@@ -307,7 +306,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void handleCategoryExpand(Category category) {
-        binder.getService().handleNoteLoad(category);
+        binder.getService().triggerCategoryTask(CoreService.TaskType.READ, category);
         fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
         viewPager.setCurrentItem(1);
     }
@@ -322,16 +321,16 @@ public class MainActivity extends AppCompatActivity implements
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
         switch (result) {
             case CREATE:
-                binder.getService().handleCategoryCreate(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.CREATE, category);
                 break;
             case DELETE:
-                binder.getService().handleCategoryRemove(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
                 break;
             case FULL_DELETE:
-                binder.getService().deleteCategoryRecursion(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
                 break;
             case MODIFY:
-                binder.getService().handleCategoryUpdate(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.UPDATE, category);
                 break;
             default:
                 Log.d(this.toString(), "other result: " + result);
@@ -420,10 +419,10 @@ public class MainActivity extends AppCompatActivity implements
         public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
             switch (attempt) {
                 case REMOVE:
-                    binder.getService().handleNoteRemove(c, e);
+                    binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, c, e);
                     break;
                 case CREATE:
-                    binder.getService().handleNoteCreate(c, e);
+                    binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, c, e);
                     break;
                 case DETAIL:
                     handleNoteDetailShow(e);
@@ -465,13 +464,13 @@ public class MainActivity extends AppCompatActivity implements
         }
         switch (result) {
             case CREATE:
-                binder.getService().handleNoteCreate(c, item);
+                binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, c, item);
                 break;
             case MODIFY:
-                binder.getService().handleNoteUpdate(c, item);
+                binder.getService().triggerNoteTask(CoreService.TaskType.UPDATE, c, item);
                 break;
             case REMOVE:
-                binder.getService().handleNoteRemove(c, item);
+                binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, c, item);
                 break;
         }
     }

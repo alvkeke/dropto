@@ -15,13 +15,22 @@ import cn.alvkeke.dropto.storage.DataBaseHelper;
 
 public class CoreService extends Service {
 
-    public enum TaskResult {
-        CATEGORY_CREATED,
-        CATEGORY_REMOVED,
-        CATEGORY_UPDATED,
-        NOTE_CREATED,
-        NOTE_REMOVED,
-        NOTE_UPDATED,
+    public interface TaskResultListener {
+        int CATEGORY_CREATED = 0;
+        int CATEGORY_REMOVED = 1;
+        int CATEGORY_UPDATED = 2;
+        int NOTE_CREATED = 3;
+        int NOTE_REMOVED = 4;
+        int NOTE_UPDATED = 5;
+
+        /**
+         * will be invoke when task finish
+         * @param result result for works
+         * @param index index of target category/note
+         * @param object Category for CATEGORY_xxx, NoteItem for NOTE_xxx
+         */
+        void onTaskFinish(int result, int index, Object object);
+        void onTaskError(Exception e);
     }
 
     public CoreService() {
@@ -52,7 +61,7 @@ public class CoreService extends Service {
         Log.e(this.toString(), "Service onDestroy");
     }
 
-    public void handleCategoryCreate(Category category) {
+    private void handleCategoryCreate(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort creating");
             return;
@@ -73,7 +82,7 @@ public class CoreService extends Service {
         }
     }
 
-    public void handleCategoryRemove(Category category) {
+    private void handleCategoryRemove(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort deleting");
             return;
@@ -100,7 +109,7 @@ public class CoreService extends Service {
         }
     }
 
-    public void handleCategoryUpdate(Category category) {
+    private void handleCategoryUpdate(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort modifying");
             return;
@@ -126,7 +135,7 @@ public class CoreService extends Service {
         }
     }
 
-    public void deleteCategoryRecursion(Category category) {
+    private void deleteCategoryRecursion(Category category) {
         NoteItem e;
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
@@ -140,7 +149,7 @@ public class CoreService extends Service {
         handleCategoryRemove(category);
     }
 
-    public void handleNoteLoad(Category c) {
+    private void handleNoteLoad(Category c) {
         if (!c.getNoteItems().isEmpty()) return;
 
         try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
@@ -151,7 +160,7 @@ public class CoreService extends Service {
         }
     }
 
-    public void handleNoteCreate(Category c, NoteItem newItem) {
+    private void handleNoteCreate(Category c, NoteItem newItem) {
         newItem.setCategoryId(c.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
             dbHelper.start();
@@ -177,7 +186,7 @@ public class CoreService extends Service {
         // TODO: use new method to notify UI thread
     }
 
-    public void handleNoteRemove(Category c, NoteItem e) {
+    private void handleNoteRemove(Category c, NoteItem e) {
         int index = c.indexNoteItem(e);
         if (index == -1) return;
 
@@ -198,7 +207,7 @@ public class CoreService extends Service {
         // TODO: use new method to notify UI thread
     }
 
-    public void handleNoteUpdate(Category c, NoteItem newItem) {
+    private void handleNoteUpdate(Category c, NoteItem newItem) {
         NoteItem oldItem = c.findNoteItem(newItem.getId());
         if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
@@ -225,7 +234,43 @@ public class CoreService extends Service {
         // TODO: use new method to notify UI thread
     }
 
+    public enum TaskType{
+        CREATE,
+        REMOVE,
+        UPDATE,
+        READ,
+    }
 
+    public void triggerCategoryTask(TaskType type, Category category) {
+        switch (type) {
+            case CREATE:
+                handleCategoryCreate(category);
+                break;
+            case UPDATE:
+                handleCategoryUpdate(category);
+                break;
+            case REMOVE:
+                handleCategoryRemove(category);
+                break;
+            case READ:
+                handleNoteLoad(category);
+        }
+    }
 
+    public void triggerNoteTask(TaskType type, Category category, NoteItem e) {
+        switch (type) {
+            case CREATE:
+                handleNoteCreate(category, e);
+                break;
+            case REMOVE:
+                handleNoteRemove(category, e);
+                break;
+            case UPDATE:
+                handleNoteUpdate(category, e);
+                break;
+            case READ:
+                Log.i(this.toString(), "This method is not supported for NoteItem");
+        }
+    }
 
 }
