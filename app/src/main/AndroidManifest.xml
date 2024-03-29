@@ -12,6 +12,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DropTo"
         tools:targetApi="31">
+        <service
+            android:name=".ui.service.CoreService"
+            android:enabled="true"
+            android:exported="false" />
 
         <activity
             android:name=".ui.activity.MainActivity"

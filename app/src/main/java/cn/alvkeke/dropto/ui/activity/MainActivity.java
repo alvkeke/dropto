@@ -2,18 +2,25 @@ package cn.alvkeke.dropto.ui.activity;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.viewpager2.widget.ViewPager2;
@@ -40,6 +47,7 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
+import cn.alvkeke.dropto.ui.service.CoreService;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
@@ -77,9 +85,43 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+    private final Handler handler = new Handler(Looper.getMainLooper()){
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            super.handleMessage(msg);
+            Log.e(this.toString(), "object: " + msg.obj);
+        }
+    };
+
+    private CoreService.IBinder binder = null;
+    private final ServiceConnection serviceConn = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            binder = (CoreService.IBinder) iBinder;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            if (binder == null) return;
+            binder = null;
+        }
+    };
+
+    private void setupCoreService() {
+        Intent serviceIntent = new Intent(this, CoreService.class);
+        bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE);
+    }
+
+    private void clearCoreService() {
+        if (binder == null) return;
+        unbindService(serviceConn);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setupCoreService();
 
         Intent intent = getIntent();
         String action = intent.getAction();
@@ -135,7 +177,7 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void onSelected(int index, Category category) {
-            handleNoteCreate(category, recvNote);
+            binder.getService().handleNoteCreate(category, recvNote);
             finish();
         }
 
@@ -265,29 +307,9 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void handleCategoryExpand(Category category) {
-        handleNoteLoad(category);
+        binder.getService().handleNoteLoad(category);
         fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
         viewPager.setCurrentItem(1);
-    }
-
-    private void handleCategoryCreate(Category category) {
-        if (category == null) {
-            Log.e(this.toString(), "null category, abort creating");
-            return;
-        }
-
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            category.setId(helper.insertCategory(category));
-            helper.finish();
-            ArrayList<Category> categories = Global.getInstance().getCategories();
-            categories.add(category);
-            int index = categories.indexOf(category);
-            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-                    ListNotification.Notify.CREATED, index, categories);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to add new category to database");
-        }
     }
 
     public void showCategoryCreatingDialog() {
@@ -296,85 +318,20 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
-    private void handleCategoryRemove(Category category) {
-        if (category == null) {
-            Log.e(this.toString(), "null category, abort deleting");
-            return;
-        }
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        int index;
-        if ((index = categories.indexOf(category)) == -1) {
-            Log.i(this.toString(), "category not exist in list, abort");
-            return;
-        }
-
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            if (0 == helper.deleteCategory(category.getId()))
-                Log.e(this.toString(), "no category row be deleted in database");
-            helper.finish();
-            categories.remove(category);
-            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-                    ListNotification.Notify.REMOVED, index, category);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to remove category with id " +
-                            category.getId() + ", exception: " + ex);
-        }
-    }
-
-    private void handleCategoryUpdate(Category category) {
-        if (category == null) {
-            Log.e(this.toString(), "null category, abort modifying");
-            return;
-        }
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        int index;
-        if (-1 == (index = categories.indexOf(category))) {
-            Log.e(this.toString(), "category not exist in list, abort");
-            return;
-        }
-
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            if (0 == helper.updateCategory(category)) {
-                Log.e(this.toString(), "no category row be updated");
-            }
-            helper.finish();
-            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-                    ListNotification.Notify.MODIFIED, index, category);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to modify Category: " + ex);
-        }
-    }
-
-    private void deleteCategoryRecursion(Category category) {
-        NoteItem e;
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            while (null != (e = category.getNoteItem(0))) {
-                if (0 == helper.deleteNote(e.getId()))
-                    Log.i(this.toString(), "no row be deleted");
-                category.delNoteItem(e);
-            }
-            helper.finish();
-        }
-        handleCategoryRemove(category);
-    }
-
     @Override
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
         switch (result) {
             case CREATE:
-                handleCategoryCreate(category);
+                binder.getService().handleCategoryCreate(category);
                 break;
             case DELETE:
-                handleCategoryRemove(category);
+                binder.getService().handleCategoryRemove(category);
                 break;
             case FULL_DELETE:
-                deleteCategoryRecursion(category);
+                binder.getService().deleteCategoryRecursion(category);
                 break;
             case MODIFY:
-                handleCategoryUpdate(category);
+                binder.getService().handleCategoryUpdate(category);
                 break;
             default:
                 Log.d(this.toString(), "other result: " + result);
@@ -413,62 +370,6 @@ public class MainActivity extends AppCompatActivity implements
     private void handleNoteListExit() {
         viewPager.setCurrentItem(0);
         fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteList);
-    }
-
-    private void handleNoteLoad(Category c) {
-        if (!c.getNoteItems().isEmpty()) return;
-
-        try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
-            dataBaseHelper.start();
-            dataBaseHelper.queryNote(-1, c.getId(), c.getNoteItems());
-            dataBaseHelper.finish();
-            c.setInitialized(true);
-        }
-    }
-
-    private void handleNoteCreate(Category c, NoteItem newItem) {
-        newItem.setCategoryId(c.getId());
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
-            dbHelper.start();
-            newItem.setId(dbHelper.insertNote(newItem));
-            dbHelper.finish();
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to add new item to database!");
-            return;
-        }
-
-        if (!c.isInitialized()) {
-            Log.i(this.toString(), "category not initialized, not add new item in the list");
-            return;
-        }
-        int index = c.addNoteItem(newItem);
-        if (fragmentAdapter == null) {
-            Log.i(this.toString(), "fragmentAdapter not initialized, skip for now");
-            return;
-        }
-        NoteListFragment fragment = fragmentAdapter.getNoteListFragment();
-        if (fragment == null) return;
-        fragment.notifyItemListChanged(ListNotification.Notify.CREATED, index, newItem);
-    }
-
-    private void handleNoteRemove(Category c, NoteItem e) {
-        int index = c.indexNoteItem(e);
-        if (index == -1) return;
-
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)){
-            dbHelper.start();
-            if (0 == dbHelper.deleteNote(e.getId()))
-                Log.e(this.toString(), "no row be deleted");
-            dbHelper.finish();
-            c.delNoteItem(e);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to remove item with id " +
-                    e.getId() + ", exception: " + e);
-            return;
-        }
-
-        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
-                ListNotification.Notify.REMOVED, index, e);
     }
 
     private void handleNoteShare(NoteItem item) {
@@ -514,41 +415,15 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
-    private void handleNoteUpdate(Category c, NoteItem newItem) {
-        NoteItem oldItem = c.findNoteItem(newItem.getId());
-        if (oldItem == null) {
-            Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
-            return;
-        }
-        Log.e(this.toString(), "newItem == oldItem: " + newItem.equals(oldItem));
-        int index = c.indexNoteItem(oldItem);
-        newItem.setId(oldItem.getId());
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
-            dbHelper.start();
-            if (0 == dbHelper.updateNote(newItem)) {
-                Log.i(this.toString(), "no item was updated");
-                return;
-            }
-            dbHelper.finish();
-        } catch (Exception exception) {
-            Log.e(this.toString(), "Failed to update note item in database: " + exception);
-            return;
-        }
-
-        oldItem.update(newItem, true);
-        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
-                ListNotification.Notify.MODIFIED, index, newItem);
-    }
-
     class NoteListAttemptListener implements NoteListFragment.AttemptListener {
         @Override
         public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
             switch (attempt) {
                 case REMOVE:
-                    handleNoteRemove(c, e);
+                    binder.getService().handleNoteRemove(c, e);
                     break;
                 case CREATE:
-                    handleNoteCreate(c, e);
+                    binder.getService().handleNoteCreate(c, e);
                     break;
                 case DETAIL:
                     handleNoteDetailShow(e);
@@ -590,13 +465,13 @@ public class MainActivity extends AppCompatActivity implements
         }
         switch (result) {
             case CREATE:
-                handleNoteCreate(c, item);
+                binder.getService().handleNoteCreate(c, item);
                 break;
             case MODIFY:
-                handleNoteUpdate(c, item);
+                binder.getService().handleNoteUpdate(c, item);
                 break;
             case REMOVE:
-                handleNoteRemove(c, item);
+                binder.getService().handleNoteRemove(c, item);
                 break;
         }
     }
