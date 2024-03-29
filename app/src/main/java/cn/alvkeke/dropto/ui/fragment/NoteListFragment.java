@@ -176,7 +176,7 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
                     etInputText.setText("");
                 }
                 break;
-            case MODIFIED:
+            case UPDATED:
                 noteItemAdapter.notifyItemChanged(index);
                 break;
             case REMOVED:

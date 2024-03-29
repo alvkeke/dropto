@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.R;
@@ -44,13 +45,14 @@ import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
+import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 import cn.alvkeke.dropto.ui.service.CoreService;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
-        SysBarColorNotify {
+        SysBarColorNotify, CoreService.TaskResultListener {
 
     private ViewPager2 viewPager;
     private MainFragmentAdapter fragmentAdapter;
@@ -89,7 +91,10 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
-            Log.e(this.toString(), "object: " + msg.obj);
+            ListNotification notify = msg.arg2 == TYPE_CATEGORY ?
+                    fragmentAdapter.getCategoryFragment() : fragmentAdapter.getNoteListFragment();
+            if (notify != null)
+                notify.notifyItemListChanged(notifies[msg.what], msg.arg1, msg.obj);
         }
     };
 
@@ -98,11 +103,13 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             binder = (CoreService.IBinder) iBinder;
+            binder.getService().setListener(MainActivity.this);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
             if (binder == null) return;
+            binder.getService().setListener(null);
             binder = null;
         }
     };
@@ -115,6 +122,34 @@ public class MainActivity extends AppCompatActivity implements
     private void clearCoreService() {
         if (binder == null) return;
         unbindService(serviceConn);
+    }
+
+    private final static ListNotification.Notify[] notifies = {
+            ListNotification.Notify.CREATED,
+            ListNotification.Notify.REMOVED,
+            ListNotification.Notify.UPDATED,
+    };
+    @Override
+    public void onTaskFinish(int type, int operation, int index, Object object) {
+        if (index == -1) {
+            Toast.makeText(this, String.format(Locale.getDefault(),
+                    "Data processed failed, type:%d, op:%d, index:%d",
+                    type, operation, index), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Message msg = new Message();
+        msg.what = operation;
+        msg.obj = object;
+        msg.arg1 = index;
+        msg.arg2 = type;
+
+        handler.sendMessage(msg);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        clearCoreService();
     }
 
     @Override
@@ -176,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void onSelected(int index, Category category) {
-            binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, category, recvNote);
+            binder.getService().triggerNoteTask(CoreService.TASK_CREATE, recvNote);
             finish();
         }
 
@@ -306,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void handleCategoryExpand(Category category) {
-        binder.getService().triggerCategoryTask(CoreService.TaskType.READ, category);
+        binder.getService().triggerCategoryTask(CoreService.TASK_READ, category);
         fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
         viewPager.setCurrentItem(1);
     }
@@ -321,16 +356,16 @@ public class MainActivity extends AppCompatActivity implements
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
         switch (result) {
             case CREATE:
-                binder.getService().triggerCategoryTask(CoreService.TaskType.CREATE, category);
+                binder.getService().triggerCategoryTask(CoreService.TASK_CREATE, category);
                 break;
             case DELETE:
-                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
+                binder.getService().triggerCategoryTask(CoreService.TASK_REMOVE, category);
                 break;
             case FULL_DELETE:
-                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
+                binder.getService().triggerCategoryTask(CoreService.TASK_REMOVE, category);
                 break;
             case MODIFY:
-                binder.getService().triggerCategoryTask(CoreService.TaskType.UPDATE, category);
+                binder.getService().triggerCategoryTask(CoreService.TASK_UPDATE, category);
                 break;
             default:
                 Log.d(this.toString(), "other result: " + result);
@@ -419,10 +454,10 @@ public class MainActivity extends AppCompatActivity implements
         public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
             switch (attempt) {
                 case REMOVE:
-                    binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, c, e);
+                    binder.getService().triggerNoteTask(CoreService.TASK_REMOVE, e);
                     break;
                 case CREATE:
-                    binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, c, e);
+                    binder.getService().triggerNoteTask(CoreService.TASK_CREATE, e);
                     break;
                 case DETAIL:
                     handleNoteDetailShow(e);
@@ -437,6 +472,7 @@ public class MainActivity extends AppCompatActivity implements
                     handleNoteShare(e);
                     break;
                 case UPDATE:
+                    binder.getService().triggerNoteTask(CoreService.TASK_UPDATE, e);
                     break;
             }
         }
@@ -447,30 +483,17 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private Category findCategoryById(long id) {
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        for (Category c : categories) {
-            if (c.getId() == id) return c;
-        }
-        return null;
-    }
-
     @Override
     public void onNoteDetailFinish(NoteDetailFragment.Result result, NoteItem item) {
-        Category c = findCategoryById(item.getCategoryId());
-        if (c == null) {
-            Log.e(this.toString(), "Failed to get Category of noteItem");
-            return;
-        }
         switch (result) {
             case CREATE:
-                binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, c, item);
+                binder.getService().triggerNoteTask(CoreService.TASK_CREATE, item);
                 break;
-            case MODIFY:
-                binder.getService().triggerNoteTask(CoreService.TaskType.UPDATE, c, item);
+            case UPDATE:
+                binder.getService().triggerNoteTask(CoreService.TASK_UPDATE, item);
                 break;
             case REMOVE:
-                binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, c, item);
+                binder.getService().triggerNoteTask(CoreService.TASK_REMOVE, item);
                 break;
         }
     }

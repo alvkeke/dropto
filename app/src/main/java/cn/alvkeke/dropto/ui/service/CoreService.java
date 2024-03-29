@@ -3,7 +3,6 @@ package cn.alvkeke.dropto.ui.service;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
-import android.os.Message;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -14,24 +13,6 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 
 public class CoreService extends Service {
-
-    public interface TaskResultListener {
-        int CATEGORY_CREATED = 0;
-        int CATEGORY_REMOVED = 1;
-        int CATEGORY_UPDATED = 2;
-        int NOTE_CREATED = 3;
-        int NOTE_REMOVED = 4;
-        int NOTE_UPDATED = 5;
-
-        /**
-         * will be invoke when task finish
-         * @param result result for works
-         * @param index index of target category/note
-         * @param object Category for CATEGORY_xxx, NoteItem for NOTE_xxx
-         */
-        void onTaskFinish(int result, int index, Object object);
-        void onTaskError(Exception e);
-    }
 
     public CoreService() {
     }
@@ -51,20 +32,41 @@ public class CoreService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.e(this.toString(), "CoreService start command");
         return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.e(this.toString(), "Service onDestroy");
     }
 
-    private void handleCategoryCreate(Category category) {
+    public interface TaskResultListener {
+        int TYPE_CATEGORY = 0;
+        int TYPE_NOTE = 1;
+        int CREATED = 0;
+        int REMOVED = 1;
+        int UPDATED = 2;
+
+        /**
+         * to indicate that task finished
+         * @param type data type: TYPE_CATEGORY, TYPE_NOTE
+         * @param operation CREATED, REMOVED, UPDATED
+         * @param index index of data item
+         * @param object object of data item, determine by `type`
+         */
+        void onTaskFinish(int type, int operation, int index, Object object);
+    }
+
+    private TaskResultListener listener;
+
+    public void setListener(TaskResultListener listener) {
+        this.listener = listener;
+    }
+
+    private int handleCategoryCreate(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort creating");
-            return;
+            return -1;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -73,25 +75,23 @@ public class CoreService extends Service {
             helper.finish();
             ArrayList<Category> categories = Global.getInstance().getCategories();
             categories.add(category);
-            int index = categories.indexOf(category);
-//            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-//                    ListNotification.Notify.CREATED, index, categories);
-            // TODO: use new method to notify UI thread
+            return categories.indexOf(category);
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to add new category to database");
+            return -1;
         }
     }
 
-    private void handleCategoryRemove(Category category) {
+    private int handleCategoryRemove(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort deleting");
-            return;
+            return -1;
         }
         ArrayList<Category> categories = Global.getInstance().getCategories();
         int index;
         if ((index = categories.indexOf(category)) == -1) {
             Log.i(this.toString(), "category not exist in list, abort");
-            return;
+            return -1;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -100,25 +100,24 @@ public class CoreService extends Service {
                 Log.e(this.toString(), "no category row be deleted in database");
             helper.finish();
             categories.remove(category);
-//            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-//                    ListNotification.Notify.REMOVED, index, category);
-            // TODO: use new method to notify UI thread
+            return index;
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to remove category with id " +
                     category.getId() + ", exception: " + ex);
+            return -1;
         }
     }
 
-    private void handleCategoryUpdate(Category category) {
+    private int handleCategoryUpdate(Category category) {
         if (category == null) {
             Log.e(this.toString(), "null category, abort modifying");
-            return;
+            return -1;
         }
         ArrayList<Category> categories = Global.getInstance().getCategories();
         int index;
         if (-1 == (index = categories.indexOf(category))) {
             Log.e(this.toString(), "category not exist in list, abort");
-            return;
+            return -1;
         }
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -127,15 +126,14 @@ public class CoreService extends Service {
                 Log.e(this.toString(), "no category row be updated");
             }
             helper.finish();
-//            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-//                    ListNotification.Notify.MODIFIED, index, category);
-            // TODO: use new method to notify UI thread
+            return index;
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to modify Category: " + ex);
+            return -1;
         }
     }
 
-    private void deleteCategoryRecursion(Category category) {
+    private int deleteCategoryRecursion(Category category) {
         NoteItem e;
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
@@ -146,7 +144,7 @@ public class CoreService extends Service {
             }
             helper.finish();
         }
-        handleCategoryRemove(category);
+        return handleCategoryRemove(category);
     }
 
     private void handleNoteLoad(Category c) {
@@ -160,7 +158,7 @@ public class CoreService extends Service {
         }
     }
 
-    private void handleNoteCreate(Category c, NoteItem newItem) {
+    private int handleNoteCreate(Category c, NoteItem newItem) {
         newItem.setCategoryId(c.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
             dbHelper.start();
@@ -168,27 +166,19 @@ public class CoreService extends Service {
             dbHelper.finish();
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to add new item to database!");
-            return;
+            return -1;
         }
 
         if (!c.isInitialized()) {
             Log.i(this.toString(), "category not initialized, not add new item in the list");
-            return;
+            return -1;
         }
-        int index = c.addNoteItem(newItem);
-//        if (fragmentAdapter == null) {
-//            Log.i(this.toString(), "fragmentAdapter not initialized, skip for now");
-//            return;
-//        }
-//        NoteListFragment fragment = fragmentAdapter.getNoteListFragment();
-//        if (fragment == null) return;
-//        fragment.notifyItemListChanged(ListNotification.Notify.CREATED, index, newItem);
-        // TODO: use new method to notify UI thread
+        return c.addNoteItem(newItem);
     }
 
-    private void handleNoteRemove(Category c, NoteItem e) {
+    private int handleNoteRemove(Category c, NoteItem e) {
         int index = c.indexNoteItem(e);
-        if (index == -1) return;
+        if (index == -1) return -1;
 
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)){
             dbHelper.start();
@@ -196,22 +186,19 @@ public class CoreService extends Service {
                 Log.e(this.toString(), "no row be deleted");
             dbHelper.finish();
             c.delNoteItem(e);
+            return index;
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to remove item with id " +
                     e.getId() + ", exception: " + e);
-            return;
+            return -1;
         }
-
-//        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
-//                ListNotification.Notify.REMOVED, index, e);
-        // TODO: use new method to notify UI thread
     }
 
-    private void handleNoteUpdate(Category c, NoteItem newItem) {
+    private int handleNoteUpdate(Category c, NoteItem newItem) {
         NoteItem oldItem = c.findNoteItem(newItem.getId());
         if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
-            return;
+            return -1;
         }
         Log.e(this.toString(), "newItem == oldItem: " + newItem.equals(oldItem));
         int index = c.indexNoteItem(oldItem);
@@ -220,57 +207,86 @@ public class CoreService extends Service {
             dbHelper.start();
             if (0 == dbHelper.updateNote(newItem)) {
                 Log.i(this.toString(), "no item was updated");
-                return;
+                return -1;
             }
             dbHelper.finish();
+            oldItem.update(newItem, true);
+            return index;
         } catch (Exception exception) {
             Log.e(this.toString(), "Failed to update note item in database: " + exception);
+            return -1;
+        }
+    }
+
+    public final static int TASK_CREATE = 0;
+    public final static int TASK_REMOVE = 1;
+    public final static int TASK_UPDATE = 2;
+    public final static int TASK_READ = 3;
+
+    public void triggerCategoryTask(int task_type, Category category) {
+        new Thread(() -> {
+            int index;
+            int op;
+            switch (task_type) {
+                case TASK_CREATE:
+                    index = handleCategoryCreate(category);
+                    op = TaskResultListener.CREATED;
+                    break;
+                case TASK_UPDATE:
+                    index = handleCategoryUpdate(category);
+                    op = TaskResultListener.UPDATED;
+                    break;
+                case TASK_REMOVE:
+                    index = handleCategoryRemove(category);
+                    op = TaskResultListener.REMOVED;
+                    break;
+                case TASK_READ:
+                    handleNoteLoad(category);
+                default:
+                    return;
+            }
+            if (listener == null) return;
+            listener.onTaskFinish(TaskResultListener.TYPE_CATEGORY, op, index, category);
+        }).start();
+    }
+
+    private Category findCategoryById(long id) {
+        ArrayList<Category> categories = Global.getInstance().getCategories();
+        for (Category c : categories) {
+            if (c.getId() == id) return c;
+        }
+        return null;
+    }
+
+    public void triggerNoteTask(int task_type, NoteItem e) {
+        Category c = findCategoryById(e.getCategoryId());
+        if (c == null) {
             return;
         }
-
-        oldItem.update(newItem, true);
-//        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
-//                ListNotification.Notify.MODIFIED, index, newItem);
-        // TODO: use new method to notify UI thread
-    }
-
-    public enum TaskType{
-        CREATE,
-        REMOVE,
-        UPDATE,
-        READ,
-    }
-
-    public void triggerCategoryTask(TaskType type, Category category) {
-        switch (type) {
-            case CREATE:
-                handleCategoryCreate(category);
-                break;
-            case UPDATE:
-                handleCategoryUpdate(category);
-                break;
-            case REMOVE:
-                handleCategoryRemove(category);
-                break;
-            case READ:
-                handleNoteLoad(category);
-        }
-    }
-
-    public void triggerNoteTask(TaskType type, Category category, NoteItem e) {
-        switch (type) {
-            case CREATE:
-                handleNoteCreate(category, e);
-                break;
-            case REMOVE:
-                handleNoteRemove(category, e);
-                break;
-            case UPDATE:
-                handleNoteUpdate(category, e);
-                break;
-            case READ:
-                Log.i(this.toString(), "This method is not supported for NoteItem");
-        }
+        new Thread(() -> {
+            int index;
+            int op;
+            switch (task_type) {
+                case TASK_CREATE:
+                    index = handleNoteCreate(c, e);
+                    op = TaskResultListener.CREATED;
+                    break;
+                case TASK_REMOVE:
+                    index = handleNoteRemove(c, e);
+                    op = TaskResultListener.REMOVED;
+                    break;
+                case TASK_UPDATE:
+                    index = handleNoteUpdate(c, e);
+                    op = TaskResultListener.UPDATED;
+                    break;
+                case TASK_READ:
+                    Log.i(this.toString(), "This method is not supported for NoteItem");
+                default:
+                    return;
+            }
+            if (listener == null) return;
+            listener.onTaskFinish(TaskResultListener.TYPE_NOTE, op, index, e);
+        }).start();
     }
 
 }
