@@ -1,9 +1,18 @@
 package cn.alvkeke.dropto.ui.service;
 
+import android.app.ForegroundServiceStartNotAllowedException;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Binder;
+import android.os.Build;
 import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.ServiceCompat;
 
 import java.util.ArrayList;
 
@@ -35,9 +44,49 @@ public class CoreService extends Service {
         return super.onStartCommand(intent, flags, startId);
     }
 
+    private static final String CHANNEL_ID = "CHANNEL_ID";
+    private Notification createNotification() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "PennSkanvTicChannel", NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("PennSkanvTic channel for foreground service notification");
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+            return new NotificationCompat.Builder(this, CHANNEL_ID).build();
+        }
+        return null;
+    }
+
+    private void startForeground() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                Notification notification = createNotification();
+                int type = 0;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
+                }
+                startForeground(100, notification, type );
+                Log.e(this.toString(), "startForeground finished()");
+            } catch (Exception e) {
+                Log.e(this.toString(), "Failed to startForeground: " + e);
+                // App not in a valid state to start foreground service
+                // (e.g started from bg)
+                // ...
+            }
+        }
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Log.e(this.toString(), "CoreService onCreate");
+        startForeground();
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
+        Log.e(this.toString(), "CoreService onDestroy");
     }
 
     public interface TaskResultListener {
