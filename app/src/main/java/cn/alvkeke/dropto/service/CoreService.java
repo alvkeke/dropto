@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui.service;
+package cn.alvkeke.dropto.service;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -8,19 +8,13 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Binder;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
 import java.util.ArrayList;
-import java.util.Objects;
 
-import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;

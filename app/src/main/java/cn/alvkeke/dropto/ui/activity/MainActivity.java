@@ -49,7 +49,7 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
-import cn.alvkeke.dropto.ui.service.CoreService;
+import cn.alvkeke.dropto.service.CoreService;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,

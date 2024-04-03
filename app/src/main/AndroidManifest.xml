@@ -17,7 +17,7 @@
         android:theme="@style/Theme.DropTo"
         tools:targetApi="31">
         <service
-            android:name=".ui.service.CoreService"
+            android:name=".service.CoreService"
             android:foregroundServiceType="dataSync"
             android:enabled="true"
             android:exported="false" />
