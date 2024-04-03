@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.ui.service;
 
-import android.app.ForegroundServiceStartNotAllowedException;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,13 +8,19 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.ServiceCompat;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
+import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
@@ -41,52 +46,58 @@ public class CoreService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return super.onStartCommand(intent, flags, startId);
+        return START_STICKY;
     }
 
-    private static final String CHANNEL_ID = "CHANNEL_ID";
+    private static final int CHANNEL_ID = 100;
+    private static final String CHANNEL_STR_ID = "CHANNEL_ID_CORE_DROP_TO";
+    private static final String CHANNEL_NAME = "CoreService";
     private Notification createNotification() {
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "PennSkanvTicChannel", NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("PennSkanvTic channel for foreground service notification");
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-            return new NotificationCompat.Builder(this, CHANNEL_ID).build();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return null;
         }
-        return null;
+
+        NotificationChannel channel = new NotificationChannel(CHANNEL_STR_ID, CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT);
+        channel.setDescription("Notification channel for foreground service of CoreService.\n" +
+                "Can be disabled to prevent annoying notification");
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
+        return new NotificationCompat.Builder(this, CHANNEL_STR_ID).build();
     }
 
     private void startForeground() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            try {
-                Notification notification = createNotification();
-                int type = 0;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
-                }
-                startForeground(100, notification, type );
-                Log.e(this.toString(), "startForeground finished()");
-            } catch (Exception e) {
-                Log.e(this.toString(), "Failed to startForeground: " + e);
-                // App not in a valid state to start foreground service
-                // (e.g started from bg)
-                // ...
+        Notification notification = createNotification();
+        if (notification == null) {
+            Log.e(this.toString(), "Failed to create notification");
+            return;
+        }
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                Log.i(this.toString(), "SDK version lower then Q(29), skip");
+                return;
             }
+            startForeground(CHANNEL_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            Log.d(this.toString(), "startForeground finished");
+        } catch (Exception e) {
+            Log.e(this.toString(), "Failed to startForeground: " + e);
+            Toast.makeText(this, "Failed to start coreService",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.e(this.toString(), "CoreService onCreate");
+        Log.d(this.toString(), "CoreService onCreate");
         startForeground();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.e(this.toString(), "CoreService onDestroy");
+        Log.d(this.toString(), "CoreService onDestroy");
+        stopForeground(true);
     }
 
     public interface TaskResultListener {

@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -116,11 +117,17 @@ public class MainActivity extends AppCompatActivity implements
 
     private void setupCoreService() {
         Intent serviceIntent = new Intent(this, CoreService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
         bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE);
     }
 
     private void clearCoreService() {
         if (binder == null) return;
+        Log.e(this.toString(), "Activity unbind");
         unbindService(serviceConn);
     }
 
@@ -149,6 +156,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        Log.e(this.toString(), "MainActivity onDestroy");
         clearCoreService();
     }
 
@@ -157,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         setupCoreService();
 
+        Log.e(this.toString(), "MainActivity onCreate");
         Intent intent = getIntent();
         String action = intent.getAction();
         if (action == null) {
