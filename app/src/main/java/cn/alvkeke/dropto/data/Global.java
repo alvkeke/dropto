@@ -19,6 +19,13 @@ public class Global {
         return categories;
     }
 
+    public Category findCategory(long id) {
+        for (Category c : categories) {
+            if (c.getId() == id) return c;
+        }
+        return null;
+    }
+
     public File getFileStoreFolder() {
         return fileStorage;
     }

@@ -338,16 +338,8 @@ public class CoreService extends Service {
         }).start();
     }
 
-    private Category findCategoryById(long id) {
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        for (Category c : categories) {
-            if (c.getId() == id) return c;
-        }
-        return null;
-    }
-
     public void triggerNoteTask(TaskType task_type, NoteItem e) {
-        Category c = findCategoryById(e.getCategoryId());
+        Category c = Global.getInstance().findCategory(e.getCategoryId());
         if (c == null) {
             return;
         }
