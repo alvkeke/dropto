@@ -149,7 +149,7 @@ public class CategoryListFragment extends Fragment implements SystemKeyListener,
                 categoryListAdapter.notifyItemRangeChanged(index,
                         categoryListAdapter.getItemCount()-index);
                 break;
-            case MODIFIED:
+            case UPDATED:
                 categoryListAdapter.notifyItemChanged(index);
                 break;
             case REMOVED:

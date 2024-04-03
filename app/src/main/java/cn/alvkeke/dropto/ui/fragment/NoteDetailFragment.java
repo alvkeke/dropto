@@ -33,7 +33,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     public enum Result {
         CREATE,
         REMOVE,
-        MODIFY,
+        UPDATE,
     }
 
     public interface NoteEventListener {
@@ -147,7 +147,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
                 item.setImageName(null);
                 item.setImageFile(null);
             }
-            listener.onNoteDetailFinish(Result.MODIFY, item);
+            listener.onNoteDetailFinish(Result.UPDATE, item);
         }
     }
 

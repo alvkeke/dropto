@@ -2,12 +2,16 @@ package cn.alvkeke.dropto.ui.activity;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.util.Log;
@@ -29,6 +33,7 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
+import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
@@ -43,7 +48,7 @@ import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
-        SysBarColorNotify {
+        SysBarColorNotify, CoreService.TaskResultListener {
 
     private ViewPager2 viewPager;
     private MainFragmentAdapter fragmentAdapter;
@@ -77,10 +82,51 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+    private CoreService.CoreSrvBinder binder = null;
+    private final ServiceConnection serviceConn = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            binder = (CoreService.CoreSrvBinder) iBinder;
+            binder.getService().setListener(MainActivity.this);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            if (binder == null) return;
+            binder.getService().setListener(null);
+            binder = null;
+        }
+    };
+
+    private void setupCoreService() {
+        Intent serviceIntent = new Intent(this, CoreService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+        bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE);
+    }
+
+    private void clearCoreService() {
+        if (binder == null) return;
+        Log.e(this.toString(), "Activity unbind");
+        unbindService(serviceConn);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.e(this.toString(), "MainActivity onDestroy");
+        clearCoreService();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setupCoreService();
 
+        Log.e(this.toString(), "MainActivity onCreate");
         Intent intent = getIntent();
         String action = intent.getAction();
         if (action == null) {
@@ -135,7 +181,7 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void onSelected(int index, Category category) {
-            handleNoteCreate(category, recvNote);
+            binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, recvNote);
             finish();
         }
 
@@ -265,29 +311,9 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void handleCategoryExpand(Category category) {
-        handleNoteLoad(category);
+        binder.getService().triggerCategoryTask(CoreService.TaskType.READ, category);
         fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
         viewPager.setCurrentItem(1);
-    }
-
-    private void handleCategoryCreate(Category category) {
-        if (category == null) {
-            Log.e(this.toString(), "null category, abort creating");
-            return;
-        }
-
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            category.setId(helper.insertCategory(category));
-            helper.finish();
-            ArrayList<Category> categories = Global.getInstance().getCategories();
-            categories.add(category);
-            int index = categories.indexOf(category);
-            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-                    ListNotification.Notify.CREATED, index, categories);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to add new category to database");
-        }
     }
 
     public void showCategoryCreatingDialog() {
@@ -296,85 +322,20 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
-    private void handleCategoryRemove(Category category) {
-        if (category == null) {
-            Log.e(this.toString(), "null category, abort deleting");
-            return;
-        }
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        int index;
-        if ((index = categories.indexOf(category)) == -1) {
-            Log.i(this.toString(), "category not exist in list, abort");
-            return;
-        }
-
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            if (0 == helper.deleteCategory(category.getId()))
-                Log.e(this.toString(), "no category row be deleted in database");
-            helper.finish();
-            categories.remove(category);
-            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-                    ListNotification.Notify.REMOVED, index, category);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to remove category with id " +
-                            category.getId() + ", exception: " + ex);
-        }
-    }
-
-    private void handleCategoryUpdate(Category category) {
-        if (category == null) {
-            Log.e(this.toString(), "null category, abort modifying");
-            return;
-        }
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        int index;
-        if (-1 == (index = categories.indexOf(category))) {
-            Log.e(this.toString(), "category not exist in list, abort");
-            return;
-        }
-
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            if (0 == helper.updateCategory(category)) {
-                Log.e(this.toString(), "no category row be updated");
-            }
-            helper.finish();
-            fragmentAdapter.getCategoryFragment().notifyItemListChanged(
-                    ListNotification.Notify.MODIFIED, index, category);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to modify Category: " + ex);
-        }
-    }
-
-    private void deleteCategoryRecursion(Category category) {
-        NoteItem e;
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            while (null != (e = category.getNoteItem(0))) {
-                if (0 == helper.deleteNote(e.getId()))
-                    Log.i(this.toString(), "no row be deleted");
-                category.delNoteItem(e);
-            }
-            helper.finish();
-        }
-        handleCategoryRemove(category);
-    }
-
     @Override
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
         switch (result) {
             case CREATE:
-                handleCategoryCreate(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.CREATE, category);
                 break;
             case DELETE:
-                handleCategoryRemove(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
                 break;
             case FULL_DELETE:
-                deleteCategoryRecursion(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
                 break;
             case MODIFY:
-                handleCategoryUpdate(category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.UPDATE, category);
                 break;
             default:
                 Log.d(this.toString(), "other result: " + result);
@@ -413,62 +374,6 @@ public class MainActivity extends AppCompatActivity implements
     private void handleNoteListExit() {
         viewPager.setCurrentItem(0);
         fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteList);
-    }
-
-    private void handleNoteLoad(Category c) {
-        if (!c.getNoteItems().isEmpty()) return;
-
-        try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
-            dataBaseHelper.start();
-            dataBaseHelper.queryNote(-1, c.getId(), c.getNoteItems());
-            dataBaseHelper.finish();
-            c.setInitialized(true);
-        }
-    }
-
-    private void handleNoteCreate(Category c, NoteItem newItem) {
-        newItem.setCategoryId(c.getId());
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
-            dbHelper.start();
-            newItem.setId(dbHelper.insertNote(newItem));
-            dbHelper.finish();
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to add new item to database!");
-            return;
-        }
-
-        if (!c.isInitialized()) {
-            Log.i(this.toString(), "category not initialized, not add new item in the list");
-            return;
-        }
-        int index = c.addNoteItem(newItem);
-        if (fragmentAdapter == null) {
-            Log.i(this.toString(), "fragmentAdapter not initialized, skip for now");
-            return;
-        }
-        NoteListFragment fragment = fragmentAdapter.getNoteListFragment();
-        if (fragment == null) return;
-        fragment.notifyItemListChanged(ListNotification.Notify.CREATED, index, newItem);
-    }
-
-    private void handleNoteRemove(Category c, NoteItem e) {
-        int index = c.indexNoteItem(e);
-        if (index == -1) return;
-
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)){
-            dbHelper.start();
-            if (0 == dbHelper.deleteNote(e.getId()))
-                Log.e(this.toString(), "no row be deleted");
-            dbHelper.finish();
-            c.delNoteItem(e);
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to remove item with id " +
-                    e.getId() + ", exception: " + e);
-            return;
-        }
-
-        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
-                ListNotification.Notify.REMOVED, index, e);
     }
 
     private void handleNoteShare(NoteItem item) {
@@ -514,41 +419,15 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
-    private void handleNoteUpdate(Category c, NoteItem newItem) {
-        NoteItem oldItem = c.findNoteItem(newItem.getId());
-        if (oldItem == null) {
-            Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
-            return;
-        }
-        Log.e(this.toString(), "newItem == oldItem: " + newItem.equals(oldItem));
-        int index = c.indexNoteItem(oldItem);
-        newItem.setId(oldItem.getId());
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
-            dbHelper.start();
-            if (0 == dbHelper.updateNote(newItem)) {
-                Log.i(this.toString(), "no item was updated");
-                return;
-            }
-            dbHelper.finish();
-        } catch (Exception exception) {
-            Log.e(this.toString(), "Failed to update note item in database: " + exception);
-            return;
-        }
-
-        oldItem.update(newItem, true);
-        fragmentAdapter.getNoteListFragment().notifyItemListChanged(
-                ListNotification.Notify.MODIFIED, index, newItem);
-    }
-
     class NoteListAttemptListener implements NoteListFragment.AttemptListener {
         @Override
         public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
             switch (attempt) {
                 case REMOVE:
-                    handleNoteRemove(c, e);
+                    binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, e);
                     break;
                 case CREATE:
-                    handleNoteCreate(c, e);
+                    binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, e);
                     break;
                 case DETAIL:
                     handleNoteDetailShow(e);
@@ -563,6 +442,7 @@ public class MainActivity extends AppCompatActivity implements
                     handleNoteShare(e);
                     break;
                 case UPDATE:
+                    binder.getService().triggerNoteTask(CoreService.TaskType.UPDATE, e);
                     break;
             }
         }
@@ -573,31 +453,40 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private Category findCategoryById(long id) {
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        for (Category c : categories) {
-            if (c.getId() == id) return c;
+    @Override
+    public void onNoteDetailFinish(NoteDetailFragment.Result result, NoteItem item) {
+        switch (result) {
+            case CREATE:
+                binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, item);
+                break;
+            case UPDATE:
+                binder.getService().triggerNoteTask(CoreService.TaskType.UPDATE, item);
+                break;
+            case REMOVE:
+                binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, item);
+                break;
         }
-        return null;
+    }
+
+    private final static ListNotification.Notify[] notifies = {
+            ListNotification.Notify.CREATED,
+            ListNotification.Notify.REMOVED,
+            ListNotification.Notify.UPDATED,
+    };
+    @Override
+    public void onCategoryTaskFinish(CoreService.TaskType taskType, int index, Category c) {
+        if (index < 0) return;
+        CategoryListFragment fragment = fragmentAdapter.getCategoryFragment();
+        if (fragment == null) return;
+        fragment.notifyItemListChanged(notifies[taskType.ordinal()], index, c);
     }
 
     @Override
-    public void onNoteDetailFinish(NoteDetailFragment.Result result, NoteItem item) {
-        Category c = findCategoryById(item.getCategoryId());
-        if (c == null) {
-            Log.e(this.toString(), "Failed to get Category of noteItem");
-            return;
-        }
-        switch (result) {
-            case CREATE:
-                handleNoteCreate(c, item);
-                break;
-            case MODIFY:
-                handleNoteUpdate(c, item);
-                break;
-            case REMOVE:
-                handleNoteRemove(c, item);
-                break;
-        }
+    public void onNoteTaskFinish(CoreService.TaskType taskType, int index, NoteItem n) {
+        if (index < 0) return;
+        NoteListFragment fragment = fragmentAdapter.getNoteListFragment();
+        if (fragment == null) return;
+        fragment.notifyItemListChanged(notifies[taskType.ordinal()], index, n);
     }
+
 }

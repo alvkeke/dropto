@@ -4,7 +4,7 @@ public interface ListNotification {
     enum Notify {
         CREATED,
         REMOVED,
-        MODIFIED,
+        UPDATED,
     }
 
     void notifyItemListChanged(Notify notify, int index, Object object);
