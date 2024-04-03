@@ -181,6 +181,7 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void onSelected(int index, Category category) {
+            recvNote.setCategoryId(category.getId());
             binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, recvNote);
             finish();
         }

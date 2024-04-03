@@ -62,7 +62,7 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
         adapter.setItemClickListener(new CategoryListAdapter.OnItemClickListener() {
             @Override
             public void onItemClick(int index, View v) {
-                Category category = Global.getInstance().getCategories().get(index);
+                Category category = Global.getInstance().getCategory(index);
                 if (category == null) {
                     listener.onError("Failed to get category in index " + index);
                     finish();

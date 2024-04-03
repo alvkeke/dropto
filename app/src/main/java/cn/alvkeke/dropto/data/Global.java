@@ -26,6 +26,11 @@ public class Global {
         return null;
     }
 
+    public Category getCategory(int index) {
+        if (index >= categories.size()) return null;
+        return categories.get(index);
+    }
+
     public File getFileStoreFolder() {
         return fileStorage;
     }
