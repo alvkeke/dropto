@@ -3,17 +3,13 @@ package cn.alvkeke.dropto.ui.activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.ParcelFileDescriptor;
-import android.provider.OpenableColumns;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -23,7 +19,6 @@ import androidx.core.content.FileProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,11 +30,9 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
-import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
-import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
@@ -110,176 +103,22 @@ public class MainActivity extends AppCompatActivity implements
 
     private void clearCoreService() {
         if (binder == null) return;
-        Log.e(this.toString(), "Activity unbind");
         unbindService(serviceConn);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Log.e(this.toString(), "MainActivity onDestroy");
         clearCoreService();
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setupCoreService();
-
-        Log.e(this.toString(), "MainActivity onCreate");
-        Intent intent = getIntent();
-        String action = intent.getAction();
-        if (action == null) {
-            Toast.makeText(this, "action is null", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-
-        initCategoryList();
-
-        switch (action) {
-            case Intent.ACTION_MAIN:
-                onCreateMain(savedInstanceState);
-                break;
-            case Intent.ACTION_SEND:
-                onCreateSend(intent);
-                break;
-            default:
-                finish();
-        }
-    }
-
-    private void onCreateSend(Intent intent) {
-        NoteItem recvNote = handleSharedInfo(intent);
-        if (recvNote == null) {
-            Toast.makeText(this, "Failed to create new item",
-                    Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-        getSupportFragmentManager().beginTransaction()
-                .add(new CategorySelectorFragment(this, new ShareRecvHandler(recvNote)), null)
-                .commit();
-    }
-
-    @Override
-    public void setStatusBarColor(int color) {
-        getWindow().setStatusBarColor(color);
-    }
-
-    @Override
-    public void setNavigationBarColor(int color) {
-        getWindow().setNavigationBarColor(color);
-    }
-
-    class ShareRecvHandler implements CategorySelectorFragment.CategorySelectListener {
-
-        private final NoteItem recvNote;
-        ShareRecvHandler(NoteItem recvNote) {
-            this.recvNote = recvNote;
-        }
-
-        @Override
-        public void onSelected(int index, Category category) {
-            recvNote.setCategoryId(category.getId());
-            binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, recvNote);
-            finish();
-        }
-
-        @Override
-        public void onError(String error) {
-            Toast.makeText(MainActivity.this, error, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    NoteItem handleSharedInfo(Intent intent) {
-        String type = intent.getType();
-
-        if (type == null) {
-            Log.e(this.toString(), "Cannot get type");
-            Toast.makeText(this, "Cannot get type", Toast.LENGTH_SHORT).show();
-            return null;
-        }
-
-        if (type.startsWith("text/")) {
-            return handleText(intent);
-        } else if (type.startsWith("image/")) {
-            return handleImage(intent);
-        } else {
-            Log.e(this.toString(), "Got unsupported type: " + type);
-        }
-        return null;
-    }
-
-    NoteItem handleText(Intent intent) {
-        String text = intent.getStringExtra(Intent.EXTRA_TEXT);
-        if (text == null) {
-            Log.e(this.toString(), "Failed to get shared text");
-            return null;
-        }
-
-        return new NoteItem(text);
-    }
-
-    // TODO: seems ugly implementation, seek if there is better implementation
-    private String getFileNameFromUri(Uri uri) {
-        // ContentResolver to resolve the content Uri
-        ContentResolver resolver = this.getContentResolver();
-        // Query the file name from the content Uri
-        Cursor cursor = resolver.query(uri, null, null, null, null);
-        String fileName = null;
-        if (cursor != null && cursor.moveToFirst()) {
-            int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-            if (index != -1) {
-                fileName = cursor.getString(index);
-            }
-            cursor.close();
-        }
-        return fileName;
-    }
-
-    NoteItem handleImage(Intent intent) {
-        File storeFolder = Global.getInstance().getFileStoreFolder();
-        if (storeFolder == null) {
-            Log.e(this.toString(), "Failed to get storage folder");
-            return null;
-        }
-
-        Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        if (uri == null) {
-            Log.e(this.toString(), "Failed to get Uri");
-            return null;
-        }
-
-        try (ParcelFileDescriptor inputPFD = this.getContentResolver().openFileDescriptor(uri, "r")) {
-            if (inputPFD == null) {
-                Log.e(this.toString(), "Failed to get ParcelFileDescriptor");
-                return null;
-            }
-            FileDescriptor fd = inputPFD.getFileDescriptor();
-            byte[] md5sum = FileHelper.calculateMD5(fd);
-            File retFile = FileHelper.md5ToFile(storeFolder, md5sum);
-            if (retFile.isFile() && retFile.exists()) {
-                Log.d(this.toString(), "File exist");
-            } else {
-                Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
-                FileHelper.copyFileTo(fd, retFile);
-            }
-            String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
-            NoteItem item = new NoteItem(ext_str == null ? "" : ext_str);
-            item.setImageFile(retFile);
-            item.setImageName(getFileNameFromUri(uri));
-            return item;
-        } catch (Exception e) {
-            Log.e(this.toString(), "Failed to store shared file: " + e);
-        }
-        return null;
-    }
-
-    private void onCreateMain(Bundle savedInstanceState) {
-        Log.e(this.toString(), "enter MAIN mode");
-        setTheme(R.style.Theme_DropTo_NoActionBar);
         setContentView(R.layout.activity_main);
+
+        setupCoreService();
+        initCategoryList();
 
         getOnBackPressedDispatcher().
                 addCallback(this, new OnFragmentBackPressed(true));
@@ -294,6 +133,16 @@ public class MainActivity extends AppCompatActivity implements
             int index = savedInstanceState.getInt("currentPageIndex");
             viewPager.setCurrentItem(index);
         }
+    }
+
+    @Override
+    public void setStatusBarColor(int color) {
+        getWindow().setStatusBarColor(color);
+    }
+
+    @Override
+    public void setNavigationBarColor(int color) {
+        getWindow().setNavigationBarColor(color);
     }
 
     class OnFragmentBackPressed extends OnBackPressedCallback {

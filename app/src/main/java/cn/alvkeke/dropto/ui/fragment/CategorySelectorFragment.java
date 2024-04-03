@@ -28,6 +28,7 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
     public interface CategorySelectListener {
         void onSelected(int index, Category category);
         void onError(String error);
+        void onExit();
     }
 
     private final Context context;
@@ -100,5 +101,6 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        listener.onExit();
     }
 }

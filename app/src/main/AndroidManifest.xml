@@ -24,23 +24,26 @@
 
         <activity
             android:name=".ui.activity.MainActivity"
-            android:theme="@style/Theme.DropTo.Invisible"
+            android:theme="@style/Theme.DropTo.NoActionBar"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.activity.ShareRecvActivity"
+            android:theme="@style/Theme.DropTo.Invisible"
+            android:exported="true"
+            android:label="Choose category to drop">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="image/*" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-        </activity>
-        <activity
-            android:name=".ui.fragment.CategorySelectorFragment"
-            android:exported="true"
-            android:label="Choose category to drop">
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
