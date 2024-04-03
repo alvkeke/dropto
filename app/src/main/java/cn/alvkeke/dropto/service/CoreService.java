@@ -8,9 +8,14 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
 import java.util.ArrayList;
@@ -26,13 +31,13 @@ public class CoreService extends Service {
     }
 
     @Override
-    public android.os.IBinder onBind(Intent intent) {
+    public IBinder onBind(Intent intent) {
         // TODO: Return the communication channel to the service.
         return binder;
     }
 
-    private final IBinder binder = new IBinder();
-    public class IBinder extends Binder {
+    private final CoreSrvBinder binder = new CoreSrvBinder();
+    public class CoreSrvBinder extends Binder {
         public CoreService getService() {
             return CoreService.this;
         }
@@ -95,20 +100,22 @@ public class CoreService extends Service {
     }
 
     public interface TaskResultListener {
-        int TYPE_CATEGORY = 0;
-        int TYPE_NOTE = 1;
-        int CREATED = 0;
-        int REMOVED = 1;
-        int UPDATED = 2;
 
         /**
-         * to indicate that task finished
-         * @param type data type: TYPE_CATEGORY, TYPE_NOTE
-         * @param operation CREATED, REMOVED, UPDATED
-         * @param index index of data item
-         * @param object object of data item, determine by `type`
+         * indicate the task finished, this function will be invoked in MainThread
+         * @param taskType operation type for the task, enum Op
+         * @param index index of target Category, -1 for failed
+         * @param c Category object
          */
-        void onTaskFinish(int type, int operation, int index, Object object);
+        void onCategoryTaskFinish(TaskType taskType, int index, Category c);
+
+        /**
+         * indicate the Note task finished, this function will be invoked in MainThread
+         * @param taskType operation type for the tasks, enum Op
+         * @param index index of target NoteItem, -1 for failed
+         * @param n NoteItem object
+         */
+        void onNoteTaskFinish(TaskType taskType, int index, NoteItem n);
     }
 
     private TaskResultListener listener;
@@ -116,6 +123,32 @@ public class CoreService extends Service {
     public void setListener(TaskResultListener listener) {
         this.listener = listener;
     }
+
+    private enum MsgWhat {
+        CATEGORY,       /* arg1: index, arg2: op, obj: Category */
+        NOTE,           /* arg1: index, arg2: op, obj: NoteItem */
+    }
+
+    private static final MsgWhat[] whats = MsgWhat.values();
+    private final Handler handler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            super.handleMessage(msg);
+            if (listener == null) return;
+            assert (msg.what >= 0 && msg.what < whats.length);
+            assert msg.arg2 >= 0 && msg.arg2 < taskTypes.length;
+            MsgWhat what = whats[msg.what];
+            switch (what) {
+                case CATEGORY:
+                    listener.onCategoryTaskFinish(taskTypes[msg.arg2], msg.arg1, (Category) msg.obj);
+                    break;
+                case NOTE:
+                    listener.onNoteTaskFinish(taskTypes[msg.arg2], msg.arg1, (NoteItem) msg.obj);
+                    break;
+            }
+
+        }
+    };
 
     private int handleCategoryCreate(Category category) {
         if (category == null) {
@@ -272,35 +305,36 @@ public class CoreService extends Service {
         }
     }
 
-    public final static int TASK_CREATE = 0;
-    public final static int TASK_REMOVE = 1;
-    public final static int TASK_UPDATE = 2;
-    public final static int TASK_READ = 3;
+    public enum TaskType {
+        CREATE,
+        REMOVE,
+        UPDATE,
+        READ,
+    }
+    private static final TaskType[] taskTypes = TaskType.values();
 
-    public void triggerCategoryTask(int task_type, Category category) {
+    public void triggerCategoryTask(TaskType task_type, Category category) {
         new Thread(() -> {
-            int index;
-            int op;
+            Message msg = new Message();
+            msg.what = MsgWhat.CATEGORY.ordinal();
+            msg.obj = category;
+            msg.arg2 = task_type.ordinal();
             switch (task_type) {
-                case TASK_CREATE:
-                    index = handleCategoryCreate(category);
-                    op = TaskResultListener.CREATED;
+                case CREATE:
+                    msg.arg1 = handleCategoryCreate(category);
                     break;
-                case TASK_UPDATE:
-                    index = handleCategoryUpdate(category);
-                    op = TaskResultListener.UPDATED;
+                case UPDATE:
+                    msg.arg1 = handleCategoryUpdate(category);
                     break;
-                case TASK_REMOVE:
-                    index = handleCategoryRemove(category);
-                    op = TaskResultListener.REMOVED;
+                case REMOVE:
+                    msg.arg1 = handleCategoryRemove(category);
                     break;
-                case TASK_READ:
+                case READ:
                     handleNoteLoad(category);
                 default:
                     return;
             }
-            if (listener == null) return;
-            listener.onTaskFinish(TaskResultListener.TYPE_CATEGORY, op, index, category);
+            handler.sendMessage(msg);
         }).start();
     }
 
@@ -312,34 +346,32 @@ public class CoreService extends Service {
         return null;
     }
 
-    public void triggerNoteTask(int task_type, NoteItem e) {
+    public void triggerNoteTask(TaskType task_type, NoteItem e) {
         Category c = findCategoryById(e.getCategoryId());
         if (c == null) {
             return;
         }
         new Thread(() -> {
-            int index;
-            int op;
+            Message msg = new Message();
+            msg.what = MsgWhat.NOTE.ordinal();
+            msg.obj = e;
+            msg.arg2 = task_type.ordinal();
             switch (task_type) {
-                case TASK_CREATE:
-                    index = handleNoteCreate(c, e);
-                    op = TaskResultListener.CREATED;
+                case CREATE:
+                    msg.arg1 = handleNoteCreate(c, e);
                     break;
-                case TASK_REMOVE:
-                    index = handleNoteRemove(c, e);
-                    op = TaskResultListener.REMOVED;
+                case REMOVE:
+                    msg.arg1 = handleNoteRemove(c, e);
                     break;
-                case TASK_UPDATE:
-                    index = handleNoteUpdate(c, e);
-                    op = TaskResultListener.UPDATED;
+                case UPDATE:
+                    msg.arg1 = handleNoteUpdate(c, e);
                     break;
-                case TASK_READ:
+                case READ:
                     Log.i(this.toString(), "This method is not supported for NoteItem");
                 default:
                     return;
             }
-            if (listener == null) return;
-            listener.onTaskFinish(TaskResultListener.TYPE_NOTE, op, index, e);
+            handler.sendMessage(msg);
         }).start();
     }
 

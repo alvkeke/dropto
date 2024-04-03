@@ -11,17 +11,13 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.viewpager2.widget.ViewPager2;
@@ -30,7 +26,6 @@ import java.io.File;
 import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.R;
@@ -38,6 +33,7 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
+import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
@@ -49,7 +45,6 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
-import cn.alvkeke.dropto.service.CoreService;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
@@ -87,23 +82,11 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private final Handler handler = new Handler(Looper.getMainLooper()){
-
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            super.handleMessage(msg);
-            ListNotification notify = msg.arg2 == TYPE_CATEGORY ?
-                    fragmentAdapter.getCategoryFragment() : fragmentAdapter.getNoteListFragment();
-            if (notify != null)
-                notify.notifyItemListChanged(notifies[msg.what], msg.arg1, msg.obj);
-        }
-    };
-
-    private CoreService.IBinder binder = null;
+    private CoreService.CoreSrvBinder binder = null;
     private final ServiceConnection serviceConn = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            binder = (CoreService.IBinder) iBinder;
+            binder = (CoreService.CoreSrvBinder) iBinder;
             binder.getService().setListener(MainActivity.this);
         }
 
@@ -129,28 +112,6 @@ public class MainActivity extends AppCompatActivity implements
         if (binder == null) return;
         Log.e(this.toString(), "Activity unbind");
         unbindService(serviceConn);
-    }
-
-    private final static ListNotification.Notify[] notifies = {
-            ListNotification.Notify.CREATED,
-            ListNotification.Notify.REMOVED,
-            ListNotification.Notify.UPDATED,
-    };
-    @Override
-    public void onTaskFinish(int type, int operation, int index, Object object) {
-        if (index == -1) {
-            Toast.makeText(this, String.format(Locale.getDefault(),
-                    "Data processed failed, type:%d, op:%d, index:%d",
-                    type, operation, index), Toast.LENGTH_SHORT).show();
-            return;
-        }
-        Message msg = new Message();
-        msg.what = operation;
-        msg.obj = object;
-        msg.arg1 = index;
-        msg.arg2 = type;
-
-        handler.sendMessage(msg);
     }
 
     @Override
@@ -220,7 +181,7 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void onSelected(int index, Category category) {
-            binder.getService().triggerNoteTask(CoreService.TASK_CREATE, recvNote);
+            binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, recvNote);
             finish();
         }
 
@@ -350,7 +311,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void handleCategoryExpand(Category category) {
-        binder.getService().triggerCategoryTask(CoreService.TASK_READ, category);
+        binder.getService().triggerCategoryTask(CoreService.TaskType.READ, category);
         fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
         viewPager.setCurrentItem(1);
     }
@@ -365,16 +326,16 @@ public class MainActivity extends AppCompatActivity implements
     public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
         switch (result) {
             case CREATE:
-                binder.getService().triggerCategoryTask(CoreService.TASK_CREATE, category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.CREATE, category);
                 break;
             case DELETE:
-                binder.getService().triggerCategoryTask(CoreService.TASK_REMOVE, category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
                 break;
             case FULL_DELETE:
-                binder.getService().triggerCategoryTask(CoreService.TASK_REMOVE, category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.REMOVE, category);
                 break;
             case MODIFY:
-                binder.getService().triggerCategoryTask(CoreService.TASK_UPDATE, category);
+                binder.getService().triggerCategoryTask(CoreService.TaskType.UPDATE, category);
                 break;
             default:
                 Log.d(this.toString(), "other result: " + result);
@@ -463,10 +424,10 @@ public class MainActivity extends AppCompatActivity implements
         public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
             switch (attempt) {
                 case REMOVE:
-                    binder.getService().triggerNoteTask(CoreService.TASK_REMOVE, e);
+                    binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, e);
                     break;
                 case CREATE:
-                    binder.getService().triggerNoteTask(CoreService.TASK_CREATE, e);
+                    binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, e);
                     break;
                 case DETAIL:
                     handleNoteDetailShow(e);
@@ -481,7 +442,7 @@ public class MainActivity extends AppCompatActivity implements
                     handleNoteShare(e);
                     break;
                 case UPDATE:
-                    binder.getService().triggerNoteTask(CoreService.TASK_UPDATE, e);
+                    binder.getService().triggerNoteTask(CoreService.TaskType.UPDATE, e);
                     break;
             }
         }
@@ -496,14 +457,36 @@ public class MainActivity extends AppCompatActivity implements
     public void onNoteDetailFinish(NoteDetailFragment.Result result, NoteItem item) {
         switch (result) {
             case CREATE:
-                binder.getService().triggerNoteTask(CoreService.TASK_CREATE, item);
+                binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, item);
                 break;
             case UPDATE:
-                binder.getService().triggerNoteTask(CoreService.TASK_UPDATE, item);
+                binder.getService().triggerNoteTask(CoreService.TaskType.UPDATE, item);
                 break;
             case REMOVE:
-                binder.getService().triggerNoteTask(CoreService.TASK_REMOVE, item);
+                binder.getService().triggerNoteTask(CoreService.TaskType.REMOVE, item);
                 break;
         }
     }
+
+    private final static ListNotification.Notify[] notifies = {
+            ListNotification.Notify.CREATED,
+            ListNotification.Notify.REMOVED,
+            ListNotification.Notify.UPDATED,
+    };
+    @Override
+    public void onCategoryTaskFinish(CoreService.TaskType taskType, int index, Category c) {
+        if (index < 0) return;
+        CategoryListFragment fragment = fragmentAdapter.getCategoryFragment();
+        if (fragment == null) return;
+        fragment.notifyItemListChanged(notifies[taskType.ordinal()], index, c);
+    }
+
+    @Override
+    public void onNoteTaskFinish(CoreService.TaskType taskType, int index, NoteItem n) {
+        if (index < 0) return;
+        NoteListFragment fragment = fragmentAdapter.getNoteListFragment();
+        if (fragment == null) return;
+        fragment.notifyItemListChanged(notifies[taskType.ordinal()], index, n);
+    }
+
 }
