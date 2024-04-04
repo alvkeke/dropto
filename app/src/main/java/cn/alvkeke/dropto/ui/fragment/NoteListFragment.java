@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
@@ -75,6 +76,9 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList = view.findViewById(R.id.rlist_notes);
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
         etInputText = view.findViewById(R.id.input_text);
+        View statusBar = view.findViewById(R.id.note_list_status_bar);
+        View naviBar = view.findViewById(R.id.note_list_navigation_bar);
+        setSystemBarHeight(view, statusBar, naviBar);
 
         noteItemAdapter = new NoteListAdapter(category.getNoteItems());
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
@@ -86,6 +90,23 @@ public class NoteListFragment extends Fragment implements ListNotification {
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
+    }
+
+    private void setSystemBarHeight(View parent, View status, View navi) {
+        parent.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsets onApplyWindowInsets(@NonNull View view, @NonNull WindowInsets insets) {
+                int statusHei, naviHei;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    statusHei = insets.getInsets(WindowInsets.Type.statusBars()).top;
+                    naviHei = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+                    status.getLayoutParams().height = statusHei;
+                    navi.getLayoutParams().height = naviHei;
+                }
+                return insets;
+            }
+        });
     }
 
     class onItemAddClick implements View.OnClickListener {

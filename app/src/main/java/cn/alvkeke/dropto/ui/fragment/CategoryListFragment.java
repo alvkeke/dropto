@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -64,6 +65,9 @@ public class CategoryListFragment extends Fragment implements ListNotification {
 
         RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
         MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);
+        View statusBar = view.findViewById(R.id.category_list_status_bar);
+        View navigationBar = view.findViewById(R.id.category_list_navigation_bar);
+        setSystemBarHeight(view, statusBar, navigationBar);
 
         toolbar.inflateMenu(R.menu.category_toolbar);
         toolbar.setOnMenuItemClickListener(new CategoryMenuListener());
@@ -77,6 +81,23 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         rlCategory.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
         categoryListAdapter.setItemClickListener(new onListItemClick());
 
+    }
+
+    private void setSystemBarHeight(View parent, View status, View navi) {
+        parent.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsets onApplyWindowInsets(@NonNull View view, @NonNull WindowInsets insets) {
+                int statusHei, naviHei;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    statusHei = insets.getInsets(WindowInsets.Type.statusBars()).top;
+                    naviHei = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+                    status.getLayoutParams().height = statusHei;
+                    navi.getLayoutParams().height = naviHei;
+                }
+                return insets;
+            }
+        });
     }
 
     class CategoryMenuListener implements Toolbar.OnMenuItemClickListener {
