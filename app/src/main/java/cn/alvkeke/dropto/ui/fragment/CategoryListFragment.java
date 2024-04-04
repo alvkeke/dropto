@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.ui.fragment;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -24,7 +23,6 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
-import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 
 public class CategoryListFragment extends Fragment implements ListNotification {
 
@@ -38,7 +36,6 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         void onErrorRecv(String errorMessage);
     }
 
-    private Context context;
     private AttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
     private ArrayList<Category> categories;
@@ -54,18 +51,6 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         this.categories = categories;
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-
-        if (context instanceof SysBarColorNotify) {
-            SysBarColorNotify notify = (SysBarColorNotify) context;
-            TypedValue value = new TypedValue();
-            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimary, value, true);
-            notify.setNavigationBarColor(value.data);
-        }
-    }
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -75,7 +60,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        context = requireContext();
+        Context context = requireContext();
 
         RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
         MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);

@@ -1,7 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
 import android.content.Context;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,7 +22,6 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
-import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 
 public class NoteListFragment extends Fragment implements ListNotification {
 
@@ -46,7 +44,6 @@ public class NoteListFragment extends Fragment implements ListNotification {
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
     private RecyclerView rlNoteList;
-    private View input_container;
 
     public NoteListFragment() {
     }
@@ -78,7 +75,6 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList = view.findViewById(R.id.rlist_notes);
         ImageButton btnAddNote = view.findViewById(R.id.input_send);
         etInputText = view.findViewById(R.id.input_text);
-        input_container = view.findViewById(R.id.input_container);
 
         noteItemAdapter = new NoteListAdapter(category.getNoteItems());
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
@@ -90,16 +86,6 @@ public class NoteListFragment extends Fragment implements ListNotification {
         noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-
-        if (context instanceof SysBarColorNotify) {
-            SysBarColorNotify notify = (SysBarColorNotify) context;
-            notify.setNavigationBarColor(((ColorDrawable)input_container.getBackground()).getColor());
-        }
     }
 
     class onItemAddClick implements View.OnClickListener {

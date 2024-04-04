@@ -10,7 +10,7 @@
         android:id="@+id/note_list_status_bar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:background="?attr/colorPrimary"
+        android:background="?android:statusBarColor"
         android:layout_width="match_parent"
         android:layout_height="24dp"/>
 
@@ -31,7 +31,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toTopOf="@id/note_list_navigation_bar"
-            android:background="@color/colorInputBackground"
+            android:background="?android:navigationBarColor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
@@ -62,7 +62,7 @@
         android:id="@+id/note_list_navigation_bar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:background="@color/colorInputBackground"
+        android:background="?android:navigationBarColor"
         android:layout_width="match_parent"
         android:layout_height="48dp"/>
 

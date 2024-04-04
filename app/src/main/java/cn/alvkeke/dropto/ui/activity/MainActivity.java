@@ -38,11 +38,10 @@ import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
-import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
-        SysBarColorNotify, CoreService.TaskResultListener {
+        CoreService.TaskResultListener {
 
     private void initCategoryList() {
         Global global = Global.getInstance();
@@ -165,16 +164,6 @@ public class MainActivity extends AppCompatActivity implements
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putLong(SAVED_CATEGORY_ID, savedCategoryId);
-    }
-
-    @Override
-    public void setStatusBarColor(int color) {
-        getWindow().setStatusBarColor(color);
-    }
-
-    @Override
-    public void setNavigationBarColor(int color) {
-        getWindow().setNavigationBarColor(color);
     }
 
     class OnFragmentBackPressed extends OnBackPressedCallback {
