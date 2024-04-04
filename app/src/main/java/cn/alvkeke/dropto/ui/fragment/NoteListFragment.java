@@ -122,16 +122,13 @@ public class NoteListFragment extends Fragment implements ListNotification {
                     public WindowInsetsCompat onProgress(@NonNull WindowInsetsCompat insets,
                                                          @NonNull List<WindowInsetsAnimationCompat> runningAnimations) {
                         int imeHei = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
-                        ViewGroup.MarginLayoutParams params =
-                                (ViewGroup.MarginLayoutParams) inputContainer.getLayoutParams();
-                        params.bottomMargin = imeHei;
-                        inputContainer.setLayoutParams(params);
-                        if (imeHei <= naviBar.getHeight()*1.5) {
+                        inputContainer.setTranslationY(-imeHei);
+                        rlNoteList.setTranslationY(-imeHei);
+                        if (imeHei <= naviBar.getHeight()) {
                             naviBar.setVisibility(View.VISIBLE);
                         } else {
                             naviBar.setVisibility(View.GONE);
                         }
-                        // TODO: there should be better way to do this
                         return insets;
                     }
                 });
