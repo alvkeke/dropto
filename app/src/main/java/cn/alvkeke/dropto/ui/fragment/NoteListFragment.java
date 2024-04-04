@@ -24,13 +24,11 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
-import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
-public class NoteListFragment extends Fragment implements SystemKeyListener, ListNotification {
+public class NoteListFragment extends Fragment implements ListNotification {
 
     public interface AttemptListener {
         enum Attempt {
-            EXIT,
             CREATE,
             REMOVE,
             UPDATE,
@@ -43,15 +41,21 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
     }
 
     private Context context;
-    private final AttemptListener listener;
+    private AttemptListener listener;
     Category category;
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
     private RecyclerView rlNoteList;
     private View input_container;
 
-    public NoteListFragment(@NonNull AttemptListener listener, @NonNull Category category) {
+    public NoteListFragment() {
+    }
+
+    public void setListener(AttemptListener listener) {
         this.listener = listener;
+    }
+
+    public void setCategory(Category category) {
         this.category = category;
     }
 
@@ -91,12 +95,6 @@ public class NoteListFragment extends Fragment implements SystemKeyListener, Lis
             SysBarColorNotify notify = (SysBarColorNotify) context;
             notify.setNavigationBarColor(((ColorDrawable)input_container.getBackground()).getColor());
         }
-    }
-
-    @Override
-    public boolean onBackPressed() {
-        listener.onAttemptRecv(AttemptListener.Attempt.EXIT, category, null);
-        return true;
     }
 
     class onItemAddClick implements View.OnClickListener {

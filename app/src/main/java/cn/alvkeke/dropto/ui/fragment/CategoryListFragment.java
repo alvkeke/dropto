@@ -25,9 +25,8 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
-import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
-public class CategoryListFragment extends Fragment implements SystemKeyListener, ListNotification {
+public class CategoryListFragment extends Fragment implements ListNotification {
 
     public interface AttemptListener {
         enum Attempt {
@@ -40,12 +39,18 @@ public class CategoryListFragment extends Fragment implements SystemKeyListener,
     }
 
     private Context context;
-    private final AttemptListener listener;
+    private AttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
-    private final ArrayList<Category> categories;
+    private ArrayList<Category> categories;
 
-    public CategoryListFragment(AttemptListener listener, ArrayList<Category> categories) {
+    public CategoryListFragment() {
+    }
+
+    public void setListener(AttemptListener listener) {
         this.listener = listener;
+    }
+
+    public void setCategories(ArrayList<Category> categories) {
         this.categories = categories;
     }
 
@@ -112,11 +117,6 @@ public class CategoryListFragment extends Fragment implements SystemKeyListener,
             }
             return true;
         }
-    }
-
-    @Override
-    public boolean onBackPressed() {
-        return false;
     }
 
     class onListItemClick implements CategoryListAdapter.OnItemClickListener {

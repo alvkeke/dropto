@@ -16,7 +16,7 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
-import androidx.viewpager2.widget.ViewPager2;
+import androidx.fragment.app.FragmentManager;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -30,21 +30,16 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
-import cn.alvkeke.dropto.ui.adapter.MainFragmentAdapter;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.SysBarColorNotify;
-import cn.alvkeke.dropto.ui.intf.SystemKeyListener;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
         SysBarColorNotify, CoreService.TaskResultListener {
-
-    private ViewPager2 viewPager;
-    private MainFragmentAdapter fragmentAdapter;
 
     private void initCategoryList() {
         Global global = Global.getInstance();
@@ -112,6 +107,9 @@ public class MainActivity extends AppCompatActivity implements
         clearCoreService();
     }
 
+    private CategoryListFragment categoryListFragment;
+    private NoteListFragment noteListFragment;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -123,16 +121,16 @@ public class MainActivity extends AppCompatActivity implements
         getOnBackPressedDispatcher().
                 addCallback(this, new OnFragmentBackPressed(true));
 
-        viewPager = findViewById(R.id.main_viewpager);
-        fragmentAdapter = new MainFragmentAdapter(this);
-        fragmentAdapter.createCategoryListFragment(new CategoryListAttemptListener(),
-                Global.getInstance().getCategories());
-        viewPager.setAdapter(fragmentAdapter);
-
-        if (savedInstanceState != null) {
-            int index = savedInstanceState.getInt("currentPageIndex");
-            viewPager.setCurrentItem(index);
+        if (categoryListFragment == null) {
+            categoryListFragment = new CategoryListFragment();
+            categoryListFragment.setListener(new CategoryListAttemptListener());
         }
+        categoryListFragment.setCategories(Global.getInstance().getCategories());
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.main_container, categoryListFragment)
+                .setReorderingAllowed(true)
+                .addToBackStack("CategoryList")
+                .commit();
     }
 
     @Override
@@ -152,18 +150,26 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void handleOnBackPressed() {
-            int index = viewPager.getCurrentItem();
-            SystemKeyListener listener = (SystemKeyListener) fragmentAdapter.getFragmentAt(index);
-            if (!listener.onBackPressed()) {
+            FragmentManager manager = getSupportFragmentManager();
+            if (manager.getBackStackEntryCount() <= 1) {
                 MainActivity.this.finish();
+                return;
             }
+            getSupportFragmentManager().popBackStack();
         }
     }
 
     public void handleCategoryExpand(Category category) {
         binder.getService().triggerCategoryTask(CoreService.TaskType.READ, category);
-        fragmentAdapter.createNoteListFragment(new NoteListAttemptListener(), category);
-        viewPager.setCurrentItem(1);
+        if (noteListFragment == null) {
+            noteListFragment = new NoteListFragment();
+            noteListFragment.setListener(new NoteListAttemptListener());
+        }
+        noteListFragment.setCategory(category);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.main_container, noteListFragment)
+                .addToBackStack("NoteList")
+                .commit();
     }
 
     public void showCategoryCreatingDialog() {
@@ -219,11 +225,6 @@ public class MainActivity extends AppCompatActivity implements
         public void onErrorRecv(String errorMessage) {
             Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private void handleNoteListExit() {
-        viewPager.setCurrentItem(0);
-        fragmentAdapter.removeFragment(MainFragmentAdapter.FragmentType.NoteList);
     }
 
     private void handleNoteShare(NoteItem item) {
@@ -285,9 +286,6 @@ public class MainActivity extends AppCompatActivity implements
                 case COPY:
                     handleNoteCopy(e);
                     break;
-                case EXIT:
-                    handleNoteListExit();
-                    break;
                 case SHARE:
                     handleNoteShare(e);
                     break;
@@ -326,17 +324,15 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onCategoryTaskFinish(CoreService.TaskType taskType, int index, Category c) {
         if (index < 0) return;
-        CategoryListFragment fragment = fragmentAdapter.getCategoryFragment();
-        if (fragment == null) return;
-        fragment.notifyItemListChanged(notifies[taskType.ordinal()], index, c);
+        if (categoryListFragment == null) return;
+        categoryListFragment.notifyItemListChanged(notifies[taskType.ordinal()], index, c);
     }
 
     @Override
     public void onNoteTaskFinish(CoreService.TaskType taskType, int index, NoteItem n) {
         if (index < 0) return;
-        NoteListFragment fragment = fragmentAdapter.getNoteListFragment();
-        if (fragment == null) return;
-        fragment.notifyItemListChanged(notifies[taskType.ordinal()], index, n);
+        if (noteListFragment == null) return;
+        noteListFragment.notifyItemListChanged(notifies[taskType.ordinal()], index, n);
     }
 
 }
