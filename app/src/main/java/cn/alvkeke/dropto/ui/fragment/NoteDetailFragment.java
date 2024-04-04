@@ -9,6 +9,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -78,7 +79,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         image_md5 = view.findViewById(R.id.note_detail_image_md5);
 
         initEssentialVars();
-        setPeekHeight();
+        setPeekHeight(view);
 
         if (item != null) loadItemData();
 
@@ -111,21 +112,17 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         }
     }
 
-    View bottomSheet;
-    BottomSheetBehavior<View> behavior;
+    BottomSheetBehavior<FrameLayout> behavior;
     private void initEssentialVars() {
         BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
-        bottomSheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-        assert bottomSheet != null;
-        behavior = BottomSheetBehavior.from(bottomSheet);
+        behavior = dialog.getBehavior();
     }
 
-    private void setPeekHeight() {
-        // TODO: find another way, this seems ugly
+    private void setPeekHeight(View view) {
         int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
-        int peekHei = (int) (displayHei* 0.35);
+        int peekHei = displayHei * 35 / 100;
         behavior.setPeekHeight(peekHei);
-        ViewGroup.LayoutParams layoutParams = bottomSheet.getLayoutParams();
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
         layoutParams.height = displayHei;
     }
 

@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -61,7 +62,7 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         etCategoryTitle = view.findViewById(R.id.category_detail_title);
 
         listener = (CategoryDetailEvent) requireContext();
-        setPeekHeight();
+        setPeekHeight(view);
 
         if (category == null) {
             toolbar.setTitle("New Category:");
@@ -77,17 +78,14 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         toolbar.setOnMenuItemClickListener(new MenuListener());
     }
 
-    private void setPeekHeight() {
-        // TODO: find another way, this seems ugly
+    private void setPeekHeight(View view) {
         BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
-        View sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-        assert sheet != null;
         int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
-        int peekHei = (int) (displayHei* 0.35);
-        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
+        int peekHei = displayHei * 35 / 100;
+        BottomSheetBehavior<FrameLayout> behavior = dialog.getBehavior();
         behavior.setPeekHeight(peekHei);
 
-        ViewGroup.LayoutParams layoutParams = sheet.getLayoutParams();
+        ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
         layoutParams.height = displayHei;
     }
 
