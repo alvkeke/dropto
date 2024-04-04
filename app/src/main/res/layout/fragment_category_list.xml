@@ -15,7 +15,7 @@
         android:layout_height="24dp"/>
 
     <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar_category"
+        android:id="@+id/category_list_toolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/category_list_status_bar"
         android:background="?android:statusBarColor"
@@ -23,8 +23,8 @@
         android:layout_height="wrap_content" />
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rlist_category"
-        app:layout_constraintTop_toBottomOf="@id/toolbar_category"
+        android:id="@+id/category_list_listview"
+        app:layout_constraintTop_toBottomOf="@id/category_list_toolbar"
         app:layout_constraintBottom_toTopOf="@id/category_list_navigation_bar"
         android:layout_width="match_parent"
         android:layout_height="0dp"/>

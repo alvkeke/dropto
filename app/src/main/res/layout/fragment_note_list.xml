@@ -16,17 +16,17 @@
 
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rlist_notes"
+            android:id="@+id/note_list_listview"
             android:scrollbars="vertical"
             app:layout_constraintTop_toBottomOf="@id/note_list_status_bar"
-            app:layout_constraintBottom_toTopOf="@id/input_container"
+            app:layout_constraintBottom_toTopOf="@id/note_list_input_container"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_width="match_parent"
             android:layout_height="0dp"/>
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/input_container"
+            android:id="@+id/note_list_input_container"
             android:orientation="horizontal"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -36,18 +36,18 @@
             android:layout_height="wrap_content">
 
             <EditText
-                android:id="@+id/input_text"
+                android:id="@+id/note_list_input_box"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/input_send"
+                app:layout_constraintEnd_toStartOf="@id/note_list_input_button"
                 android:layout_margin="10dp"
                 android:layout_width="0dp"
                 android:maxHeight="200dp"
                 android:layout_height="wrap_content"/>
 
             <ImageButton
-                android:id="@+id/input_send"
+                android:id="@+id/note_list_input_button"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"

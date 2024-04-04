@@ -6,17 +6,22 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowInsets;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsAnimationCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import java.util.List;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
@@ -44,6 +49,8 @@ public class NoteListFragment extends Fragment implements ListNotification {
     Category category;
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
+    private ConstraintLayout inputContainer;
+    private View naviBar;
     private RecyclerView rlNoteList;
 
     public NoteListFragment() {
@@ -73,12 +80,14 @@ public class NoteListFragment extends Fragment implements ListNotification {
         context = requireContext();
         if (category == null) return;
 
-        rlNoteList = view.findViewById(R.id.rlist_notes);
-        ImageButton btnAddNote = view.findViewById(R.id.input_send);
-        etInputText = view.findViewById(R.id.input_text);
+        rlNoteList = view.findViewById(R.id.note_list_listview);
+        ImageButton btnAddNote = view.findViewById(R.id.note_list_input_button);
+        etInputText = view.findViewById(R.id.note_list_input_box);
+        inputContainer = view.findViewById(R.id.note_list_input_container);
         View statusBar = view.findViewById(R.id.note_list_status_bar);
-        View naviBar = view.findViewById(R.id.note_list_navigation_bar);
+        naviBar = view.findViewById(R.id.note_list_navigation_bar);
         setSystemBarHeight(view, statusBar, naviBar);
+        setIMEViewChange(view);
 
         noteItemAdapter = new NoteListAdapter(category.getNoteItems());
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
@@ -93,20 +102,39 @@ public class NoteListFragment extends Fragment implements ListNotification {
     }
 
     private void setSystemBarHeight(View parent, View status, View navi) {
-        parent.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsets onApplyWindowInsets(@NonNull View view, @NonNull WindowInsets insets) {
-                int statusHei, naviHei;
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    statusHei = insets.getInsets(WindowInsets.Type.statusBars()).top;
-                    naviHei = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
-                    status.getLayoutParams().height = statusHei;
-                    navi.getLayoutParams().height = naviHei;
-                }
-                return insets;
-            }
+        ViewCompat.setOnApplyWindowInsetsListener(parent, (v, insets) -> {
+            int statusHei, naviHei;
+            statusHei = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            naviHei = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+            status.getLayoutParams().height = statusHei;
+            navi.getLayoutParams().height = naviHei;
+            return WindowInsetsCompat.CONSUMED;
         });
+    }
+
+    private void setIMEViewChange(View view) {
+        ViewCompat.setWindowInsetsAnimationCallback(view,
+                new WindowInsetsAnimationCompat.Callback(
+                        WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_STOP) {
+
+                    @NonNull
+                    @Override
+                    public WindowInsetsCompat onProgress(@NonNull WindowInsetsCompat insets,
+                                                         @NonNull List<WindowInsetsAnimationCompat> runningAnimations) {
+                        int imeHei = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+                        ViewGroup.MarginLayoutParams params =
+                                (ViewGroup.MarginLayoutParams) inputContainer.getLayoutParams();
+                        params.bottomMargin = imeHei;
+                        inputContainer.setLayoutParams(params);
+                        if (imeHei <= naviBar.getHeight()*1.5) {
+                            naviBar.setVisibility(View.VISIBLE);
+                        } else {
+                            naviBar.setVisibility(View.GONE);
+                        }
+                        // TODO: there should be better way to do this
+                        return insets;
+                    }
+                });
     }
 
     class onItemAddClick implements View.OnClickListener {

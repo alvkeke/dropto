@@ -6,11 +6,12 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowInsets;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -63,8 +64,8 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         super.onViewCreated(view, savedInstanceState);
         Context context = requireContext();
 
-        RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
-        MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);
+        RecyclerView rlCategory = view.findViewById(R.id.category_list_listview);
+        MaterialToolbar toolbar = view.findViewById(R.id.category_list_toolbar);
         View statusBar = view.findViewById(R.id.category_list_status_bar);
         View navigationBar = view.findViewById(R.id.category_list_navigation_bar);
         setSystemBarHeight(view, statusBar, navigationBar);
@@ -84,19 +85,14 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     }
 
     private void setSystemBarHeight(View parent, View status, View navi) {
-        parent.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsets onApplyWindowInsets(@NonNull View view, @NonNull WindowInsets insets) {
-                int statusHei, naviHei;
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    statusHei = insets.getInsets(WindowInsets.Type.statusBars()).top;
-                    naviHei = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
-                    status.getLayoutParams().height = statusHei;
-                    navi.getLayoutParams().height = naviHei;
-                }
-                return insets;
-            }
+        ViewCompat.setOnApplyWindowInsetsListener(parent, (v, winInsets) -> {
+            int statusHei, naviHei;
+            statusHei = winInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            naviHei = winInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+            status.getLayoutParams().height = statusHei;
+            navi.getLayoutParams().height = naviHei;
+
+            return winInsets;
         });
     }
 
