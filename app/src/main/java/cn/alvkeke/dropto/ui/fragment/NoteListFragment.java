@@ -59,6 +59,10 @@ public class NoteListFragment extends Fragment implements ListNotification {
         this.category = category;
     }
 
+    public Category getCategory() {
+        return this.category;
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -69,6 +73,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         context = requireContext();
+        if (category == null) return;
 
         rlNoteList = view.findViewById(R.id.rlist_notes);
         ImageButton btnAddNote = view.findViewById(R.id.input_send);

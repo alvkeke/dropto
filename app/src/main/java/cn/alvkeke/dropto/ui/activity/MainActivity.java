@@ -14,6 +14,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentManager;
@@ -129,8 +130,35 @@ public class MainActivity extends AppCompatActivity implements
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.main_container, categoryListFragment)
                 .setReorderingAllowed(true)
-                .addToBackStack("CategoryList")
+                .addToBackStack(null)
                 .commit();
+
+        if (savedInstanceState != null) {
+            long categoryId = savedInstanceState.getLong(SAVED_CATEGORY_ID, SAVED_CATEGORY_ID_NONE);
+            if (categoryId != SAVED_CATEGORY_ID_NONE) {
+                Category category = Global.getInstance().findCategory(categoryId);
+                if (noteListFragment == null) {
+                    noteListFragment = new NoteListFragment();
+                    Log.e(this.toString(), "new noteListFragment: " + noteListFragment);
+                    noteListFragment.setListener(new NoteListAttemptListener());
+                }
+                noteListFragment.setCategory(category);
+
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.main_container, noteListFragment)
+                        .addToBackStack(null)
+                        .commit();
+            }
+        }
+    }
+
+    private static final long SAVED_CATEGORY_ID_NONE = -1;
+    private long savedCategoryId = SAVED_CATEGORY_ID_NONE;
+    private static final String SAVED_CATEGORY_ID = "SAVED_CATEGORY_ID";
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putLong(SAVED_CATEGORY_ID, savedCategoryId);
     }
 
     @Override
@@ -155,6 +183,7 @@ public class MainActivity extends AppCompatActivity implements
                 MainActivity.this.finish();
                 return;
             }
+            savedCategoryId = SAVED_CATEGORY_ID_NONE;
             getSupportFragmentManager().popBackStack();
         }
     }
@@ -166,9 +195,10 @@ public class MainActivity extends AppCompatActivity implements
             noteListFragment.setListener(new NoteListAttemptListener());
         }
         noteListFragment.setCategory(category);
+        savedCategoryId = category.getId();
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.main_container, noteListFragment)
-                .addToBackStack("NoteList")
+                .addToBackStack(null)
                 .commit();
     }
 

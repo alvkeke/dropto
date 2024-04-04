@@ -50,6 +50,10 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     private NoteItem item;
     private boolean isRemoveImage = false;
 
+    public NoteDetailFragment() {
+
+    }
+
     public NoteDetailFragment(NoteItem item) {
         this.item = item;
     }

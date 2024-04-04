@@ -39,6 +39,10 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
     private EditText etCategoryTitle;
     private Category category;
 
+    public CategoryDetailFragment() {
+
+    }
+
     public CategoryDetailFragment(Category category) {
         this.category = category;
     }
