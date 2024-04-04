@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.ui.fragment;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -45,30 +44,19 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     private ArrayList<Category> categories;
 
     public CategoryListFragment() {
-        Log.e(this.toString(), "Category construct: " + this);
     }
 
     public void setListener(AttemptListener listener) {
-        Log.e(this.toString(), "set listener: " + this);
         this.listener = listener;
     }
 
     public void setCategories(ArrayList<Category> categories) {
-        Log.e(this.toString(), "set categories: " + this);
         this.categories = categories;
     }
 
     @Override
     public void onResume() {
         super.onResume();
-
-        for (int i=0; i<categories.size(); i++) {
-            Category c = categories.get(i);
-            if (c.needUpdate()) {
-                categoryListAdapter.notifyItemChanged(i);
-                c.setUpdated();
-            }
-        }
 
         if (context instanceof SysBarColorNotify) {
             SysBarColorNotify notify = (SysBarColorNotify) context;
@@ -88,7 +76,6 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         context = requireContext();
-        Log.e(this.toString(), "Category onViewCreated: " + this);
 
         RecyclerView rlCategory = view.findViewById(R.id.rlist_category);
         MaterialToolbar toolbar = view.findViewById(R.id.toolbar_category);
@@ -105,12 +92,6 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         rlCategory.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
         categoryListAdapter.setItemClickListener(new onListItemClick());
 
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.e(this.toString(), "Category onDestroy: " + this);
     }
 
     class CategoryMenuListener implements Toolbar.OnMenuItemClickListener {
