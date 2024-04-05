@@ -24,17 +24,21 @@ public class DebugFunction {
 
     public static final String LOG_TAG = "DebugFunction";
 
+    private static void dbgLog(String msg) {
+        if (BuildConfig.DEBUG) Log.e(LOG_TAG, msg);
+    }
+
     public static boolean extract_raw_file(Context context, int id, File o_file) {
         if (!BuildConfig.DEBUG) return false;
-        Log.e(LOG_TAG, "Perform Debug function to extract res file");
+        dbgLog("Perform Debug function to extract res file");
 
         if (o_file.exists()) {
             // file exist, return true to indicate can be load
-            Log.d(LOG_TAG, "file exist, don't extract:" + o_file);
+            dbgLog("file exist, don't extract:" + o_file);
             return true;
         }
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
-            Log.e(LOG_TAG, "SDK_VERSION error: " + Build.VERSION.SDK_INT);
+            dbgLog("SDK_VERSION error: " + Build.VERSION.SDK_INT);
             return false;
         }
         byte[] buffer = new byte[1024];
@@ -49,7 +53,7 @@ public class DebugFunction {
             os.close();
             is.close();
         } catch (IOException e) {
-            Log.e(LOG_TAG, "Failed to extract res: " +
+            dbgLog("Failed to extract res: " +
                     context.getResources().getResourceEntryName(id) + " to " + o_file);
             return false;
         }
@@ -58,7 +62,7 @@ public class DebugFunction {
 
     public static List<File> try_extract_res_images(Context context, File folder) {
         if (!BuildConfig.DEBUG) return null;
-        Log.e(LOG_TAG, "Perform Debug function to extract images");
+        dbgLog("Perform Debug function to extract images");
 
         List<Integer> rawIds = new ArrayList<>();
         Field[] fields = R.raw.class.getFields();
@@ -68,7 +72,7 @@ public class DebugFunction {
                     int id = f.getInt(null);
                     rawIds.add(id);
                 } catch (IllegalAccessException e) {
-                    Log.e(LOG_TAG, "failed to get resource ID of raw:" + f);
+                    dbgLog("failed to get resource ID of raw:" + f);
                 }
             }
         }
@@ -90,7 +94,7 @@ public class DebugFunction {
      */
     public static void fill_database_for_category(Context context) {
         if (!BuildConfig.DEBUG) return;
-        Log.e(LOG_TAG, "Perform Debug function to fill database for categories");
+        dbgLog("Perform Debug function to fill database for categories");
         try (DataBaseHelper dbHelper = new DataBaseHelper(context)) {
             dbHelper.start();
 
@@ -101,13 +105,13 @@ public class DebugFunction {
 
             dbHelper.finish();
         } catch (Exception e) {
-            Log.e(LOG_TAG, "Failed to perform debug database filling");
+            dbgLog("Failed to perform debug database filling");
         }
     }
 
     public static void fill_database_for_note(Context context, List<File> img_files, long cate_id) {
         if (!BuildConfig.DEBUG) return;
-        Log.e(LOG_TAG, "Perform Debug function to fill database for noteItems");
+        dbgLog("Perform Debug function to fill database for noteItems");
 
         try (DataBaseHelper dataBaseHelper = new DataBaseHelper(context)) {
             dataBaseHelper.start();
@@ -123,10 +127,10 @@ public class DebugFunction {
                     File img_file = img_files.get(idx);
                     idx++;
                     if (img_file.exists()) {
-                        Log.d("DebugFunction", "add image file: " + img_file);
+                        dbgLog("add image file: " + img_file);
                         e.setImageFile(img_file);
                     } else {
-                        Log.e("DebugFunction", "add image file failed, not exist: " + img_file);
+                        dbgLog("add image file failed, not exist: " + img_file);
                     }
 
                 }
@@ -135,7 +139,7 @@ public class DebugFunction {
             }
             dataBaseHelper.finish();
         } catch (Exception e) {
-            Log.e(LOG_TAG, "Failed to perform debug database filling for note");
+            dbgLog("Failed to perform debug database filling for note");
         }
     }
 
