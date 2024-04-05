@@ -8,6 +8,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,7 @@ import android.widget.PopupMenu;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsAnimationCompat;
@@ -60,6 +62,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     private EditText etInputText;
     private ConstraintLayout contentContainer;
     private View naviBar;
+    private MaterialToolbar toolbar;
     private RecyclerView rlNoteList;
 
     public NoteListFragment() {
@@ -97,13 +100,14 @@ public class NoteListFragment extends Fragment implements ListNotification {
         contentContainer = view.findViewById(R.id.note_list_content_container);
         View statusBar = view.findViewById(R.id.note_list_status_bar);
         naviBar = view.findViewById(R.id.note_list_navigation_bar);
-        MaterialToolbar toolbar = view.findViewById(R.id.note_list_toolbar);
+        toolbar = view.findViewById(R.id.note_list_toolbar);
 
         setSystemBarHeight(view, statusBar, naviBar);
         setIMEViewChange(view);
 
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
-        toolbar.setNavigationOnClickListener(view1 -> finish());
+        toolbar.setNavigationOnClickListener(new OnNavigationIconClick());
+        toolbar.setOnMenuItemClickListener(new NoteListMenuListener());
 
         noteItemAdapter = new NoteListAdapter(category.getNoteItems());
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
@@ -117,11 +121,58 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
     }
 
+    class OnNavigationIconClick implements View.OnClickListener {
+        @Override
+        public void onClick(View view) {
+            if (isInSelectMode) {
+                exitSelectMode();
+            } else {
+                finish();
+            }
+        }
+    }
+
+    private boolean isInSelectMode = false;
+    class NoteListMenuListener implements Toolbar.OnMenuItemClickListener {
+        @Override
+        public boolean onMenuItemClick(MenuItem item) {
+            return false;
+        }
+    }
+
+    private void hideMenu() {
+        toolbar.getMenu().clear();
+    }
+
+    private void showMenu() {
+        toolbar.inflateMenu(R.menu.fragment_note_list_toolbar);
+    }
+
+    private void enterSelectMode() {
+        if (isInSelectMode) return;
+        isInSelectMode = true;
+        showMenu();
+        toolbar.setNavigationIcon(R.drawable.icon_common_cross);
+    }
+
+    private void exitSelectMode() {
+        if (!isInSelectMode) return;
+        hideMenu();
+        toolbar.setNavigationIcon(R.drawable.icon_common_back);
+        isInSelectMode = false;
+    }
+
     class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         @Override
         public boolean onItemClick(View v, int index) {
             showItemPopMenu(index, v);
+            return true;
+        }
+
+        @Override
+        public boolean onItemLongClick(View v, int index) {
+            enterSelectMode();
             return true;
         }
 

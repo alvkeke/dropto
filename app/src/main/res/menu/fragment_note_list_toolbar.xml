@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/note_list_menu_copy"
+        android:title="@string/title_item_pop_menu_copy_text"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/icon_common_copy" />
+
+    <item
+        android:id="@+id/note_list_menu_share"
+        android:title="@string/title_item_pop_menu_share"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/icon_common_share" />
+
+    <item
+        android:id="@+id/note_list_menu_delete"
+        android:title="@string/string_delete"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/icon_common_remove" />
+
+</menu>
