@@ -33,6 +33,7 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
+import cn.alvkeke.dropto.ui.listener.OnTouchListenerExt;
 
 public class NoteListFragment extends Fragment implements ListNotification {
 
@@ -81,6 +82,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
         return fragmentView;
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -108,61 +110,41 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
     }
 
-    private class NoteListTouchListener implements View.OnTouchListener {
+    class NoteListTouchListener extends OnTouchListenerExt {
 
-        private static final long CLICK_TIME_THRESHOLD_MS = 200;
-        private static final int THRESHOLD_SLIDE_X = 30;
-        private static final int THRESHOLD_SLIDE_Y = 10;
-        long timeDown;
-        float sX, sY, dX, dY;
-        boolean isSideSlide = false;
-        @SuppressLint("ClickableViewAccessibility")
         @Override
-        public boolean onTouch(View view, MotionEvent motionEvent) {
-            switch (motionEvent.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    sX = motionEvent.getRawX();
-                    sY = motionEvent.getRawY();
-                    timeDown = System.currentTimeMillis();
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    dX = motionEvent.getRawX() - sX;
-                    dY = Math.abs(motionEvent.getRawY() - sY);
-                    if (!isSideSlide) {
-                        if (dY < THRESHOLD_SLIDE_Y && dX > THRESHOLD_SLIDE_X)
-                            isSideSlide = true;
-                    } else if (dX >= 0) {
-                        fragmentView.setTranslationX(dX);
-                        return true;
-                    } else {
-                        fragmentView.setTranslationX(0);
-                    }
-                    break;
-                case MotionEvent.ACTION_UP:
-                    int width = fragmentView.getWidth();
-                    int threshold_exit = width/3;
-                    if (isSideSlide && dX > threshold_exit) {
-                        finish();
-                        return true;
-                    }
+        public boolean onClick(View v, MotionEvent e) {
+            RecyclerView.LayoutManager layoutManager = rlNoteList.getLayoutManager();
+            View itemView = rlNoteList.findChildViewUnder(e.getX(), e.getY());
+            if (itemView == null)
+                return super.onClick(v, e);
+            assert layoutManager != null;
+            int index = layoutManager.getPosition(itemView);
+            showItemPopMenu(index, itemView);
+            return true;
+        }
 
-                    if (System.currentTimeMillis() - timeDown < CLICK_TIME_THRESHOLD_MS &&
-                            dY < THRESHOLD_SLIDE_Y && dX < THRESHOLD_SLIDE_Y) {
-                        // list item on click
-                        RecyclerView.LayoutManager layoutManager = rlNoteList.getLayoutManager();
-                        View v = rlNoteList.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
-                        if (v != null) {
-                            assert layoutManager != null;
-                            int index = layoutManager.getPosition(v);
-                            showItemPopMenu(index, v);
-                            return true;
-                        }
-                    }
-
-                    isSideSlide = false;
-                    resetPosition();
+        @Override
+        public boolean onSlideEnd(View v, MotionEvent e, float deltaX, float deltaY) {
+            int width = fragmentView.getWidth();
+            int threshold_exit = width/3;
+            if (deltaX > threshold_exit) {
+                finish();
+            } else {
+                resetPosition();
             }
-            return false;
+            return true;
+        }
+
+        @Override
+        public boolean onSlideOnGoing(View v, MotionEvent e, float deltaX, float deltaY) {
+            if (deltaX > 0 ) {
+                fragmentView.setTranslationX(deltaX);
+                return true;
+            } else {
+                fragmentView.setTranslationX(0);
+            }
+            return super.onSlideOnGoing(v, e, deltaX, deltaY);
         }
     }
 
