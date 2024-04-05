@@ -19,6 +19,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import java.io.File;
@@ -127,43 +128,51 @@ public class MainActivity extends AppCompatActivity implements
         getOnBackPressedDispatcher().
                 addCallback(this, new OnFragmentBackPressed(true));
 
+        if (savedInstanceState != null) {
+            List<Fragment> fragments = getSupportFragmentManager().getFragments();
+            for (Fragment f : fragments) {
+                if (f instanceof CategoryListFragment) {
+                    categoryListFragment = (CategoryListFragment) f;
+                } else if (f instanceof NoteListFragment) {
+                    noteListFragment = (NoteListFragment) f;
+                    recoverNoteListFragment(savedInstanceState);
+                } else if (f instanceof NoteDetailFragment) {
+                    Log.i(this.toString(), "note list detail is opened");
+                } else {
+                    Log.e(this.toString(), "unknown fragment: " + f);
+                }
+            }
+        }
+
         if (categoryListFragment == null) {
             categoryListFragment = new CategoryListFragment();
-            categoryListFragment.setListener(new CategoryListAttemptListener());
         }
+        categoryListFragment.setListener(new CategoryListAttemptListener());
         categoryListFragment.setCategories(Global.getInstance().getCategories());
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.main_container, categoryListFragment, null)
-                .setReorderingAllowed(true)
-                .addToBackStack(null)
-                .commit();
-
-        if (savedInstanceState != null) {
-            long categoryId = savedInstanceState.getLong(SAVED_CATEGORY_ID, SAVED_CATEGORY_ID_NONE);
-            if (categoryId != SAVED_CATEGORY_ID_NONE) {
-                Category category = Global.getInstance().findCategory(categoryId);
-                if (noteListFragment == null) {
-                    noteListFragment = new NoteListFragment();
-                    Log.e(this.toString(), "new noteListFragment: " + noteListFragment);
-                    noteListFragment.setListener(new NoteListAttemptListener());
-                }
-                noteListFragment.setCategory(category);
-
-                getSupportFragmentManager().beginTransaction()
-                        .add(R.id.main_container, noteListFragment, null)
-                        .addToBackStack(null)
-                        .commit();
-            }
+        if (!categoryListFragment.isAdded()) {
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.main_container, categoryListFragment, null)
+                    .setReorderingAllowed(true)
+                    .addToBackStack(null)
+                    .commit();
         }
     }
 
-    private static final long SAVED_CATEGORY_ID_NONE = -1;
-    private long savedCategoryId = SAVED_CATEGORY_ID_NONE;
-    private static final String SAVED_CATEGORY_ID = "SAVED_CATEGORY_ID";
+    private static final long SAVED_NOTE_LIST_CATEGORY_ID_NONE = -1;
+    private long savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
+    private static final String SAVED_NOTE_LIST_CATEGORY_ID = "SAVED_NOTE_LIST_CATEGORY_ID";
+    private void recoverNoteListFragment(Bundle state) {
+        savedNoteListCategoryId = state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE);
+        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
+        Category category = Global.getInstance().findCategory(savedNoteListCategoryId);
+        noteListFragment.setListener(new NoteListAttemptListener());
+        noteListFragment.setCategory(category);
+    }
+
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putLong(SAVED_CATEGORY_ID, savedCategoryId);
+        outState.putLong(SAVED_NOTE_LIST_CATEGORY_ID, savedNoteListCategoryId);
     }
 
     class OnFragmentBackPressed extends OnBackPressedCallback {
@@ -178,7 +187,7 @@ public class MainActivity extends AppCompatActivity implements
                 MainActivity.this.finish();
                 return;
             }
-            savedCategoryId = SAVED_CATEGORY_ID_NONE;
+            savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
             getSupportFragmentManager().popBackStack();
         }
     }
@@ -190,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements
             noteListFragment.setListener(new NoteListAttemptListener());
         }
         noteListFragment.setCategory(category);
-        savedCategoryId = category.getId();
+        savedNoteListCategoryId = category.getId();
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.main_container, noteListFragment, null)
                 .addToBackStack(null)
