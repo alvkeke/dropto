@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -22,6 +23,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
+import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
 public class CategorySelectorFragment extends BottomSheetDialogFragment {
 
@@ -45,6 +47,7 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
         return inflater.inflate(R.layout.fragment_share_recv, container, false);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -60,22 +63,19 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
         rlCategory.setLayoutManager(layoutManager);
         rlCategory.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
 
-        adapter.setItemClickListener(new CategoryListAdapter.OnItemClickListener() {
+        rlCategory.setOnTouchListener(new OnRecyclerViewTouchListener(){
+
             @Override
-            public void onItemClick(int index, View v) {
+            public boolean onItemClick(View v, int index) {
                 Category category = Global.getInstance().getCategory(index);
                 if (category == null) {
                     listener.onError("Failed to get category in index " + index);
                     finish();
-                    return;
+                    return false;
                 }
 
                 listener.onSelected(index, category);
-            }
-
-            @Override
-            public boolean onItemLongClick(int index, View v) {
-                return false;
+                return true;
             }
         });
     }

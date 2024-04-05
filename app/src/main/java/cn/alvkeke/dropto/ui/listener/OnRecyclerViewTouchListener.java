@@ -4,8 +4,10 @@ import android.annotation.SuppressLint;
 import android.view.MotionEvent;
 import android.view.View;
 
+import androidx.recyclerview.widget.RecyclerView;
 
-public class OnTouchListenerExt implements View.OnTouchListener {
+
+public class OnRecyclerViewTouchListener implements View.OnTouchListener {
 
 
     private static final long TIME_THRESHOLD_CLICK = 200;
@@ -38,6 +40,11 @@ public class OnTouchListenerExt implements View.OnTouchListener {
                 if (dY < THRESHOLD_NO_MOVED && dX < THRESHOLD_NO_MOVED) {
                     long deltaTime = System.currentTimeMillis() - timeDown;
                     if (deltaTime > TIME_THRESHOLD_LONG_CLICK) {
+                        ret = handleListItemClick(view, motionEvent, true);
+                        if (ret) {
+                            longClickHold = true;
+                            return true;
+                        }
                         ret = onLongClick(view, motionEvent);
                         if (ret) {
                             longClickHold = true;
@@ -53,6 +60,8 @@ public class OnTouchListenerExt implements View.OnTouchListener {
                     longClickHold = false;
                 if (System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK &&
                         dY < THRESHOLD_NO_MOVED && dX < THRESHOLD_NO_MOVED) {
+                    ret = handleListItemClick(view, motionEvent, false);
+                    if (ret) return true;
                     ret = onClick(view, motionEvent);
                     if (ret) return true;
                 }
@@ -81,4 +90,28 @@ public class OnTouchListenerExt implements View.OnTouchListener {
     public boolean onLongClick(View v, MotionEvent e) {
         return false;
     }
+
+    private boolean handleListItemClick(View v, MotionEvent e, boolean isLong) {
+        RecyclerView recyclerView = (RecyclerView) v;
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        View itemView = recyclerView.findChildViewUnder(e.getX(), e.getY());
+        if (itemView == null) return false;
+        if (layoutManager == null) return false;
+        int index = layoutManager.getPosition(itemView);
+        if (index == -1) return false;
+        if (isLong) {
+            return onItemLongClick(itemView, index);
+        } else {
+            return onItemClick(itemView, index);
+        }
+    }
+
+    public boolean onItemClick(View v, int index) {
+        return false;
+    }
+
+    public boolean onItemLongClick(View v, int index) {
+        return false;
+    }
+
 }

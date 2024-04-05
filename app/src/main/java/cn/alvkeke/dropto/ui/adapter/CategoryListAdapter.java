@@ -18,26 +18,18 @@ import cn.alvkeke.dropto.data.Category;
 public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapter.ViewHolder> {
 
     private ArrayList<Category> categories;
-    private OnItemClickListener itemClickListener = null;
-
-    public interface OnItemClickListener {
-        void onItemClick(int index, View v);
-        boolean onItemLongClick(int index, View v);
-    }
 
     public CategoryListAdapter(ArrayList<Category> categories) {
         this.categories = categories;
     }
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
-        private final View parent;
         private final ImageView ivIcon;
         private final TextView tvTitle;
         private final TextView tvPreview;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            parent = itemView.findViewById(R.id.item_category_parent);
             ivIcon = itemView.findViewById(R.id.item_category_icon);
             tvTitle = itemView.findViewById(R.id.item_category_title);
             tvPreview = itemView.findViewById(R.id.item_category_preview_text);
@@ -69,10 +61,6 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
             }
         }
 
-        public void setClickListener(OnItemClickListener listener, int pos) {
-            parent.setOnClickListener(v -> listener.onItemClick(pos, v));
-            parent.setOnLongClickListener(v -> listener.onItemLongClick(pos, v));
-        }
     }
 
     @NonNull
@@ -94,9 +82,6 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
         viewHolder.setTitle(c.getTitle());
         viewHolder.setPreview(c.getPreviewText());
         viewHolder.setType(c.getType());
-        if (itemClickListener!=null) {
-            viewHolder.setClickListener(itemClickListener, i);
-        }
     }
 
     @Override
@@ -109,7 +94,4 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
         this.categories = categories;
     }
 
-    public void setItemClickListener(OnItemClickListener itemClickListener) {
-        this.itemClickListener = itemClickListener;
-    }
 }

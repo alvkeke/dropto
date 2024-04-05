@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -25,6 +26,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
+import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
 public class CategoryListFragment extends Fragment implements ListNotification {
 
@@ -59,6 +61,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         return inflater.inflate(R.layout.fragment_category_list, container, false);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -80,8 +83,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
         rlCategory.setLayoutManager(layoutManager);
         rlCategory.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
-        categoryListAdapter.setItemClickListener(new onListItemClick());
-
+        rlCategory.setOnTouchListener(new OnListItemClickListener());
     }
 
     private void setSystemBarHeight(View parent, View status, View navi) {
@@ -113,18 +115,19 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         }
     }
 
-    class onListItemClick implements CategoryListAdapter.OnItemClickListener {
+    class OnListItemClickListener extends OnRecyclerViewTouchListener {
 
         @Override
-        public void onItemClick(int index, View v) {
-            Category e = categories.get(index);
-            listener.onAttemptRecv(AttemptListener.Attempt.EXPAND, e);
+        public boolean onItemClick(View v, int index) {
+            Category category = categories.get(index);
+            listener.onAttemptRecv(AttemptListener.Attempt.EXPAND, category);
+            return true;
         }
 
         @Override
-        public boolean onItemLongClick(int index, View v) {
-            Category e = categories.get(index);
-            listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, e);
+        public boolean onItemLongClick(View v, int index) {
+            Category category = categories.get(index);
+            listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, category);
             return true;
         }
     }

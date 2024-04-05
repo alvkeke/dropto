@@ -33,7 +33,7 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
-import cn.alvkeke.dropto.ui.listener.OnTouchListenerExt;
+import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
 public class NoteListFragment extends Fragment implements ListNotification {
 
@@ -110,17 +110,11 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
     }
 
-    class NoteListTouchListener extends OnTouchListenerExt {
+    class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         @Override
-        public boolean onClick(View v, MotionEvent e) {
-            RecyclerView.LayoutManager layoutManager = rlNoteList.getLayoutManager();
-            View itemView = rlNoteList.findChildViewUnder(e.getX(), e.getY());
-            if (itemView == null)
-                return super.onClick(v, e);
-            assert layoutManager != null;
-            int index = layoutManager.getPosition(itemView);
-            showItemPopMenu(index, itemView);
+        public boolean onItemClick(View v, int index) {
+            showItemPopMenu(index, v);
             return true;
         }
 
