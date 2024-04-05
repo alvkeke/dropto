@@ -133,7 +133,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         categoryListFragment.setCategories(Global.getInstance().getCategories());
         getSupportFragmentManager().beginTransaction()
-                .replace(R.id.main_container, categoryListFragment)
+                .add(R.id.main_container, categoryListFragment, null)
                 .setReorderingAllowed(true)
                 .addToBackStack(null)
                 .commit();
@@ -150,7 +150,7 @@ public class MainActivity extends AppCompatActivity implements
                 noteListFragment.setCategory(category);
 
                 getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.main_container, noteListFragment)
+                        .add(R.id.main_container, noteListFragment, null)
                         .addToBackStack(null)
                         .commit();
             }
@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity implements
         noteListFragment.setCategory(category);
         savedCategoryId = category.getId();
         getSupportFragmentManager().beginTransaction()
-                .replace(R.id.main_container, noteListFragment)
+                .add(R.id.main_container, noteListFragment, null)
                 .addToBackStack(null)
                 .commit();
     }
