@@ -137,7 +137,9 @@ public class MainActivity extends AppCompatActivity implements
                     noteListFragment = (NoteListFragment) f;
                     recoverNoteListFragment(savedInstanceState);
                 } else if (f instanceof NoteDetailFragment) {
-                    Log.i(this.toString(), "note list detail is opened");
+                    recoverNoteDetailFragment((NoteDetailFragment) f, savedInstanceState);
+                } else if (f instanceof CategoryDetailFragment) {
+                    recoverCategoryDetailFragment((CategoryDetailFragment) f, savedInstanceState);
                 } else {
                     Log.e(this.toString(), "unknown fragment: " + f);
                 }
@@ -168,11 +170,33 @@ public class MainActivity extends AppCompatActivity implements
         noteListFragment.setListener(new NoteListAttemptListener());
         noteListFragment.setCategory(category);
     }
+    private static final long SAVED_NOTE_INFO_NOTE_ID_NONE = -1;
+    private long savedNoteInfoNoteId = SAVED_NOTE_INFO_NOTE_ID_NONE;
+    private static final String SAVED_NOTE_INFO_NOTE_ID = "SAVED_NOTE_INFO_NOTE_ID";
+    private void recoverNoteDetailFragment(NoteDetailFragment fragment, Bundle state) {
+        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
+        savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE);
+        Category category = Global.getInstance().findCategory(savedNoteListCategoryId);
+        NoteItem item = category.findNoteItem(savedNoteInfoNoteId);
+        if (item == null) { fragment.dismiss(); return; }
+        fragment.setNoteItem(item);
+    }
+    private static final long SAVED_CATEGORY_DETAIL_ID_NONE = -1;
+    private long savedCategoryDetailId = SAVED_CATEGORY_DETAIL_ID_NONE;
+    private static final String SAVED_CATEGORY_DETAIL_ID = "SAVED_CATEGORY_DETAIL_ID";
+    private void recoverCategoryDetailFragment(CategoryDetailFragment fragment, Bundle state) {
+        savedCategoryDetailId = state.getLong(SAVED_CATEGORY_DETAIL_ID, SAVED_CATEGORY_DETAIL_ID_NONE);
+        if (savedCategoryDetailId == SAVED_CATEGORY_DETAIL_ID_NONE) return;
+        Category category = Global.getInstance().findCategory(savedCategoryDetailId);
+        fragment.setCategory(category);
+    }
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putLong(SAVED_NOTE_LIST_CATEGORY_ID, savedNoteListCategoryId);
+        outState.putLong(SAVED_NOTE_INFO_NOTE_ID, savedNoteInfoNoteId);
+        outState.putLong(SAVED_CATEGORY_DETAIL_ID, savedCategoryDetailId);
     }
 
     class OnFragmentBackPressed extends OnBackPressedCallback {
@@ -207,6 +231,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void showCategoryCreatingDialog() {
+        savedCategoryDetailId = SAVED_CATEGORY_DETAIL_ID_NONE;
         getSupportFragmentManager().beginTransaction()
                 .add(new CategoryDetailFragment(null), null)
                 .commit();
@@ -233,6 +258,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void handleCategoryDetailShow(Category c) {
+        savedCategoryDetailId = c.getId();
         getSupportFragmentManager().beginTransaction()
                 .add(new CategoryDetailFragment(c), null)
                 .commit();
@@ -299,6 +325,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void handleNoteDetailShow(NoteItem item) {
+        savedNoteInfoNoteId = item.getId();
         getSupportFragmentManager().beginTransaction()
                 .add(new NoteDetailFragment(item), null)
                 .commit();

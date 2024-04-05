@@ -59,6 +59,10 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         this.item = item;
     }
 
+    public void setNoteItem(NoteItem item) {
+        this.item = item;
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {

@@ -48,6 +48,10 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         this.category = category;
     }
 
+    public void setCategory(Category category) {
+        this.category = category;
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
