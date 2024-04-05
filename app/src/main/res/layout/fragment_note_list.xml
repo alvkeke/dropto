@@ -15,10 +15,18 @@
         android:layout_width="match_parent"
         android:layout_height="24dp"/>
 
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/note_list_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/note_list_status_bar"
+        android:background="?android:statusBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/note_list_content_container"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/note_list_status_bar"
+        app:layout_constraintTop_toBottomOf="@id/note_list_toolbar"
         app:layout_constraintBottom_toTopOf="@id/note_list_navigation_bar"
         android:layout_width="match_parent"
         android:layout_height="0dp">

@@ -26,6 +26,8 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.appbar.MaterialToolbar;
+
 import java.util.List;
 
 import cn.alvkeke.dropto.R;
@@ -95,8 +97,13 @@ public class NoteListFragment extends Fragment implements ListNotification {
         contentContainer = view.findViewById(R.id.note_list_content_container);
         View statusBar = view.findViewById(R.id.note_list_status_bar);
         naviBar = view.findViewById(R.id.note_list_navigation_bar);
+        MaterialToolbar toolbar = view.findViewById(R.id.note_list_toolbar);
+
         setSystemBarHeight(view, statusBar, naviBar);
         setIMEViewChange(view);
+
+        toolbar.setNavigationIcon(R.drawable.icon_common_back);
+        toolbar.setNavigationOnClickListener(view1 -> finish());
 
         noteItemAdapter = new NoteListAdapter(category.getNoteItems());
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
