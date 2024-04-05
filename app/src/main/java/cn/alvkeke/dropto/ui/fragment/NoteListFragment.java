@@ -49,7 +49,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     Category category;
     NoteListAdapter noteItemAdapter;
     private EditText etInputText;
-    private ConstraintLayout inputContainer;
+    private ConstraintLayout contentContainer;
     private View naviBar;
     private RecyclerView rlNoteList;
 
@@ -83,7 +83,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList = view.findViewById(R.id.note_list_listview);
         ImageButton btnAddNote = view.findViewById(R.id.note_list_input_button);
         etInputText = view.findViewById(R.id.note_list_input_box);
-        inputContainer = view.findViewById(R.id.note_list_input_container);
+        contentContainer = view.findViewById(R.id.note_list_content_container);
         View statusBar = view.findViewById(R.id.note_list_status_bar);
         naviBar = view.findViewById(R.id.note_list_navigation_bar);
         setSystemBarHeight(view, statusBar, naviBar);
@@ -117,21 +117,30 @@ public class NoteListFragment extends Fragment implements ListNotification {
                 new WindowInsetsAnimationCompat.Callback(
                         WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_STOP) {
 
-                    @NonNull
-                    @Override
-                    public WindowInsetsCompat onProgress(@NonNull WindowInsetsCompat insets,
-                                                         @NonNull List<WindowInsetsAnimationCompat> runningAnimations) {
-                        int imeHei = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
-                        inputContainer.setTranslationY(-imeHei);
-                        rlNoteList.setTranslationY(-imeHei);
-                        if (imeHei <= naviBar.getHeight()) {
-                            naviBar.setVisibility(View.VISIBLE);
-                        } else {
-                            naviBar.setVisibility(View.GONE);
-                        }
-                        return insets;
-                    }
-                });
+            private int naviHei;
+            @Override
+            public void onPrepare(@NonNull WindowInsetsAnimationCompat animation) {
+                super.onPrepare(animation);
+                naviHei = naviBar.getHeight();
+            }
+
+            @NonNull
+            @Override
+            public WindowInsetsCompat onProgress(@NonNull WindowInsetsCompat insets,
+                                                 @NonNull List<WindowInsetsAnimationCompat> runningAnimations) {
+                int imeHei = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+                ViewGroup.MarginLayoutParams params =
+                        (ViewGroup.MarginLayoutParams) contentContainer.getLayoutParams();
+                if (imeHei > naviHei) {
+                    params.bottomMargin = imeHei - naviHei;
+                    contentContainer.setLayoutParams(params);
+                } else {
+                    params.bottomMargin = 0;
+                    contentContainer.setLayoutParams(params);
+                }
+                return insets;
+            }
+        });
     }
 
     class onItemAddClick implements View.OnClickListener {
