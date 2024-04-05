@@ -91,7 +91,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
 
         toolbar.inflateMenu(R.menu.note_detail_toolbar);
         toolbar.setOnMenuItemClickListener(new NoteDetailMenuListener());
-        toolbar.setNavigationIcon(R.drawable.icon_common_back);
+        toolbar.setNavigationIcon(R.drawable.icon_common_cross);
         toolbar.setNavigationOnClickListener(new BackNavigationClick());
         scroll_view.setOnScrollChangeListener(new ScrollViewListener());
     }
