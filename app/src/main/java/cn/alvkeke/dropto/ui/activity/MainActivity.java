@@ -20,7 +20,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -206,13 +205,15 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void handleOnBackPressed() {
-            FragmentManager manager = getSupportFragmentManager();
-            if (manager.getBackStackEntryCount() <= 1) {
+            if (noteListFragment.isVisible()) {
+                savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
+                getSupportFragmentManager().beginTransaction()
+                        .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
+                        .remove(noteListFragment)
+                        .commit();
+            } else if (categoryListFragment.isVisible()) {
                 MainActivity.this.finish();
-                return;
             }
-            savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
-            getSupportFragmentManager().popBackStack();
         }
     }
 
@@ -225,6 +226,7 @@ public class MainActivity extends AppCompatActivity implements
         noteListFragment.setCategory(category);
         savedNoteListCategoryId = category.getId();
         getSupportFragmentManager().beginTransaction()
+                .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
                 .add(R.id.main_container, noteListFragment, null)
                 .addToBackStack(null)
                 .commit();
