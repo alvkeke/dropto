@@ -207,10 +207,11 @@ public class MainActivity extends AppCompatActivity implements
         public void handleOnBackPressed() {
             if (noteListFragment.isVisible()) {
                 savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
-                getSupportFragmentManager().beginTransaction()
-                        .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
-                        .remove(noteListFragment)
-                        .commit();
+                noteListFragment.finish();
+//                getSupportFragmentManager().beginTransaction()
+//                        .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
+//                        .remove(noteListFragment)
+//                        .commit();
             } else if (categoryListFragment.isVisible()) {
                 MainActivity.this.finish();
             }

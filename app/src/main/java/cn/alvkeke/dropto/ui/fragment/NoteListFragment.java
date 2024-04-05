@@ -1,9 +1,14 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -48,6 +53,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     private AttemptListener listener;
     Category category;
     NoteListAdapter noteItemAdapter;
+    private View fragmentView;
     private EditText etInputText;
     private ConstraintLayout contentContainer;
     private View naviBar;
@@ -71,7 +77,8 @@ public class NoteListFragment extends Fragment implements ListNotification {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_note_list, container, false);
+        fragmentView = inflater.inflate(R.layout.fragment_note_list, container, false);
+        return fragmentView;
     }
 
     @Override
@@ -96,9 +103,93 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList.setAdapter(noteItemAdapter);
         rlNoteList.setLayoutManager(layoutManager);
         rlNoteList.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
-        noteItemAdapter.setItemClickListener(new onListItemClick());
 
         btnAddNote.setOnClickListener(new onItemAddClick());
+        rlNoteList.setOnTouchListener(new NoteListTouchListener());
+    }
+
+    private class NoteListTouchListener implements View.OnTouchListener {
+
+        private static final long CLICK_TIME_THRESHOLD_MS = 200;
+        private static final int THRESHOLD_SLIDE_X = 30;
+        private static final int THRESHOLD_SLIDE_Y = 10;
+        long timeDown;
+        float sX, sY, dX, dY;
+        boolean isSideSlide = false;
+        @SuppressLint("ClickableViewAccessibility")
+        @Override
+        public boolean onTouch(View view, MotionEvent motionEvent) {
+            switch (motionEvent.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    sX = motionEvent.getRawX();
+                    sY = motionEvent.getRawY();
+                    timeDown = System.currentTimeMillis();
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    dX = motionEvent.getRawX() - sX;
+                    dY = Math.abs(motionEvent.getRawY() - sY);
+                    if (!isSideSlide) {
+                        if (dY < THRESHOLD_SLIDE_Y && dX > THRESHOLD_SLIDE_X)
+                            isSideSlide = true;
+                    } else if (dX >= 0) {
+                        fragmentView.setTranslationX(dX);
+                        return true;
+                    } else {
+                        fragmentView.setTranslationX(0);
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                    int width = fragmentView.getWidth();
+                    int threshold_exit = width/3;
+                    if (isSideSlide && dX > threshold_exit) {
+                        finish();
+                        return true;
+                    }
+
+                    if (System.currentTimeMillis() - timeDown < CLICK_TIME_THRESHOLD_MS &&
+                            dY < THRESHOLD_SLIDE_Y && dX < THRESHOLD_SLIDE_Y) {
+                        // list item on click
+                        RecyclerView.LayoutManager layoutManager = rlNoteList.getLayoutManager();
+                        View v = rlNoteList.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
+                        if (v != null) {
+                            assert layoutManager != null;
+                            int index = layoutManager.getPosition(v);
+                            showItemPopMenu(index, v);
+                            return true;
+                        }
+                    }
+
+                    isSideSlide = false;
+                    resetPosition();
+            }
+            return false;
+        }
+    }
+
+    private static final String propName = "translationX";
+    public void finish(long duration) {
+        float startX = fragmentView.getTranslationX();
+        float width = fragmentView.getWidth();
+        ObjectAnimator animator = ObjectAnimator.ofFloat(fragmentView,
+                propName, startX, width).setDuration(duration);
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                getParentFragmentManager().beginTransaction()
+                        .remove(NoteListFragment.this).commit();
+            }
+        });
+        animator.start();
+    }
+    public void finish() {
+        finish(200);
+    }
+    public void resetPosition() {
+        float startX = fragmentView.getTranslationX();
+        if (startX == 0) return;
+        ObjectAnimator.ofFloat(fragmentView,
+                propName, startX, 0).setDuration(100).start();
     }
 
     private void setSystemBarHeight(View parent, View status, View navi) {
@@ -183,14 +274,6 @@ public class NoteListFragment extends Fragment implements ListNotification {
         });
         menu.inflate(R.menu.item_pop_menu);
         menu.show();
-    }
-
-    class onListItemClick implements NoteListAdapter.OnItemClickListener {
-
-        @Override
-        public void onItemClick(int index, View v) {
-            showItemPopMenu(index, v);
-        }
     }
 
     private NoteItem pendingNoteItem = null;

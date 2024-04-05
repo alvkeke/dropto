@@ -25,11 +25,6 @@ import java.util.Locale;
 public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
 
     ArrayList<NoteItem> mList;
-    private OnItemClickListener itemClickListener = null;
-
-    public interface OnItemClickListener {
-        void onItemClick(int index, View v);
-    }
 
     public NoteListAdapter(ArrayList<NoteItem> list) {
         mList = list;
@@ -37,7 +32,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
-        private final View parent;
         private final TextView tvText;
         private final TextView tvCreateTime;
         private final ImageView ivEdited;
@@ -46,7 +40,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            parent = itemView.findViewById(R.id.rlist_item_note_parent);
             tvText = itemView.findViewById(R.id.rlist_item_note_text);
             tvCreateTime = itemView.findViewById(R.id.rlist_item_note_create_time);
             ivEdited = itemView.findViewById(R.id.rlist_item_note_is_edited);
@@ -125,9 +118,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             tvImageFile.setVisibility(View.VISIBLE);
         }
 
-        public void setClickListener(OnItemClickListener listener, int pos) {
-            parent.setOnClickListener(v -> listener.onItemClick(pos, v));
-        }
     }
 
     @NonNull
@@ -150,9 +140,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setIsEdited(note.isEdited());
         holder.setImageFile(note.getImageFile());
         holder.setImageName(note.getImageName());
-        if (itemClickListener!=null) {
-            holder.setClickListener(itemClickListener, position);
-        }
     }
 
     @Override
@@ -161,7 +148,4 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         return mList.size();
     }
 
-    public void setItemClickListener(OnItemClickListener itemClickListener) {
-        this.itemClickListener = itemClickListener;
-    }
 }
