@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:background="?attr/backgroundColor"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ui.fragment.NoteListFragment">
@@ -19,7 +20,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/note_list_status_bar"
         app:layout_constraintBottom_toTopOf="@id/note_list_navigation_bar"
-        android:background="?attr/backgroundColor"
         android:layout_width="match_parent"
         android:layout_height="0dp">
 
