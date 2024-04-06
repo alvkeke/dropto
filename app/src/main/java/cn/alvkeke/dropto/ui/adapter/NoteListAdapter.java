@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.adapter;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,14 +14,14 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.data.NoteItem;
-
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
+
+import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.NoteItem;
 
 public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
 
@@ -140,12 +141,49 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setIsEdited(note.isEdited());
         holder.setImageFile(note.getImageFile());
         holder.setImageName(note.getImageName());
+        if (isSelect(position)) {
+            // TODO: use another color for selected item
+            holder.itemView.setBackgroundColor(Color.LTGRAY);
+        } else {
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        }
     }
 
     @Override
     public int getItemCount() {
         if (mList == null) return 0;
         return mList.size();
+    }
+
+    private ArrayList<Integer> selectedIndex = new ArrayList<>();
+    private Integer findSelect(int i) {
+        for (Integer I : selectedIndex) {
+            if (I == i) return I;
+        }
+        return null;
+    }
+    private boolean isSelect(int index) {
+        for (Integer I : selectedIndex) {
+            if (I == index) return true;
+        }
+        return false;
+    }
+    public int toggleItemSelect(int index) {
+        Integer I = findSelect(index);
+        if (I == null) {
+            selectedIndex.add(index);
+        } else {
+            selectedIndex.remove(I);
+        }
+        notifyItemChanged(index);
+        return selectedIndex.size();
+    }
+    public void clearItemSelect() {
+        ArrayList<Integer> tmp = selectedIndex;
+        selectedIndex = new ArrayList<>();
+        for (Integer I : tmp) {
+            notifyItemChanged(I);
+        }
     }
 
 }

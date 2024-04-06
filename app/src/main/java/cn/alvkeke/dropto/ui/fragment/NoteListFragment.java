@@ -159,20 +159,33 @@ public class NoteListFragment extends Fragment implements ListNotification {
         if (!isInSelectMode) return;
         hideMenu();
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
+        noteItemAdapter.clearItemSelect();
         isInSelectMode = false;
+    }
+
+    private void tryToggleItemSelect(int index) {
+        int count = noteItemAdapter.toggleItemSelect(index);
+        if (count == 0) {
+            exitSelectMode();
+        }
     }
 
     class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         @Override
         public boolean onItemClick(View v, int index) {
-            showItemPopMenu(index, v);
+            if (isInSelectMode) {
+                tryToggleItemSelect(index);
+            } else {
+                showItemPopMenu(index, v);
+            }
             return true;
         }
 
         @Override
         public boolean onItemLongClick(View v, int index) {
             enterSelectMode();
+            tryToggleItemSelect(index);
             return true;
         }
 
@@ -210,6 +223,9 @@ public class NoteListFragment extends Fragment implements ListNotification {
             @Override
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
+                if (isInSelectMode) {
+                    exitSelectMode();
+                }
                 getParentFragmentManager().beginTransaction()
                         .remove(NoteListFragment.this).commit();
             }
