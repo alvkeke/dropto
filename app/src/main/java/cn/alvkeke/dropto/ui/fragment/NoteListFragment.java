@@ -30,6 +30,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import cn.alvkeke.dropto.R;
@@ -132,10 +133,50 @@ public class NoteListFragment extends Fragment implements ListNotification {
         }
     }
 
+    private ArrayList<NoteItem> getSelectedItems() {
+        ArrayList<Integer> selectedIndex = noteItemAdapter.getSelectedItems();
+        ArrayList<NoteItem> items = new ArrayList<>();
+        for (Integer idx : selectedIndex) {
+            NoteItem noteItem = category.getNoteItem(idx);
+            items.add(noteItem);
+        }
+        return items;
+    }
+    private void handleMenuDelete() {
+        ArrayList<NoteItem> items = getSelectedItems();
+        exitSelectMode();
+        for (NoteItem item: items) {
+            listener.onAttemptRecv(AttemptListener.Attempt.REMOVE, category, item);
+        }
+    }
+
+    private void handleMenuCopy() {
+        ArrayList<NoteItem> items = getSelectedItems();
+        exitSelectMode();
+        StringBuilder sb = new StringBuilder();
+        for (NoteItem e : items) {
+            sb.append(e.getText());
+            sb.append("\n");
+        }
+        // TODO: finish this
+    }
+
+    private void handleMenuShare() {
+        // TODO: finish this
+    }
+
     private boolean isInSelectMode = false;
     class NoteListMenuListener implements Toolbar.OnMenuItemClickListener {
         @Override
         public boolean onMenuItemClick(MenuItem item) {
+            int menu_id = item.getItemId();
+            if (R.id.note_list_menu_delete == menu_id) {
+                handleMenuDelete();
+            } else if (R.id.note_list_menu_copy == menu_id) {
+                handleMenuCopy();
+            } else if (R.id.note_list_menu_share == menu_id) {
+                handleMenuShare();
+            }
             return false;
         }
     }
@@ -159,12 +200,12 @@ public class NoteListFragment extends Fragment implements ListNotification {
         if (!isInSelectMode) return;
         hideMenu();
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
-        noteItemAdapter.clearItemSelect();
+        noteItemAdapter.clearSelectItems();
         isInSelectMode = false;
     }
 
     private void tryToggleItemSelect(int index) {
-        int count = noteItemAdapter.toggleItemSelect(index);
+        int count = noteItemAdapter.toggleSelectItemes(index);
         if (count == 0) {
             exitSelectMode();
         }

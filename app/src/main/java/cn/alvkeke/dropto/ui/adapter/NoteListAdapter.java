@@ -168,7 +168,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
         return false;
     }
-    public int toggleItemSelect(int index) {
+    public int toggleSelectItemes(int index) {
         Integer I = findSelect(index);
         if (I == null) {
             selectedIndex.add(index);
@@ -178,12 +178,16 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         notifyItemChanged(index);
         return selectedIndex.size();
     }
-    public void clearItemSelect() {
+    public void clearSelectItems() {
+        if (selectedIndex.isEmpty()) return;
         ArrayList<Integer> tmp = selectedIndex;
         selectedIndex = new ArrayList<>();
         for (Integer I : tmp) {
             notifyItemChanged(I);
         }
+    }
+    public ArrayList<Integer> getSelectedItems() {
+        return selectedIndex;
     }
 
 }
