@@ -316,15 +316,18 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private void handleNoteCopy(NoteItem e) {
+    private void handleTextCopy(String text) {
         ClipboardManager clipboardManager =
                 (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboardManager == null) {
             Log.e(this.toString(), "Failed to get ClipboardManager");
             return;
         }
-        ClipData data = ClipData.newPlainText("text", e.getText());
+        ClipData data = ClipData.newPlainText("text", text);
         clipboardManager.setPrimaryClip(data);
+    }
+    private void handleNoteCopy(NoteItem e) {
+        handleTextCopy(e.getText());
     }
 
     private void handleNoteDetailShow(NoteItem item) {
@@ -336,7 +339,7 @@ public class MainActivity extends AppCompatActivity implements
 
     class NoteListAttemptListener implements NoteListFragment.AttemptListener {
         @Override
-        public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
+        public void onAttempt(Attempt attempt, NoteItem e) {
             switch (attempt) {
                 case REMOVE:
                     binder.getService().queueTask(CoreService.Task.Type.REMOVE, e);
@@ -359,8 +362,50 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
+        private CoreService.Task.Type convertAttemptToType(Attempt attempt) {
+            switch (attempt) {
+                case REMOVE:
+                    return CoreService.Task.Type.REMOVE;
+                case UPDATE:
+                    return CoreService.Task.Type.UPDATE;
+                case CREATE:
+                    return CoreService.Task.Type.CREATE;
+            }
+            return null;
+        }
         @Override
-        public void onErrorRecv(String errorMessage) {
+        public void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems) {
+            switch (attempt) {
+                case REMOVE:
+                case CREATE:
+                case UPDATE:
+                    CoreService.Task.Type type = convertAttemptToType(attempt);
+                    for (NoteItem e : noteItems) {
+                        binder.getService().queueTask(type, e);
+                    }
+                    break;
+                case COPY:
+                    StringBuilder sb = new StringBuilder();
+                    NoteItem listOne = noteItems.get(noteItems.size()-1);
+                    for (NoteItem e : noteItems) {
+                        sb.append(e.getText());
+                        if (e == listOne) continue;
+                        sb.append("\n");
+                    }
+                    handleTextCopy(sb.toString());
+                    break;
+                case SHARE:
+                    // TODO: implement this
+                    Toast.makeText(MainActivity.this,
+                            "multi share is not supported yet", Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    Log.e(this.toString(), "This operation is not support batch: " +attempt);
+            }
+        }
+
+        @Override
+        public void onError(String errorMessage) {
             Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
         }
     }

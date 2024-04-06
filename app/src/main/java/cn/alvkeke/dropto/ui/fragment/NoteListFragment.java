@@ -51,8 +51,9 @@ public class NoteListFragment extends Fragment implements ListNotification {
             COPY,
             SHARE,
         }
-        void onAttemptRecv(Attempt attempt, Category category, NoteItem e);
-        void onErrorRecv(String errorMessage);
+        void onAttempt(Attempt attempt, NoteItem e);
+        void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems);
+        void onError(String errorMessage);
     }
 
     private Context context;
@@ -136,24 +137,19 @@ public class NoteListFragment extends Fragment implements ListNotification {
     private void handleMenuDelete() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
-        for (NoteItem item: items) {
-            listener.onAttemptRecv(AttemptListener.Attempt.REMOVE, category, item);
-        }
+        listener.onAttemptBatch(AttemptListener.Attempt.REMOVE, items);
     }
 
     private void handleMenuCopy() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
-        StringBuilder sb = new StringBuilder();
-        for (NoteItem e : items) {
-            sb.append(e.getText());
-            sb.append("\n");
-        }
-        // TODO: finish this
+        listener.onAttemptBatch(AttemptListener.Attempt.COPY, items);
     }
 
     private void handleMenuShare() {
-        // TODO: finish this
+        ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
+        exitSelectMode();
+        listener.onAttemptBatch(AttemptListener.Attempt.SHARE, items);
     }
 
     private boolean isInSelectMode = false;
@@ -324,7 +320,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
             setPendingItem(item);
-            listener.onAttemptRecv(AttemptListener.Attempt.CREATE, category, item);
+            listener.onAttempt(AttemptListener.Attempt.CREATE, item);
         }
     }
 
@@ -332,23 +328,23 @@ public class NoteListFragment extends Fragment implements ListNotification {
         PopupMenu menu = new PopupMenu(context, v);
         NoteItem noteItem = category.getNoteItem(index);
         if (noteItem == null) {
-            listener.onErrorRecv("Failed to get note item at " + index + ", abort");
+            listener.onError("Failed to get note item at " + index + ", abort");
             return;
         }
         menu.setOnMenuItemClickListener(menuItem -> {
             int item_id = menuItem.getItemId();
             if (R.id.item_pop_m_delete == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.REMOVE, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.REMOVE, noteItem);
             } else if (R.id.item_pop_m_pin == item_id) {
-                listener.onErrorRecv("try to Pin item at " + index);
+                listener.onError("try to Pin item at " + index);
             } else if (R.id.item_pop_m_edit == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.DETAIL, noteItem);
             } else if (R.id.item_pop_m_copy_text == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.COPY, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.COPY, noteItem);
             } else if (R.id.item_pop_m_share == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.SHARE, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.SHARE, noteItem);
             } else {
-                listener.onErrorRecv( "Unknown menu id: " +
+                listener.onError( "Unknown menu id: " +
                         getResources().getResourceEntryName(item_id));
                 return false;
             }
