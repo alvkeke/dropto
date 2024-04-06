@@ -8,6 +8,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,7 @@ import android.widget.PopupMenu;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsAnimationCompat;
@@ -28,6 +30,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import cn.alvkeke.dropto.R;
@@ -48,8 +51,9 @@ public class NoteListFragment extends Fragment implements ListNotification {
             COPY,
             SHARE,
         }
-        void onAttemptRecv(Attempt attempt, Category category, NoteItem e);
-        void onErrorRecv(String errorMessage);
+        void onAttempt(Attempt attempt, NoteItem e);
+        void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems);
+        void onError(String errorMessage);
     }
 
     private Context context;
@@ -60,6 +64,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     private EditText etInputText;
     private ConstraintLayout contentContainer;
     private View naviBar;
+    private MaterialToolbar toolbar;
     private RecyclerView rlNoteList;
 
     public NoteListFragment() {
@@ -97,13 +102,14 @@ public class NoteListFragment extends Fragment implements ListNotification {
         contentContainer = view.findViewById(R.id.note_list_content_container);
         View statusBar = view.findViewById(R.id.note_list_status_bar);
         naviBar = view.findViewById(R.id.note_list_navigation_bar);
-        MaterialToolbar toolbar = view.findViewById(R.id.note_list_toolbar);
+        toolbar = view.findViewById(R.id.note_list_toolbar);
 
         setSystemBarHeight(view, statusBar, naviBar);
         setIMEViewChange(view);
 
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
-        toolbar.setNavigationOnClickListener(view1 -> finish());
+        toolbar.setNavigationOnClickListener(new OnNavigationIconClick());
+        toolbar.setOnMenuItemClickListener(new NoteListMenuListener());
 
         noteItemAdapter = new NoteListAdapter(category.getNoteItems());
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
@@ -117,11 +123,97 @@ public class NoteListFragment extends Fragment implements ListNotification {
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
     }
 
+    class OnNavigationIconClick implements View.OnClickListener {
+        @Override
+        public void onClick(View view) {
+            if (isInSelectMode) {
+                exitSelectMode();
+            } else {
+                finish();
+            }
+        }
+    }
+
+    private void handleMenuDelete() {
+        ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
+        exitSelectMode();
+        listener.onAttemptBatch(AttemptListener.Attempt.REMOVE, items);
+    }
+
+    private void handleMenuCopy() {
+        ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
+        exitSelectMode();
+        listener.onAttemptBatch(AttemptListener.Attempt.COPY, items);
+    }
+
+    private void handleMenuShare() {
+        ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
+        exitSelectMode();
+        listener.onAttemptBatch(AttemptListener.Attempt.SHARE, items);
+    }
+
+    private boolean isInSelectMode = false;
+    class NoteListMenuListener implements Toolbar.OnMenuItemClickListener {
+        @Override
+        public boolean onMenuItemClick(MenuItem item) {
+            int menu_id = item.getItemId();
+            if (R.id.note_list_menu_delete == menu_id) {
+                handleMenuDelete();
+            } else if (R.id.note_list_menu_copy == menu_id) {
+                handleMenuCopy();
+            } else if (R.id.note_list_menu_share == menu_id) {
+                handleMenuShare();
+            }
+            return false;
+        }
+    }
+
+    private void hideMenu() {
+        toolbar.getMenu().clear();
+    }
+
+    private void showMenu() {
+        toolbar.inflateMenu(R.menu.fragment_note_list_toolbar);
+    }
+
+    private void enterSelectMode() {
+        if (isInSelectMode) return;
+        isInSelectMode = true;
+        showMenu();
+        toolbar.setNavigationIcon(R.drawable.icon_common_cross);
+    }
+
+    private void exitSelectMode() {
+        if (!isInSelectMode) return;
+        hideMenu();
+        toolbar.setNavigationIcon(R.drawable.icon_common_back);
+        noteItemAdapter.clearSelectItems();
+        isInSelectMode = false;
+    }
+
+    private void tryToggleItemSelect(int index) {
+        int count = noteItemAdapter.toggleSelectItems(index);
+        if (count == 0) {
+            exitSelectMode();
+        }
+    }
+
     class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         @Override
         public boolean onItemClick(View v, int index) {
-            showItemPopMenu(index, v);
+            if (isInSelectMode) {
+                tryToggleItemSelect(index);
+            } else {
+                showItemPopMenu(index, v);
+            }
+            return true;
+        }
+
+        @Override
+        public boolean onItemLongClick(View v, int index) {
+            enterSelectMode();
+            tryToggleItemSelect(index);
             return true;
         }
 
@@ -159,6 +251,9 @@ public class NoteListFragment extends Fragment implements ListNotification {
             @Override
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
+                if (isInSelectMode) {
+                    exitSelectMode();
+                }
                 getParentFragmentManager().beginTransaction()
                         .remove(NoteListFragment.this).commit();
             }
@@ -225,7 +320,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
             setPendingItem(item);
-            listener.onAttemptRecv(AttemptListener.Attempt.CREATE, category, item);
+            listener.onAttempt(AttemptListener.Attempt.CREATE, item);
         }
     }
 
@@ -233,23 +328,23 @@ public class NoteListFragment extends Fragment implements ListNotification {
         PopupMenu menu = new PopupMenu(context, v);
         NoteItem noteItem = category.getNoteItem(index);
         if (noteItem == null) {
-            listener.onErrorRecv("Failed to get note item at " + index + ", abort");
+            listener.onError("Failed to get note item at " + index + ", abort");
             return;
         }
         menu.setOnMenuItemClickListener(menuItem -> {
             int item_id = menuItem.getItemId();
             if (R.id.item_pop_m_delete == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.REMOVE, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.REMOVE, noteItem);
             } else if (R.id.item_pop_m_pin == item_id) {
-                listener.onErrorRecv("try to Pin item at " + index);
+                listener.onError("try to Pin item at " + index);
             } else if (R.id.item_pop_m_edit == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.DETAIL, noteItem);
             } else if (R.id.item_pop_m_copy_text == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.COPY, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.COPY, noteItem);
             } else if (R.id.item_pop_m_share == item_id) {
-                listener.onAttemptRecv(AttemptListener.Attempt.SHARE, category, noteItem);
+                listener.onAttempt(AttemptListener.Attempt.SHARE, noteItem);
             } else {
-                listener.onErrorRecv( "Unknown menu id: " +
+                listener.onError( "Unknown menu id: " +
                         getResources().getResourceEntryName(item_id));
                 return false;
             }
@@ -276,9 +371,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
         }
         switch (notify) {
             case CREATED:
-                noteItemAdapter.notifyItemInserted(index);
-                noteItemAdapter.notifyItemRangeChanged(index,
-                        noteItemAdapter.getItemCount() - index);
+                noteItemAdapter.add(index, note);
                 rlNoteList.smoothScrollToPosition(index);
                 if (note == pendingNoteItem) {
                     clearPendingItem();
@@ -287,12 +380,10 @@ public class NoteListFragment extends Fragment implements ListNotification {
                 }
                 break;
             case UPDATED:
-                noteItemAdapter.notifyItemChanged(index);
+                noteItemAdapter.update(index);
                 break;
             case REMOVED:
-                noteItemAdapter.notifyItemRemoved(index);
-                noteItemAdapter.notifyItemRangeChanged(index,
-                        noteItemAdapter.getItemCount() - index);
+                noteItemAdapter.remove(note);
                 break;
             default:
         }

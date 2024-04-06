@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.adapter;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,21 +14,22 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.data.NoteItem;
-
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 
+import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.NoteItem;
+
 public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
 
-    ArrayList<NoteItem> mList;
+    ArrayList<NoteItem> noteList;
 
     public NoteListAdapter(ArrayList<NoteItem> list) {
-        mList = list;
+        // note a real list, prevent the multi-thread race condition.
+        noteList = new ArrayList<>(list);
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -130,7 +132,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        NoteItem note = mList.get(position);
+        NoteItem note = noteList.get(position);
         if (note == null) {
             Log.e(this.toString(), "cannot find list item at : " + position);
             return;
@@ -140,12 +142,70 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setIsEdited(note.isEdited());
         holder.setImageFile(note.getImageFile());
         holder.setImageName(note.getImageName());
+        if (selectedItems.contains(note)) {
+            // TODO: use another color for selected item
+            holder.itemView.setBackgroundColor(Color.LTGRAY);
+        } else {
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        }
     }
 
     @Override
     public int getItemCount() {
-        if (mList == null) return 0;
-        return mList.size();
+        if (noteList == null) return 0;
+        return noteList.size();
+    }
+
+    public boolean add(NoteItem e) {
+        boolean result = noteList.add(e);
+        int index = noteList.indexOf(e);
+        notifyItemInserted(index);
+        notifyItemRangeChanged(index, noteList.size()-index);
+        return result;
+    }
+
+    public void add(int index, NoteItem e) {
+        noteList.add(index, e);
+        notifyItemInserted(index);
+        notifyItemRangeChanged(index, noteList.size()-index);
+    }
+
+    public void remove(NoteItem e) {
+        int index = noteList.indexOf(e);
+        noteList.remove(e);
+        notifyItemRemoved(index);
+        notifyItemRangeChanged(index, noteList.size()-index);
+    }
+
+    public void update(int index) {
+        notifyItemChanged(index);
+    }
+
+    public void update(NoteItem e) {
+        int index = noteList.indexOf(e);
+        if (index != -1)
+            notifyItemChanged(index);
+    }
+
+    private ArrayList<NoteItem> selectedItems = new ArrayList<>();
+
+    public int toggleSelectItems(int index) {
+        NoteItem item = noteList.get(index);
+        if (selectedItems.contains(item)) {
+            selectedItems.remove(item);
+        } else {
+            selectedItems.add(item);
+        }
+        notifyItemChanged(index);
+        return selectedItems.size();
+    }
+    public void clearSelectItems() {
+        if (selectedItems.isEmpty()) return;
+        selectedItems = new ArrayList<>();
+        notifyItemRangeChanged(0, noteList.size());
+    }
+    public ArrayList<NoteItem> getSelectedItems() {
+        return selectedItems;
     }
 
 }

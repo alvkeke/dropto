@@ -290,6 +290,28 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+    private Uri getUriForFile(File file) {
+        return FileProvider.getUriForFile(this,
+                getPackageName() + ".fileprovider", file);
+    }
+
+    private boolean handleNoteShareMultiple(ArrayList<NoteItem> items) {
+        ArrayList<Uri> uris = new ArrayList<>();
+        for (NoteItem e : items) {
+            if (e.getImageFile() == null)
+                continue;
+            Uri uri = getUriForFile(e.getImageFile());
+            uris.add(uri);
+        }
+        if (uris.isEmpty()) return false;
+
+        Intent sendIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+        sendIntent.setType("image/*");
+        sendIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        startActivity(Intent.createChooser(sendIntent, "Share multiple images"));
+        return true;
+    }
+
     private void handleNoteShare(NoteItem item) {
         Intent sendIntent = new Intent(Intent.ACTION_SEND);
 
@@ -301,8 +323,7 @@ public class MainActivity extends AppCompatActivity implements
         if (item.getImageFile() != null) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
-            Uri fileUri = FileProvider.getUriForFile(this,
-                    getPackageName() + ".fileprovider", item.getImageFile());
+            Uri fileUri = getUriForFile(item.getImageFile());
             sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             Log.d(this.toString(), "share image Uri: " + fileUri);
@@ -316,15 +337,18 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private void handleNoteCopy(NoteItem e) {
+    private void handleTextCopy(String text) {
         ClipboardManager clipboardManager =
                 (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboardManager == null) {
             Log.e(this.toString(), "Failed to get ClipboardManager");
             return;
         }
-        ClipData data = ClipData.newPlainText("text", e.getText());
+        ClipData data = ClipData.newPlainText("text", text);
         clipboardManager.setPrimaryClip(data);
+    }
+    private void handleNoteCopy(NoteItem e) {
+        handleTextCopy(e.getText());
     }
 
     private void handleNoteDetailShow(NoteItem item) {
@@ -336,7 +360,7 @@ public class MainActivity extends AppCompatActivity implements
 
     class NoteListAttemptListener implements NoteListFragment.AttemptListener {
         @Override
-        public void onAttemptRecv(Attempt attempt, Category c, NoteItem e) {
+        public void onAttempt(Attempt attempt, NoteItem e) {
             switch (attempt) {
                 case REMOVE:
                     binder.getService().queueTask(CoreService.Task.Type.REMOVE, e);
@@ -359,8 +383,51 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
+        private CoreService.Task.Type convertAttemptToType(Attempt attempt) {
+            switch (attempt) {
+                case REMOVE:
+                    return CoreService.Task.Type.REMOVE;
+                case UPDATE:
+                    return CoreService.Task.Type.UPDATE;
+                case CREATE:
+                    return CoreService.Task.Type.CREATE;
+            }
+            return null;
+        }
         @Override
-        public void onErrorRecv(String errorMessage) {
+        public void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems) {
+            switch (attempt) {
+                case REMOVE:
+                case CREATE:
+                case UPDATE:
+                    CoreService.Task.Type type = convertAttemptToType(attempt);
+                    for (NoteItem e : noteItems) {
+                        binder.getService().queueTask(type, e);
+                    }
+                    break;
+                case COPY:
+                    StringBuilder sb = new StringBuilder();
+                    NoteItem listOne = noteItems.get(noteItems.size()-1);
+                    for (NoteItem e : noteItems) {
+                        sb.append(e.getText());
+                        if (e == listOne) continue;
+                        sb.append("\n");
+                    }
+                    handleTextCopy(sb.toString());
+                    break;
+                case SHARE:
+                    boolean ret = handleNoteShareMultiple(noteItems);
+                    if (ret) break; // success, return
+                    Toast.makeText(MainActivity.this,
+                            "only images are supported to share", Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    Log.e(this.toString(), "This operation is not support batch: " +attempt);
+            }
+        }
+
+        @Override
+        public void onError(String errorMessage) {
             Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
         }
     }
