@@ -233,11 +233,10 @@ public class NoteListFragment extends Fragment implements ListNotification {
         public boolean onSlideOnGoing(View v, MotionEvent e, float deltaX, float deltaY) {
             if (deltaX > 0 ) {
                 fragmentView.setTranslationX(deltaX);
-                return true;
             } else {
                 fragmentView.setTranslationX(0);
             }
-            return super.onSlideOnGoing(v, e, deltaX, deltaY);
+            return true;
         }
     }
 
