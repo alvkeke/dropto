@@ -19,6 +19,7 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
     long timeDown;
     float sX, sY, dX, dY;
     boolean isSliding = false;
+    boolean isSlidable = false;
     boolean longClickHold = false;
     boolean isShortClick = false;
     @SuppressLint("ClickableViewAccessibility")
@@ -33,6 +34,7 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                 longPressEvent = motionEvent;
                 handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK);
                 isShortClick = true;
+                isSlidable = true;
                 break;
             case MotionEvent.ACTION_MOVE:
                 handler.removeCallbacks(longPressRunnable);
@@ -41,10 +43,12 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                 dX = motionEvent.getRawX() - sX;
                 dY = motionEvent.getRawY() - sY;
                 if (isSliding) {
-                    ret = onSlideOnGoing(view, motionEvent, dX, Math.abs(dY));
+                    ret = onSlideOnGoing(view, motionEvent, dX, dY);
                     if (ret) return true;
                 }
-                if (dY < THRESHOLD_NO_MOVED && dX > THRESHOLD_SLIDE)
+                if (Math.abs(dY) > THRESHOLD_NO_MOVED)
+                    isSlidable = false;
+                if (isSlidable && dX > THRESHOLD_SLIDE)
                     isSliding = true;
                 break;
             case MotionEvent.ACTION_UP:
