@@ -1,6 +1,8 @@
 package cn.alvkeke.dropto.ui.listener;
 
 import android.annotation.SuppressLint;
+import android.os.Handler;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -11,13 +13,14 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
 
 
     private static final long TIME_THRESHOLD_CLICK = 200;
-    private static final long TIME_THRESHOLD_LONG_CLICK = 400;
+    private static final long TIME_THRESHOLD_LONG_CLICK = 500;
     private static final int THRESHOLD_SLIDE = 30;
     private static final int THRESHOLD_NO_MOVED = 10;
     long timeDown;
     float sX, sY, dX, dY;
     boolean isSliding = false;
     boolean longClickHold = false;
+    boolean isShortClick = false;
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View view, MotionEvent motionEvent) {
         boolean ret;
@@ -26,46 +29,41 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                 sX = motionEvent.getRawX();
                 sY = motionEvent.getRawY();
                 timeDown = System.currentTimeMillis();
+                longPressView = view;
+                longPressEvent = motionEvent;
+                handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK);
+                isShortClick = true;
                 break;
             case MotionEvent.ACTION_MOVE:
+                handler.removeCallbacks(longPressRunnable);
+                isShortClick = false;
                 if (longClickHold) return true; // block all event
                 dX = motionEvent.getRawX() - sX;
-                dY = Math.abs(motionEvent.getRawY() - sY);
+                dY = motionEvent.getRawY() - sY;
                 if (isSliding) {
-                    ret = onSlideOnGoing(view, motionEvent, dX, dY);
+                    ret = onSlideOnGoing(view, motionEvent, dX, Math.abs(dY));
                     if (ret) return true;
                 }
                 if (dY < THRESHOLD_NO_MOVED && dX > THRESHOLD_SLIDE)
                     isSliding = true;
-                if (dY < THRESHOLD_NO_MOVED && dX < THRESHOLD_NO_MOVED) {
-                    long deltaTime = System.currentTimeMillis() - timeDown;
-                    if (deltaTime > TIME_THRESHOLD_LONG_CLICK) {
-                        ret = handleListItemClick(view, motionEvent, true);
-                        if (ret) {
-                            longClickHold = true;
-                            return true;
-                        }
-                        ret = onLongClick(view, motionEvent);
-                        if (ret) {
-                            longClickHold = true;
-                            return true;
-                        }
-                    }
-                }
                 break;
             case MotionEvent.ACTION_UP:
-                dX = motionEvent.getRawX() - sX;
-                dY = Math.abs(motionEvent.getRawY() - sY);
-                if (longClickHold)
+                handler.removeCallbacks(longPressRunnable);
+                if (longClickHold) {
                     longClickHold = false;
+                    return true;
+                }
                 if (System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK &&
-                        dY < THRESHOLD_NO_MOVED && dX < THRESHOLD_NO_MOVED) {
+                        isShortClick) {
+                    isShortClick = false;
                     ret = handleListItemClick(view, motionEvent, false);
                     if (ret) return true;
                     ret = onClick(view, motionEvent);
                     if (ret) return true;
                 }
                 if (isSliding) {
+                    dX = motionEvent.getRawX() - sX;
+                    dY = motionEvent.getRawY() - sY;
                     isSliding = false;
                     ret = onSlideEnd(view, motionEvent, dX, dY);
                     if (ret) return true;
@@ -86,6 +84,27 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
     public boolean onClick(View v, MotionEvent e) {
         return false;
     }
+
+    private final Handler handler = new Handler();
+    View longPressView;
+    MotionEvent longPressEvent;
+    private final Runnable longPressRunnable = new Runnable() {
+        @Override
+        public void run() {
+            boolean ret = handleListItemClick(longPressView, longPressEvent, true);
+            if (ret) {
+                longClickHold = true;
+                return;
+            }
+            ret = onLongClick(longPressView, longPressEvent);
+            if (ret) {
+                longClickHold = true;
+                return;
+            }
+            Log.e(this.toString(), "long pressed");
+        }
+
+    };
 
     public boolean onLongClick(View v, MotionEvent e) {
         return false;
