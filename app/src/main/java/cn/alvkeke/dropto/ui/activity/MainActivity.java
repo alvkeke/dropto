@@ -205,13 +205,9 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void handleOnBackPressed() {
-            if (noteListFragment.isVisible()) {
+            if (noteListFragment != null && noteListFragment.isVisible()) {
                 savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
                 noteListFragment.finish();
-//                getSupportFragmentManager().beginTransaction()
-//                        .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
-//                        .remove(noteListFragment)
-//                        .commit();
             } else if (categoryListFragment.isVisible()) {
                 MainActivity.this.finish();
             }
