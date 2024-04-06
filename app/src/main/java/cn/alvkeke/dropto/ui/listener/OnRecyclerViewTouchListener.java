@@ -37,11 +37,13 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                 isSlidable = true;
                 break;
             case MotionEvent.ACTION_MOVE:
-                handler.removeCallbacks(longPressRunnable);
-                isShortClick = false;
-                if (longClickHold) return true; // block all event
                 dX = motionEvent.getRawX() - sX;
                 dY = motionEvent.getRawY() - sY;
+                if (Math.abs(dX) > THRESHOLD_NO_MOVED && Math.abs(dY) > THRESHOLD_NO_MOVED) {
+                    isShortClick = false;
+                    handler.removeCallbacks(longPressRunnable);
+                }
+                if (longClickHold) return true; // block all event
                 if (isSliding) {
                     ret = onSlideOnGoing(view, motionEvent, dX, dY);
                     if (ret) return true;
@@ -57,8 +59,7 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                     longClickHold = false;
                     return true;
                 }
-                if (System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK &&
-                        isShortClick) {
+                if (System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK && isShortClick) {
                     isShortClick = false;
                     ret = handleListItemClick(view, motionEvent, false);
                     if (ret) return true;
