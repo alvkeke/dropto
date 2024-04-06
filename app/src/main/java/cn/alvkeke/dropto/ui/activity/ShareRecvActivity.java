@@ -140,7 +140,7 @@ public class ShareRecvActivity extends AppCompatActivity {
         @Override
         public void onSelected(int index, Category category) {
             recvNote.setCategoryId(category.getId());
-            binder.getService().triggerNoteTask(CoreService.TaskType.CREATE, recvNote);
+            binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
             finish();
         }
 

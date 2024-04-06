@@ -19,6 +19,8 @@ import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
@@ -90,12 +92,14 @@ public class CoreService extends Service {
         super.onCreate();
         Log.d(this.toString(), "CoreService onCreate");
         startForeground();
+        startTaskRunnerThread();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         Log.d(this.toString(), "CoreService onDestroy");
+        tryStopTaskRunnerThread();
         stopForeground(true);
     }
 
@@ -107,7 +111,7 @@ public class CoreService extends Service {
          * @param index index of target Category, -1 for failed
          * @param c Category object
          */
-        void onCategoryTaskFinish(TaskType taskType, int index, Category c);
+        void onCategoryTaskFinish(Task.Type taskType, int index, Category c);
 
         /**
          * indicate the Note task finished, this function will be invoked in MainThread
@@ -115,7 +119,7 @@ public class CoreService extends Service {
          * @param index index of target NoteItem, -1 for failed
          * @param n NoteItem object
          */
-        void onNoteTaskFinish(TaskType taskType, int index, NoteItem n);
+        void onNoteTaskFinish(Task.Type taskType, int index, NoteItem n);
     }
 
     private TaskResultListener listener;
@@ -124,26 +128,21 @@ public class CoreService extends Service {
         this.listener = listener;
     }
 
-    private enum MsgWhat {
-        CATEGORY,       /* arg1: index, arg2: op, obj: Category */
-        NOTE,           /* arg1: index, arg2: op, obj: NoteItem */
-    }
-
-    private static final MsgWhat[] whats = MsgWhat.values();
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
             if (listener == null) return;
-            assert (msg.what >= 0 && msg.what < whats.length);
-            assert msg.arg2 >= 0 && msg.arg2 < taskTypes.length;
-            MsgWhat what = whats[msg.what];
+            assert (msg.what >= 0 && msg.what < Task.taskTargets.length);
+            assert msg.arg2 >= 0 && msg.arg2 < Task.taskTypes.length;
+            Task.Target what = Task.taskTargets[msg.what];
+            Log.e(this.toString(), "received msg: " + msg.toString());
             switch (what) {
-                case CATEGORY:
-                    listener.onCategoryTaskFinish(taskTypes[msg.arg2], msg.arg1, (Category) msg.obj);
+                case Category:
+                    listener.onCategoryTaskFinish(Task.taskTypes[msg.arg2], msg.arg1, (Category) msg.obj);
                     break;
-                case NOTE:
-                    listener.onNoteTaskFinish(taskTypes[msg.arg2], msg.arg1, (NoteItem) msg.obj);
+                case NoteItem:
+                    listener.onNoteTaskFinish(Task.taskTypes[msg.arg2], msg.arg1, (NoteItem) msg.obj);
                     break;
             }
 
@@ -305,18 +304,30 @@ public class CoreService extends Service {
         }
     }
 
-    public enum TaskType {
-        CREATE,
-        REMOVE,
-        UPDATE,
-        READ,
-    }
-    private static final TaskType[] taskTypes = TaskType.values();
 
-    public void triggerCategoryTask(TaskType task_type, Category category) {
+
+    public static class Task {
+        public enum Type {
+            CREATE,
+            REMOVE,
+            UPDATE,
+            READ,
+        }
+        private static final Type[] taskTypes = Type.values();
+        public enum Target {
+            Category,
+            NoteItem
+        }
+        private static final Target[] taskTargets = Target.values();
+        Target target;
+        Type type;
+        Object object;
+    }
+
+    public void handleCategoryTask(Task.Type task_type, Category category) {
         new Thread(() -> {
             Message msg = new Message();
-            msg.what = MsgWhat.CATEGORY.ordinal();
+            msg.what = Task.Target.Category.ordinal();
             msg.obj = category;
             msg.arg2 = task_type.ordinal();
             switch (task_type) {
@@ -334,18 +345,19 @@ public class CoreService extends Service {
                 default:
                     return;
             }
+            Log.e(this.toString(), "handle msg: " + msg);
             handler.sendMessage(msg);
         }).start();
     }
 
-    public void triggerNoteTask(TaskType task_type, NoteItem e) {
+    public void handleNoteTask(Task.Type task_type, NoteItem e) {
         Category c = Global.getInstance().findCategory(e.getCategoryId());
         if (c == null) {
             return;
         }
         new Thread(() -> {
             Message msg = new Message();
-            msg.what = MsgWhat.NOTE.ordinal();
+            msg.what = Task.Target.NoteItem.ordinal();
             msg.obj = e;
             msg.arg2 = task_type.ordinal();
             switch (task_type) {
@@ -363,8 +375,66 @@ public class CoreService extends Service {
                 default:
                     return;
             }
+            Log.e(this.toString(), "handle msg: " + msg);
             handler.sendMessage(msg);
         }).start();
+    }
+
+
+    private final ConcurrentLinkedQueue<Task> tasks = new ConcurrentLinkedQueue<>();
+    private final Semaphore taskSemaphore = new Semaphore(0);
+
+    private Thread taskRunnerThread = null;
+    private boolean canTaskRunnerThreadRun = false;
+    class TaskRunner implements Runnable{
+        @Override
+        public void run() {
+            while (canTaskRunnerThreadRun) {
+                try {
+                    taskSemaphore.acquire();
+                    Task task = tasks.poll();
+                    if (task != null) {
+                        if (task.target == Task.Target.Category)
+                            handleCategoryTask(task.type, (Category) task.object);
+                        else if (task.target == Task.Target.NoteItem)
+                            handleNoteTask(task.type, (NoteItem) task.object);
+                    }
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
+    }
+
+    private void startTaskRunnerThread() {
+        taskRunnerThread = new Thread(new TaskRunner());
+        canTaskRunnerThreadRun = true;
+        taskRunnerThread.start();
+    }
+
+    private void tryStopTaskRunnerThread() {
+        canTaskRunnerThreadRun = false;
+        taskRunnerThread = null;
+    }
+
+    public void queueTask(Task task) {
+        tasks.offer(task);
+        taskSemaphore.release();
+    }
+
+    public void queueTask(Task.Type taskType, NoteItem item) {
+        Task task = new Task();
+        task.object = item;
+        task.target = Task.Target.NoteItem;
+        task.type = taskType;
+        queueTask(task);
+    }
+
+    public void queueTask(Task.Type taskType, Category category) {
+        Task task = new Task();
+        task.object = category;
+        task.target = Task.Target.Category;
+        task.type = taskType;
+        queueTask(task);
     }
 
 }
