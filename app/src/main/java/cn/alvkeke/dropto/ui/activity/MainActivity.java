@@ -290,6 +290,28 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+    private Uri getUriForFile(File file) {
+        return FileProvider.getUriForFile(this,
+                getPackageName() + ".fileprovider", file);
+    }
+
+    private boolean handleNoteShareMultiple(ArrayList<NoteItem> items) {
+        ArrayList<Uri> uris = new ArrayList<>();
+        for (NoteItem e : items) {
+            if (e.getImageFile() == null)
+                continue;
+            Uri uri = getUriForFile(e.getImageFile());
+            uris.add(uri);
+        }
+        if (uris.isEmpty()) return false;
+
+        Intent sendIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+        sendIntent.setType("image/*");
+        sendIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        startActivity(Intent.createChooser(sendIntent, "Share multiple images"));
+        return true;
+    }
+
     private void handleNoteShare(NoteItem item) {
         Intent sendIntent = new Intent(Intent.ACTION_SEND);
 
@@ -301,8 +323,7 @@ public class MainActivity extends AppCompatActivity implements
         if (item.getImageFile() != null) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
-            Uri fileUri = FileProvider.getUriForFile(this,
-                    getPackageName() + ".fileprovider", item.getImageFile());
+            Uri fileUri = getUriForFile(item.getImageFile());
             sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             Log.d(this.toString(), "share image Uri: " + fileUri);
@@ -395,9 +416,10 @@ public class MainActivity extends AppCompatActivity implements
                     handleTextCopy(sb.toString());
                     break;
                 case SHARE:
-                    // TODO: implement this
+                    boolean ret = handleNoteShareMultiple(noteItems);
+                    if (ret) break; // success, return
                     Toast.makeText(MainActivity.this,
-                            "multi share is not supported yet", Toast.LENGTH_SHORT).show();
+                            "only images are supported to share", Toast.LENGTH_SHORT).show();
                     break;
                 default:
                     Log.e(this.toString(), "This operation is not support batch: " +attempt);
