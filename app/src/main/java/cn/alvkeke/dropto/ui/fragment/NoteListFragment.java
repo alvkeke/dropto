@@ -133,17 +133,8 @@ public class NoteListFragment extends Fragment implements ListNotification {
         }
     }
 
-    private ArrayList<NoteItem> getSelectedItems() {
-        ArrayList<Integer> selectedIndex = noteItemAdapter.getSelectedItems();
-        ArrayList<NoteItem> items = new ArrayList<>();
-        for (Integer idx : selectedIndex) {
-            NoteItem noteItem = category.getNoteItem(idx);
-            items.add(noteItem);
-        }
-        return items;
-    }
     private void handleMenuDelete() {
-        ArrayList<NoteItem> items = getSelectedItems();
+        ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
         for (NoteItem item: items) {
             listener.onAttemptRecv(AttemptListener.Attempt.REMOVE, category, item);
@@ -151,7 +142,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     }
 
     private void handleMenuCopy() {
-        ArrayList<NoteItem> items = getSelectedItems();
+        ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
         StringBuilder sb = new StringBuilder();
         for (NoteItem e : items) {
@@ -205,7 +196,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     }
 
     private void tryToggleItemSelect(int index) {
-        int count = noteItemAdapter.toggleSelectItemes(index);
+        int count = noteItemAdapter.toggleSelectItems(index);
         if (count == 0) {
             exitSelectMode();
         }
@@ -384,9 +375,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
         }
         switch (notify) {
             case CREATED:
-                noteItemAdapter.notifyItemInserted(index);
-                noteItemAdapter.notifyItemRangeChanged(index,
-                        noteItemAdapter.getItemCount() - index);
+                noteItemAdapter.add(index, note);
                 rlNoteList.smoothScrollToPosition(index);
                 if (note == pendingNoteItem) {
                     clearPendingItem();
@@ -395,12 +384,10 @@ public class NoteListFragment extends Fragment implements ListNotification {
                 }
                 break;
             case UPDATED:
-                noteItemAdapter.notifyItemChanged(index);
+                noteItemAdapter.update(index);
                 break;
             case REMOVED:
-                noteItemAdapter.notifyItemRemoved(index);
-                noteItemAdapter.notifyItemRangeChanged(index,
-                        noteItemAdapter.getItemCount() - index);
+                noteItemAdapter.remove(note);
                 break;
             default:
         }

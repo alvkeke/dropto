@@ -25,10 +25,11 @@ import cn.alvkeke.dropto.data.NoteItem;
 
 public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
 
-    ArrayList<NoteItem> mList;
+    ArrayList<NoteItem> noteList;
 
     public NoteListAdapter(ArrayList<NoteItem> list) {
-        mList = list;
+        // note a real list, prevent the multi-thread race condition.
+        noteList = new ArrayList<>(list);
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -131,7 +132,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        NoteItem note = mList.get(position);
+        NoteItem note = noteList.get(position);
         if (note == null) {
             Log.e(this.toString(), "cannot find list item at : " + position);
             return;
@@ -141,7 +142,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setIsEdited(note.isEdited());
         holder.setImageFile(note.getImageFile());
         holder.setImageName(note.getImageName());
-        if (isSelect(position)) {
+        if (selectedItems.contains(note)) {
             // TODO: use another color for selected item
             holder.itemView.setBackgroundColor(Color.LTGRAY);
         } else {
@@ -151,43 +152,60 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
     @Override
     public int getItemCount() {
-        if (mList == null) return 0;
-        return mList.size();
+        if (noteList == null) return 0;
+        return noteList.size();
     }
 
-    private ArrayList<Integer> selectedIndex = new ArrayList<>();
-    private Integer findSelect(int i) {
-        for (Integer I : selectedIndex) {
-            if (I == i) return I;
-        }
-        return null;
+    public boolean add(NoteItem e) {
+        boolean result = noteList.add(e);
+        int index = noteList.indexOf(e);
+        notifyItemInserted(index);
+        notifyItemRangeChanged(index, noteList.size()-index);
+        return result;
     }
-    private boolean isSelect(int index) {
-        for (Integer I : selectedIndex) {
-            if (I == index) return true;
-        }
-        return false;
+
+    public void add(int index, NoteItem e) {
+        noteList.add(index, e);
+        notifyItemInserted(index);
+        notifyItemRangeChanged(index, noteList.size()-index);
     }
-    public int toggleSelectItemes(int index) {
-        Integer I = findSelect(index);
-        if (I == null) {
-            selectedIndex.add(index);
+
+    public void remove(NoteItem e) {
+        int index = noteList.indexOf(e);
+        noteList.remove(e);
+        notifyItemRemoved(index);
+        notifyItemRangeChanged(index, noteList.size()-index);
+    }
+
+    public void update(int index) {
+        notifyItemChanged(index);
+    }
+
+    public void update(NoteItem e) {
+        int index = noteList.indexOf(e);
+        if (index != -1)
+            notifyItemChanged(index);
+    }
+
+    private ArrayList<NoteItem> selectedItems = new ArrayList<>();
+
+    public int toggleSelectItems(int index) {
+        NoteItem item = noteList.get(index);
+        if (selectedItems.contains(item)) {
+            selectedItems.remove(item);
         } else {
-            selectedIndex.remove(I);
+            selectedItems.add(item);
         }
         notifyItemChanged(index);
-        return selectedIndex.size();
+        return selectedItems.size();
     }
     public void clearSelectItems() {
-        if (selectedIndex.isEmpty()) return;
-        ArrayList<Integer> tmp = selectedIndex;
-        selectedIndex = new ArrayList<>();
-        for (Integer I : tmp) {
-            notifyItemChanged(I);
-        }
+        if (selectedItems.isEmpty()) return;
+        selectedItems = new ArrayList<>();
+        notifyItemRangeChanged(0, noteList.size());
     }
-    public ArrayList<Integer> getSelectedItems() {
-        return selectedIndex;
+    public ArrayList<NoteItem> getSelectedItems() {
+        return selectedItems;
     }
 
 }
