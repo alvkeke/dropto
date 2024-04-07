@@ -22,6 +22,9 @@ import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -291,15 +294,69 @@ public class MainActivity extends AppCompatActivity implements
                 getPackageName() + ".fileprovider", file);
     }
 
+    private static void emptyFolder(File folder) {
+        File[] files = folder.listFiles();
+        if (files == null) return;
+        for (File file : files) {
+            if (!file.isDirectory()) {
+                boolean ret = file.delete();
+                Log.d("emptyFolder", "file delete result: " + ret);
+            }
+        }
+    }
+    private static void copyFile(File src, File dst) throws IOException {
+        FileInputStream in = new FileInputStream(src);
+        FileOutputStream out = new FileOutputStream(dst);
+        byte[] buffer = new byte[1024];
+        int length;
+        while ((length = in.read(buffer)) > 0) {
+            out.write(buffer, 0, length);
+        }
+        in.close();
+        out.close();
+
+    }
+
+    private File share_folder = null;
+    private File generateFileWithRealName(NoteItem item, boolean needClean) {
+        if (share_folder == null) {
+            share_folder = this.getExternalFilesDir("share");
+            assert share_folder != null;
+        }
+        if (share_folder.mkdir()) Log.i(this.toString(), "share folder created");
+        if (needClean) emptyFolder(share_folder);
+
+        File fileToShare = new File(share_folder, item.getImageName());
+
+        try {
+            copyFile(item.getImageFile(), fileToShare);
+            return fileToShare;
+        } catch (IOException e) {
+            Log.e(this.toString(), "Failed to copy file: " + e);
+            return null;
+        }
+    }
+
+    private ArrayList<File> generateFilesWithRealName(ArrayList<NoteItem> noteItems) {
+        ArrayList<File> files = new ArrayList<>();
+        for (NoteItem e : noteItems) {
+            if (e.getImageFile() == null) continue;
+            File f = generateFileWithRealName(e, false);
+            if (f == null) { continue; }
+            files.add(f);
+        }
+
+        return files;
+    }
+
     private boolean handleNoteShareMultiple(ArrayList<NoteItem> items) {
+        ArrayList<File> files = generateFilesWithRealName(items);
+        if (files.isEmpty()) return false;
         ArrayList<Uri> uris = new ArrayList<>();
-        for (NoteItem e : items) {
-            if (e.getImageFile() == null)
-                continue;
-            Uri uri = getUriForFile(e.getImageFile());
+        for (File f : files) {
+            Uri uri = getUriForFile(f);
             uris.add(uri);
         }
-        if (uris.isEmpty()) return false;
 
         Intent sendIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
         sendIntent.setType("image/*");
@@ -308,7 +365,7 @@ public class MainActivity extends AppCompatActivity implements
         return true;
     }
 
-    private void handleNoteShare(NoteItem item) {
+    private boolean handleNoteShare(NoteItem item) {
         Intent sendIntent = new Intent(Intent.ACTION_SEND);
 
         // add item text for sharing
@@ -319,7 +376,8 @@ public class MainActivity extends AppCompatActivity implements
         if (item.getImageFile() != null) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
-            Uri fileUri = getUriForFile(item.getImageFile());
+            File file2Share = generateFileWithRealName(item, true);
+            Uri fileUri = getUriForFile(file2Share);
             sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             Log.d(this.toString(), "share image Uri: " + fileUri);
@@ -328,8 +386,10 @@ public class MainActivity extends AppCompatActivity implements
 
         try {
             this.startActivity(shareIntent);
+            return true;
         } catch (Exception e) {
             Log.e(this.toString(), "Failed to create share Intent: " + e);
+            return false;
         }
     }
 
@@ -412,7 +472,11 @@ public class MainActivity extends AppCompatActivity implements
                     handleTextCopy(sb.toString());
                     break;
                 case SHARE:
-                    boolean ret = handleNoteShareMultiple(noteItems);
+                    boolean ret;
+                    if (noteItems.size() == 1)
+                        ret = handleNoteShare(noteItems.get(0));
+                    else
+                        ret = handleNoteShareMultiple(noteItems);
                     if (ret) break; // success, return
                     Toast.makeText(MainActivity.this,
                             "only images are supported to share", Toast.LENGTH_SHORT).show();
