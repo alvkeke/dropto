@@ -110,6 +110,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
         setSystemBarHeight(view, statusBar, naviBar);
         setIMEViewChange(view);
 
+        toolbar.setTitle(category.getTitle());
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
         toolbar.setNavigationOnClickListener(new OnNavigationIconClick());
         toolbar.setOnMenuItemClickListener(new NoteListMenuListener());
@@ -171,24 +172,24 @@ public class NoteListFragment extends Fragment implements ListNotification {
         }
     }
 
-    private void hideMenu() {
+    private void hideToolbarMenu() {
         toolbar.getMenu().clear();
     }
 
-    private void showMenu() {
+    private void showToolbarMenu() {
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar);
     }
 
     private void enterSelectMode() {
         if (isInSelectMode) return;
         isInSelectMode = true;
-        showMenu();
+        showToolbarMenu();
         toolbar.setNavigationIcon(R.drawable.icon_common_cross);
     }
 
     private void exitSelectMode() {
         if (!isInSelectMode) return;
-        hideMenu();
+        hideToolbarMenu();
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
         noteItemAdapter.clearSelectItems();
         isInSelectMode = false;
