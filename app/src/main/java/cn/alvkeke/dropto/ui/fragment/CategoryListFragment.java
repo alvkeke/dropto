@@ -3,6 +3,7 @@ package cn.alvkeke.dropto.ui.fragment;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -126,6 +127,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
 
         @Override
         public boolean onItemLongClick(View v, int index) {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
             Category category = categories.get(index);
             listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, category);
             return true;

@@ -7,6 +7,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -214,6 +215,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
 
         @Override
         public boolean onItemLongClick(View v, int index) {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
             enterSelectMode();
             tryToggleItemSelect(index);
             return true;
