@@ -60,6 +60,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     private AttemptListener listener;
     Category category;
     NoteListAdapter noteItemAdapter;
+    private View fragmentParent;
     private View fragmentView;
     private EditText etInputText;
     private ConstraintLayout contentContainer;
@@ -85,8 +86,8 @@ public class NoteListFragment extends Fragment implements ListNotification {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        fragmentView = inflater.inflate(R.layout.fragment_note_list, container, false);
-        return fragmentView;
+        fragmentParent = inflater.inflate(R.layout.fragment_note_list, container, false);
+        return fragmentParent;
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -96,6 +97,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
         context = requireContext();
         if (category == null) return;
 
+        fragmentView = view.findViewById(R.id.note_list_fragment_container);
         rlNoteList = view.findViewById(R.id.note_list_listview);
         ImageButton btnAddNote = view.findViewById(R.id.note_list_input_button);
         etInputText = view.findViewById(R.id.note_list_input_box);
@@ -232,12 +234,19 @@ public class NoteListFragment extends Fragment implements ListNotification {
         @Override
         public boolean onSlideOnGoing(View v, MotionEvent e, float deltaX, float deltaY) {
             if (deltaX > 0 ) {
-                fragmentView.setTranslationX(deltaX);
+                moveFragmentView(deltaX);
             } else {
-                fragmentView.setTranslationX(0);
+                moveFragmentView(0);
             }
             return true;
         }
+    }
+
+    private void moveFragmentView(float targetX) {
+        int width = fragmentView.getWidth();
+        float alpha = (width - targetX)/ width;
+        fragmentParent.getBackground().setAlpha((int) (alpha * 255));
+        fragmentView.setTranslationX(targetX);
     }
 
     private static final String propName = "translationX";
@@ -256,6 +265,11 @@ public class NoteListFragment extends Fragment implements ListNotification {
                 getParentFragmentManager().beginTransaction()
                         .remove(NoteListFragment.this).commit();
             }
+        });
+        animator.addUpdateListener(valueAnimator -> {
+            float deltaX = (float) valueAnimator.getAnimatedValue();
+            float alpha = (width - deltaX)/ width;
+            fragmentParent.getBackground().setAlpha((int) (alpha * 255));
         });
         animator.start();
     }
