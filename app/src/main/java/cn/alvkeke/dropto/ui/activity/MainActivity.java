@@ -326,10 +326,15 @@ public class MainActivity extends AppCompatActivity implements
         if (share_folder.mkdir()) Log.i(this.toString(), "share folder created");
         if (needClean) emptyFolder(share_folder);
 
-        File fileToShare = new File(share_folder, item.getImageName());
-
         try {
-            copyFile(item.getImageFile(), fileToShare);
+            String imageName = item.getImageName();
+            File fileToShare;
+            if (imageName == null) {
+                fileToShare = item.getImageFile();
+            } else {
+                fileToShare = new File(share_folder, imageName);
+                copyFile(item.getImageFile(), fileToShare);
+            }
             return fileToShare;
         } catch (IOException e) {
             Log.e(this.toString(), "Failed to copy file: " + e);
