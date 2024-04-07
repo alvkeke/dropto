@@ -1,7 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -28,6 +27,7 @@ import java.io.File;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.storage.ImageLoader;
 
 public class NoteDetailFragment extends BottomSheetDialogFragment {
 
@@ -192,8 +192,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
             isRemoveImage = true;
             image_container.setVisibility(View.GONE);
         });
-        Log.d(this.toString(), "Set image file: " + imgfile.getPath());
-        Bitmap bitmap = BitmapFactory.decodeFile(imgfile.getAbsolutePath());
+        Bitmap bitmap = ImageLoader.getInstance().loadImage(imgfile);
         if (bitmap == null) {
             Log.e(this.toString(), "Failed to get image file, skip this item");
             return;

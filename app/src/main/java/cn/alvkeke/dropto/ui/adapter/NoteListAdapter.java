@@ -1,7 +1,6 @@
 package cn.alvkeke.dropto.ui.adapter;
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -22,6 +21,7 @@ import java.util.Locale;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.storage.ImageLoader;
 
 public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
 
@@ -100,8 +100,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
                 ivImage.setVisibility(View.GONE);
                 return;
             }
-            Log.d(this.toString(), "Set image file: " + imgfile.getPath());
-            Bitmap bitmap = BitmapFactory.decodeFile(imgfile.getAbsolutePath());
+            Bitmap bitmap = ImageLoader.getInstance().loadImage(imgfile);
             if (bitmap == null) {
                 Log.e(this.toString(), "Failed to get image file, skip this item");
                 return;
