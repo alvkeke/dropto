@@ -96,7 +96,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         context = requireContext();
-        if (category == null) return;
+        assert category != null;
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container);
         rlNoteList = view.findViewById(R.id.note_list_listview);

@@ -67,6 +67,8 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Context context = requireContext();
+        assert categories != null;
+        assert !categories.isEmpty();
 
         RecyclerView rlCategory = view.findViewById(R.id.category_list_listview);
         MaterialToolbar toolbar = view.findViewById(R.id.category_list_toolbar);
