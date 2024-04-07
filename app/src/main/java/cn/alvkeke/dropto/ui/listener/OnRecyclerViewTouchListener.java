@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.ui.listener;
 
 import android.annotation.SuppressLint;
 import android.os.Handler;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -17,61 +16,67 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
     private static final int THRESHOLD_SLIDE = 30;
     private static final int THRESHOLD_NO_MOVED = 10;
     long timeDown;
-    float sX, sY, dX, dY;
+    float downRawX, downRawY, deltaRawX, deltaRawY;
     boolean isSliding = false;
     boolean isSlidable = false;
-    boolean longClickHold = false;
+    boolean isLongClickHold = false;
     boolean isShortClick = false;
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View view, MotionEvent motionEvent) {
-        boolean ret;
+        RecyclerView recyclerView = (RecyclerView) view;
+        View itemView;
         switch (motionEvent.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                sX = motionEvent.getRawX();
-                sY = motionEvent.getRawY();
+                downRawX = motionEvent.getRawX();
+                downRawY = motionEvent.getRawY();
                 timeDown = System.currentTimeMillis();
+                itemView = recyclerView.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
+                if (itemView != null) {
+                    longPressIndex = recyclerView.getChildLayoutPosition(itemView);
+                } else {
+                    longPressIndex = -1;
+                }
                 longPressView = view;
-                longPressEvent = motionEvent;
                 handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK);
                 isShortClick = true;
                 isSlidable = true;
                 break;
             case MotionEvent.ACTION_MOVE:
-                dX = motionEvent.getRawX() - sX;
-                dY = motionEvent.getRawY() - sY;
-                if (Math.abs(dX) > THRESHOLD_NO_MOVED && Math.abs(dY) > THRESHOLD_NO_MOVED) {
-                    isShortClick = false;
+                deltaRawX = motionEvent.getRawX() - downRawX;
+                deltaRawY = motionEvent.getRawY() - downRawY;
+                if (Math.abs(deltaRawX) > THRESHOLD_NO_MOVED || Math.abs(deltaRawY) > THRESHOLD_NO_MOVED) {
                     handler.removeCallbacks(longPressRunnable);
+                    isShortClick = false;
                 }
-                if (longClickHold) return true; // block all event
+                if (isLongClickHold) return true; // block all event
                 if (isSliding) {
-                    ret = onSlideOnGoing(view, motionEvent, dX, dY);
-                    if (ret) return true;
+                    if (onSlideOnGoing(view, motionEvent, deltaRawX, deltaRawY)) return true;
                 }
-                if (Math.abs(dY) > THRESHOLD_NO_MOVED)
+                if (Math.abs(deltaRawY) > THRESHOLD_NO_MOVED)
                     isSlidable = false;
-                if (isSlidable && dX > THRESHOLD_SLIDE)
+                if (isSlidable && deltaRawX > THRESHOLD_SLIDE)
                     isSliding = true;
                 break;
             case MotionEvent.ACTION_UP:
                 handler.removeCallbacks(longPressRunnable);
-                if (longClickHold) {
-                    longClickHold = false;
+                if (isLongClickHold) {
+                    isLongClickHold = false;
                     return true;
                 }
                 if (System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK && isShortClick) {
                     isShortClick = false;
-                    ret = handleListItemClick(view, motionEvent, false);
-                    if (ret) return true;
-                    ret = onClick(view, motionEvent);
-                    if (ret) return true;
+                    itemView = recyclerView.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
+                    if (itemView != null) {
+                        int index = recyclerView.getChildLayoutPosition(itemView);
+                        if (handleListItemClick(view, index, false)) return true;
+                    }
+                    if (onClick(view, motionEvent)) return true;
                 }
                 if (isSliding) {
-                    dX = motionEvent.getRawX() - sX;
-                    dY = motionEvent.getRawY() - sY;
+                    deltaRawX = motionEvent.getRawX() - downRawX;
+                    deltaRawY = motionEvent.getRawY() - downRawY;
                     isSliding = false;
-                    ret = onSlideEnd(view, motionEvent, dX, dY);
-                    if (ret) return true;
+                    if (onSlideEnd(view, motionEvent, deltaRawX, deltaRawY)) return true;
                 }
                 break;
         }
@@ -86,43 +91,36 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
         return false;
     }
 
-    public boolean onClick(View v, MotionEvent e) {
+    public boolean onClick(View ignored, MotionEvent ignored1) {
         return false;
     }
 
     private final Handler handler = new Handler();
     View longPressView;
-    MotionEvent longPressEvent;
+    int longPressIndex;
     private final Runnable longPressRunnable = new Runnable() {
         @Override
         public void run() {
-            boolean ret = handleListItemClick(longPressView, longPressEvent, true);
-            if (ret) {
-                longClickHold = true;
-                return;
+            if (longPressIndex != -1) {
+                if (handleListItemClick(longPressView, longPressIndex, true)) {
+                    isLongClickHold = true;
+                    return;
+                }
             }
-            ret = onLongClick(longPressView, longPressEvent);
-            if (ret) {
-                longClickHold = true;
-                return;
+            if (onLongClick(longPressView)) {
+                isLongClickHold = true;
             }
-            Log.e(this.toString(), "long pressed");
         }
-
     };
 
-    public boolean onLongClick(View v, MotionEvent e) {
+    public boolean onLongClick(View ignored) {
         return false;
     }
 
-    private boolean handleListItemClick(View v, MotionEvent e, boolean isLong) {
+    private boolean handleListItemClick(View v, int index, boolean isLong) {
         RecyclerView recyclerView = (RecyclerView) v;
-        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
-        View itemView = recyclerView.findChildViewUnder(e.getX(), e.getY());
+        View itemView = recyclerView.getChildAt(index);
         if (itemView == null) return false;
-        if (layoutManager == null) return false;
-        int index = layoutManager.getPosition(itemView);
-        if (index == -1) return false;
         if (isLong) {
             return onItemLongClick(itemView, index);
         } else {
