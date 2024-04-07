@@ -14,7 +14,7 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
     private static final long TIME_THRESHOLD_CLICK = 200;
     private static final long TIME_THRESHOLD_LONG_CLICK = 500;
     private static final int THRESHOLD_SLIDE = 30;
-    private static final int THRESHOLD_NO_MOVED = 10;
+    private static final int THRESHOLD_NO_MOVED = 20;
     long timeDown;
     float downRawX, downRawY, deltaRawX, deltaRawY;
     boolean isSliding = false;
