@@ -50,7 +50,7 @@ public class ImageLoader {
     public Bitmap loadImage(File file) {
         String filePath = file.getAbsolutePath();
         WrappedBitmap wrappedBitmap = imagePool.get(filePath);
-        if (wrappedBitmap != null) {
+        if (wrappedBitmap != null && wrappedBitmap.bitmap != null) {
             wrappedBitmap.lastAccessTime = System.currentTimeMillis();
             Log.d(this.toString(), "["+filePath+"] loaded, update access time and return");
             return wrappedBitmap.bitmap;
@@ -59,7 +59,12 @@ public class ImageLoader {
             removeLongNotUsedImage();
         }
         Log.d(this.toString(), "["+filePath+"] not loaded, create new one");
-        wrappedBitmap = new WrappedBitmap(BitmapFactory.decodeFile(filePath));
+        Bitmap bitmap = BitmapFactory.decodeFile(filePath);
+        if (bitmap == null) {
+            Log.e(this.toString(), "Cannot load ["+filePath+"]from disk!!!");
+            return null;
+        }
+        wrappedBitmap = new WrappedBitmap(bitmap);
         imagePool.put(filePath, wrappedBitmap);
         return wrappedBitmap.bitmap;
     }
