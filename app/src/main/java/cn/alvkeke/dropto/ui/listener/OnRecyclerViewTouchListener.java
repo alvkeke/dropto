@@ -30,12 +30,8 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                 downRawX = motionEvent.getRawX();
                 downRawY = motionEvent.getRawY();
                 timeDown = System.currentTimeMillis();
-                itemView = recyclerView.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
-                if (itemView != null) {
-                    longPressIndex = recyclerView.getChildLayoutPosition(itemView);
-                } else {
-                    longPressIndex = -1;
-                }
+                longPressItemView = recyclerView.
+                        findChildViewUnder(motionEvent.getX(), motionEvent.getY());
                 longPressView = view;
                 handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK);
                 isShortClick = true;
@@ -63,12 +59,11 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                     isLongClickHold = false;
                     return true;
                 }
-                if (System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK && isShortClick) {
+                if (isShortClick && System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK) {
                     isShortClick = false;
                     itemView = recyclerView.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
                     if (itemView != null) {
-                        int index = recyclerView.getChildLayoutPosition(itemView);
-                        if (handleListItemClick(view, index, false)) return true;
+                        if (handleListItemClick(recyclerView, itemView, false)) return true;
                     }
                     if (onClick(view, motionEvent)) return true;
                 }
@@ -97,12 +92,12 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
 
     private final Handler handler = new Handler();
     View longPressView;
-    int longPressIndex;
+    View longPressItemView;
     private final Runnable longPressRunnable = new Runnable() {
         @Override
         public void run() {
-            if (longPressIndex != -1) {
-                if (handleListItemClick(longPressView, longPressIndex, true)) {
+            if (longPressItemView != null) {
+                if (handleListItemClick(longPressView, longPressItemView, true)) {
                     isLongClickHold = true;
                     return;
                 }
@@ -117,10 +112,10 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
         return false;
     }
 
-    private boolean handleListItemClick(View v, int index, boolean isLong) {
-        RecyclerView recyclerView = (RecyclerView) v;
-        View itemView = recyclerView.getChildAt(index);
-        if (itemView == null) return false;
+    private boolean handleListItemClick(View parent, View itemView, boolean isLong) {
+        RecyclerView recyclerView = (RecyclerView) parent;
+        int index = recyclerView.getChildLayoutPosition(itemView);
+        assert index != -1;
         if (isLong) {
             return onItemLongClick(itemView, index);
         } else {
