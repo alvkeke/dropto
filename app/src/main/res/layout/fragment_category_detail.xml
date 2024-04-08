@@ -28,4 +28,13 @@
         tools:ignore="TextFields"
         android:importantForAutofill="no" />
 
+    <Spinner
+        android:id="@+id/category_detail_type_spinner"
+        app:layout_constraintStart_toStartOf="@id/category_detail_title"
+        app:layout_constraintTop_toBottomOf="@id/category_detail_title"
+        app:layout_constraintEnd_toEndOf="@id/category_detail_title"
+        android:layout_marginTop="20dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

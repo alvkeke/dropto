@@ -45,20 +45,7 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
         }
 
         public void setType(Category.Type type) {
-            switch (type) {
-                case LOCAL_CATEGORY:
-                    ivIcon.setImageResource(R.drawable.icon_category_local);
-                    break;
-                case REMOTE_USERS:
-                    ivIcon.setImageResource(R.drawable.icon_category_remote_peers);
-                    break;
-                case REMOTE_SELF_DEV:
-                    ivIcon.setImageResource(R.drawable.icon_category_remote_dev);
-                    break;
-                default:
-                    ivIcon.setImageResource(R.drawable.icon_category_unknown);
-                    Log.e(this.toString(), "Unknown type: " + type);
-            }
+            ivIcon.setImageResource(Category.typeToIconResource(type));
         }
 
     }

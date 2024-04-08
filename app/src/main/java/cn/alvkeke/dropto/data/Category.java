@@ -2,6 +2,8 @@ package cn.alvkeke.dropto.data;
 
 import java.util.ArrayList;
 
+import cn.alvkeke.dropto.R;
+
 public class Category {
 
     public static final long ID_NOT_ASSIGNED = -1;
@@ -12,9 +14,35 @@ public class Category {
         REMOTE_USERS,
     }
 
+    public static int typeToIconResource(Type type) {
+        switch (type) {
+            case LOCAL_CATEGORY:
+                return R.drawable.icon_category_local;
+            case REMOTE_USERS:
+                return R.drawable.icon_category_remote_peers;
+            case REMOTE_SELF_DEV:
+                return R.drawable.icon_category_remote_dev;
+            default:
+                return R.drawable.icon_category_unknown;
+        }
+    }
+
+    public static String typeToName(Type type) {
+        switch (type) {
+            case LOCAL_CATEGORY:
+                return "Local Category";
+            case REMOTE_USERS:
+                return "Remote Peer";
+            case REMOTE_SELF_DEV:
+                return "Remote Device";
+            default:
+                return "(Unknown Category Type)";
+        }
+    }
+
     private long id;
     private String title;
-    private final Type type;
+    private Type type;
     private String previewText = "";
     private final ArrayList<NoteItem> noteItems;
     private boolean needUpdate = false;
@@ -102,6 +130,10 @@ public class Category {
 
     public Type getType() {
         return this.type;
+    }
+
+    public void setType(Type type) {
+        this.type = type;
     }
 
     public long getId() {

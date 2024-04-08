@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -22,6 +23,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
+import cn.alvkeke.dropto.ui.adapter.CategoryTypeSpinnerAdapter;
 
 public class CategoryDetailFragment extends BottomSheetDialogFragment {
 
@@ -38,6 +40,7 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
 
     private CategoryDetailEvent listener;
     private EditText etCategoryTitle;
+    private Spinner spinnerType;
     private Category category;
 
     public CategoryDetailFragment() {
@@ -64,9 +67,11 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
 
         MaterialToolbar toolbar = view.findViewById(R.id.category_detail_toolbar);
         etCategoryTitle = view.findViewById(R.id.category_detail_title);
+        spinnerType = view.findViewById(R.id.category_detail_type_spinner);
 
         listener = (CategoryDetailEvent) requireContext();
         setPeekHeight(view);
+        fillTypeSpinner();
 
         if (category == null) {
             toolbar.setTitle("New Category:");
@@ -82,6 +87,12 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         toolbar.setOnMenuItemClickListener(new MenuListener());
     }
 
+    private void fillTypeSpinner() {
+        CategoryTypeSpinnerAdapter adapter = new CategoryTypeSpinnerAdapter(requireContext(),
+                R.layout.spinner_item_category_type, Category.Type.values());
+        spinnerType.setAdapter(adapter);
+    }
+
     private void setPeekHeight(View view) {
         BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
         int displayHei= requireActivity().getResources().getDisplayMetrics().heightPixels;
@@ -95,6 +106,7 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
 
     private void loadCategory() {
         etCategoryTitle.setText(category.getTitle());
+        spinnerType.setSelection(category.getType().ordinal());
     }
 
     private void finish() {
@@ -107,12 +119,13 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
             finish();
             return;
         }
-        // TODO: fix category type
+        Category.Type type = (Category.Type) spinnerType.getSelectedItem();
         if (category == null) {
-            category = new Category(title, Category.Type.LOCAL_CATEGORY);
+            category = new Category(title, type);
             listener.onCategoryDetailFinish(Result.CREATE, category);
         } else {
             category.setTitle(title);
+            category.setType(type);
             listener.onCategoryDetailFinish(Result.MODIFY, category);
         }
         finish();
