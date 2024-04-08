@@ -245,10 +245,14 @@ public class NoteListFragment extends Fragment implements ListNotification {
         }
     }
 
-    private void moveFragmentView(float targetX) {
+    private void setMaskTransparent(float targetX) {
         int width = fragmentView.getWidth();
         float alpha = (width - targetX)/ width;
-        fragmentParent.getBackground().setAlpha((int) (alpha * 255));
+        fragmentParent.getBackground().setAlpha((int) (alpha * 255 / 2));
+    }
+
+    private void moveFragmentView(float targetX) {
+        setMaskTransparent(targetX);
         fragmentView.setTranslationX(targetX);
     }
 
@@ -271,8 +275,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
         });
         animator.addUpdateListener(valueAnimator -> {
             float deltaX = (float) valueAnimator.getAnimatedValue();
-            float alpha = (width - deltaX)/ width;
-            fragmentParent.getBackground().setAlpha((int) (alpha * 255));
+            setMaskTransparent(deltaX);
         });
         animator.start();
     }
