@@ -1,7 +1,5 @@
 package cn.alvkeke.dropto.storage;
 
-import android.util.Log;
-
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -9,11 +7,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
-import java.util.Arrays;
 
 public class FileHelper {
 
-    private static final String LOG_TAG = "FileHelper";
     private static final int BUFFER_SIZE = 1024;
 
     public static String bytesToHex(byte[] bytes) {
@@ -35,10 +31,7 @@ public class FileHelper {
             }
         }
 
-        byte[] digest = md.digest();
-        Log.e(LOG_TAG, "result digest: " + Arrays.toString(digest));
-
-        return digest;
+        return md.digest();
     }
 
     public static File md5ToFile(File folder, byte[] md5) {

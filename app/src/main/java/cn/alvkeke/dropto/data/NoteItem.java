@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.data;
 
-import android.graphics.Bitmap;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -111,13 +110,6 @@ public class NoteItem implements Cloneable, Serializable {
     public String getImageName() {
         return this.imgName;
     }
-
-    @SuppressWarnings("unused")
-    public Bitmap loadImage() {
-
-        return null;
-    }
-
 
     public boolean isEdited() {
         return isEdited;

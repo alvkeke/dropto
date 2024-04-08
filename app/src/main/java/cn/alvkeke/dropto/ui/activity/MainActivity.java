@@ -249,6 +249,8 @@ public class MainActivity extends AppCompatActivity implements
                 binder.getService().queueTask(CoreService.Task.Type.REMOVE, category);
                 break;
             case FULL_DELETE:
+                Log.e(this.toString(), "NoteItems are not removed currently");
+                // TODO: implement this
                 binder.getService().queueTask(CoreService.Task.Type.REMOVE, category);
                 break;
             case MODIFY:

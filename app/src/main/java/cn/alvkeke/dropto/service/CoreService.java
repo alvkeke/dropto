@@ -136,7 +136,6 @@ public class CoreService extends Service {
             assert (msg.what >= 0 && msg.what < Task.taskTargets.length);
             assert msg.arg2 >= 0 && msg.arg2 < Task.taskTypes.length;
             Task.Target what = Task.taskTargets[msg.what];
-            Log.e(this.toString(), "received msg: " + msg.toString());
             switch (what) {
                 case Category:
                     listener.onCategoryTaskFinish(Task.taskTypes[msg.arg2], msg.arg1, (Category) msg.obj);
@@ -219,6 +218,7 @@ public class CoreService extends Service {
         }
     }
 
+    @SuppressWarnings("unused")
     private int deleteCategoryRecursion(Category category) {
         NoteItem e;
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
@@ -286,7 +286,6 @@ public class CoreService extends Service {
             Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
             return -1;
         }
-        Log.e(this.toString(), "newItem == oldItem: " + newItem.equals(oldItem));
         int index = c.indexNoteItem(oldItem);
         newItem.setId(oldItem.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
@@ -345,7 +344,6 @@ public class CoreService extends Service {
                 default:
                     return;
             }
-            Log.e(this.toString(), "handle msg: " + msg);
             handler.sendMessage(msg);
         }).start();
     }
@@ -375,7 +373,6 @@ public class CoreService extends Service {
                 default:
                     return;
             }
-            Log.e(this.toString(), "handle msg: " + msg);
             handler.sendMessage(msg);
         }).start();
     }

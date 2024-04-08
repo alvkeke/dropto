@@ -45,7 +45,6 @@ public class Category {
     private Type type;
     private String previewText = "";
     private final ArrayList<NoteItem> noteItems;
-    private boolean needUpdate = false;
     private boolean isInitialized = false;
 
     public Category(String title, Type type) {
@@ -67,7 +66,6 @@ public class Category {
     public int addNoteItem(NoteItem item) {
         noteItems.add(0, item);
         previewText = item.getText();
-        needUpdate = true;
         return 0;   // return the index of the new item
     }
 
@@ -81,7 +79,6 @@ public class Category {
             NoteItem e = noteItems.get(0);
             previewText = e.getText();
         }
-        needUpdate = true;
     }
 
     public NoteItem findNoteItem(long id) {
@@ -102,14 +99,6 @@ public class Category {
 
     public void setInitialized(boolean initialized) {
         isInitialized = initialized;
-    }
-
-    public void setUpdated() {
-        needUpdate = false;
-    }
-
-    public boolean needUpdate() {
-        return needUpdate;
     }
 
     public void setPreviewText(String previewText) {
