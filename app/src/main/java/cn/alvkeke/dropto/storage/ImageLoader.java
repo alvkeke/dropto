@@ -3,6 +3,7 @@ package cn.alvkeke.dropto.storage;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.os.Build;
 import android.util.Log;
 
 import java.io.File;
@@ -24,8 +25,10 @@ public class ImageLoader {
         Bitmap bitmap;
         Bitmap previewBitmap = null;
         long lastAccessTime;
-        public WrappedBitmap(Bitmap bitmap) {
+        boolean isCut;
+        public WrappedBitmap(Bitmap bitmap, boolean isCut) {
             this.bitmap = bitmap;
+            this.isCut = isCut;
             this.lastAccessTime = System.currentTimeMillis();
         }
     }
@@ -49,6 +52,36 @@ public class ImageLoader {
         imagePool.remove(target.getKey());
     }
 
+    private static int getPixelDeep(Bitmap.Config config) {
+        switch (config) {
+            case HARDWARE:
+                Log.i("ImageLoader:"+config, "Got HARDWARE, treat it as 1 byte deep");
+            case ALPHA_8:
+                return 1;
+            case RGB_565:
+            case ARGB_4444:
+                return 2;
+            case RGBA_F16:
+                return 8;
+            case RGBA_1010102:
+            case ARGB_8888:
+            default:
+                return 4;
+        }
+    }
+    private static final int POOL_BITMAP_MAX_BYTES = 1024*1024*4;    // 4MB
+    private void setSampleSize(BitmapFactory.Options options) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
+            return;
+
+        int byteCount = options.outWidth * options.outHeight * getPixelDeep(options.outConfig);
+        if (byteCount <= POOL_BITMAP_MAX_BYTES) return;
+
+        float divider = (float) byteCount / POOL_BITMAP_MAX_BYTES;
+        divider /= 4;
+        options.inSampleSize = (int) Math.ceil(divider);
+        options.inSampleSize++;
+    }
     private WrappedBitmap loadWrappedBitmap(String filePath) {
         WrappedBitmap wrappedBitmap = imagePool.get(filePath);
         if (wrappedBitmap != null) {
@@ -60,12 +93,19 @@ public class ImageLoader {
             removeLongNotUsedImage();
         }
         Log.d(this.toString(), "["+filePath+"] not loaded, create new one");
-        Bitmap bitmap = BitmapFactory.decodeFile(filePath);
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;  // just check metadata of the image
+        BitmapFactory.decodeFile(filePath, options);
+        setSampleSize(options);
+        options.inJustDecodeBounds = false; // really retrieve image from disk
+        Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
         if (bitmap == null) {
             Log.e(this.toString(), "Cannot load ["+filePath+"]from disk!!!");
             return null;
         }
-        wrappedBitmap = new WrappedBitmap(bitmap);
+        Log.e(this.toString(), "["+filePath+"] result byte count: " + bitmap.getByteCount());
+        wrappedBitmap = new WrappedBitmap(bitmap, options.inSampleSize>1);
         imagePool.put(filePath, wrappedBitmap);
         return wrappedBitmap;
     }
@@ -78,18 +118,16 @@ public class ImageLoader {
         return loadWrappedBitmap(file).bitmap;
     }
 
-    private static final float COMPRESS_MAX_HEIGHT = 600;
-    private static final float COMPRESS_MAX_WIDTH = 600;
+    private static final double PREVIEW_MAX_SIZE = 200*1024; // 200KB
     private Bitmap resizeBitmap(Bitmap origin) {
-        if (origin.getWidth() < COMPRESS_MAX_WIDTH && origin.getHeight() < COMPRESS_MAX_HEIGHT) {
+        int byteCount = origin.getByteCount();
+        if (byteCount < PREVIEW_MAX_SIZE) {
             return origin;  // just return origin bitmap since it no need to compress
         }
-        float scaleWidth = COMPRESS_MAX_WIDTH / origin.getWidth();
-        float scaleHeight = COMPRESS_MAX_HEIGHT / origin.getHeight();
-        float scaleFactor = Math.min(scaleWidth, scaleHeight);
-        Matrix matrix = new Matrix();
-        matrix.postScale(scaleFactor, scaleFactor);
 
+        double scaleFactor = Math.sqrt(PREVIEW_MAX_SIZE / byteCount);
+        Matrix matrix = new Matrix();
+        matrix.postScale((float) scaleFactor, (float) scaleFactor);
         return Bitmap.createBitmap(origin, 0, 0,
                 origin.getWidth(), origin.getHeight(), matrix, false);
     }
