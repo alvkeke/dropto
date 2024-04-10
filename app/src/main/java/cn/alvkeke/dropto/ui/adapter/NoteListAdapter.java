@@ -100,12 +100,14 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             }
             ivImage.setImageBitmap(bitmap);
             ivImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            ConstraintLayout.LayoutParams params =
+                    (ConstraintLayout.LayoutParams) ivImage.getLayoutParams();
             if (bitmap.getHeight() < ivImage.getMinimumHeight()) {
-                ConstraintLayout.LayoutParams params =
-                        (ConstraintLayout.LayoutParams) ivImage.getLayoutParams();
                 params.height = ivImage.getMinimumHeight();
-                ivImage.setLayoutParams(params);
+            } else {
+                params.height = ConstraintLayout.LayoutParams.WRAP_CONTENT;
             }
+            ivImage.setLayoutParams(params);
             ivImage.setVisibility(View.VISIBLE);
         }
 
