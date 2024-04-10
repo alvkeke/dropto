@@ -9,16 +9,17 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.PopupMenu;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.ViewCompat;
@@ -38,6 +39,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
+import cn.alvkeke.dropto.ui.comonent.MyPopupMenu;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
@@ -205,11 +207,11 @@ public class NoteListFragment extends Fragment implements ListNotification {
     class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         @Override
-        public boolean onItemClick(View v, int index) {
+        public boolean onItemClickAt(View v, int index, MotionEvent event) {
             if (isInSelectMode) {
                 tryToggleItemSelect(index);
             } else {
-                showItemPopMenu(index, v);
+                showItemPopMenu(index, v, (int) event.getRawX(), (int) event.getRawY());
             }
             return true;
         }
@@ -343,34 +345,36 @@ public class NoteListFragment extends Fragment implements ListNotification {
         }
     }
 
-    private void showItemPopMenu(int index, View v) {
-        PopupMenu menu = new PopupMenu(context, v);
+    private MyPopupMenu myPopupMenu = null;
+    private void showItemPopMenu(int index, View v, int x, int y) {
         NoteItem noteItem = category.getNoteItem(index);
         if (noteItem == null) {
             listener.onError("Failed to get note item at " + index + ", abort");
             return;
         }
-        menu.setOnMenuItemClickListener(menuItem -> {
-            int item_id = menuItem.getItemId();
-            if (R.id.item_pop_m_delete == item_id) {
-                listener.onAttempt(AttemptListener.Attempt.REMOVE, noteItem);
-            } else if (R.id.item_pop_m_pin == item_id) {
-                listener.onError("try to Pin item at " + index);
-            } else if (R.id.item_pop_m_edit == item_id) {
-                listener.onAttempt(AttemptListener.Attempt.DETAIL, noteItem);
-            } else if (R.id.item_pop_m_copy_text == item_id) {
-                listener.onAttempt(AttemptListener.Attempt.COPY, noteItem);
-            } else if (R.id.item_pop_m_share == item_id) {
-                listener.onAttempt(AttemptListener.Attempt.SHARE, noteItem);
-            } else {
-                listener.onError( "Unknown menu id: " +
-                        getResources().getResourceEntryName(item_id));
-                return false;
-            }
-            return true;
-        });
-        menu.inflate(R.menu.item_pop_menu);
-        menu.show();
+        if (myPopupMenu == null) {
+            Menu menu = new PopupMenu(context, v).getMenu();
+            requireActivity().getMenuInflater().inflate(R.menu.item_pop_menu, menu);
+            myPopupMenu = new MyPopupMenu(context).setMenu(menu).setListener((menuItem, obj)-> {
+                NoteItem note = (NoteItem) obj;
+                int item_id = menuItem.getItemId();
+                if (R.id.item_pop_m_delete == item_id) {
+                    listener.onAttempt(AttemptListener.Attempt.REMOVE, note);
+                } else if (R.id.item_pop_m_pin == item_id) {
+                    listener.onError("try to Pin item at " + index);
+                } else if (R.id.item_pop_m_edit == item_id) {
+                    listener.onAttempt(AttemptListener.Attempt.DETAIL, note);
+                } else if (R.id.item_pop_m_copy_text == item_id) {
+                    listener.onAttempt(AttemptListener.Attempt.COPY, note);
+                } else if (R.id.item_pop_m_share == item_id) {
+                    listener.onAttempt(AttemptListener.Attempt.SHARE, note);
+                } else {
+                    listener.onError( "Unknown menu id: " +
+                            getResources().getResourceEntryName(item_id));
+                }
+            });
+        }
+        myPopupMenu.setData(noteItem).show(v, x, y);
     }
 
     private NoteItem pendingNoteItem = null;
