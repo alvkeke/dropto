@@ -4,6 +4,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import java.io.File;
@@ -12,7 +14,13 @@ import java.util.Map;
 
 public class ImageLoader {
 
+    public interface ImageLoadListener {
+        void onImageLoaded(Bitmap bitmap);
+    }
+
+
     private static final ImageLoader instance = new ImageLoader();
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private ImageLoader() {
 
     }
@@ -139,6 +147,18 @@ public class ImageLoader {
         }
         wrappedBitmap.previewBitmap = resizeBitmap(wrappedBitmap.bitmap);
         return wrappedBitmap.previewBitmap;
+    }
+
+    public void loadOriginalImage(File file, ImageLoadListener listener) {
+        WrappedBitmap wrappedBitmap = imagePool.get(file.getAbsolutePath());
+        if (wrappedBitmap != null && !wrappedBitmap.isCut){
+            listener.onImageLoaded(wrappedBitmap.bitmap);
+            return;
+        }
+        new Thread(() -> {
+            Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+            handler.post(() -> listener.onImageLoaded(bitmap));
+        }).start();
     }
 
     @SuppressWarnings("unused")
