@@ -353,7 +353,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
             listener.onError("Failed to get note item at " + index + ", abort");
             return;
         }
-        MyPopupMenu.show(context, menu, menuItem -> {
+        new MyPopupMenu(context).setMenu(menu).setListener(menuItem -> {
             int item_id = menuItem.getItemId();
             if (R.id.item_pop_m_delete == item_id) {
                 listener.onAttempt(AttemptListener.Attempt.REMOVE, noteItem);
@@ -372,7 +372,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
             }
             return true;
 
-        }, v);
+        }).show(v);
     }
 
     private NoteItem pendingNoteItem = null;
