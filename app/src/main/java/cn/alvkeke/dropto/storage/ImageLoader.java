@@ -126,6 +126,19 @@ public class ImageLoader {
         return loadWrappedBitmap(file).bitmap;
     }
 
+    @SuppressWarnings("unused")
+    public void loadImageAsync(File file, ImageLoadListener listener) {
+        WrappedBitmap wrappedBitmap = imagePool.get(file.getAbsolutePath());
+        if (wrappedBitmap !=null) {
+            listener.onImageLoaded(wrappedBitmap.bitmap);
+            return;
+        }
+        new Thread(() -> {
+            Bitmap bitmap = loadImage(file);
+            handler.post(() -> listener.onImageLoaded(bitmap));
+        }).start();
+    }
+
     private static final double PREVIEW_MAX_SIZE = 200*1024; // 200KB
     private Bitmap resizeBitmap(Bitmap origin) {
         int byteCount = origin.getByteCount();
@@ -149,7 +162,21 @@ public class ImageLoader {
         return wrappedBitmap.previewBitmap;
     }
 
-    public void loadOriginalImage(File file, ImageLoadListener listener) {
+    @SuppressWarnings("unused")
+    public void loadPreviewImageAsync(File file, ImageLoadListener listener) {
+        WrappedBitmap wrappedBitmap = imagePool.get(file.getAbsolutePath());
+        if (wrappedBitmap !=null && wrappedBitmap.previewBitmap != null) {
+            listener.onImageLoaded(wrappedBitmap.previewBitmap);
+            return;
+        }
+        new Thread(() -> {
+            Bitmap preview = loadPreviewImage(file);
+            handler.post(() -> listener.onImageLoaded(preview));
+        }).start();
+    }
+
+    @SuppressWarnings("unused")
+    public void loadOriginalImageAsync(File file, ImageLoadListener listener) {
         WrappedBitmap wrappedBitmap = imagePool.get(file.getAbsolutePath());
         if (wrappedBitmap != null && !wrappedBitmap.isCut){
             listener.onImageLoaded(wrappedBitmap.bitmap);
