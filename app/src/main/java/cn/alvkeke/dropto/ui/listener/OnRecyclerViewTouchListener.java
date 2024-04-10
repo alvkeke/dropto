@@ -63,7 +63,9 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
                     isShortClick = false;
                     itemView = recyclerView.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
                     if (itemView != null) {
-                        if (handleListItemClick(recyclerView, itemView, false)) return true;
+                        if (handleItemClick(recyclerView, itemView, motionEvent)) return true;
+                        if (handleItemClick(recyclerView, itemView, null)) return true;
+//                        if (handleListItemClick(recyclerView, itemView, false)) return true;
                     }
                     if (onClick(view, motionEvent)) return true;
                 }
@@ -97,7 +99,7 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
         @Override
         public void run() {
             if (longPressItemView != null) {
-                if (handleListItemClick(longPressView, longPressItemView, true)) {
+                if (handleItemLongClick(longPressView, longPressItemView)) {
                     isLongClickHold = true;
                     return;
                 }
@@ -112,18 +114,29 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
         return false;
     }
 
-    private boolean handleListItemClick(View parent, View itemView, boolean isLong) {
+    private boolean handleItemLongClick(View parent, View itemView) {
         RecyclerView recyclerView = (RecyclerView) parent;
         int index = recyclerView.getChildLayoutPosition(itemView);
         assert index != -1;
-        if (isLong) {
-            return onItemLongClick(itemView, index);
-        } else {
+        return onItemLongClick(itemView, index);
+    }
+
+    private boolean handleItemClick(View parent, View itemView, MotionEvent e) {
+        RecyclerView recyclerView = (RecyclerView) parent;
+        int index = recyclerView.getChildLayoutPosition(itemView);
+        assert index != -1;
+        if (e == null) {
             return onItemClick(itemView, index);
+        } else {
+            return onItemClickAt(itemView, index, e);
         }
     }
 
     public boolean onItemClick(View v, int index) {
+        return false;
+    }
+
+    public boolean onItemClickAt(View v, int index, MotionEvent event) {
         return false;
     }
 

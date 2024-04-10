@@ -6,6 +6,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
 import android.util.DisplayMetrics;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -14,14 +15,16 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
-import androidx.appcompat.widget.PopupMenu;
-
 import cn.alvkeke.dropto.R;
 
 public class MyPopupMenu extends PopupWindow{
 
+    public interface OnMenuItemClickListener {
+        void onMenuItemClick(MenuItem menuItem, Object extraData);
+    }
+
     private final Context context;
-    private PopupMenu.OnMenuItemClickListener listener;
+    private OnMenuItemClickListener listener;
     private Menu menu;
 
     public MyPopupMenu(Context context) {
@@ -29,7 +32,7 @@ public class MyPopupMenu extends PopupWindow{
         this.context = context;
     }
 
-    public MyPopupMenu setListener(PopupMenu.OnMenuItemClickListener listener) {
+    public MyPopupMenu setListener(OnMenuItemClickListener listener) {
         this.listener = listener;
         return this;
     }
@@ -120,7 +123,7 @@ public class MyPopupMenu extends PopupWindow{
                 {
                     if (canClick) {
                         if (listener != null) {
-                            listener.onMenuItemClick(item);
+                            listener.onMenuItemClick(item, object);
                         }
                         dismiss();
                         return true;
@@ -131,11 +134,17 @@ public class MyPopupMenu extends PopupWindow{
         }
     }
 
-    public void show(View anchorView) {
+    private Object object;
+    public MyPopupMenu setData(Object o) {
+        this.object = o;
+        return this;
+    }
 
+    public void show(View anchorView, int ignore, int y) {
         LinearLayout linearLayout = new LinearLayout(context);
         linearLayout.setOrientation(LinearLayout.VERTICAL);
-        linearLayout.setMinimumWidth(context.getResources().getDisplayMetrics().widthPixels / 2);
+        int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+        linearLayout.setMinimumWidth(screenWidth / 2);
 
         for (int i = 0; i < menu.size(); i++) {
             MenuItem item = menu.getItem(i);
@@ -151,7 +160,11 @@ public class MyPopupMenu extends PopupWindow{
         setContentView(linearLayout);
         setFocusable(true);
         setOutsideTouchable(false);
-        showAsDropDown(anchorView);
+
+        linearLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int showX = screenWidth / 6;
+        int showY = y - linearLayout.getMeasuredHeight()/4;
+        showAtLocation(anchorView, Gravity.NO_GRAVITY, showX, showY);
     }
 
 }
