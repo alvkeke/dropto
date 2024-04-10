@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.storage;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.util.Log;
 
 import java.io.File;
@@ -21,6 +22,7 @@ public class ImageLoader {
 
     private static class WrappedBitmap {
         Bitmap bitmap;
+        Bitmap previewBitmap = null;
         long lastAccessTime;
         public WrappedBitmap(Bitmap bitmap) {
             this.bitmap = bitmap;
@@ -47,13 +49,12 @@ public class ImageLoader {
         imagePool.remove(target.getKey());
     }
 
-    public Bitmap loadImage(File file) {
-        String filePath = file.getAbsolutePath();
+    private WrappedBitmap loadWrappedBitmap(String filePath) {
         WrappedBitmap wrappedBitmap = imagePool.get(filePath);
-        if (wrappedBitmap != null && wrappedBitmap.bitmap != null) {
+        if (wrappedBitmap != null) {
             wrappedBitmap.lastAccessTime = System.currentTimeMillis();
             Log.d(this.toString(), "["+filePath+"] loaded, update access time and return");
-            return wrappedBitmap.bitmap;
+            return wrappedBitmap;
         }
         if (imagePool.size() >= imagePoolSize) {
             removeLongNotUsedImage();
@@ -66,7 +67,40 @@ public class ImageLoader {
         }
         wrappedBitmap = new WrappedBitmap(bitmap);
         imagePool.put(filePath, wrappedBitmap);
-        return wrappedBitmap.bitmap;
+        return wrappedBitmap;
+    }
+
+    private WrappedBitmap loadWrappedBitmap(File file) {
+        return loadWrappedBitmap(file.getAbsolutePath());
+    }
+
+    public Bitmap loadImage(File file) {
+        return loadWrappedBitmap(file).bitmap;
+    }
+
+    private static final float COMPRESS_MAX_HEIGHT = 600;
+    private static final float COMPRESS_MAX_WIDTH = 600;
+    private Bitmap resizeBitmap(Bitmap origin) {
+        if (origin.getWidth() < COMPRESS_MAX_WIDTH && origin.getHeight() < COMPRESS_MAX_HEIGHT) {
+            return origin;  // just return origin bitmap since it no need to compress
+        }
+        float scaleWidth = COMPRESS_MAX_WIDTH / origin.getWidth();
+        float scaleHeight = COMPRESS_MAX_HEIGHT / origin.getHeight();
+        float scaleFactor = Math.min(scaleWidth, scaleHeight);
+        Matrix matrix = new Matrix();
+        matrix.postScale(scaleFactor, scaleFactor);
+
+        return Bitmap.createBitmap(origin, 0, 0,
+                origin.getWidth(), origin.getHeight(), matrix, false);
+    }
+
+    public Bitmap loadPreviewImage(File file) {
+        WrappedBitmap wrappedBitmap = loadWrappedBitmap(file);
+        if (wrappedBitmap.previewBitmap != null) {
+            return wrappedBitmap.previewBitmap;
+        }
+        wrappedBitmap.previewBitmap = resizeBitmap(wrappedBitmap.bitmap);
+        return wrappedBitmap.previewBitmap;
     }
 
     @SuppressWarnings("unused")

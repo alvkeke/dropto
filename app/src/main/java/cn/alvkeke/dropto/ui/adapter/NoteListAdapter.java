@@ -92,7 +92,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
                 ivImage.setVisibility(View.GONE);
                 return;
             }
-            Bitmap bitmap = ImageLoader.getInstance().loadImage(imgfile);
+            Bitmap bitmap = ImageLoader.getInstance().loadPreviewImage(imgfile);
             if (bitmap == null) {
                 Log.e(this.toString(), "Failed to get image file, skip this item");
                 ivImage.setVisibility(View.GONE);
