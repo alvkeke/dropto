@@ -10,4 +10,6 @@
     <color name="teal_700">#FF018786</color>
     <color name="popup_menu_background">#1F1F20</color>
     <color name="popup_menu_item_selected">#6F6F6F</color>
+    <color name="note_item_image_name">#EEEEEE</color>
+    <color name="note_item_image_name_background">#333333</color>
 </resources>

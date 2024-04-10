@@ -7,10 +7,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
@@ -62,7 +62,11 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
 
         public void setText(String text) {
-            tvText.setText(text);
+            if (text == null || text.isEmpty()) {
+                tvText.setVisibility(View.GONE);
+            } else {
+                tvText.setText(text);
+            }
         }
 
         public void setCreateTime(long time) {
@@ -83,18 +87,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             ivEdited.setVisibility(foo? View.VISIBLE : View.INVISIBLE);
         }
 
-        private void resizeImage(Bitmap bitmap) {
-            final int minHeight = 200;
-
-            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) ivImage.getLayoutParams();
-            if (bitmap.getHeight() < minHeight) {
-                params.height = minHeight;
-            } else {
-                params.height = LinearLayout.LayoutParams.WRAP_CONTENT;
-            }
-            ivImage.setLayoutParams(params);
-        }
-
         public void setImageFile(File imgfile) {
             if (imgfile == null) {
                 ivImage.setVisibility(View.GONE);
@@ -106,16 +98,23 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
                 ivImage.setVisibility(View.GONE);
                 return;
             }
-            resizeImage(bitmap);
             ivImage.setImageBitmap(bitmap);
+            ivImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            if (bitmap.getHeight() < ivImage.getMinimumHeight()) {
+                ConstraintLayout.LayoutParams params =
+                        (ConstraintLayout.LayoutParams) ivImage.getLayoutParams();
+                params.height = ivImage.getMinimumHeight();
+                ivImage.setLayoutParams(params);
+            }
             ivImage.setVisibility(View.VISIBLE);
         }
 
         public void setImageName(String name) {
-            if (name == null) {
+            if (name == null || name.isEmpty()) {
                 tvImageFile.setVisibility(View.GONE);
                 return;
             }
+            tvImageFile.setMaxWidth(ivImage.getMeasuredWidth());
             tvImageFile.setText(name);
             tvImageFile.setVisibility(View.VISIBLE);
         }
