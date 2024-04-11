@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
@@ -16,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -211,7 +213,22 @@ public class NoteListFragment extends Fragment implements ListNotification {
             if (isInSelectMode) {
                 tryToggleItemSelect(index);
             } else {
-                showItemPopMenu(index, v, (int) event.getRawX(), (int) event.getRawY());
+                int x = (int) event.getRawX();
+                int y = (int) event.getRawY();
+                View image = v.findViewById(R.id.rlist_item_note_img_view);
+                boolean showImage = false;
+                if (image != null) {
+                    Rect rect = new Rect();
+                    image.getGlobalVisibleRect(rect);
+                    showImage = rect.contains(x, y);
+                }
+                if (showImage) {
+                    String msg = "["+index+"] Show image view is not supported yet...";
+                    Log.d(this.toString(), msg);
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+                } else {
+                    showItemPopMenu(index, v, x, y);
+                }
             }
             return true;
         }
