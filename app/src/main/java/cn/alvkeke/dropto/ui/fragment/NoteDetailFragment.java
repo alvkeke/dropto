@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
@@ -12,6 +13,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -134,6 +136,12 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         this.dismiss();
     }
 
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        super.onDismiss(dialog);
+        tryRecycleLoadedBitmap();
+    }
+
     private class BackNavigationClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
@@ -174,6 +182,13 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         }
     }
 
+    private Bitmap loadedBitmap = null;
+    private void tryRecycleLoadedBitmap() {
+        if (loadedBitmap != null) {
+            loadedBitmap.recycle();
+        }
+    }
+
     /**
      * load item info to View, input item cannot be null,
      * there is no valid-check for the item.
@@ -192,12 +207,19 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
             isRemoveImage = true;
             image_container.setVisibility(View.GONE);
         });
-        Bitmap bitmap = ImageLoader.getInstance().loadImage(imgfile);
-        if (bitmap == null) {
-            Log.e(this.toString(), "Failed to get image file, skip this item");
-            return;
-        }
-        image_view.setImageBitmap(bitmap);
+        ImageLoader.getInstance().loadOriginalImageAsync(imgfile, (bitmap -> {
+            if (bitmap == null) {
+                String errMsg = "Failed to get image file, skip this item";
+                Log.e(this.toString(), errMsg);
+                Toast.makeText(requireContext(), errMsg, Toast.LENGTH_SHORT).show();
+                image_view.setImageResource(R.drawable.img_load_error);
+                return;
+            }
+            tryRecycleLoadedBitmap();
+            loadedBitmap = bitmap;
+            image_view.setImageBitmap(bitmap);
+        }));
+
     }
 
 }
