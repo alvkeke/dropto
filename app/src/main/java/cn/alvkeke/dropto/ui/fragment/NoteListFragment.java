@@ -17,7 +17,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -223,9 +222,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
                     showImage = rect.contains(x, y);
                 }
                 if (showImage) {
-                    String msg = "["+index+"] Show image view is not supported yet...";
-                    Log.d(this.toString(), msg);
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+                    showImageView(index, x, y);
                 } else {
                     showItemPopMenu(index, v, x, y);
                 }
@@ -360,6 +357,15 @@ public class NoteListFragment extends Fragment implements ListNotification {
             setPendingItem(item);
             listener.onAttempt(AttemptListener.Attempt.CREATE, item);
         }
+    }
+
+    private void showImageView(int index, int ignore, int ignore1) {
+        NoteItem noteItem = category.getNoteItem(index);
+        ImageViewerFragment fragment = new ImageViewerFragment();
+        fragment.setImgFile(noteItem.getImageFile());
+        getParentFragmentManager().beginTransaction()
+                .add(R.id.main_container, fragment, null)
+                .commit();
     }
 
     private MyPopupMenu myPopupMenu = null;

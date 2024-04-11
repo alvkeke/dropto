@@ -207,7 +207,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
             isRemoveImage = true;
             image_container.setVisibility(View.GONE);
         });
-        ImageLoader.getInstance().loadOriginalImageAsync(imgfile, (bitmap -> {
+        ImageLoader.getInstance().loadImageAsync(imgfile, (bitmap -> {
             if (bitmap == null) {
                 String errMsg = "Failed to get image file, skip this item";
                 Log.e(this.toString(), errMsg);
