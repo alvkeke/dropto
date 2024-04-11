@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.storage;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -30,7 +29,6 @@ public class ImageLoader {
 
     private static class WrappedBitmap {
         Bitmap bitmap;
-        Bitmap previewBitmap = null;
         long lastAccessTime;
         boolean isCut;
         public WrappedBitmap(Bitmap bitmap, boolean isCut) {
@@ -41,6 +39,7 @@ public class ImageLoader {
     }
     private final HashMap<String, WrappedBitmap> imagePool = new HashMap<>();
     private int imagePoolSize = 15;
+    private int imageMaxBytes = 4*1024*1024;
 
     private void removeLongNotUsedImage() {
         Map.Entry<String, WrappedBitmap> target = null;
@@ -76,15 +75,14 @@ public class ImageLoader {
                 return 4;
         }
     }
-    private static final int POOL_BITMAP_MAX_BYTES = 1024*1024*4;    // 4MB
     private void setSampleSize(BitmapFactory.Options options) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
             return;
 
         int byteCount = options.outWidth * options.outHeight * getPixelDeep(options.outConfig);
-        if (byteCount <= POOL_BITMAP_MAX_BYTES) return;
+        if (byteCount <= imageMaxBytes) return;
 
-        float divider = (float) byteCount / POOL_BITMAP_MAX_BYTES;
+        float divider = (float) byteCount / imageMaxBytes;
         divider /= 4;
         options.inSampleSize = (int) Math.ceil(divider);
         options.inSampleSize++;
@@ -153,42 +151,6 @@ public class ImageLoader {
         }).start();
     }
 
-    private static final double PREVIEW_MAX_SIZE = 200*1024; // 200KB
-    private Bitmap resizeBitmap(Bitmap origin) {
-        int byteCount = origin.getByteCount();
-        if (byteCount < PREVIEW_MAX_SIZE) {
-            return origin;  // just return origin bitmap since it no need to compress
-        }
-
-        double scaleFactor = Math.sqrt(PREVIEW_MAX_SIZE / byteCount);
-        Matrix matrix = new Matrix();
-        matrix.postScale((float) scaleFactor, (float) scaleFactor);
-        return Bitmap.createBitmap(origin, 0, 0,
-                origin.getWidth(), origin.getHeight(), matrix, false);
-    }
-
-    public Bitmap loadPreviewImage(File file) {
-        WrappedBitmap wrappedBitmap = loadWrappedBitmap(file);
-        if (wrappedBitmap.previewBitmap != null) {
-            return wrappedBitmap.previewBitmap;
-        }
-        wrappedBitmap.previewBitmap = resizeBitmap(wrappedBitmap.bitmap);
-        return wrappedBitmap.previewBitmap;
-    }
-
-    @SuppressWarnings("unused")
-    public void loadPreviewImageAsync(File file, ImageLoadListener listener) {
-        WrappedBitmap wrappedBitmap = getWrappedBitmap(file.getAbsolutePath());
-        if (wrappedBitmap !=null && wrappedBitmap.previewBitmap != null) {
-            listener.onImageLoaded(wrappedBitmap.previewBitmap);
-            return;
-        }
-        new Thread(() -> {
-            Bitmap preview = loadPreviewImage(file);
-            handler.post(() -> listener.onImageLoaded(preview));
-        }).start();
-    }
-
     @SuppressWarnings("unused")
     public void loadOriginalImageAsync(File file, ImageLoadListener listener) {
         WrappedBitmap wrappedBitmap = getWrappedBitmap(file.getAbsolutePath());
@@ -207,5 +169,9 @@ public class ImageLoader {
         this.imagePoolSize = imagePoolSize;
     }
 
+    @SuppressWarnings("unused")
+    public void setImageMaxBytes(int imageMaxBytes) {
+        this.imageMaxBytes = imageMaxBytes;
+    }
 
 }

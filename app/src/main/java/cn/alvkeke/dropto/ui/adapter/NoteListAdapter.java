@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.ui.adapter;
 
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -86,22 +85,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             ivEdited.setVisibility(foo? View.VISIBLE : View.INVISIBLE);
         }
 
-        private void setImageFile(File imgfile) {
-            if (imgfile == null) {
-                ivImage.setVisibility(View.GONE);
-                return;
-            }
-            Bitmap bitmap = ImageLoader.getInstance().loadPreviewImage(imgfile);
-            if (bitmap == null) {
-                Log.e(this.toString(), "Failed to get image file, skip this item");
-                ivImage.setVisibility(View.GONE);
-                return;
-            }
-            ivImage.setImageBitmap(bitmap);
-            ivImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-            ivImage.setVisibility(View.VISIBLE);
-        }
-
         private void setImageName(String name) {
             if (name == null || name.isEmpty()) {
                 tvImageFile.setVisibility(View.GONE);
@@ -112,8 +95,23 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
 
         public void setImageView(File imgFile, String imgName) {
-            setImageFile(imgFile);
-            setImageName(imgName);
+            if (imgFile == null) {
+                ivImage.setVisibility(View.GONE);
+                return;
+            }
+            ImageLoader.getInstance().loadImageAsync(imgFile, bitmap -> {
+                if (bitmap == null) {
+                    String errMsg = "Failed to get image file, skip this item";
+                    Log.e(this.toString(), errMsg);
+                    ivImage.setImageResource(R.drawable.img_load_error);
+                    ivImage.setVisibility(View.VISIBLE);
+                    return;
+                }
+                ivImage.setImageBitmap(bitmap);
+                ivImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+                ivImage.setVisibility(View.VISIBLE);
+                setImageName(imgName);
+            });
         }
 
     }
