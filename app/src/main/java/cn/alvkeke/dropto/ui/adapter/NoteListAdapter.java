@@ -10,7 +10,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
@@ -87,7 +86,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             ivEdited.setVisibility(foo? View.VISIBLE : View.INVISIBLE);
         }
 
-        public void setImageFile(File imgfile) {
+        private void setImageFile(File imgfile) {
             if (imgfile == null) {
                 ivImage.setVisibility(View.GONE);
                 return;
@@ -100,25 +99,21 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             }
             ivImage.setImageBitmap(bitmap);
             ivImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-            ConstraintLayout.LayoutParams params =
-                    (ConstraintLayout.LayoutParams) ivImage.getLayoutParams();
-            if (bitmap.getHeight() < ivImage.getMinimumHeight()) {
-                params.height = ivImage.getMinimumHeight();
-            } else {
-                params.height = ConstraintLayout.LayoutParams.WRAP_CONTENT;
-            }
-            ivImage.setLayoutParams(params);
             ivImage.setVisibility(View.VISIBLE);
         }
 
-        public void setImageName(String name) {
+        private void setImageName(String name) {
             if (name == null || name.isEmpty()) {
                 tvImageFile.setVisibility(View.GONE);
                 return;
             }
-            tvImageFile.setMaxWidth(ivImage.getMeasuredWidth());
             tvImageFile.setText(name);
             tvImageFile.setVisibility(View.VISIBLE);
+        }
+
+        public void setImageView(File imgFile, String imgName) {
+            setImageFile(imgFile);
+            setImageName(imgName);
         }
 
     }
@@ -141,8 +136,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setText(note.getText());
         holder.setCreateTime(note.getCreateTime());
         holder.setIsEdited(note.isEdited());
-        holder.setImageFile(note.getImageFile());
-        holder.setImageName(note.getImageName());
+        holder.setImageView(note.getImageFile(), note.getImageName());
         if (selectedItems.contains(note)) {
             // TODO: use another color for selected item
             holder.itemView.setBackgroundColor(Color.LTGRAY);

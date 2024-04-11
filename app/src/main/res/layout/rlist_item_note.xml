@@ -20,11 +20,12 @@
             android:id="@+id/rlist_item_note_img_view"
             android:adjustViewBounds="true"
             android:maxHeight="280dp"
-            android:minHeight="64dp"
-            android:scaleType="fitCenter"
+            android:minHeight="160dp"
+            android:minWidth="160dp"
+            android:scaleType="fitStart"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:contentDescription="@string/description_of_note_item_image" />
 
