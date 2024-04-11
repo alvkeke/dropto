@@ -40,7 +40,7 @@ public class ImageLoader {
         }
     }
     private final HashMap<String, WrappedBitmap> imagePool = new HashMap<>();
-    private int imagePoolSize = 2;
+    private int imagePoolSize = 15;
 
     private void removeLongNotUsedImage() {
         Map.Entry<String, WrappedBitmap> target = null;
