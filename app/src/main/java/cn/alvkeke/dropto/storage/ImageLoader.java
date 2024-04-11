@@ -18,7 +18,6 @@ public class ImageLoader {
         void onImageLoaded(Bitmap bitmap);
     }
 
-
     private static final ImageLoader instance = new ImageLoader();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ImageLoader() {
@@ -41,7 +40,7 @@ public class ImageLoader {
         }
     }
     private final HashMap<String, WrappedBitmap> imagePool = new HashMap<>();
-    private int imagePoolSize = 15;
+    private int imagePoolSize = 2;
 
     private void removeLongNotUsedImage() {
         Map.Entry<String, WrappedBitmap> target = null;
@@ -90,14 +89,29 @@ public class ImageLoader {
         options.inSampleSize = (int) Math.ceil(divider);
         options.inSampleSize++;
     }
-    private WrappedBitmap loadWrappedBitmap(String filePath) {
+
+    private WrappedBitmap getWrappedBitmap(String filePath) {
         WrappedBitmap wrappedBitmap = imagePool.get(filePath);
+        if (wrappedBitmap == null) return null;
+        wrappedBitmap.lastAccessTime = System.currentTimeMillis();
+        return wrappedBitmap;
+    }
+
+    private void putWrappedBitmap(String filePath, WrappedBitmap wrappedBitmap) {
+        imagePool.put(filePath, wrappedBitmap);
+    }
+
+    private boolean isPoolFull() {
+        return imagePool.size() >= imagePoolSize;
+    }
+
+    private WrappedBitmap loadWrappedBitmap(String filePath) {
+        WrappedBitmap wrappedBitmap = getWrappedBitmap(filePath);
         if (wrappedBitmap != null) {
-            wrappedBitmap.lastAccessTime = System.currentTimeMillis();
             Log.d(this.toString(), "["+filePath+"] loaded, update access time and return");
             return wrappedBitmap;
         }
-        if (imagePool.size() >= imagePoolSize) {
+        if (isPoolFull()) {
             removeLongNotUsedImage();
         }
         Log.d(this.toString(), "["+filePath+"] not loaded, create new one");
@@ -114,7 +128,7 @@ public class ImageLoader {
         }
         Log.e(this.toString(), "["+filePath+"] result byte count: " + bitmap.getByteCount());
         wrappedBitmap = new WrappedBitmap(bitmap, options.inSampleSize>1);
-        imagePool.put(filePath, wrappedBitmap);
+        putWrappedBitmap(filePath, wrappedBitmap);
         return wrappedBitmap;
     }
 
@@ -128,7 +142,7 @@ public class ImageLoader {
 
     @SuppressWarnings("unused")
     public void loadImageAsync(File file, ImageLoadListener listener) {
-        WrappedBitmap wrappedBitmap = imagePool.get(file.getAbsolutePath());
+        WrappedBitmap wrappedBitmap = getWrappedBitmap(file.getAbsolutePath());
         if (wrappedBitmap !=null) {
             listener.onImageLoaded(wrappedBitmap.bitmap);
             return;
@@ -164,7 +178,7 @@ public class ImageLoader {
 
     @SuppressWarnings("unused")
     public void loadPreviewImageAsync(File file, ImageLoadListener listener) {
-        WrappedBitmap wrappedBitmap = imagePool.get(file.getAbsolutePath());
+        WrappedBitmap wrappedBitmap = getWrappedBitmap(file.getAbsolutePath());
         if (wrappedBitmap !=null && wrappedBitmap.previewBitmap != null) {
             listener.onImageLoaded(wrappedBitmap.previewBitmap);
             return;
@@ -177,7 +191,7 @@ public class ImageLoader {
 
     @SuppressWarnings("unused")
     public void loadOriginalImageAsync(File file, ImageLoadListener listener) {
-        WrappedBitmap wrappedBitmap = imagePool.get(file.getAbsolutePath());
+        WrappedBitmap wrappedBitmap = getWrappedBitmap(file.getAbsolutePath());
         if (wrappedBitmap != null && !wrappedBitmap.isCut){
             listener.onImageLoaded(wrappedBitmap.bitmap);
             return;
