@@ -39,7 +39,7 @@ public class ImageLoader {
     }
     private final HashMap<String, WrappedBitmap> imagePool = new HashMap<>();
     private int imagePoolSize = 15;
-    private int imageMaxBytes = 4*1024*1024;
+    private int imageMaxBytes = 1048576;  // 1*1024*1024;
 
     private void removeLongNotUsedImage() {
         Map.Entry<String, WrappedBitmap> target = null;
