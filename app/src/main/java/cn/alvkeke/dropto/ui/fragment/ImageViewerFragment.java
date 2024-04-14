@@ -49,7 +49,7 @@ public class ImageViewerFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        if (imgFile == null) {
+        if (imgFile == null || !imgFile.exists() || !imgFile.isFile()) {
             Toast.makeText(requireContext(), "no Image view, exit", Toast.LENGTH_SHORT).show();
             finish();
             return;
