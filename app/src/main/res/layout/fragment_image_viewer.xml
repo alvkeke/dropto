@@ -10,6 +10,7 @@
         android:id="@+id/img_viewer_image"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:scaleType="fitCenter"
         android:contentDescription="@string/description_of_image_viewer_image_view" />
 
 </FrameLayout>

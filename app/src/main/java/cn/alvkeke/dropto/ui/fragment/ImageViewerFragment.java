@@ -6,8 +6,9 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.PointF;
+import android.graphics.RectF;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -64,6 +65,7 @@ public class ImageViewerFragment extends Fragment {
         ImageLoader.getInstance().loadOriginalImageAsync(imgFile, bitmap -> {
             loadedBitmap = bitmap;
             imageView.setImageBitmap(bitmap);
+            calcImageFixSize();
         });
         view.setOnTouchListener(new ImageGestureListener());
     }
@@ -72,30 +74,18 @@ public class ImageViewerFragment extends Fragment {
 
         @Override
         public void onClick(View v, MotionEvent e) {
-            Log.e(this.toString(), "single");
             if (scaleFactor == 1) {
-                ValueAnimator animator = ValueAnimator.ofFloat(1, 0);
-                animator.addUpdateListener(valueAnimator -> {
-                    parentView.setAlpha((Float) valueAnimator.getAnimatedValue());
-                });
-                animator.addListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        finish();
-                    }
-                });
-                animator.start();
+                finish();
             }
         }
 
         @Override
         public void onDoubleClick(View v, MotionEvent e) {
-            Log.e(this.toString(), "double");
             if (scaleFactor > 1) {
-                animaScaleImage(1);
-                animeTranslateImage(0, 0);
+                animeScaleImageTo(1);
+                animeTranslateImageTo(0, 0);
             } else {
-                animaScaleImage(2);
+                animeScaleImageTo(2);
             }
         }
 
@@ -106,7 +96,7 @@ public class ImageViewerFragment extends Fragment {
             float y = Math.abs(imageView.getTranslationY());
             float current = Math.min(y, length);
             float ratio = 1 - (current / length);
-            ratio = Math.max(ratio, 0.2f);    // limit background transparent
+            ratio = Math.max(ratio, 0.3f);    // limit background transparent
 
             parentView.getBackground().setAlpha((int) (ratio * 0xff));
             imageView.setTranslationY(imageView.getTranslationY() + deltaY);
@@ -119,7 +109,11 @@ public class ImageViewerFragment extends Fragment {
             if (Math.abs(imageView.getTranslationY()) > (float) imageView.getHeight() /3) {
                 finish();
             } else {
-                animeTranslateImage(imageView.getTranslationX(), 0);
+                float dy = imageView.getTranslationY();
+                ValueAnimator animator = ValueAnimator.ofFloat(dy, 0);
+                animator.addUpdateListener(valueAnimator ->
+                        imageView.setTranslationY((Float) valueAnimator.getAnimatedValue()));
+                animator.start();
                 parentView.getBackground().setAlpha(0xff);
             }
             return true;
@@ -138,79 +132,182 @@ public class ImageViewerFragment extends Fragment {
         @Override
         public void onDrag(View view, float deltaX, float deltaY) {
             if (scaleFactor == 1) return;
-            imageView.setTranslationX(imageView.getTranslationX() + deltaX);
-            imageView.setTranslationY(imageView.getTranslationY() + deltaY);
+            translateImage(deltaX, deltaY);
         }
 
+        private final PointF pointF = new PointF();
         @Override
         public void onDragEnd(View view, MotionEvent motionEvent) {
-            boolean needReset = false;
-
-            // TODO: fix wrong translation
-            float targetX = imageView.getTranslationX();
-            float targetY = imageView.getTranslationY();
-            if (targetX > 0) {
-                targetX = 0;
-                needReset = true;
-            }
-            if (targetY > 0) {
-                targetY = 0;
-                needReset = true;
-            }
-            if (needReset)
-                animeTranslateImage(targetX, targetY);
+            if (scaleFactor == 1) return;
+            adjustImagePosition(pointF);
+            animeTranslateImageTo(pointF.x, pointF.y);
         }
 
         @Override
         public void onZoom(View view, float ratio) {
-            scaleFactor *= ratio;
-            scaleFactor = Math.max(0.1f, Math.min(scaleFactor, 5.0f));
-            scaleImage(scaleFactor);
+            scaleImage(ratio);
         }
 
         @Override
         public void onZoomEnd(View view) {
-            Log.e(this.toString(), "zoom end");
             if (scaleFactor< 1) {
-                animaScaleImage(1);
+                animeScaleImageTo(1);
+                animeTranslateImageTo(0, 0);
+            } else {
+                adjustImagePosition(pointF);
+                animeTranslateImageTo(pointF.x, pointF.y);
             }
         }
     }
 
-    private float scaleFactor = 1;
-    private void scaleImage(float scale) {
-        imageView.setScaleX(scale);
-        imageView.setScaleY(scale);
+    private float imageFixHeight;
+    private float imageFixWidth;
+    private void calcImageFixSize() {
+        float ratio1 = (float) imageView.getHeight() /imageView.getWidth();
+        float ratio2 = (float) loadedBitmap.getHeight() /loadedBitmap.getWidth();
+        if (ratio1 > ratio2) {
+            imageFixWidth = imageView.getWidth();
+            imageFixHeight = imageFixWidth * ratio2;
+        } else {
+            imageFixHeight = imageView.getHeight();
+            imageFixWidth = imageFixHeight / ratio2;
+        }
     }
-    private void animaScaleImage(float targetScale) {
+
+    private float getImageCenterX() {
+        return imageView.getTranslationX() + (float) imageView.getWidth() /2;
+    }
+    private float getImageCenterY() {
+        return imageView.getTranslationY() + (float) imageView.getHeight() / 2;
+    }
+    private void getVisibleRect(RectF rect) {
+        float centerX = getImageCenterX();
+        float centerY = getImageCenterY();
+        float width_half = imageFixWidth * scaleFactor / 2;
+        float height_half = imageFixHeight * scaleFactor / 2;
+        float left = centerX - width_half;
+        float right = centerX + width_half;
+        float top = centerY - height_half;
+        float bottom = centerY + height_half;
+        rect.set(left, top, right, bottom);
+    }
+    private void centerToTranslation(PointF point) {
+        point.x -= (float) imageView.getWidth() /2;
+        point.y -= (float) imageView.getHeight() /2;
+    }
+    private final RectF rect = new RectF();
+    private void adjustImagePosition(PointF point) {
+        float maxRight = parentView.getWidth();
+        float maxBottom = parentView.getHeight();
+        getVisibleRect(rect);
+
+        float diff;
+        float length;
+        if ((length = rect.width()) < maxRight) {
+            diff = maxRight - length;
+            diff /= 2;
+            rect.offsetTo(diff, rect.top);
+        } else {
+            if (rect.left > 0)
+                rect.offset(-rect.left, 0);
+            if ((diff = maxRight - rect.right) > 0)
+                rect.offset(diff, 0);
+        }
+
+        if ((length = rect.height()) < maxBottom) {
+            diff = maxBottom - length;
+            diff /= 2;
+            rect.offsetTo(rect.left, diff);
+        } else {
+            if (rect.top > 0)
+                rect.offset(0, -rect.top);
+            if ((diff = maxBottom - rect.bottom) > 0)
+                rect.offset(0, diff);
+        }
+
+        point.set(rect.centerX(), rect.centerY());
+        centerToTranslation(point);
+    }
+
+    private float scaleFactor = 1;
+    private void scaleImage() {
+        imageView.setScaleX(scaleFactor);
+        imageView.setScaleY(scaleFactor);
+    }
+    private void scaleImage(float scale) {
+        scaleFactor *= scale;
+        if (scaleFactor > 5) scaleFactor = 5f;
+        if (scaleFactor < 0.1) scaleFactor = 0.1f;
+        scaleImage();
+    }
+    private void scaleImageTo(float targetScale) {
+        scaleFactor = targetScale;
+        scaleImage();
+    }
+    private void animeScaleImageTo(float targetScale) {
         ValueAnimator animator = ValueAnimator.ofFloat(scaleFactor, targetScale);
-        animator.addUpdateListener(valueAnimator -> {
-            scaleFactor = (float) valueAnimator.getAnimatedValue();
-            scaleImage(scaleFactor);
-        });
+        animator.addUpdateListener(valueAnimator ->
+                scaleImageTo((Float) valueAnimator.getAnimatedValue()));
         animator.start();
     }
-    private void translateImage(float deltaX, float deltaY) {
-        imageView.setTranslationX(deltaX);
-        imageView.setTranslationY(deltaY);
+    private void translateImage(float x, float y) {
+        translateImageTo(x + imageView.getTranslationX(),
+                y + imageView.getTranslationY());
     }
-    private void animeTranslateImage(float targetX, float targetY) {
-        float dx = imageView.getTranslationX() - targetX;
-        float dy = imageView.getTranslationY() - targetY;
-        float distance = (float) Math.sqrt(dx*dx + dy*dy);
-        ValueAnimator animator = ValueAnimator.ofFloat(distance, 0);
+    private void translateImageTo(float targetX, float targetY) {
+        imageView.setTranslationX(targetX);
+        imageView.setTranslationY(targetY);
+    }
+    private void animeTranslateImageTo(float targetX, float targetY) {
+        float startX = imageView.getTranslationX();
+        float startY = imageView.getTranslationY();
+        float diffX = targetX - startX;
+        float diffY = targetY - startY;
+        if (diffY == 0 && diffX == 0) return;
+        boolean useY;
+        float start, end;
+        if (diffY != 0) {
+            useY = true;
+            start = startY;
+            end = targetY;
+        } else {
+            useY = false;
+            start = startX;
+            end = targetX;
+        }
+        ValueAnimator animator = ValueAnimator.ofFloat(start, end);
         animator.addUpdateListener(valueAnimator -> {
-            float progress = 1 - valueAnimator.getAnimatedFraction();
-            float newX = dx * progress;
-            float newY = dy * progress;
-            translateImage(newX, newY);
+            float x, y;
+            if (useY) {
+                y = (float) valueAnimator.getAnimatedValue();
+                x = startX + diffX * valueAnimator.getAnimatedFraction();
+            } else {
+                x = (float) valueAnimator.getAnimatedValue();
+                y = startY + diffY * valueAnimator.getAnimatedFraction();
+            }
+            translateImageTo(x, y);
         });
         animator.start();
     }
 
     void finish() {
-        getParentFragmentManager().beginTransaction()
-                .remove(this).commit();
+        float startY = imageView.getTranslationY();
+        float endY = parentView.getHeight();
+        float startT = parentView.getAlpha();
+        ValueAnimator animator = ValueAnimator.ofFloat(startY, endY);
+        animator.addUpdateListener(valueAnimator -> {
+            imageView.setTranslationY((Float) valueAnimator.getAnimatedValue());
+            float progress = valueAnimator.getAnimatedFraction();
+            parentView.setAlpha(startT - startT*progress);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                getParentFragmentManager().beginTransaction()
+                        .remove(ImageViewerFragment.this).commit();
+            }
+        });
+        animator.start();
     }
 
     @Override
