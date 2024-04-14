@@ -27,6 +27,7 @@ import cn.alvkeke.dropto.ui.listener.GestureListener;
 public class ImageViewerFragment extends Fragment {
 
 
+    private View parentView;
     private ImageView imageView;
     private File imgFile;
     private Bitmap loadedBitmap = null;
@@ -41,7 +42,8 @@ public class ImageViewerFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_image_viewer, container, false);
+        parentView = inflater.inflate(R.layout.fragment_image_viewer, container, false);
+        return parentView;
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -79,6 +81,7 @@ public class ImageViewerFragment extends Fragment {
             Log.e(this.toString(), "double");
             if (scaleFactor > 1) {
                 animaScaleImage(1);
+                animeTranslateImage(0, 0);
             } else {
                 animaScaleImage(2);
             }
@@ -87,6 +90,13 @@ public class ImageViewerFragment extends Fragment {
         @Override
         public boolean onScrollVertical(View view, float deltaY) {
             if (scaleFactor != 1) return false;
+            float length = (float) imageView.getHeight() /3;
+            float y = Math.abs(imageView.getTranslationY());
+            float current = Math.min(y, length);
+            float ratio = 1 - (current / length);
+            ratio = Math.max(ratio, 0.2f);    // limit background transparent
+
+            parentView.getBackground().setAlpha((int) (ratio * 0xff));
             imageView.setTranslationY(imageView.getTranslationY() + deltaY);
             return true;
         }
@@ -94,7 +104,12 @@ public class ImageViewerFragment extends Fragment {
         @Override
         public boolean onScrollVerticalEnd(View view, MotionEvent motionEvent) {
             if (scaleFactor != 1) return false;
-            animeTranslateImage(imageView.getTranslationX(), 0);
+            if (Math.abs(imageView.getTranslationY()) > (float) imageView.getHeight() /3) {
+                finish();
+            } else {
+                animeTranslateImage(imageView.getTranslationX(), 0);
+                parentView.getBackground().setAlpha(0xff);
+            }
             return true;
         }
 
