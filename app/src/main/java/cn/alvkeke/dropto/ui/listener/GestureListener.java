@@ -169,13 +169,15 @@ public class GestureListener implements View.OnTouchListener{
                 mode = GestureMode.NONE;
                 break;
             case MotionEvent.ACTION_MOVE:
-                downCount = 0;
                 if (mode == GestureMode.INVALID) {
+                    downCount = 0;
                     return true;
                 } else if (mode == GestureMode.ZOOM) {
+                    downCount = 0;
                     handleZoom(view, motionEvent);
                     return true;
                 } else if (mode != GestureMode.NONE) {
+                    downCount = 0;
                     handleGesture(view, mode, motionEvent);
                     return true;
                 }
