@@ -1,5 +1,7 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
@@ -72,7 +74,17 @@ public class ImageViewerFragment extends Fragment {
         public void onClick(View v, MotionEvent e) {
             Log.e(this.toString(), "single");
             if (scaleFactor == 1) {
-                finish();
+                ValueAnimator animator = ValueAnimator.ofFloat(1, 0);
+                animator.addUpdateListener(valueAnimator -> {
+                    parentView.setAlpha((Float) valueAnimator.getAnimatedValue());
+                });
+                animator.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        finish();
+                    }
+                });
+                animator.start();
             }
         }
 
