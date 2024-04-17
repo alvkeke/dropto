@@ -10,4 +10,4 @@
 5. [ ] In-App forward
 6. [ ] Storage management
 7. [ ] UI beautify
-8. [ ] Image viewing from note list
+8. [x] Image viewing from note list
