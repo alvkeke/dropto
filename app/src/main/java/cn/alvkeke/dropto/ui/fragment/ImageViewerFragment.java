@@ -65,7 +65,6 @@ public class ImageViewerFragment extends Fragment {
         ImageLoader.getInstance().loadOriginalImageAsync(imgFile, bitmap -> {
             loadedBitmap = bitmap;
             imageView.setImageBitmap(bitmap);
-            calcImageFixSize();
         });
         view.setOnTouchListener(new ImageGestureListener());
     }
@@ -160,8 +159,8 @@ public class ImageViewerFragment extends Fragment {
         }
     }
 
-    private float imageFixHeight;
-    private float imageFixWidth;
+    private float imageFixHeight = -1;
+    private float imageFixWidth = -1;
     private void calcImageFixSize() {
         float ratio1 = (float) imageView.getHeight() /imageView.getWidth();
         float ratio2 = (float) loadedBitmap.getHeight() /loadedBitmap.getWidth();
@@ -173,6 +172,17 @@ public class ImageViewerFragment extends Fragment {
             imageFixWidth = imageFixHeight / ratio2;
         }
     }
+    public float getImageFixHeight() {
+        if (imageFixHeight == -1)
+            calcImageFixSize();
+        return imageFixHeight;
+    }
+
+    public float getImageFixWidth() {
+        if (imageFixWidth == -1)
+            calcImageFixSize();
+        return imageFixWidth;
+    }
 
     private float getImageCenterX() {
         return imageView.getTranslationX() + (float) imageView.getWidth() /2;
@@ -183,8 +193,8 @@ public class ImageViewerFragment extends Fragment {
     private void getVisibleRect(RectF rect) {
         float centerX = getImageCenterX();
         float centerY = getImageCenterY();
-        float width_half = imageFixWidth * scaleFactor / 2;
-        float height_half = imageFixHeight * scaleFactor / 2;
+        float width_half = getImageFixWidth() * scaleFactor / 2;
+        float height_half = getImageFixHeight() * scaleFactor / 2;
         float left = centerX - width_half;
         float right = centerX + width_half;
         float top = centerY - height_half;
@@ -236,7 +246,7 @@ public class ImageViewerFragment extends Fragment {
     }
     private void scaleImage(float scale) {
         scaleFactor *= scale;
-        if (scaleFactor > 5) scaleFactor = 5f;
+        if (scaleFactor > 10) scaleFactor = 10f;
         if (scaleFactor < 0.1) scaleFactor = 0.1f;
         scaleImage();
     }
