@@ -91,6 +91,10 @@ public class ImageLoader {
     private WrappedBitmap getWrappedBitmap(String filePath) {
         WrappedBitmap wrappedBitmap = imagePool.get(filePath);
         if (wrappedBitmap == null) return null;
+        if (wrappedBitmap.bitmap.isRecycled()) {
+            imagePool.remove(filePath);
+            return null;
+        }
         wrappedBitmap.lastAccessTime = System.currentTimeMillis();
         return wrappedBitmap;
     }
