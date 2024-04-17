@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
@@ -211,7 +212,20 @@ public class NoteListFragment extends Fragment implements ListNotification {
             if (isInSelectMode) {
                 tryToggleItemSelect(index);
             } else {
-                showItemPopMenu(index, v, (int) event.getRawX(), (int) event.getRawY());
+                int x = (int) event.getRawX();
+                int y = (int) event.getRawY();
+                View image = v.findViewById(R.id.rlist_item_note_img_view);
+                boolean showImage = false;
+                if (image != null) {
+                    Rect rect = new Rect();
+                    image.getGlobalVisibleRect(rect);
+                    showImage = rect.contains(x, y);
+                }
+                if (showImage) {
+                    showImageView(index, x, y);
+                } else {
+                    showItemPopMenu(index, v, x, y);
+                }
             }
             return true;
         }
@@ -343,6 +357,15 @@ public class NoteListFragment extends Fragment implements ListNotification {
             setPendingItem(item);
             listener.onAttempt(AttemptListener.Attempt.CREATE, item);
         }
+    }
+
+    private void showImageView(int index, int ignore, int ignore1) {
+        NoteItem noteItem = category.getNoteItem(index);
+        ImageViewerFragment fragment = new ImageViewerFragment();
+        fragment.setImgFile(noteItem.getImageFile());
+        getParentFragmentManager().beginTransaction()
+                .add(R.id.main_container, fragment, null)
+                .commit();
     }
 
     private MyPopupMenu myPopupMenu = null;
