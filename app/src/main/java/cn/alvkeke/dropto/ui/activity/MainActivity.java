@@ -26,6 +26,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import cn.alvkeke.dropto.BuildConfig;
@@ -38,8 +39,10 @@ import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
+import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
+import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 
 public class MainActivity extends AppCompatActivity implements
@@ -114,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private CategoryListFragment categoryListFragment;
     private NoteListFragment noteListFragment;
+    private ImageViewerFragment imageViewerFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,6 +142,9 @@ public class MainActivity extends AppCompatActivity implements
                 } else if (f instanceof NoteListFragment) {
                     noteListFragment = (NoteListFragment) f;
                     recoverNoteListFragment(savedInstanceState);
+                } else if (f instanceof ImageViewerFragment) {
+                    imageViewerFragment = (ImageViewerFragment) f;
+                    recoverImageViewFragment(savedInstanceState);
                 } else if (f instanceof NoteDetailFragment) {
                     recoverNoteDetailFragment((NoteDetailFragment) f, savedInstanceState);
                 } else if (f instanceof CategoryDetailFragment) {
@@ -154,11 +161,7 @@ public class MainActivity extends AppCompatActivity implements
         categoryListFragment.setListener(new CategoryListAttemptListener());
         categoryListFragment.setCategories(Global.getInstance().getCategories());
         if (!categoryListFragment.isAdded()) {
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.main_container, categoryListFragment, null)
-                    .setReorderingAllowed(true)
-                    .addToBackStack(null)
-                    .commit();
+            startFragment(categoryListFragment);
         }
     }
 
@@ -192,6 +195,13 @@ public class MainActivity extends AppCompatActivity implements
         Category category = Global.getInstance().findCategory(savedCategoryDetailId);
         fragment.setCategory(category);
     }
+    private String savedImageViewFile = null;
+    private static final String SAVED_IMAGE_VIEW_FILE = "SAVED_IMAGE_VIEW_FILE";
+    private void recoverImageViewFragment(Bundle state) {
+        savedImageViewFile = state.getString(SAVED_IMAGE_VIEW_FILE);
+        if (savedImageViewFile == null) return;
+        imageViewerFragment.setImgFile(new File(savedImageViewFile));
+    }
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
@@ -199,8 +209,34 @@ public class MainActivity extends AppCompatActivity implements
         outState.putLong(SAVED_NOTE_LIST_CATEGORY_ID, savedNoteListCategoryId);
         outState.putLong(SAVED_NOTE_INFO_NOTE_ID, savedNoteInfoNoteId);
         outState.putLong(SAVED_CATEGORY_DETAIL_ID, savedCategoryDetailId);
+        outState.putString(SAVED_IMAGE_VIEW_FILE, savedImageViewFile);
     }
 
+    private final LinkedList<Fragment> currentFragments = new LinkedList<>();
+    private void startFragment(Fragment fragment) {
+        currentFragments.push(fragment);
+        getSupportFragmentManager().beginTransaction()
+                .add(R.id.main_container, fragment, null)
+                .addToBackStack(null)
+                .commit();
+    }
+    private void startFragment(Fragment fragment, int anim_in, int anim_out) {
+        currentFragments.push(fragment);
+        getSupportFragmentManager().beginTransaction()
+                .setCustomAnimations(anim_in, anim_out)
+                .add(R.id.main_container, fragment, null)
+                .addToBackStack(null)
+                .commit();
+    }
+    private Fragment popFragment() {
+        Fragment fragment;
+        while ((fragment=currentFragments.pop()) != null) {
+            if (!fragment.isVisible())
+                continue;
+            return fragment;
+        }
+        return null;
+    }
     class OnFragmentBackPressed extends OnBackPressedCallback {
         public OnFragmentBackPressed(boolean enabled) {
             super(enabled);
@@ -208,10 +244,15 @@ public class MainActivity extends AppCompatActivity implements
 
         @Override
         public void handleOnBackPressed() {
-            if (noteListFragment != null && noteListFragment.isVisible()) {
+            Fragment fragment = popFragment();
+            if (fragment instanceof NoteListFragment) {
                 savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
-                noteListFragment.finish();
-            } else if (categoryListFragment.isVisible()) {
+            }
+            boolean ret = false;
+            if (fragment instanceof FragmentOnBackListener) {
+                ret = ((FragmentOnBackListener) fragment).onBackPressed();
+            }
+            if (!ret) {
                 MainActivity.this.finish();
             }
         }
@@ -225,11 +266,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         noteListFragment.setCategory(category);
         savedNoteListCategoryId = category.getId();
-        getSupportFragmentManager().beginTransaction()
-                .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
-                .add(R.id.main_container, noteListFragment, null)
-                .addToBackStack(null)
-                .commit();
+        startFragment(noteListFragment, R.anim.slide_in, R.anim.slide_out);
     }
 
     public void showCategoryCreatingDialog() {
@@ -421,6 +458,15 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
+    private void handleNoteImageShow(NoteItem item) {
+        if (imageViewerFragment == null) {
+            imageViewerFragment = new ImageViewerFragment();
+        }
+        savedImageViewFile = item.getImageFile().getAbsolutePath();
+        imageViewerFragment.setImgFile(item.getImageFile());
+        startFragment(imageViewerFragment, R.anim.slide_in_bottom, 0);
+    }
+
     class NoteListAttemptListener implements NoteListFragment.AttemptListener {
         @Override
         public void onAttempt(Attempt attempt, NoteItem e) {
@@ -442,6 +488,8 @@ public class MainActivity extends AppCompatActivity implements
                     break;
                 case UPDATE:
                     binder.getService().queueTask(CoreService.Task.Type.UPDATE, e);
+                case SHOW_IMAGE:
+                    handleNoteImageShow(e);
                     break;
             }
         }

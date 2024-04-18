@@ -25,10 +25,11 @@ import java.io.File;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.storage.ImageLoader;
+import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
 import cn.alvkeke.dropto.ui.listener.GestureListener;
 
 
-public class ImageViewerFragment extends Fragment {
+public class ImageViewerFragment extends Fragment implements FragmentOnBackListener {
 
 
     private View parentView;
@@ -68,6 +69,12 @@ public class ImageViewerFragment extends Fragment {
             imageView.setImageBitmap(bitmap);
         });
         view.setOnTouchListener(new ImageGestureListener());
+    }
+
+    @Override
+    public boolean onBackPressed() {
+        finish();
+        return true;
     }
 
     class ImageGestureListener extends GestureListener {
@@ -305,7 +312,16 @@ public class ImageViewerFragment extends Fragment {
         animator.start();
     }
 
+    private void fragmentEnd() {
+        getParentFragmentManager().beginTransaction()
+                .remove(ImageViewerFragment.this).commit();
+    }
     void finish() {
+        if (imageView == null || parentView == null) {
+            fragmentEnd();
+            return;
+        }
+
         float startY = imageView.getTranslationY();
         float endY = parentView.getHeight();
         float startT = parentView.getAlpha();
@@ -318,8 +334,7 @@ public class ImageViewerFragment extends Fragment {
         animator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                getParentFragmentManager().beginTransaction()
-                        .remove(ImageViewerFragment.this).commit();
+                fragmentEnd();
             }
         });
         animator.start();

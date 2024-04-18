@@ -41,10 +41,11 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu;
+import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
-public class NoteListFragment extends Fragment implements ListNotification {
+public class NoteListFragment extends Fragment implements ListNotification, FragmentOnBackListener {
 
     public interface AttemptListener {
         enum Attempt {
@@ -54,6 +55,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
             DETAIL,
             COPY,
             SHARE,
+            SHOW_IMAGE,
         }
         void onAttempt(Attempt attempt, NoteItem e);
         void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems);
@@ -128,6 +130,12 @@ public class NoteListFragment extends Fragment implements ListNotification {
 
         btnAddNote.setOnClickListener(new onItemAddClick());
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
+    }
+
+    @Override
+    public boolean onBackPressed() {
+        finish();
+        return true;
     }
 
     class OnNavigationIconClick implements View.OnClickListener {
@@ -361,11 +369,7 @@ public class NoteListFragment extends Fragment implements ListNotification {
 
     private void showImageView(int index, int ignore, int ignore1) {
         NoteItem noteItem = category.getNoteItem(index);
-        ImageViewerFragment fragment = new ImageViewerFragment();
-        fragment.setImgFile(noteItem.getImageFile());
-        getParentFragmentManager().beginTransaction()
-                .add(R.id.main_container, fragment, null)
-                .commit();
+        listener.onAttempt(AttemptListener.Attempt.SHOW_IMAGE, noteItem);
     }
 
     private MyPopupMenu myPopupMenu = null;
