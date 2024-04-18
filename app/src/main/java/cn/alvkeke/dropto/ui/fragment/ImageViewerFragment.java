@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -88,6 +89,10 @@ public class ImageViewerFragment extends Fragment {
             }
         }
 
+        private float getExitThreshold() {
+            return TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
+        }
         @Override
         public boolean onScrollVertical(View view, float deltaY) {
             if (scaleFactor != 1) return false;
@@ -105,7 +110,7 @@ public class ImageViewerFragment extends Fragment {
         @Override
         public boolean onScrollVerticalEnd(View view, MotionEvent motionEvent) {
             if (scaleFactor != 1) return false;
-            if (Math.abs(imageView.getTranslationY()) > (float) imageView.getHeight() /3) {
+            if (Math.abs(imageView.getTranslationY()) > getExitThreshold()) {
                 finish();
             } else {
                 float dy = imageView.getTranslationY();
