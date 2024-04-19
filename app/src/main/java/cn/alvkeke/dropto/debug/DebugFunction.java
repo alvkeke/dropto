@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.debug;
 
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,10 +21,11 @@ import cn.alvkeke.dropto.storage.DataBaseHelper;
 
 public class DebugFunction {
 
+    @SuppressWarnings("unused")
     public static final String LOG_TAG = "DebugFunction";
 
-    private static void dbgLog(String msg) {
-        if (BuildConfig.DEBUG) Log.e(LOG_TAG, msg);
+    private static void dbgLog(String ignored) {
+//        if (BuildConfig.DEBUG) android.util.Log.e(LOG_TAG, ignored);
     }
 
     public static boolean extract_raw_file(Context context, int id, File o_file) {
