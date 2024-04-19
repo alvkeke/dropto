@@ -68,7 +68,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         super.onViewCreated(view, savedInstanceState);
         Context context = requireContext();
         assert categories != null;
-        assert !categories.isEmpty();
+//        assert !categories.isEmpty();
 
         RecyclerView rlCategory = view.findViewById(R.id.category_list_listview);
         MaterialToolbar toolbar = view.findViewById(R.id.category_list_toolbar);
@@ -80,7 +80,6 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         toolbar.setOnMenuItemClickListener(new CategoryMenuListener());
 
         categoryListAdapter = new CategoryListAdapter(categories);
-        categoryListAdapter.setCategories(categories);
 
         rlCategory.setAdapter(categoryListAdapter);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
@@ -145,18 +144,14 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         }
 
         switch (notify) {
-            case CREATED:
-                categoryListAdapter.notifyItemInserted(index);
-                categoryListAdapter.notifyItemRangeChanged(index,
-                        categoryListAdapter.getItemCount()-index);
+            case INSERTED:
+                categoryListAdapter.add(index, category);
                 break;
             case UPDATED:
-                categoryListAdapter.notifyItemChanged(index);
+                categoryListAdapter.update(category);
                 break;
             case REMOVED:
-                categoryListAdapter.notifyItemRemoved(index);
-                categoryListAdapter.notifyItemRangeChanged(index,
-                        categoryListAdapter.getItemCount()-index);
+                categoryListAdapter.remove(category);
                 break;
             default:
         }

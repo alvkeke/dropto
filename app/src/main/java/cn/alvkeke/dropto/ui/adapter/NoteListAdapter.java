@@ -23,7 +23,7 @@ import cn.alvkeke.dropto.storage.ImageLoader;
 
 public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
 
-    ArrayList<NoteItem> noteList;
+    private final ArrayList<NoteItem> noteList;
 
     public NoteListAdapter(ArrayList<NoteItem> list) {
         // note a real list, prevent the multi-thread race condition.
@@ -145,11 +145,11 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
     @Override
     public int getItemCount() {
-        if (noteList == null) return 0;
         return noteList.size();
     }
 
     public boolean add(NoteItem e) {
+        if (noteList.contains(e)) return true;
         boolean result = noteList.add(e);
         int index = noteList.indexOf(e);
         notifyItemInserted(index);
@@ -158,6 +158,13 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
     }
 
     public void add(int index, NoteItem e) {
+        int idx = noteList.indexOf(e);
+        if (idx >= 0) {
+            if (idx != index) {
+                Log.e(this.toString(), "note exist with mismatch index: "+index+":"+idx);
+            }
+            return;
+        }
         noteList.add(index, e);
         notifyItemInserted(index);
         notifyItemRangeChanged(index, noteList.size()-index);

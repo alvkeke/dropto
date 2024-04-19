@@ -34,34 +34,7 @@ import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 
 public class ShareRecvActivity extends AppCompatActivity {
 
-    private void initCategoryList() {
-        Global global = Global.getInstance();
-        ArrayList<Category> categories = global.getCategories();
 
-        File img_folder = this.getExternalFilesDir("imgs");
-        assert img_folder != null;
-        if (!img_folder.exists()) {
-            Log.i(this.toString(), "image folder not exist, create: " + img_folder.mkdir());
-        }
-        global.setFileStoreFolder(img_folder);
-
-        // TODO: for debug only, remember to remove.
-        if (BuildConfig.DEBUG) {
-            DebugFunction.fill_database_for_category(this);
-            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
-            DebugFunction.fill_database_for_note(this, img_files, 1);
-        }
-
-        // retrieve all categories from database always, since they will not take up
-        // too many memory
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
-            dbHelper.start();
-            dbHelper.queryCategory(-1, categories);
-            dbHelper.finish();
-        } catch (Exception e) {
-            Log.e(this.toString(), "failed to retrieve data from database:" + e);
-        }
-    }
 
     private CoreService.CoreSrvBinder binder = null;
     private final ServiceConnection serviceConn = new ServiceConnection() {
@@ -111,8 +84,6 @@ public class ShareRecvActivity extends AppCompatActivity {
             finish();
             return;
         }
-
-        initCategoryList();
 
         if (!action.equals(Intent.ACTION_SEND)) {
             Toast.makeText(this, "unknown action: " + action, Toast.LENGTH_SHORT).show();

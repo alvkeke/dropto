@@ -17,6 +17,10 @@ import cn.alvkeke.dropto.data.NoteItem;
 
 public class DataBaseHelper extends SQLiteOpenHelper {
 
+    public interface IterateCallback<T> {
+        void onIterate(T o);
+    }
+
     private static final String DATABASE_NAME = "note.db";
     private static final int DATABASE_VERSION = 1;
 
@@ -171,7 +175,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 category.getType(), category.getPreviewText());
     }
 
-    public void queryCategory(int max_num, ArrayList<Category> categories) {
+    public void queryCategory(int max_num, ArrayList<Category> categories, IterateCallback<Category> cb) {
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return;
@@ -225,9 +229,15 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             c.setPreviewText(preview);
             categories.add(c);
             n_category++;
+            if (cb != null)
+                cb.onIterate(c);
         }
 
         cursor.close();
+    }
+
+    public void queryCategory(int max_num, ArrayList<Category> categories) {
+        queryCategory(max_num, categories, null);
     }
 
     private static final String NOTE_WHERE_CLAUSE_ID = NOTE_COLUMN_ID + " = ?";
@@ -344,7 +354,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param target_category_id id of specific category, -1 for unspecific
      * @param noteItems the list to receive the result
      */
-    public void queryNote(int max_num, long target_category_id, ArrayList<NoteItem> noteItems) {
+    public void queryNote(int max_num, long target_category_id, ArrayList<NoteItem> noteItems, IterateCallback<NoteItem> cb) {
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return;
@@ -402,8 +412,15 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             e.setImageName(img_name);
             noteItems.add(e);
             n_notes++;
+            if (cb != null)
+                cb.onIterate(e);
         }
 
         cursor.close();
     }
+
+    public void queryNote(int max_num, long target_category_id, ArrayList<NoteItem> noteItems) {
+        queryNote(max_num, target_category_id, noteItems, null);
+    }
+
 }

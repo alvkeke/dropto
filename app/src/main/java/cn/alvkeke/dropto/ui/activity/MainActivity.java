@@ -29,14 +29,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.service.CoreService;
-import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment;
@@ -49,41 +46,13 @@ public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
         CoreService.TaskResultListener {
 
-    private void initCategoryList() {
-        Global global = Global.getInstance();
-        ArrayList<Category> categories = global.getCategories();
-
-        File img_folder = this.getExternalFilesDir("imgs");
-        assert img_folder != null;
-        if (!img_folder.exists()) {
-            Log.i(this.toString(), "image folder not exist, create: " + img_folder.mkdir());
-        }
-        global.setFileStoreFolder(img_folder);
-
-        // TODO: for debug only, remember to remove.
-        if (BuildConfig.DEBUG) {
-            DebugFunction.fill_database_for_category(this);
-            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
-            DebugFunction.fill_database_for_note(this, img_files, 1);
-        }
-
-        // retrieve all categories from database always, since they will not take up
-        // too many memory
-        try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
-            dbHelper.start();
-            dbHelper.queryCategory(-1, categories);
-            dbHelper.finish();
-        } catch (Exception e) {
-            Log.e(this.toString(), "failed to retrieve data from database:" + e);
-        }
-    }
-
     private CoreService.CoreSrvBinder binder = null;
     private final ServiceConnection serviceConn = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             binder = (CoreService.CoreSrvBinder) iBinder;
             binder.getService().setListener(MainActivity.this);
+            binder.getService().queueReadTask(CoreService.Task.Target.Category, 0);
         }
 
         @Override
@@ -129,7 +98,6 @@ public class MainActivity extends AppCompatActivity implements
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
         setupCoreService();
-        initCategoryList();
 
         getOnBackPressedDispatcher().
                 addCallback(this, new OnFragmentBackPressed(true));
@@ -159,6 +127,7 @@ public class MainActivity extends AppCompatActivity implements
             categoryListFragment = new CategoryListFragment();
         }
         categoryListFragment.setListener(new CategoryListAttemptListener());
+        Log.e(this.toString(), "Activity onCreate: " + Global.getInstance());
         categoryListFragment.setCategories(Global.getInstance().getCategories());
         if (!categoryListFragment.isAdded()) {
             startFragment(categoryListFragment);
@@ -259,12 +228,12 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void handleCategoryExpand(Category category) {
-        binder.getService().queueTask(CoreService.Task.Type.READ, category);
         if (noteListFragment == null) {
             noteListFragment = new NoteListFragment();
             noteListFragment.setListener(new NoteListAttemptListener());
         }
         noteListFragment.setCategory(category);
+        binder.getService().queueTask(CoreService.Task.Type.READ, category);
         savedNoteListCategoryId = category.getId();
         startFragment(noteListFragment, R.anim.slide_in, R.anim.slide_out);
     }
@@ -562,23 +531,32 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private final static ListNotification.Notify[] notifies = {
-            ListNotification.Notify.CREATED,
-            ListNotification.Notify.REMOVED,
-            ListNotification.Notify.UPDATED,
-    };
+    private ListNotification.Notify taskTypeToNotify(CoreService.Task.Type type) {
+        switch (type) {
+            case CREATE:
+            case READ:
+                return ListNotification.Notify.INSERTED;
+            case UPDATE:
+                return ListNotification.Notify.UPDATED;
+            case REMOVE:
+                return ListNotification.Notify.REMOVED;
+        }
+        assert false;   // should not reach here
+        return null;
+    }
+
     @Override
     public void onCategoryTaskFinish(CoreService.Task.Type taskType, int index, Category c) {
         if (index < 0) return;
         if (categoryListFragment == null) return;
-        categoryListFragment.notifyItemListChanged(notifies[taskType.ordinal()], index, c);
+        categoryListFragment.notifyItemListChanged(taskTypeToNotify(taskType), index, c);
     }
 
     @Override
     public void onNoteTaskFinish(CoreService.Task.Type taskType, int index, NoteItem n) {
         if (index < 0) return;
         if (noteListFragment == null) return;
-        noteListFragment.notifyItemListChanged(notifies[taskType.ordinal()], index, n);
+        noteListFragment.notifyItemListChanged(taskTypeToNotify(taskType), index, n);
     }
 
 }
