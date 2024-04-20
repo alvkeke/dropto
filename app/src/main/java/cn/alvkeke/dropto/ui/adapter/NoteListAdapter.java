@@ -63,6 +63,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             if (text == null || text.isEmpty()) {
                 tvText.setVisibility(View.GONE);
             } else {
+                tvText.setVisibility(View.VISIBLE);
                 tvText.setText(text);
             }
         }
