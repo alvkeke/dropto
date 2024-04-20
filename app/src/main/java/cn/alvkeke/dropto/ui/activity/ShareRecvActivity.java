@@ -39,13 +39,14 @@ public class ShareRecvActivity extends AppCompatActivity
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             binder = (CoreService.CoreSrvBinder) iBinder;
-            binder.getService().setListener(ShareRecvActivity.this);
+            binder.getService().addTaskListener(ShareRecvActivity.this);
             binder.getService().queueReadTask(CoreService.Task.Target.Category, 0);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
             if (binder == null) return;
+            binder.getService().delTaskListener(ShareRecvActivity.this);
             binder = null;
         }
     };

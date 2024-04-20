@@ -50,14 +50,14 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             binder = (CoreService.CoreSrvBinder) iBinder;
-            binder.getService().setListener(MainActivity.this);
+            binder.getService().addTaskListener(MainActivity.this);
             binder.getService().queueReadTask(CoreService.Task.Target.Category, 0);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
             if (binder == null) return;
-            binder.getService().setListener(null);
+            binder.getService().delTaskListener(MainActivity.this);
             binder = null;
         }
     };

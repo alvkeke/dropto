@@ -146,26 +146,42 @@ public class CoreService extends Service {
         void onNoteTaskFinish(Task.Type taskType, int index, NoteItem n);
     }
 
-    private TaskResultListener listener;
+    private final ArrayList<TaskResultListener> listeners = new ArrayList<>();
 
-    public void setListener(TaskResultListener listener) {
-        this.listener = listener;
+    public void addTaskListener(TaskResultListener listener) {
+        this.listeners.add(listener);
+    }
+
+    public void delTaskListener(TaskResultListener listener) {
+        this.listeners.remove(listener);
+    }
+
+    private interface TaskListenerIterator {
+        void onIterate(TaskResultListener listener);
+    }
+
+    private void iterateTaskListener(TaskListenerIterator iterator) {
+        for (TaskResultListener listener : listeners) {
+            iterator.onIterate(listener);
+        }
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
-            if (listener == null) return;
+            if (listeners.isEmpty()) return;
             assert (msg.what >= 0 && msg.what < Task.taskTargets.length);
             assert msg.arg2 >= 0 && msg.arg2 < Task.taskTypes.length;
             Task.Target what = Task.taskTargets[msg.what];
             switch (what) {
                 case Category:
-                    listener.onCategoryTaskFinish(Task.taskTypes[msg.arg2], msg.arg1, (Category) msg.obj);
+                    iterateTaskListener(listener -> listener.onCategoryTaskFinish(
+                            Task.taskTypes[msg.arg2], msg.arg1, (Category) msg.obj));
                     break;
                 case NoteItem:
-                    listener.onNoteTaskFinish(Task.taskTypes[msg.arg2], msg.arg1, (NoteItem) msg.obj);
+                    iterateTaskListener(listener -> listener.onNoteTaskFinish(
+                            Task.taskTypes[msg.arg2], msg.arg1, (NoteItem) msg.obj));
                     break;
             }
 
@@ -391,7 +407,7 @@ public class CoreService extends Service {
 
     @Nullable
     private DataBaseHelper.IterateCallback<Category> getCategoryIterateCallback(ArrayList<Category> categories) {
-        if (listener == null) return null;
+        if (listeners.isEmpty()) return null;
         return category -> {
             int index = categories.indexOf(category);
             Message msg = new Message();
@@ -446,7 +462,7 @@ public class CoreService extends Service {
     }
 
     private DataBaseHelper.IterateCallback<NoteItem> getNoteIterateCallback(Category category) {
-        if (listener == null) return null;
+        if (listeners.isEmpty()) return null;
         return note -> {
             int index = category.indexNoteItem(note);
             Message msg = new Message();
