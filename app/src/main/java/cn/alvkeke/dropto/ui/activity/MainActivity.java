@@ -421,7 +421,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         savedImageViewFile = item.getImageFile().getAbsolutePath();
         imageViewerFragment.setImgFile(item.getImageFile());
-        startFragment(imageViewerFragment, R.anim.slide_in_bottom, 0);
+        imageViewerFragment.show(getSupportFragmentManager(), null);
     }
 
     @Override

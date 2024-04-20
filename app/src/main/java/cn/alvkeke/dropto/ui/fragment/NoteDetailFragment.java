@@ -81,6 +81,10 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         toolbar.setNavigationIcon(R.drawable.icon_common_cross);
         toolbar.setNavigationOnClickListener(new BackNavigationClick());
         scroll_view.setOnScrollChangeListener(new ScrollViewListener());
+        image_view.setOnClickListener(view1 -> {
+            if (item == null) return;
+            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, item);
+        });
     }
 
     private boolean isDraggable = true;

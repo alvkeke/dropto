@@ -8,18 +8,21 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
+import androidx.fragment.app.DialogFragment;
 
 import java.io.File;
 
@@ -29,7 +32,7 @@ import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
 import cn.alvkeke.dropto.ui.listener.GestureListener;
 
 
-public class ImageViewerFragment extends Fragment implements FragmentOnBackListener {
+public class ImageViewerFragment extends DialogFragment implements FragmentOnBackListener {
 
 
     private View parentView;
@@ -71,6 +74,29 @@ public class ImageViewerFragment extends Fragment implements FragmentOnBackListe
         view.setOnTouchListener(new ImageGestureListener());
     }
 
+    private Window window;
+    private boolean isFull = true;
+    private void toggleFullScreen() {
+        if (isFull) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+        isFull = !isFull;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        window = requireDialog().getWindow();
+        if (window == null) return;
+        window.setStatusBarColor(Color.TRANSPARENT);
+        window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        toggleFullScreen();
+    }
+
     @Override
     public boolean onBackPressed() {
         finish();
@@ -81,9 +107,7 @@ public class ImageViewerFragment extends Fragment implements FragmentOnBackListe
 
         @Override
         public void onClick(View v, MotionEvent e) {
-            if (scaleFactor == 1) {
-                finish();
-            }
+            toggleFullScreen();
         }
 
         @Override
@@ -107,7 +131,7 @@ public class ImageViewerFragment extends Fragment implements FragmentOnBackListe
             float y = Math.abs(imageView.getTranslationY());
             float current = Math.min(y, length);
             float ratio = 1 - (current / length);
-            ratio = Math.max(ratio, 0.3f);    // limit background transparent
+            ratio = Math.max(ratio, 0f);    // limit background transparent
 
             parentView.getBackground().setAlpha((int) (ratio * 0xff));
             imageView.setTranslationY(imageView.getTranslationY() + deltaY);
@@ -313,8 +337,7 @@ public class ImageViewerFragment extends Fragment implements FragmentOnBackListe
     }
 
     private void fragmentEnd() {
-        getParentFragmentManager().beginTransaction()
-                .remove(ImageViewerFragment.this).commit();
+        dismiss();
     }
     public void finish() {
         if (imageView == null || parentView == null) {
