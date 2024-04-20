@@ -420,7 +420,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             return;
         }
         switch (notify) {
-            case CREATED:
+            case INSERTED:
                 noteItemAdapter.add(index, note);
                 rlNoteList.smoothScrollToPosition(index);
                 if (note == pendingNoteItem) {

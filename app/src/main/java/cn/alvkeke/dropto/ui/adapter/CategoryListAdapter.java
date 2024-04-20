@@ -17,10 +17,10 @@ import cn.alvkeke.dropto.data.Category;
 
 public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapter.ViewHolder> {
 
-    private ArrayList<Category> categories;
+    private final ArrayList<Category> categories;
 
     public CategoryListAdapter(ArrayList<Category> categories) {
-        this.categories = categories;
+        this.categories = new ArrayList<>(categories);
     }
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
@@ -73,12 +73,46 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
 
     @Override
     public int getItemCount() {
-        if (categories == null) return 0;
         return categories.size();
     }
 
-    public void setCategories(ArrayList<Category> categories) {
-        this.categories = categories;
+    public boolean add(Category e) {
+        if (categories.contains(e)) return true;
+        boolean result = categories.add(e);
+        int index = categories.indexOf(e);
+        notifyItemInserted(index);
+        notifyItemRangeChanged(index, categories.size()-index);
+        return result;
+    }
+
+    public void add(int index, Category e) {
+        int idx = categories.indexOf(e);
+        if (idx >= 0) {
+            if (idx != index) {
+                Log.e(this.toString(), "category exist with mismatch index: "+index+":"+idx);
+            }
+            return;
+        }
+        categories.add(index, e);
+        notifyItemInserted(index);
+        notifyItemRangeChanged(index, categories.size()-index);
+    }
+
+    public void remove(Category e) {
+        int index = categories.indexOf(e);
+        categories.remove(e);
+        notifyItemRemoved(index);
+        notifyItemRangeChanged(index, categories.size()-index);
+    }
+
+    public void update(int index) {
+        notifyItemChanged(index);
+    }
+
+    public void update(Category e) {
+        int index = categories.indexOf(e);
+        if (index != -1)
+            notifyItemChanged(index);
     }
 
 }

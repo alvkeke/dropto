@@ -16,16 +16,22 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
+import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.ui.intf.ListNotification;
 
 public class CoreService extends Service {
 
@@ -34,7 +40,6 @@ public class CoreService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         return binder;
     }
 
@@ -87,11 +92,30 @@ public class CoreService extends Service {
         }
     }
 
+    private void initServiceData() {
+        Global global = Global.getInstance();
+
+        File img_folder = this.getExternalFilesDir("imgs");
+        assert img_folder != null;
+        if (!img_folder.exists()) {
+            Log.i(this.toString(), "image folder not exist, create: " + img_folder.mkdir());
+        }
+        global.setFileStoreFolder(img_folder);
+
+        // TODO: for debug only, remember to remove.
+        if (BuildConfig.DEBUG) {
+            DebugFunction.fill_database_for_category(this);
+            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
+            DebugFunction.fill_database_for_note(this, img_files, 1);
+        }
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(this.toString(), "CoreService onCreate");
         startForeground();
+        initServiceData();
         startTaskRunnerThread();
     }
 
@@ -233,17 +257,6 @@ public class CoreService extends Service {
         return handleCategoryRemove(category);
     }
 
-    private void handleNoteLoad(Category c) {
-        if (!c.getNoteItems().isEmpty()) return;
-
-        try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
-            dataBaseHelper.start();
-            dataBaseHelper.queryNote(-1, c.getId(), c.getNoteItems());
-            dataBaseHelper.finish();
-            c.setInitialized(true);
-        }
-    }
-
     private int handleNoteCreate(Category c, NoteItem newItem) {
         newItem.setCategoryId(c.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
@@ -303,8 +316,6 @@ public class CoreService extends Service {
         }
     }
 
-
-
     public static class Task {
         public enum Type {
             CREATE,
@@ -323,6 +334,21 @@ public class CoreService extends Service {
         Object object;
     }
 
+    public static ListNotification.Notify taskToNotify(CoreService.Task.Type type) {
+        switch (type) {
+            case CREATE:
+            case READ:
+                return ListNotification.Notify.INSERTED;
+            case UPDATE:
+                return ListNotification.Notify.UPDATED;
+            case REMOVE:
+                return ListNotification.Notify.REMOVED;
+        }
+        assert false;   // should not reach here
+        return null;
+    }
+
+
     public void handleCategoryTask(Task.Type task_type, Category category) {
         new Thread(() -> {
             Message msg = new Message();
@@ -339,13 +365,42 @@ public class CoreService extends Service {
                 case REMOVE:
                     msg.arg1 = handleCategoryRemove(category);
                     break;
-                case READ:
-                    handleNoteLoad(category);
                 default:
                     return;
             }
             handler.sendMessage(msg);
         }).start();
+    }
+
+    public void handleCategoryReadTask() {
+        new Thread(() -> {
+            ArrayList<Category> categories = Global.getInstance().getCategories();
+            DataBaseHelper.IterateCallback<Category> cb = getCategoryIterateCallback(categories);
+            // retrieve all categories from database always, since they will not take up
+            // too many memory
+            try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
+                dbHelper.start();
+                dbHelper.queryCategory(-1, categories, cb);
+                dbHelper.finish();
+            } catch (Exception e) {
+                Log.e(this.toString(), "failed to retrieve data from database:" + e);
+            }
+
+        }).start();
+    }
+
+    @Nullable
+    private DataBaseHelper.IterateCallback<Category> getCategoryIterateCallback(ArrayList<Category> categories) {
+        if (listener == null) return null;
+        return category -> {
+            int index = categories.indexOf(category);
+            Message msg = new Message();
+            msg.what = Task.Target.Category.ordinal();
+            msg.arg2 = Task.Type.READ.ordinal();
+            msg.arg1 = index;
+            msg.obj = category;
+            handler.sendMessage(msg);
+        };
     }
 
     public void handleNoteTask(Task.Type task_type, NoteItem e) {
@@ -368,8 +423,6 @@ public class CoreService extends Service {
                 case UPDATE:
                     msg.arg1 = handleNoteUpdate(c, e);
                     break;
-                case READ:
-                    Log.i(this.toString(), "This method is not supported for NoteItem");
                 default:
                     return;
             }
@@ -377,6 +430,33 @@ public class CoreService extends Service {
         }).start();
     }
 
+    public void handleNoteReadTask(long categoryId) {
+        new Thread(() -> {
+            Category c = Global.getInstance().findCategory(categoryId);
+            if (c == null) return;
+            if (!c.getNoteItems().isEmpty()) return;
+            DataBaseHelper.IterateCallback<NoteItem> cb = getNoteIterateCallback(c);
+            try (DataBaseHelper dataBaseHelper = new DataBaseHelper(this)) {
+                dataBaseHelper.start();
+                dataBaseHelper.queryNote(-1, c.getId(), c.getNoteItems(), cb);
+                dataBaseHelper.finish();
+                c.setInitialized(true);
+            }
+        }).start();
+    }
+
+    private DataBaseHelper.IterateCallback<NoteItem> getNoteIterateCallback(Category category) {
+        if (listener == null) return null;
+        return note -> {
+            int index = category.indexNoteItem(note);
+            Message msg = new Message();
+            msg.what = Task.Target.NoteItem.ordinal();
+            msg.arg2 = Task.Type.READ.ordinal();
+            msg.arg1 = index;
+            msg.obj = note;
+            handler.sendMessage(msg);
+        };
+    }
 
     private final ConcurrentLinkedQueue<Task> tasks = new ConcurrentLinkedQueue<>();
     private final Semaphore taskSemaphore = new Semaphore(0);
@@ -390,14 +470,20 @@ public class CoreService extends Service {
                 try {
                     taskSemaphore.acquire();
                     Task task = tasks.poll();
-                    if (task != null) {
+                    if (task == null)
+                        continue;
+                    if (task.type == Task.Type.READ) {
+                        if (task.target == Task.Target.Category)
+                            handleCategoryReadTask();
+                        else if (task.target == Task.Target.NoteItem)
+                            handleNoteReadTask((Long) task.object);
+                    } else {
                         if (task.target == Task.Target.Category)
                             handleCategoryTask(task.type, (Category) task.object);
                         else if (task.target == Task.Target.NoteItem)
                             handleNoteTask(task.type, (NoteItem) task.object);
                     }
-                } catch (InterruptedException ignored) {
-                }
+                } catch (InterruptedException ignored) { }
             }
         }
     }
@@ -410,6 +496,7 @@ public class CoreService extends Service {
 
     private void tryStopTaskRunnerThread() {
         canTaskRunnerThreadRun = false;
+        taskSemaphore.release();    // release semaphore to exit waiting
         taskRunnerThread = null;
     }
 
@@ -419,6 +506,7 @@ public class CoreService extends Service {
     }
 
     public void queueTask(Task.Type taskType, NoteItem item) {
+        if (taskType == Task.Type.READ) return;
         Task task = new Task();
         task.object = item;
         task.target = Task.Target.NoteItem;
@@ -428,9 +516,22 @@ public class CoreService extends Service {
 
     public void queueTask(Task.Type taskType, Category category) {
         Task task = new Task();
-        task.object = category;
-        task.target = Task.Target.Category;
         task.type = taskType;
+        if (taskType == Task.Type.READ) {
+            task.target = Task.Target.NoteItem;
+            task.object = category.getId();
+        } else {
+            task.object = category;
+            task.target = Task.Target.Category;
+        }
+        queueTask(task);
+    }
+
+    public void queueReadTask(Task.Target target, long id) {
+        Task task = new Task();
+        task.target = target;
+        task.type = Task.Type.READ;
+        task.object = id;
         queueTask(task);
     }
 

@@ -2,7 +2,7 @@ package cn.alvkeke.dropto.ui.intf;
 
 public interface ListNotification {
     enum Notify {
-        CREATED,
+        INSERTED,
         REMOVED,
         UPDATED,
     }
