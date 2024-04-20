@@ -75,6 +75,12 @@ public class ShareRecvActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
 
+        if (savedInstanceState != null) {
+            this.finish();
+            // just end after change to dark mode
+            return;
+        }
+
         setupCoreService();
         Intent intent = getIntent();
         String action = intent.getAction();
