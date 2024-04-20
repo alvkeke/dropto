@@ -95,7 +95,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         handler.onError(msg);
     }
 
-    class CategoryMenuListener implements Toolbar.OnMenuItemClickListener {
+    private class CategoryMenuListener implements Toolbar.OnMenuItemClickListener {
 
         @Override
         public boolean onMenuItemClick(MenuItem item) {
@@ -112,7 +112,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         }
     }
 
-    class OnListItemClickListener extends OnRecyclerViewTouchListener {
+    private class OnListItemClickListener extends OnRecyclerViewTouchListener {
 
         @Override
         public boolean onItemClick(View v, int index) {

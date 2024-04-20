@@ -122,7 +122,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         return true;
     }
 
-    class OnNavigationIconClick implements View.OnClickListener {
+    private class OnNavigationIconClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
             if (isInSelectMode) {
@@ -152,7 +152,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     }
 
     private boolean isInSelectMode = false;
-    class NoteListMenuListener implements Toolbar.OnMenuItemClickListener {
+    private class NoteListMenuListener implements Toolbar.OnMenuItemClickListener {
         @Override
         public boolean onMenuItemClick(MenuItem item) {
             int menu_id = item.getItemId();
@@ -197,7 +197,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         }
     }
 
-    class NoteListTouchListener extends OnRecyclerViewTouchListener {
+    private class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         @Override
         public boolean onItemClickAt(View v, int index, MotionEvent event) {
@@ -339,7 +339,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         });
     }
 
-    class onItemAddClick implements View.OnClickListener {
+    private class onItemAddClick implements View.OnClickListener {
 
         @Override
         public void onClick(View v) {

@@ -77,7 +77,7 @@ public class ImageViewerFragment extends Fragment implements FragmentOnBackListe
         return true;
     }
 
-    class ImageGestureListener extends GestureListener {
+    private class ImageGestureListener extends GestureListener {
 
         @Override
         public void onClick(View v, MotionEvent e) {
@@ -316,7 +316,7 @@ public class ImageViewerFragment extends Fragment implements FragmentOnBackListe
         getParentFragmentManager().beginTransaction()
                 .remove(ImageViewerFragment.this).commit();
     }
-    void finish() {
+    public void finish() {
         if (imageView == null || parentView == null) {
             fragmentEnd();
             return;

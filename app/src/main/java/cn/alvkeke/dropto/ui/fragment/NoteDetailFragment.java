@@ -85,7 +85,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
 
     private boolean isDraggable = true;
 
-    class ScrollViewListener implements View.OnScrollChangeListener {
+    private class ScrollViewListener implements View.OnScrollChangeListener {
 
         @Override
         public void onScrollChange(View view, int x, int y, int i2, int i3) {
@@ -103,7 +103,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         }
     }
 
-    BottomSheetBehavior<FrameLayout> behavior;
+    private BottomSheetBehavior<FrameLayout> behavior;
     private void initEssentialVars() {
         BottomSheetDialog dialog = (BottomSheetDialog) requireDialog();
         behavior = dialog.getBehavior();

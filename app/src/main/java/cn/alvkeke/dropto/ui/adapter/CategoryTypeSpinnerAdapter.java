@@ -16,7 +16,7 @@ import cn.alvkeke.dropto.data.Category;
 
 public class CategoryTypeSpinnerAdapter extends ArrayAdapter<Category.Type> {
 
-    Category.Type[] types;
+    private final Category.Type[] types;
     public CategoryTypeSpinnerAdapter(@NonNull Context context, int resource, @NonNull Category.Type[] objects) {
         super(context, resource, objects);
         this.types = objects;

@@ -15,16 +15,17 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
     private static final long TIME_THRESHOLD_LONG_CLICK = 500;
     private static final int THRESHOLD_SLIDE = 45;
     private static final int THRESHOLD_NO_MOVED = 20;
-    long timeDown;
-    float downRawX, downRawY, deltaRawX, deltaRawY;
-    boolean isSliding = false;
-    boolean isSlidable = false;
-    boolean isLongClickHold = false;
-    boolean isShortClick = false;
+    private long timeDown;
+    private float downRawX, downRawY;
+    private boolean isSliding = false;
+    private boolean isSlidable = false;
+    private boolean isLongClickHold = false;
+    private boolean isShortClick = false;
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View view, MotionEvent motionEvent) {
         RecyclerView recyclerView = (RecyclerView) view;
         View itemView;
+        float deltaRawX, deltaRawY;
         switch (motionEvent.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 downRawX = motionEvent.getRawX();
@@ -93,8 +94,8 @@ public class OnRecyclerViewTouchListener implements View.OnTouchListener {
     }
 
     private final Handler handler = new Handler();
-    View longPressView;
-    View longPressItemView;
+    private View longPressView;
+    private View longPressItemView;
     private final Runnable longPressRunnable = new Runnable() {
         @Override
         public void run() {

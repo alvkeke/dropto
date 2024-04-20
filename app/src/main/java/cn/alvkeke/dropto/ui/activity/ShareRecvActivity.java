@@ -72,7 +72,7 @@ public class ShareRecvActivity extends AppCompatActivity
         clearCoreService();
     }
 
-    CategorySelectorFragment categorySelectorFragment;
+    private CategorySelectorFragment categorySelectorFragment;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -98,7 +98,7 @@ public class ShareRecvActivity extends AppCompatActivity
             finish();
         }
         recvNotes = handleIntent(intent);
-        if (recvNotes == null || recvNotes.isEmpty()) {
+        if (recvNotes.isEmpty()) {
             Toast.makeText(this, "Failed to create new item",
                     Toast.LENGTH_SHORT).show();
             finish();
@@ -142,7 +142,7 @@ public class ShareRecvActivity extends AppCompatActivity
         finish();
     }
 
-    ArrayList<NoteItem> handleIntent(@NonNull Intent intent) {
+    private ArrayList<NoteItem> handleIntent(@NonNull Intent intent) {
         ArrayList<NoteItem> items = new ArrayList<>();
         String action = intent.getAction();
         if (Intent.ACTION_SEND.equals(action)) {
@@ -154,7 +154,7 @@ public class ShareRecvActivity extends AppCompatActivity
         return items;
     }
 
-    NoteItem handleSharedInfo(Intent intent) {
+    private NoteItem handleSharedInfo(Intent intent) {
         String type = intent.getType();
 
         if (type == null) {
@@ -173,7 +173,7 @@ public class ShareRecvActivity extends AppCompatActivity
         return null;
     }
 
-    void handleSharedInfoMultiple(Intent intent, ArrayList<NoteItem> list) {
+    private void handleSharedInfoMultiple(Intent intent, ArrayList<NoteItem> list) {
         String type = intent.getType();
         if (type == null) {
             Log.e(this.toString(), "Cannot get type");
@@ -187,7 +187,7 @@ public class ShareRecvActivity extends AppCompatActivity
         }
     }
 
-    NoteItem handleText(Intent intent) {
+    private NoteItem handleText(Intent intent) {
         String text = intent.getStringExtra(Intent.EXTRA_TEXT);
         if (text == null) {
             Log.e(this.toString(), "Failed to get shared text");
@@ -247,7 +247,6 @@ public class ShareRecvActivity extends AppCompatActivity
     private NoteItem handleImage(Intent intent) {
         Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
         if (uri == null) {
-            Log.e(this.toString(), "Failed to get Uri");
             return null;
         }
 

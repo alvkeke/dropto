@@ -70,7 +70,7 @@ public class MyPopupMenu extends PopupWindow{
         return textView;
     }
 
-    class OnItemTouchListener implements View.OnTouchListener {
+    private class OnItemTouchListener implements View.OnTouchListener {
 
         private ValueAnimator animatorOut = null;
         private boolean canClick = false;
