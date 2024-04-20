@@ -1,16 +1,12 @@
 package cn.alvkeke.dropto.ui.activity;
 
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.ParcelFileDescriptor;
-import android.provider.OpenableColumns;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -19,7 +15,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
@@ -197,51 +192,18 @@ public class ShareRecvActivity extends AppCompatActivity
         return new NoteItem(text);
     }
 
-    private String getFileNameFromUri(Uri uri) {
-        // ContentResolver to resolve the content Uri
-        ContentResolver resolver = this.getContentResolver();
-        // Query the file name from the content Uri
-        Cursor cursor = resolver.query(uri, null, null, null, null);
-        String fileName = null;
-        if (cursor != null && cursor.moveToFirst()) {
-            int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-            if (index != -1) {
-                fileName = cursor.getString(index);
-            }
-            cursor.close();
-        }
-        return fileName;
+    private NoteItem extraNoteFromUri(Uri uri, String text) {
+        File folder = Global.getInstance().getFileStoreFolder();
+        File imgFile = FileHelper.saveUriToFile(this, uri, folder);
+        if (imgFile == null) return null;
+        NoteItem item = new NoteItem(text);
+        item.setImageFile(imgFile);
+        item.setImageName(FileHelper.getFileNameFromUri(this, uri));
+        return item;
     }
 
-    private NoteItem extraNoteFromUri(Uri uri, String noteText) {
-        File storeFolder = Global.getInstance().getFileStoreFolder();
-        if (storeFolder == null) {
-            Log.e(this.toString(), "Failed to get storage folder");
-            return null;
-        }
-
-        try (ParcelFileDescriptor inputPFD = this.getContentResolver().openFileDescriptor(uri, "r")) {
-            if (inputPFD == null) {
-                Log.e(this.toString(), "Failed to get ParcelFileDescriptor");
-                return null;
-            }
-            FileDescriptor fd = inputPFD.getFileDescriptor();
-            byte[] md5sum = FileHelper.calculateMD5(fd);
-            File retFile = FileHelper.md5ToFile(storeFolder, md5sum);
-            if (retFile.isFile() && retFile.exists()) {
-                Log.d(this.toString(), "File exist");
-            } else {
-                Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
-                FileHelper.copyFileTo(fd, retFile);
-            }
-            NoteItem item = new NoteItem(noteText == null ? "" : noteText);
-            item.setImageFile(retFile);
-            item.setImageName(getFileNameFromUri(uri));
-            return item;
-        } catch (Exception e) {
-            Log.e(this.toString(), "Failed to store shared file: " + e);
-            return null;
-        }
+    private NoteItem extraNoteFromUri(Uri uri) {
+        return extraNoteFromUri(uri, "");
     }
 
     private NoteItem handleImage(Intent intent) {
@@ -261,7 +223,7 @@ public class ShareRecvActivity extends AppCompatActivity
 
         for (Uri uri : imageUris) {
             if (uri == null) continue;
-            NoteItem e = extraNoteFromUri(uri, "");
+            NoteItem e = extraNoteFromUri(uri);
             if (e == null) continue;
             list.add(e);
         }

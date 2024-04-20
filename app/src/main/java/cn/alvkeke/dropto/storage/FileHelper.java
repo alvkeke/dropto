@@ -1,5 +1,12 @@
 package cn.alvkeke.dropto.storage;
 
+import android.content.ContentResolver;
+import android.content.Context;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
+
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -50,6 +57,43 @@ public class FileHelper {
         destChannel.close();
         fis.close();
         fos.close();
+    }
+
+    public static String getFileNameFromUri(Context context, Uri uri) {
+        // ContentResolver to resolve the content Uri
+        ContentResolver resolver = context.getContentResolver();
+        // Query the file name from the content Uri
+        Cursor cursor = resolver.query(uri, null, null, null, null);
+        String fileName = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            if (index != -1) {
+                fileName = cursor.getString(index);
+            }
+            cursor.close();
+        }
+        return fileName;
+    }
+
+    public static File saveUriToFile(Context context, Uri uri, File storeFolder) {
+        if (storeFolder == null) {
+            return null;
+        }
+
+        try (ParcelFileDescriptor inputPFD = context.getContentResolver().openFileDescriptor(uri, "r")) {
+            if (inputPFD == null) {
+                return null;
+            }
+            FileDescriptor fd = inputPFD.getFileDescriptor();
+            byte[] md5sum = calculateMD5(fd);
+            File retFile = md5ToFile(storeFolder, md5sum);
+            if (!(retFile.isFile() && retFile.exists())) {
+                copyFileTo(fd, retFile);
+            }
+            return retFile;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
 }

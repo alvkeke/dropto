@@ -6,6 +6,7 @@ import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Rect;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
@@ -17,7 +18,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
@@ -33,12 +38,15 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
+import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu;
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
@@ -56,6 +64,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     private View fragmentParent;
     private View fragmentView;
     private EditText etInputText;
+    private ImageView imgAttachClear;
     private ConstraintLayout contentContainer;
     private View naviBar;
     private MaterialToolbar toolbar;
@@ -90,6 +99,8 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         fragmentView = view.findViewById(R.id.note_list_fragment_container);
         rlNoteList = view.findViewById(R.id.note_list_listview);
         ImageButton btnAddNote = view.findViewById(R.id.note_list_input_button);
+        ImageButton btnAttach = view.findViewById(R.id.note_list_input_attach);
+        imgAttachClear = view.findViewById(R.id.note_list_input_attach_clear);
         etInputText = view.findViewById(R.id.note_list_input_box);
         contentContainer = view.findViewById(R.id.note_list_content_container);
         View statusBar = view.findViewById(R.id.note_list_status_bar);
@@ -113,6 +124,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         rlNoteList.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
 
         btnAddNote.setOnClickListener(new onItemAddClick());
+        btnAttach.setOnClickListener(new OnItemAttachClick());
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
     }
 
@@ -339,6 +351,38 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         });
     }
 
+    private Uri imgUri = null;
+    private final ActivityResultLauncher<String> imagePicker =
+            registerForActivityResult(new ActivityResultContracts.GetContent(),
+                    new ImageSelectResult());
+    private class ImageSelectResult implements ActivityResultCallback<Uri> {
+        @Override
+        public void onActivityResult(Uri uri) {
+            if (uri == null) {
+                throwErrorMessage("no uri got");
+                return;
+            }
+            imgUri = uri;
+            imgAttachClear.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void clearAttachment() {
+        imgUri = null;
+        imgAttachClear.setVisibility(View.GONE);
+    }
+
+    private class OnItemAttachClick implements View.OnClickListener {
+        @Override
+        public void onClick(View view) {
+            if (imgUri == null) {
+                imagePicker.launch("image/*");
+            } else {
+                clearAttachment();
+            }
+        }
+    }
+
     private class onItemAddClick implements View.OnClickListener {
 
         @Override
@@ -346,6 +390,13 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             String content = etInputText.getText().toString();
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
+            if (imgUri != null) {
+                File folder = Global.getInstance().getFileStoreFolder();
+                File imgFile = FileHelper.saveUriToFile(context, imgUri, folder);
+                String imgName = FileHelper.getFileNameFromUri(context, imgUri);
+                item.setImageFile(imgFile);
+                item.setImageName(imgName);
+            }
             setPendingItem(item);
             listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);
         }
@@ -417,6 +468,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                     clearPendingItem();
                     // clear input box text for manually added item
                     etInputText.setText("");
+                    clearAttachment();
                 }
                 break;
             case UPDATED:
