@@ -76,26 +76,30 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
         return categories.size();
     }
 
-    public boolean add(Category e) {
-        if (categories.contains(e)) return true;
+    public int add(Category e) {
+        if (categories.contains(e)) return -1;
         boolean result = categories.add(e);
+        if (!result) {
+            return -1;
+        }
         int index = categories.indexOf(e);
         notifyItemInserted(index);
-        notifyItemRangeChanged(index, categories.size()-index);
-        return result;
+        notifyItemRangeChanged(index, categories.size() - index);
+        return index;
     }
 
-    public void add(int index, Category e) {
+    public boolean add(int index, Category e) {
         int idx = categories.indexOf(e);
         if (idx >= 0) {
             if (idx != index) {
                 Log.e(this.toString(), "category exist with mismatch index: "+index+":"+idx);
             }
-            return;
+            return false;
         }
         categories.add(index, e);
         notifyItemInserted(index);
         notifyItemRangeChanged(index, categories.size()-index);
+        return true;
     }
 
     public void remove(Category e) {

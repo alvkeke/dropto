@@ -148,26 +148,30 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         return noteList.size();
     }
 
-    public boolean add(NoteItem e) {
-        if (noteList.contains(e)) return true;
+    public int add(NoteItem e) {
+        if (noteList.contains(e)) return -1;
         boolean result = noteList.add(e);
+        if (!result) {
+            return -1;
+        }
         int index = noteList.indexOf(e);
         notifyItemInserted(index);
-        notifyItemRangeChanged(index, noteList.size()-index);
-        return result;
+        notifyItemRangeChanged(index, noteList.size() - index);
+        return index;
     }
 
-    public void add(int index, NoteItem e) {
+    public boolean add(int index, NoteItem e) {
         int idx = noteList.indexOf(e);
         if (idx >= 0) {
             if (idx != index) {
                 Log.e(this.toString(), "note exist with mismatch index: "+index+":"+idx);
             }
-            return;
+            return false;
         }
         noteList.add(index, e);
         notifyItemInserted(index);
         notifyItemRangeChanged(index, noteList.size()-index);
+        return true;
     }
 
     public void remove(NoteItem e) {
