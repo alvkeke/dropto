@@ -359,14 +359,16 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         @Override
         public void onActivityResult(Uri uri) {
             if (uri == null) {
-                throwErrorMessage("no uri got");
                 return;
             }
-            imgUri = uri;
-            imgAttachClear.setVisibility(View.VISIBLE);
+            setAttachment(uri);
         }
     }
 
+    private void setAttachment(Uri uri) {
+        imgUri = uri;
+        imgAttachClear.setVisibility(View.VISIBLE);
+    }
     private void clearAttachment() {
         imgUri = null;
         imgAttachClear.setVisibility(View.GONE);
@@ -384,7 +386,6 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     }
 
     private class onItemAddClick implements View.OnClickListener {
-
         @Override
         public void onClick(View v) {
             String content = etInputText.getText().toString();
@@ -396,6 +397,9 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 String imgName = FileHelper.getFileNameFromUri(context, imgUri);
                 item.setImageFile(imgFile);
                 item.setImageName(imgName);
+            } else {
+                // block new item create without either text or image
+                if (content.isEmpty()) return;
             }
             setPendingItem(item);
             listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);

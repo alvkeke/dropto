@@ -128,7 +128,6 @@ public class ImageLoader {
             Log.e(this.toString(), "Cannot load ["+filePath+"]from disk!!!");
             return null;
         }
-        Log.e(this.toString(), "["+filePath+"] result byte count: " + bitmap.getByteCount());
         wrappedBitmap = new WrappedBitmap(bitmap, options.inSampleSize>1);
         putWrappedBitmap(filePath, wrappedBitmap);
         return wrappedBitmap;
