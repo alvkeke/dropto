@@ -31,6 +31,7 @@ import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.ui.intf.ListNotification;
 
 public class CoreService extends Service {
 
@@ -333,6 +334,21 @@ public class CoreService extends Service {
         Type type;
         Object object;
     }
+
+    public static ListNotification.Notify taskToNotify(CoreService.Task.Type type) {
+        switch (type) {
+            case CREATE:
+            case READ:
+                return ListNotification.Notify.INSERTED;
+            case UPDATE:
+                return ListNotification.Notify.UPDATED;
+            case REMOVE:
+                return ListNotification.Notify.REMOVED;
+        }
+        assert false;   // should not reach here
+        return null;
+    }
+
 
     public void handleCategoryTask(Task.Type task_type, Category category) {
         new Thread(() -> {

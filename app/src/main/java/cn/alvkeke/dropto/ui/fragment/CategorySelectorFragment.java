@@ -23,9 +23,10 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
+import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
-public class CategorySelectorFragment extends BottomSheetDialogFragment {
+public class CategorySelectorFragment extends BottomSheetDialogFragment implements ListNotification{
 
     public interface CategorySelectListener {
         void onSelected(int index, Category category);
@@ -33,12 +34,14 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
         void onExit();
     }
 
-    private final Context context;
-    private final CategorySelectListener listener;
+    private CategorySelectListener listener;
+    private ArrayList<Category> categories;
+    private CategoryListAdapter categoryListAdapter;
 
-    public CategorySelectorFragment(Context context, CategorySelectListener listener) {
-        this.context = context;
-        this.listener = listener;
+    public CategorySelectorFragment() { }
+
+    public void setCategories(ArrayList<Category> categories) {
+        this.categories = categories;
     }
 
     @Nullable
@@ -51,13 +54,14 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        Context context = requireContext();
+        listener = (CategorySelectListener) context;
 
         RecyclerView rlCategory = view.findViewById(R.id.share_recv_rlist);
         setPeekHeight();
 
-        ArrayList<Category> categories = Global.getInstance().getCategories();
-        CategoryListAdapter adapter = new CategoryListAdapter(categories);
-        rlCategory.setAdapter(adapter);
+        categoryListAdapter = new CategoryListAdapter(categories);
+        rlCategory.setAdapter(categoryListAdapter);
 
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
         rlCategory.setLayoutManager(layoutManager);
@@ -103,4 +107,27 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment {
         super.onDestroyView();
         listener.onExit();
     }
+
+    @Override
+    public void notifyItemListChanged(Notify notify, int index, Object object) {
+        Category category = (Category) object;
+        if (notify != Notify.REMOVED && categories.get(index) != category) {
+            listener.onError("target Category not exist");
+            return;
+        }
+
+        switch (notify) {
+            case INSERTED:
+                categoryListAdapter.add(index, category);
+                break;
+            case UPDATED:
+                categoryListAdapter.update(category);
+                break;
+            case REMOVED:
+                categoryListAdapter.remove(category);
+                break;
+            default:
+        }
+    }
+
 }

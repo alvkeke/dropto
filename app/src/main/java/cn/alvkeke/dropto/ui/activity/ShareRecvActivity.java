@@ -19,20 +19,16 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
 import java.io.FileDescriptor;
-import java.util.ArrayList;
-import java.util.List;
 
-import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.service.CoreService;
-import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 
-public class ShareRecvActivity extends AppCompatActivity {
+public class ShareRecvActivity extends AppCompatActivity
+        implements CategorySelectorFragment.CategorySelectListener, CoreService.TaskResultListener {
 
 
 
@@ -41,6 +37,8 @@ public class ShareRecvActivity extends AppCompatActivity {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             binder = (CoreService.CoreSrvBinder) iBinder;
+            binder.getService().setListener(ShareRecvActivity.this);
+            binder.getService().queueReadTask(CoreService.Task.Target.Category, 0);
         }
 
         @Override
@@ -71,6 +69,7 @@ public class ShareRecvActivity extends AppCompatActivity {
         clearCoreService();
     }
 
+    CategorySelectorFragment categorySelectorFragment;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -89,42 +88,38 @@ public class ShareRecvActivity extends AppCompatActivity {
             Toast.makeText(this, "unknown action: " + action, Toast.LENGTH_SHORT).show();
             finish();
         }
-        NoteItem recvNote = handleSharedInfo(intent);
+        recvNote = handleSharedInfo(intent);
         if (recvNote == null) {
             Toast.makeText(this, "Failed to create new item",
                     Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
+        categorySelectorFragment = new CategorySelectorFragment();
+        categorySelectorFragment.setCategories(Global.getInstance().getCategories());
         getSupportFragmentManager().beginTransaction()
-                .add(new CategorySelectorFragment(this, new ShareRecvHandler(recvNote)), null)
+                .add(categorySelectorFragment, null)
                 .commit();
     }
 
-    class ShareRecvHandler implements CategorySelectorFragment.CategorySelectListener {
+    private NoteItem recvNote;
 
-        private final NoteItem recvNote;
-        ShareRecvHandler(NoteItem recvNote) {
-            this.recvNote = recvNote;
-        }
+    @Override
+    public void onSelected(int index, Category category) {
+        recvNote.setCategoryId(category.getId());
+        binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
+        finish();
+    }
 
-        @Override
-        public void onSelected(int index, Category category) {
-            recvNote.setCategoryId(category.getId());
-            binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
-            finish();
-        }
+    @Override
+    public void onError(String error) {
+        Toast.makeText(ShareRecvActivity.this, error, Toast.LENGTH_SHORT).show();
+        finish();
+    }
 
-        @Override
-        public void onError(String error) {
-            Toast.makeText(ShareRecvActivity.this, error, Toast.LENGTH_SHORT).show();
-            finish();
-        }
-
-        @Override
-        public void onExit() {
-            finish();
-        }
+    @Override
+    public void onExit() {
+        finish();
     }
 
     NoteItem handleSharedInfo(Intent intent) {
@@ -210,4 +205,14 @@ public class ShareRecvActivity extends AppCompatActivity {
         }
         return null;
     }
+
+    @Override
+    public void onCategoryTaskFinish(CoreService.Task.Type taskType, int index, Category c) {
+        if (index < 0) return;
+        if (categorySelectorFragment == null) return;
+        categorySelectorFragment.notifyItemListChanged(CoreService.taskToNotify(taskType), index, c);
+    }
+
+    @Override
+    public void onNoteTaskFinish(CoreService.Task.Type taskType, int index, NoteItem n) { }
 }

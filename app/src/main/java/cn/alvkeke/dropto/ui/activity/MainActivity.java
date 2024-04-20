@@ -40,7 +40,6 @@ import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
-import cn.alvkeke.dropto.ui.intf.ListNotification;
 
 public class MainActivity extends AppCompatActivity implements
         NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
@@ -531,32 +530,18 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private ListNotification.Notify taskTypeToNotify(CoreService.Task.Type type) {
-        switch (type) {
-            case CREATE:
-            case READ:
-                return ListNotification.Notify.INSERTED;
-            case UPDATE:
-                return ListNotification.Notify.UPDATED;
-            case REMOVE:
-                return ListNotification.Notify.REMOVED;
-        }
-        assert false;   // should not reach here
-        return null;
-    }
-
     @Override
     public void onCategoryTaskFinish(CoreService.Task.Type taskType, int index, Category c) {
         if (index < 0) return;
         if (categoryListFragment == null) return;
-        categoryListFragment.notifyItemListChanged(taskTypeToNotify(taskType), index, c);
+        categoryListFragment.notifyItemListChanged(CoreService.taskToNotify(taskType), index, c);
     }
 
     @Override
     public void onNoteTaskFinish(CoreService.Task.Type taskType, int index, NoteItem n) {
         if (index < 0) return;
         if (noteListFragment == null) return;
-        noteListFragment.notifyItemListChanged(taskTypeToNotify(taskType), index, n);
+        noteListFragment.notifyItemListChanged(CoreService.taskToNotify(taskType), index, n);
     }
 
 }
