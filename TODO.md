@@ -11,3 +11,4 @@
 6. [ ] Storage management
 7. [ ] UI beautify
 8. [x] Image viewing from note list
+9. [ ] multiple Images in 1 noteItem
