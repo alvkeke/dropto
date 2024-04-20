@@ -126,7 +126,6 @@ public class MainActivity extends AppCompatActivity implements
             categoryListFragment = new CategoryListFragment();
         }
         categoryListFragment.setListener(new CategoryListAttemptListener());
-        Log.e(this.toString(), "Activity onCreate: " + Global.getInstance());
         categoryListFragment.setCategories(Global.getInstance().getCategories());
         if (!categoryListFragment.isAdded()) {
             startFragment(categoryListFragment);

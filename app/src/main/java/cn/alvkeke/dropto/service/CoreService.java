@@ -93,7 +93,6 @@ public class CoreService extends Service {
     }
 
     private void initServiceData() {
-        Log.e(this.toString(), "initCategoryData: " + Global.getInstance());
         Global global = Global.getInstance();
 
         File img_folder = this.getExternalFilesDir("imgs");
