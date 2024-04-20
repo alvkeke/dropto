@@ -163,7 +163,7 @@ public class MyPopupMenu extends PopupWindow{
 
         linearLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int showX = screenWidth / 6;
-        int showY = y - linearLayout.getMeasuredHeight()/4;
+        int showY = y - linearLayout.getMeasuredHeight()/2;
         showAtLocation(anchorView, Gravity.NO_GRAVITY, showX, showY);
     }
 
