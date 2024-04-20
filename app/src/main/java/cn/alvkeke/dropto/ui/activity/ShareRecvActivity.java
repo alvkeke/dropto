@@ -15,10 +15,12 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
 import java.io.FileDescriptor;
+import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
@@ -90,12 +92,12 @@ public class ShareRecvActivity extends AppCompatActivity
             return;
         }
 
-        if (!action.equals(Intent.ACTION_SEND)) {
+        if (!isActionAllow(action)) {
             Toast.makeText(this, "unknown action: " + action, Toast.LENGTH_SHORT).show();
             finish();
         }
-        recvNote = handleSharedInfo(intent);
-        if (recvNote == null) {
+        recvNotes = handleIntent(intent);
+        if (recvNotes == null || recvNotes.isEmpty()) {
             Toast.makeText(this, "Failed to create new item",
                     Toast.LENGTH_SHORT).show();
             finish();
@@ -108,12 +110,23 @@ public class ShareRecvActivity extends AppCompatActivity
                 .commit();
     }
 
-    private NoteItem recvNote;
+    private boolean isActionAllow(String action) {
+        switch (action) {
+            case Intent.ACTION_SEND:
+            case Intent.ACTION_SEND_MULTIPLE:
+                return true;
+        }
+        return false;
+    }
+
+    private ArrayList<NoteItem> recvNotes;
 
     @Override
     public void onSelected(int index, Category category) {
-        recvNote.setCategoryId(category.getId());
-        binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
+        for (NoteItem recvNote : recvNotes) {
+            recvNote.setCategoryId(category.getId());
+            binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
+        }
         finish();
     }
 
@@ -126,6 +139,18 @@ public class ShareRecvActivity extends AppCompatActivity
     @Override
     public void onExit() {
         finish();
+    }
+
+    ArrayList<NoteItem> handleIntent(@NonNull Intent intent) {
+        ArrayList<NoteItem> items = new ArrayList<>();
+        String action = intent.getAction();
+        if (Intent.ACTION_SEND.equals(action)) {
+            NoteItem noteItem = handleSharedInfo(intent);
+            items.add(noteItem);
+        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+            handleSharedInfoMultiple(intent, items);
+        }
+        return items;
     }
 
     NoteItem handleSharedInfo(Intent intent) {
@@ -147,6 +172,20 @@ public class ShareRecvActivity extends AppCompatActivity
         return null;
     }
 
+    void handleSharedInfoMultiple(Intent intent, ArrayList<NoteItem> list) {
+        String type = intent.getType();
+        if (type == null) {
+            Log.e(this.toString(), "Cannot get type");
+            Toast.makeText(this, "Cannot get type", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (type.startsWith("image/")) {
+            handleImageMultiple(intent, list);
+        } else {
+            Log.e(this.toString(), "Got unsupported type: "+type);
+        }
+    }
+
     NoteItem handleText(Intent intent) {
         String text = intent.getStringExtra(Intent.EXTRA_TEXT);
         if (text == null) {
@@ -157,7 +196,6 @@ public class ShareRecvActivity extends AppCompatActivity
         return new NoteItem(text);
     }
 
-    // TODO: seems ugly implementation, seek if there is better implementation
     private String getFileNameFromUri(Uri uri) {
         // ContentResolver to resolve the content Uri
         ContentResolver resolver = this.getContentResolver();
@@ -174,16 +212,10 @@ public class ShareRecvActivity extends AppCompatActivity
         return fileName;
     }
 
-    NoteItem handleImage(Intent intent) {
+    private NoteItem extraNoteFromUri(Uri uri, String noteText) {
         File storeFolder = Global.getInstance().getFileStoreFolder();
         if (storeFolder == null) {
             Log.e(this.toString(), "Failed to get storage folder");
-            return null;
-        }
-
-        Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        if (uri == null) {
-            Log.e(this.toString(), "Failed to get Uri");
             return null;
         }
 
@@ -201,15 +233,38 @@ public class ShareRecvActivity extends AppCompatActivity
                 Log.d(this.toString(), "Save file to : " + retFile.getAbsolutePath());
                 FileHelper.copyFileTo(fd, retFile);
             }
-            String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
-            NoteItem item = new NoteItem(ext_str == null ? "" : ext_str);
+            NoteItem item = new NoteItem(noteText == null ? "" : noteText);
             item.setImageFile(retFile);
             item.setImageName(getFileNameFromUri(uri));
             return item;
         } catch (Exception e) {
             Log.e(this.toString(), "Failed to store shared file: " + e);
+            return null;
         }
-        return null;
+    }
+
+    private NoteItem handleImage(Intent intent) {
+        Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        if (uri == null) {
+            Log.e(this.toString(), "Failed to get Uri");
+            return null;
+        }
+
+        String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
+
+        return extraNoteFromUri(uri, ext_str);
+    }
+
+    private void handleImageMultiple(Intent intent, ArrayList<NoteItem> list) {
+        ArrayList<Uri> imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+        if (imageUris == null || imageUris.isEmpty()) return;
+
+        for (Uri uri : imageUris) {
+            if (uri == null) continue;
+            NoteItem e = extraNoteFromUri(uri, "");
+            if (e == null) continue;
+            list.add(e);
+        }
     }
 
     @Override
