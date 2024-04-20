@@ -26,30 +26,18 @@ import java.util.ArrayList;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
+import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
+import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
 public class CategoryListFragment extends Fragment implements ListNotification {
 
-    public interface AttemptListener {
-        enum Attempt {
-            CREATE,
-            DETAIL,
-            EXPAND,
-        }
-        void onAttemptRecv(AttemptListener.Attempt attempt, Category category);
-        void onErrorRecv(String errorMessage);
-    }
-
-    private AttemptListener listener;
+    private CategoryAttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
     private ArrayList<Category> categories;
 
     public CategoryListFragment() {
-    }
-
-    public void setListener(AttemptListener listener) {
-        this.listener = listener;
     }
 
     public void setCategories(ArrayList<Category> categories) {
@@ -67,6 +55,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Context context = requireContext();
+        listener = (CategoryAttemptListener) context;
         assert categories != null;
 //        assert !categories.isEmpty();
 
@@ -100,17 +89,23 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         });
     }
 
+    private void throwErrorMessage(String msg) {
+        if (!(listener instanceof ErrorMessageHandler)) return;
+        ErrorMessageHandler handler = (ErrorMessageHandler) listener;
+        handler.onError(msg);
+    }
+
     class CategoryMenuListener implements Toolbar.OnMenuItemClickListener {
 
         @Override
         public boolean onMenuItemClick(MenuItem item) {
             int menuId = item.getItemId();
             if (menuId == R.id.category_menu_item_add) {
-                listener.onAttemptRecv(AttemptListener.Attempt.CREATE, null);
+                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_CREATE, null);
             } else if (menuId == R.id.category_menu_item_edit) {
-                listener.onErrorRecv("Try edit categories");
+                throwErrorMessage("Try edit categories");
             } else {
-                listener.onErrorRecv("Unknown menu id: " + menuId);
+                throwErrorMessage("Unknown menu id: " + menuId);
                 return false;
             }
             return true;
@@ -122,7 +117,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         @Override
         public boolean onItemClick(View v, int index) {
             Category category = categories.get(index);
-            listener.onAttemptRecv(AttemptListener.Attempt.EXPAND, category);
+            listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_EXPAND, category);
             return true;
         }
 
@@ -130,7 +125,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         public boolean onItemLongClick(View v, int index) {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
             Category category = categories.get(index);
-            listener.onAttemptRecv(AttemptListener.Attempt.DETAIL, category);
+            listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_DETAIL, category);
             return true;
         }
     }
@@ -139,7 +134,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     public void notifyItemListChanged(ListNotification.Notify notify, int index, Object object) {
         Category category = (Category) object;
         if (notify != Notify.REMOVED && categories.get(index) != category) {
-            listener.onErrorRecv("target Category not exist");
+            throwErrorMessage("target Category not exist");
             return;
         }
 

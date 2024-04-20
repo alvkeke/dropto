@@ -39,11 +39,14 @@ import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
+import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
+import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
+import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
 
 public class MainActivity extends AppCompatActivity implements
-        NoteDetailFragment.NoteEventListener, CategoryDetailFragment.CategoryDetailEvent,
-        CoreService.TaskResultListener {
+        CoreService.TaskResultListener, ErrorMessageHandler,
+        NoteAttemptListener, CategoryAttemptListener {
 
     private CoreService.CoreSrvBinder binder = null;
     private final ServiceConnection serviceConn = new ServiceConnection() {
@@ -125,7 +128,6 @@ public class MainActivity extends AppCompatActivity implements
         if (categoryListFragment == null) {
             categoryListFragment = new CategoryListFragment();
         }
-        categoryListFragment.setListener(new CategoryListAttemptListener());
         categoryListFragment.setCategories(Global.getInstance().getCategories());
         if (!categoryListFragment.isAdded()) {
             startFragment(categoryListFragment);
@@ -139,7 +141,6 @@ public class MainActivity extends AppCompatActivity implements
         savedNoteListCategoryId = state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE);
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
         Category category = Global.getInstance().findCategory(savedNoteListCategoryId);
-        noteListFragment.setListener(new NoteListAttemptListener());
         noteListFragment.setCategory(category);
     }
     private static final long SAVED_NOTE_INFO_NOTE_ID_NONE = -1;
@@ -204,6 +205,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         return null;
     }
+
     class OnFragmentBackPressed extends OnBackPressedCallback {
         public OnFragmentBackPressed(boolean enabled) {
             super(enabled);
@@ -228,7 +230,6 @@ public class MainActivity extends AppCompatActivity implements
     public void handleCategoryExpand(Category category) {
         if (noteListFragment == null) {
             noteListFragment = new NoteListFragment();
-            noteListFragment.setListener(new NoteListAttemptListener());
         }
         noteListFragment.setCategory(category);
         binder.getService().queueTask(CoreService.Task.Type.READ, category);
@@ -243,55 +244,42 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
+    private void handleCategoryDetailShow(Category c) {
+        savedCategoryDetailId = c.getId();
+        CategoryDetailFragment fragment = new CategoryDetailFragment(c);
+        getSupportFragmentManager().beginTransaction()
+                .add(fragment, null)
+                .commit();
+    }
+
     @Override
-    public void onCategoryDetailFinish(CategoryDetailFragment.Result result, Category category) {
-        switch (result) {
+    public void onAttempt(CategoryAttemptListener.Attempt attempt, Category category) {
+        switch (attempt) {
             case CREATE:
                 binder.getService().queueTask(CoreService.Task.Type.CREATE, category);
                 break;
-            case DELETE:
+            case REMOVE:
                 binder.getService().queueTask(CoreService.Task.Type.REMOVE, category);
                 break;
-            case FULL_DELETE:
+            case REMOVE_FULL:
                 Log.e(this.toString(), "NoteItems are not removed currently");
                 // TODO: implement this
                 binder.getService().queueTask(CoreService.Task.Type.REMOVE, category);
                 break;
-            case MODIFY:
+            case UPDATE:
                 binder.getService().queueTask(CoreService.Task.Type.UPDATE, category);
                 break;
+            case SHOW_DETAIL:
+                handleCategoryDetailShow(category);
+                break;
+            case SHOW_CREATE:
+                showCategoryCreatingDialog();
+                break;
+            case SHOW_EXPAND:
+                handleCategoryExpand(category);
+                break;
             default:
-                Log.d(this.toString(), "other result: " + result);
-        }
-    }
-
-    private void handleCategoryDetailShow(Category c) {
-        savedCategoryDetailId = c.getId();
-        getSupportFragmentManager().beginTransaction()
-                .add(new CategoryDetailFragment(c), null)
-                .commit();
-    }
-
-    class CategoryListAttemptListener implements CategoryListFragment.AttemptListener {
-
-        @Override
-        public void onAttemptRecv(Attempt attempt, Category category) {
-            switch (attempt) {
-                case DETAIL:
-                    handleCategoryDetailShow(category);
-                    break;
-                case CREATE:
-                    showCategoryCreatingDialog();
-                    break;
-                case EXPAND:
-                    handleCategoryExpand(category);
-                    break;
-            }
-        }
-
-        @Override
-        public void onErrorRecv(String errorMessage) {
-            Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                Log.d(this.toString(), "other attempt: " + attempt);
         }
     }
 
@@ -420,8 +408,10 @@ public class MainActivity extends AppCompatActivity implements
 
     private void handleNoteDetailShow(NoteItem item) {
         savedNoteInfoNoteId = item.getId();
+        NoteDetailFragment fragment = new NoteDetailFragment();
+        fragment.setNoteItem(item);
         getSupportFragmentManager().beginTransaction()
-                .add(new NoteDetailFragment(item), null)
+                .add(fragment, null)
                 .commit();
     }
 
@@ -434,99 +424,83 @@ public class MainActivity extends AppCompatActivity implements
         startFragment(imageViewerFragment, R.anim.slide_in_bottom, 0);
     }
 
-    class NoteListAttemptListener implements NoteListFragment.AttemptListener {
-        @Override
-        public void onAttempt(Attempt attempt, NoteItem e) {
-            switch (attempt) {
-                case REMOVE:
-                    binder.getService().queueTask(CoreService.Task.Type.REMOVE, e);
-                    break;
-                case CREATE:
-                    binder.getService().queueTask(CoreService.Task.Type.CREATE, e);
-                    break;
-                case DETAIL:
-                    handleNoteDetailShow(e);
-                    break;
-                case COPY:
-                    handleNoteCopy(e);
-                    break;
-                case SHARE:
-                    handleNoteShare(e);
-                    break;
-                case UPDATE:
-                    binder.getService().queueTask(CoreService.Task.Type.UPDATE, e);
-                case SHOW_IMAGE:
-                    handleNoteImageShow(e);
-                    break;
-            }
+    @Override
+    public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e) {
+        switch (attempt) {
+            case REMOVE:
+                binder.getService().queueTask(CoreService.Task.Type.REMOVE, e);
+                break;
+            case CREATE:
+                binder.getService().queueTask(CoreService.Task.Type.CREATE, e);
+                break;
+            case SHOW_DETAIL:
+                handleNoteDetailShow(e);
+                break;
+            case COPY:
+                handleNoteCopy(e);
+                break;
+            case SHOW_SHARE:
+                handleNoteShare(e);
+                break;
+            case UPDATE:
+                binder.getService().queueTask(CoreService.Task.Type.UPDATE, e);
+                break;
+            case SHOW_IMAGE:
+                handleNoteImageShow(e);
+                break;
         }
+    }
 
-        private CoreService.Task.Type convertAttemptToType(Attempt attempt) {
-            switch (attempt) {
-                case REMOVE:
-                    return CoreService.Task.Type.REMOVE;
-                case UPDATE:
-                    return CoreService.Task.Type.UPDATE;
-                case CREATE:
-                    return CoreService.Task.Type.CREATE;
-            }
-            return null;
+    private static CoreService.Task.Type convertAttemptToType(NoteAttemptListener.Attempt attempt) {
+        switch (attempt) {
+            case REMOVE:
+                return CoreService.Task.Type.REMOVE;
+            case UPDATE:
+                return CoreService.Task.Type.UPDATE;
+            case CREATE:
+                return CoreService.Task.Type.CREATE;
         }
-        @Override
-        public void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems) {
-            switch (attempt) {
-                case REMOVE:
-                case CREATE:
-                case UPDATE:
-                    CoreService.Task.Type type = convertAttemptToType(attempt);
-                    for (NoteItem e : noteItems) {
-                        binder.getService().queueTask(type, e);
-                    }
-                    break;
-                case COPY:
-                    StringBuilder sb = new StringBuilder();
-                    NoteItem listOne = noteItems.get(noteItems.size()-1);
-                    for (NoteItem e : noteItems) {
-                        sb.append(e.getText());
-                        if (e == listOne) continue;
-                        sb.append("\n");
-                    }
-                    handleTextCopy(sb.toString());
-                    break;
-                case SHARE:
-                    boolean ret;
-                    if (noteItems.size() == 1)
-                        ret = handleNoteShare(noteItems.get(0));
-                    else
-                        ret = handleNoteShareMultiple(noteItems);
-                    if (ret) break; // success, return
-                    Toast.makeText(MainActivity.this,
-                            "only images are supported to share", Toast.LENGTH_SHORT).show();
-                    break;
-                default:
-                    Log.e(this.toString(), "This operation is not support batch: " +attempt);
-            }
-        }
-
-        @Override
-        public void onError(String errorMessage) {
-            Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+        return null;
+    }
+    @Override
+    public void onAttemptBatch(NoteAttemptListener.Attempt attempt, ArrayList<NoteItem> noteItems) {
+        switch (attempt) {
+            case REMOVE:
+            case CREATE:
+            case UPDATE:
+                CoreService.Task.Type type = convertAttemptToType(attempt);
+                for (NoteItem e : noteItems) {
+                    binder.getService().queueTask(type, e);
+                }
+                break;
+            case COPY:
+                StringBuilder sb = new StringBuilder();
+                NoteItem listOne = noteItems.get(noteItems.size()-1);
+                for (NoteItem e : noteItems) {
+                    sb.append(e.getText());
+                    if (e == listOne) continue;
+                    sb.append("\n");
+                }
+                handleTextCopy(sb.toString());
+                break;
+            case SHOW_SHARE:
+                boolean ret;
+                if (noteItems.size() == 1)
+                    ret = handleNoteShare(noteItems.get(0));
+                else
+                    ret = handleNoteShareMultiple(noteItems);
+                if (ret) break; // success, return
+                Toast.makeText(MainActivity.this,
+                        "only images are supported to share", Toast.LENGTH_SHORT).show();
+                break;
+            default:
+                Log.e(this.toString(), "This operation is not support batch: " +attempt);
         }
     }
 
     @Override
-    public void onNoteDetailFinish(NoteDetailFragment.Result result, NoteItem item) {
-        switch (result) {
-            case CREATE:
-                binder.getService().queueTask(CoreService.Task.Type.CREATE, item);
-                break;
-            case UPDATE:
-                binder.getService().queueTask(CoreService.Task.Type.UPDATE, item);
-                break;
-            case REMOVE:
-                binder.getService().queueTask(CoreService.Task.Type.REMOVE, item);
-                break;
-        }
+    public void onError(String errMessage) {
+        Toast.makeText(this, errMessage, Toast.LENGTH_SHORT).show();
     }
 
     @Override

@@ -24,27 +24,16 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.adapter.CategoryTypeSpinnerAdapter;
+import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
 
 public class CategoryDetailFragment extends BottomSheetDialogFragment {
 
-    public enum Result {
-        CREATE,
-        MODIFY,
-        DELETE,
-        FULL_DELETE,
-    }
-
-    public interface CategoryDetailEvent {
-        void onCategoryDetailFinish(Result result, Category category);
-    }
-
-    private CategoryDetailEvent listener;
+    private CategoryAttemptListener listener;
     private EditText etCategoryTitle;
     private Spinner spinnerType;
     private Category category;
 
     public CategoryDetailFragment() {
-
     }
 
     public CategoryDetailFragment(Category category) {
@@ -68,8 +57,8 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         MaterialToolbar toolbar = view.findViewById(R.id.category_detail_toolbar);
         etCategoryTitle = view.findViewById(R.id.category_detail_title);
         spinnerType = view.findViewById(R.id.category_detail_type_spinner);
+        listener = (CategoryAttemptListener) requireContext();
 
-        listener = (CategoryDetailEvent) requireContext();
         setPeekHeight(view);
         fillTypeSpinner();
 
@@ -122,11 +111,11 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         Category.Type type = (Category.Type) spinnerType.getSelectedItem();
         if (category == null) {
             category = new Category(title, type);
-            listener.onCategoryDetailFinish(Result.CREATE, category);
+            listener.onAttempt(CategoryAttemptListener.Attempt.CREATE, category);
         } else {
             category.setTitle(title);
             category.setType(type);
-            listener.onCategoryDetailFinish(Result.MODIFY, category);
+            listener.onAttempt(CategoryAttemptListener.Attempt.UPDATE, category);
         }
         finish();
     }
@@ -156,7 +145,10 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
         builder.setPositiveButton(R.string.string_ok, (dialogInterface, i) -> {
             CheckBox checkBox = dialog.findViewById(R.id.dialog_category_delete_checkbox);
             boolean full = checkBox.isChecked();
-            listener.onCategoryDetailFinish(full ? Result.FULL_DELETE : Result.DELETE, category);
+            CategoryAttemptListener.Attempt attempt = full ?
+                    CategoryAttemptListener.Attempt.REMOVE_FULL :
+                    CategoryAttemptListener.Attempt.REMOVE;
+            listener.onAttempt(attempt, category);
             finish();
         });
 

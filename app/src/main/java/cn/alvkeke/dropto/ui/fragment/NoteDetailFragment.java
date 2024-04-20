@@ -30,20 +30,11 @@ import java.io.File;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.ImageLoader;
+import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
 
 public class NoteDetailFragment extends BottomSheetDialogFragment {
 
-    public enum Result {
-        CREATE,
-        REMOVE,
-        UPDATE,
-    }
-
-    public interface NoteEventListener {
-        void onNoteDetailFinish(Result result, NoteItem e);
-    }
-
-    private NoteEventListener listener;
+    private NoteAttemptListener listener;
     private EditText etNoteItemText;
     private ConstraintLayout image_container;
     private ImageView image_view;
@@ -54,11 +45,6 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     private boolean isRemoveImage = false;
 
     public NoteDetailFragment() {
-
-    }
-
-    public NoteDetailFragment(NoteItem item) {
-        this.item = item;
     }
 
     public void setNoteItem(NoteItem item) {
@@ -74,6 +60,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        listener = (NoteAttemptListener) requireContext();
 
         MaterialToolbar toolbar = view.findViewById(R.id.note_detail_toolbar);
         etNoteItemText = view.findViewById(R.id.note_detail_text);
@@ -88,8 +75,6 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         setPeekHeight(view);
 
         if (item != null) loadItemData();
-
-        listener = (NoteEventListener) requireContext();
 
         toolbar.inflateMenu(R.menu.note_detail_toolbar);
         toolbar.setOnMenuItemClickListener(new NoteDetailMenuListener());
@@ -153,14 +138,14 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         String text = etNoteItemText.getText().toString();
         if (item == null) {
             item = new NoteItem(text);
-            listener.onNoteDetailFinish(Result.CREATE, item);
+            listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);
         } else {
             item.setText(text, true);
             if (isRemoveImage) {
                 item.setImageName(null);
                 item.setImageFile(null);
             }
-            listener.onNoteDetailFinish(Result.UPDATE, item);
+            listener.onAttempt(NoteAttemptListener.Attempt.UPDATE, item);
         }
     }
 
@@ -172,7 +157,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
                 handleOk();
             } else if (R.id.note_detail_menu_item_delete == menuId) {
                 Log.d(this.toString(), "remove item");
-                listener.onNoteDetailFinish(Result.REMOVE, item);
+                listener.onAttempt(NoteAttemptListener.Attempt.REMOVE, item);
             } else {
                 Log.e(this.toString(), "got unknown menu id: " + menuId);
                 return false;

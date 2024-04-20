@@ -41,29 +41,16 @@ import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu;
+import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
+import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
 public class NoteListFragment extends Fragment implements ListNotification, FragmentOnBackListener {
 
-    public interface AttemptListener {
-        enum Attempt {
-            CREATE,
-            REMOVE,
-            UPDATE,
-            DETAIL,
-            COPY,
-            SHARE,
-            SHOW_IMAGE,
-        }
-        void onAttempt(Attempt attempt, NoteItem e);
-        void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems);
-        void onError(String errorMessage);
-    }
-
     private Context context;
-    private AttemptListener listener;
+    private NoteAttemptListener listener;
     Category category;
     NoteListAdapter noteItemAdapter;
     private View fragmentParent;
@@ -75,10 +62,6 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     private RecyclerView rlNoteList;
 
     public NoteListFragment() {
-    }
-
-    public void setListener(AttemptListener listener) {
-        this.listener = listener;
     }
 
     public void setCategory(Category category) {
@@ -101,6 +84,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         context = requireContext();
+        listener = (NoteAttemptListener) context;
         assert category != null;
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container);
@@ -152,19 +136,19 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     private void handleMenuDelete() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
-        listener.onAttemptBatch(AttemptListener.Attempt.REMOVE, items);
+        listener.onAttemptBatch(NoteAttemptListener.Attempt.REMOVE, items);
     }
 
     private void handleMenuCopy() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
-        listener.onAttemptBatch(AttemptListener.Attempt.COPY, items);
+        listener.onAttemptBatch(NoteAttemptListener.Attempt.COPY, items);
     }
 
     private void handleMenuShare() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
-        listener.onAttemptBatch(AttemptListener.Attempt.SHARE, items);
+        listener.onAttemptBatch(NoteAttemptListener.Attempt.SHOW_SHARE, items);
     }
 
     private boolean isInSelectMode = false;
@@ -363,20 +347,26 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
             setPendingItem(item);
-            listener.onAttempt(AttemptListener.Attempt.CREATE, item);
+            listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);
         }
     }
 
     private void showImageView(int index, int ignore, int ignore1) {
         NoteItem noteItem = category.getNoteItem(index);
-        listener.onAttempt(AttemptListener.Attempt.SHOW_IMAGE, noteItem);
+        listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, noteItem);
+    }
+
+    private void throwErrorMessage(String msg) {
+        if (!(listener instanceof ErrorMessageHandler)) return;
+        ErrorMessageHandler handler = (ErrorMessageHandler) listener;
+        handler.onError(msg);
     }
 
     private MyPopupMenu myPopupMenu = null;
     private void showItemPopMenu(int index, View v, int x, int y) {
         NoteItem noteItem = category.getNoteItem(index);
         if (noteItem == null) {
-            listener.onError("Failed to get note item at " + index + ", abort");
+            throwErrorMessage("Failed to get note item at " + index + ", abort");
             return;
         }
         if (myPopupMenu == null) {
@@ -386,17 +376,17 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 NoteItem note = (NoteItem) obj;
                 int item_id = menuItem.getItemId();
                 if (R.id.item_pop_m_delete == item_id) {
-                    listener.onAttempt(AttemptListener.Attempt.REMOVE, note);
+                    listener.onAttempt(NoteAttemptListener.Attempt.REMOVE, note);
                 } else if (R.id.item_pop_m_pin == item_id) {
-                    listener.onError("try to Pin item at " + index);
+                    throwErrorMessage("try to Pin item at " + index);
                 } else if (R.id.item_pop_m_edit == item_id) {
-                    listener.onAttempt(AttemptListener.Attempt.DETAIL, note);
+                    listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, note);
                 } else if (R.id.item_pop_m_copy_text == item_id) {
-                    listener.onAttempt(AttemptListener.Attempt.COPY, note);
+                    listener.onAttempt(NoteAttemptListener.Attempt.COPY, note);
                 } else if (R.id.item_pop_m_share == item_id) {
-                    listener.onAttempt(AttemptListener.Attempt.SHARE, note);
+                    listener.onAttempt(NoteAttemptListener.Attempt.SHOW_SHARE, note);
                 } else {
-                    listener.onError( "Unknown menu id: " +
+                    throwErrorMessage( "Unknown menu id: " +
                             getResources().getResourceEntryName(item_id));
                 }
             });
