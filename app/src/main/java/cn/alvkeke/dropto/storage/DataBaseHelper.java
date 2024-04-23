@@ -8,11 +8,11 @@ import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-import java.io.File;
 import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 
 public class DataBaseHelper extends SQLiteOpenHelper {
@@ -43,7 +43,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String NOTE_COLUMN_TEXT_TYPE = "TEXT";
     private static final String NOTE_COLUMN_C_TIME = "ctime";
     private static final String NOTE_COLUMN_C_TIME_TYPE = "INTEGER";
-    private static final String NOTE_COLUMN_IMG_FILE = "img_file";
+    private static final String NOTE_COLUMN_IMG_MD5 = "img_md5";
     private static final String NOTE_COLUMN_IMG_FILE_TYPE = "TEXT";
     private static final String NOTE_COLUMN_IMG_NAME = "img_name";
     private static final String NOTE_COLUMN_IMG_NAME_TYPE = "TEXT";
@@ -82,7 +82,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 NOTE_COLUMN_CATE_ID, NOTE_COLUMN_CATE_ID_TYPE,
                 NOTE_COLUMN_TEXT, NOTE_COLUMN_TEXT_TYPE,
                 NOTE_COLUMN_C_TIME, NOTE_COLUMN_C_TIME_TYPE,
-                NOTE_COLUMN_IMG_FILE, NOTE_COLUMN_IMG_FILE_TYPE,
+                NOTE_COLUMN_IMG_MD5, NOTE_COLUMN_IMG_FILE_TYPE,
                 NOTE_COLUMN_IMG_NAME, NOTE_COLUMN_IMG_NAME_TYPE));
     }
 
@@ -242,7 +242,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
     private static final String NOTE_WHERE_CLAUSE_ID = NOTE_COLUMN_ID + " = ?";
     public long insertNote(long id, long categoryId, String text, long ctime,
-                           String img_file, String img_name) throws SQLiteException{
+                           String img_md5, String img_name) throws SQLiteException{
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -252,13 +252,13 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_CATE_ID, categoryId);
         values.put(NOTE_COLUMN_TEXT, text);
         values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_FILE, img_file);
+        values.put(NOTE_COLUMN_IMG_MD5, img_md5);
         values.put(NOTE_COLUMN_IMG_NAME, img_name);
         return db.insertOrThrow(TABLE_NOTE, null, values);
     }
 
     public long insertNote(long categoryId, String text, long ctime,
-                           String img_file, String img_name) throws SQLiteException {
+                           String img_md5, String img_name) throws SQLiteException {
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -267,7 +267,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_CATE_ID, categoryId);
         values.put(NOTE_COLUMN_TEXT, text);
         values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_FILE, img_file);
+        values.put(NOTE_COLUMN_IMG_MD5, img_md5);
         values.put(NOTE_COLUMN_IMG_NAME, img_name);
         return db.insertOrThrow(TABLE_NOTE, null, values);
     }
@@ -280,13 +280,19 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      */
     public long insertNote(NoteItem n) throws SQLiteException{
         long id;
-        String img_name = n.getImageFile() == null ? "" : n.getImageFile().getName();
+        String img_name = "";
+        String img_md5 = "";
+        ImageFile imageFile = n.getImageFile();
+        if (imageFile != null) {
+            img_md5 = imageFile.getMd5();
+            img_name = imageFile.getName();
+        }
         if (n.getId() == NoteItem.ID_NOT_ASSIGNED) {
             id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(),
-                    img_name, n.getImageName());
+                    img_md5, img_name);
         } else {
             id = insertNote(n.getId(), n.getCategoryId(), n.getText(), n.getCreateTime(),
-                    img_name, n.getImageName());
+                    img_md5, img_name);
         }
         if (id < 0) {
             Log.e(this.toString(), "Failed to insert note");
@@ -316,12 +322,12 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param categoryId the ID of the new category
      * @param text new note text
      * @param ctime new create time
-     * @param img_file new image file
+     * @param img_md5 new image file
      * @param img_name new name of the file
      * @return count of affected rows
      */
     public int updateNote(long id, long categoryId, String text, long ctime,
-                           String img_file, String img_name){
+                           String img_md5, String img_name){
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return 0;
@@ -330,7 +336,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_CATE_ID, categoryId);
         values.put(NOTE_COLUMN_TEXT, text);
         values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_FILE, img_file);
+        values.put(NOTE_COLUMN_IMG_MD5, img_md5);
         values.put(NOTE_COLUMN_IMG_NAME, img_name);
         String[] args = { String.valueOf(id) };
         return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args);
@@ -342,10 +348,16 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @return count of affected rows
      */
     public int updateNote(NoteItem item) {
-        File img_file = item.getImageFile();
-        String s_img_file = img_file == null ? "" : img_file.getName();
+        ImageFile img_file = item.getImageFile();
+        String s_img_md5 = "";
+        String s_img_name = "";
+        if (img_file != null) {
+            s_img_md5 = img_file.getMd5();
+            s_img_name = img_file.getName();
+        }
+
         return updateNote(item.getId(), item.getCategoryId(), item.getText(),
-                item.getCreateTime(), s_img_file, item.getImageName());
+                item.getCreateTime(), s_img_md5, s_img_name);
     }
 
     /**
@@ -391,9 +403,9 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             idx = cursor.getColumnIndex(NOTE_COLUMN_C_TIME);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
             long ctime = cursor.getLong(idx);
-            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_FILE);
+            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_MD5);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            String img_file = cursor.getString(idx);
+            String img_md5 = cursor.getString(idx);
             idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_NAME);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
             String img_name = cursor.getString(idx);
@@ -401,15 +413,14 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             NoteItem e = new NoteItem(text, ctime);
             e.setId(id);
             e.setCategoryId(category_id);
-            if (!img_file.isEmpty()) {
-                File f_img_file = new File(Global.getInstance().getFileStoreFolder(), img_file);
-                if (!e.setImageFile(f_img_file)) {
-                    Log.e(this.toString(), "Failed to set image file: " + img_file);
+            if (!img_md5.isEmpty()) {
+                ImageFile imageFile = ImageFile.from(Global.getInstance().getFileStoreFolder(),
+                        img_md5, img_name);
+
+                if (!e.setImageFile(imageFile)) {
+                    Log.e(this.toString(), "Failed to set image file: " + img_md5);
                 }
             }
-            if (img_name == null || img_name.isEmpty())
-                img_name = null;
-            e.setImageName(img_name);
             noteItems.add(e);
             n_notes++;
             if (cb != null)

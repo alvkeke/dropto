@@ -11,13 +11,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 
 import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.ImageLoader;
 
@@ -95,12 +95,12 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             tvImageFile.setVisibility(View.VISIBLE);
         }
 
-        public void setImageView(File imgFile, String imgName) {
+        public void setImageView(ImageFile imgFile) {
             if (imgFile == null) {
                 ivImage.setVisibility(View.GONE);
                 return;
             }
-            ImageLoader.getInstance().loadImageAsync(imgFile, bitmap -> {
+            ImageLoader.getInstance().loadImageAsync(imgFile.getMd5file(), bitmap -> {
                 if (bitmap == null) {
                     String errMsg = "Failed to get image file, skip this item";
                     Log.e(this.toString(), errMsg);
@@ -111,7 +111,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
                 ivImage.setImageBitmap(bitmap);
                 ivImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
                 ivImage.setVisibility(View.VISIBLE);
-                setImageName(imgName);
+                setImageName(imgFile.getName());
             });
         }
 
@@ -135,7 +135,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setText(note.getText());
         holder.setCreateTime(note.getCreateTime());
         holder.setIsEdited(note.isEdited());
-        holder.setImageView(note.getImageFile(), note.getImageName());
+        holder.setImageView(note.getImageFile());
         if (selectedItems.contains(note)) {
             // TODO: use another color for selected item
             holder.itemView.setBackgroundColor(Color.LTGRAY);

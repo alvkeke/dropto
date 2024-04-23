@@ -4,7 +4,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import java.io.File;
 import java.io.Serializable;
 
 public class NoteItem implements Cloneable, Serializable {
@@ -15,8 +14,7 @@ public class NoteItem implements Cloneable, Serializable {
     private String text;
     private long createTimeMs;
     private boolean isEdited;
-    private File imgFile;
-    private String imgName;
+    private ImageFile imgFile;
 
     /**
      * construct a new NoteItem instance, with auto generated create_time
@@ -47,7 +45,6 @@ public class NoteItem implements Cloneable, Serializable {
         item.setId(this.id);
         item.setCategoryId(this.categoryId);
         item.setImageFile(this.imgFile);
-        item.setImageName(this.imgName);
         return item;
     }
 
@@ -55,7 +52,6 @@ public class NoteItem implements Cloneable, Serializable {
         setText(item.getText(), set_edited);
         setCreateTime(item.getCreateTime());
         setImageFile(item.getImageFile());
-        setImageName(item.getImageName());
         setCategoryId(item.getCategoryId());
     }
 
@@ -78,37 +74,28 @@ public class NoteItem implements Cloneable, Serializable {
         return createTimeMs;
     }
 
-    public boolean setImageFile(File img) {
-
-        if (img == null) {
+    public boolean setImageFile(ImageFile image) {
+        if (image == null) {
             Log.d(this.toString(), "clear image");
             this.imgFile = null;
             return true;
         }
-        if (!img.exists()) {
-            Log.d(this.toString(), "add image abort, file not exist: " + img);
-            return false;
-        }
-        if (!img.isFile()) {
-            Log.d(this.toString(), "add image abort, not a file: " + img);
-            return false;
-        }
 
-        this.imgFile = img;
+        if (!image.getMd5file().exists()) {
+            Log.d(this.toString(), "add image abort, file not exist: " + image);
+            return false;
+        }
+        if (!image.getMd5file().isFile()) {
+            Log.d(this.toString(), "add image abort, not a file: " + image);
+            return false;
+        }
+        this.imgFile = image;
 
         return true;
     }
 
-    public File getImageFile() {
+    public ImageFile getImageFile() {
         return this.imgFile;
-    }
-
-    public void setImageName(String name) {
-        this.imgName = name;
-    }
-
-    public String getImageName() {
-        return this.imgName;
     }
 
     public boolean isEdited() {

@@ -16,6 +16,7 @@ import java.util.Random;
 import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
+import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 
@@ -128,7 +129,8 @@ public class DebugFunction {
                     idx++;
                     if (img_file.exists()) {
                         dbgLog("add image file: " + img_file);
-                        e.setImageFile(img_file);
+                        ImageFile imageFile = ImageFile.from(img_file, "");
+                        e.setImageFile(imageFile);
                     } else {
                         dbgLog("add image file failed, not exist: " + img_file);
                     }

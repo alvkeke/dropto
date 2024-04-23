@@ -321,13 +321,13 @@ public class MainActivity extends AppCompatActivity implements
         if (needClean) emptyFolder(share_folder);
 
         try {
-            String imageName = item.getImageName();
+            String imageName = item.getImageFile().getName();
             File fileToShare;
             if (imageName == null) {
-                fileToShare = item.getImageFile();
+                fileToShare = item.getImageFile().getMd5file();
             } else {
                 fileToShare = new File(share_folder, imageName);
-                copyFile(item.getImageFile(), fileToShare);
+                copyFile(item.getImageFile().getMd5file(), fileToShare);
             }
             return fileToShare;
         } catch (IOException e) {
@@ -419,8 +419,8 @@ public class MainActivity extends AppCompatActivity implements
         if (imageViewerFragment == null) {
             imageViewerFragment = new ImageViewerFragment();
         }
-        savedImageViewFile = item.getImageFile().getAbsolutePath();
-        imageViewerFragment.setImgFile(item.getImageFile());
+        savedImageViewFile = item.getImageFile().getMd5file().getAbsolutePath();
+        imageViewerFragment.setImgFile(item.getImageFile().getMd5file());
         imageViewerFragment.show(getSupportFragmentManager(), null);
     }
 

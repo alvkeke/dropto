@@ -19,6 +19,7 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.storage.FileHelper;
@@ -194,11 +195,11 @@ public class ShareRecvActivity extends AppCompatActivity
 
     private NoteItem extraNoteFromUri(Uri uri, String text) {
         File folder = Global.getInstance().getFileStoreFolder();
-        File imgFile = FileHelper.saveUriToFile(this, uri, folder);
-        if (imgFile == null) return null;
+        File md5file = FileHelper.saveUriToFile(this, uri, folder);
+        if (md5file == null) return null;
+        String imgName = FileHelper.getFileNameFromUri(this, uri);
         NoteItem item = new NoteItem(text);
-        item.setImageFile(imgFile);
-        item.setImageName(FileHelper.getFileNameFromUri(this, uri));
+        item.setImageFile(new ImageFile(md5file, imgName));
         return item;
     }
 

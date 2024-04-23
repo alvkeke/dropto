@@ -45,6 +45,7 @@ import java.util.List;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
@@ -393,10 +394,10 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             item.setCategoryId(category.getId());
             if (imgUri != null) {
                 File folder = Global.getInstance().getFileStoreFolder();
-                File imgFile = FileHelper.saveUriToFile(context, imgUri, folder);
+                File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
                 String imgName = FileHelper.getFileNameFromUri(context, imgUri);
-                item.setImageFile(imgFile);
-                item.setImageName(imgName);
+                ImageFile imageFile = ImageFile.from(md5file, imgName);
+                item.setImageFile(imageFile);
             } else {
                 // block new item create without either text or image
                 if (content.isEmpty()) return;

@@ -25,9 +25,8 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
-import java.io.File;
-
 import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.ImageLoader;
 import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
@@ -146,7 +145,6 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         } else {
             item.setText(text, true);
             if (isRemoveImage) {
-                item.setImageName(null);
                 item.setImageFile(null);
             }
             listener.onAttempt(NoteAttemptListener.Attempt.UPDATE, item);
@@ -185,18 +183,18 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     private void loadItemData() {
         etNoteItemText.setText(item.getText());
 
-        File imgfile = item.getImageFile();
-        if (imgfile == null) {
+        ImageFile imageFile = item.getImageFile();
+        if (imageFile == null) {
             image_container.setVisibility(View.GONE);
             return;
         }
-        image_name.setText(item.getImageName());
-        image_md5.setText(item.getImageFile().getName());
+        image_md5.setText(imageFile.getMd5());
+        image_name.setText(imageFile.getName());
         image_remove.setOnClickListener(view -> {
             isRemoveImage = true;
             image_container.setVisibility(View.GONE);
         });
-        ImageLoader.getInstance().loadImageAsync(imgfile, (bitmap -> {
+        ImageLoader.getInstance().loadImageAsync(imageFile.getMd5file(), (bitmap -> {
             if (bitmap == null) {
                 String errMsg = "Failed to get image file, skip this item";
                 Log.e(this.toString(), errMsg);
