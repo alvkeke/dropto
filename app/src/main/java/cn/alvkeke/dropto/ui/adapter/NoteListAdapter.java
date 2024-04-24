@@ -95,11 +95,12 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             tvImageFile.setVisibility(View.VISIBLE);
         }
 
-        public void setImageView(ImageFile imgFile) {
-            if (imgFile == null) {
+        public void setImageView(NoteItem note) {
+            if (note.isNoImage()) {
                 ivImage.setVisibility(View.GONE);
                 return;
             }
+            ImageFile imgFile = note.getImageAt(0);
             ImageLoader.getInstance().loadImageAsync(imgFile.getMd5file(), bitmap -> {
                 if (bitmap == null) {
                     String errMsg = "Failed to get image file, skip this item";
@@ -135,7 +136,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setText(note.getText());
         holder.setCreateTime(note.getCreateTime());
         holder.setIsEdited(note.isEdited());
-        holder.setImageView(note.getImageFile());
+        holder.setImageView(note);
         if (selectedItems.contains(note)) {
             // TODO: use another color for selected item
             holder.itemView.setBackgroundColor(Color.LTGRAY);

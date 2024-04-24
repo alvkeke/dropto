@@ -397,7 +397,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
                 String imgName = FileHelper.getFileNameFromUri(context, imgUri);
                 ImageFile imageFile = ImageFile.from(md5file, imgName);
-                item.setImageFile(imageFile);
+                item.addImageFile(imageFile);
             } else {
                 // block new item create without either text or image
                 if (content.isEmpty()) return;

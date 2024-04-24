@@ -145,7 +145,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         } else {
             item.setText(text, true);
             if (isRemoveImage) {
-                item.setImageFile(null);
+                item.clearImages();
             }
             listener.onAttempt(NoteAttemptListener.Attempt.UPDATE, item);
         }
@@ -183,7 +183,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     private void loadItemData() {
         etNoteItemText.setText(item.getText());
 
-        ImageFile imageFile = item.getImageFile();
+        ImageFile imageFile = item.getImageAt(0);
         if (imageFile == null) {
             image_container.setVisibility(View.GONE);
             return;

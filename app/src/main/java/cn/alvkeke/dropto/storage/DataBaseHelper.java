@@ -282,7 +282,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         long id;
         String img_name = "";
         String img_md5 = "";
-        ImageFile imageFile = n.getImageFile();
+        ImageFile imageFile = n.getImageAt(0);
         if (imageFile != null) {
             img_md5 = imageFile.getMd5();
             img_name = imageFile.getName();
@@ -348,7 +348,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @return count of affected rows
      */
     public int updateNote(NoteItem item) {
-        ImageFile img_file = item.getImageFile();
+        ImageFile img_file = item.getImageAt(0);
         String s_img_md5 = "";
         String s_img_name = "";
         if (img_file != null) {
@@ -417,7 +417,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 ImageFile imageFile = ImageFile.from(Global.getInstance().getFileStoreFolder(),
                         img_md5, img_name);
 
-                if (!e.setImageFile(imageFile)) {
+                if (!e.addImageFile(imageFile)) {
                     Log.e(this.toString(), "Failed to set image file: " + img_md5);
                 }
             }
