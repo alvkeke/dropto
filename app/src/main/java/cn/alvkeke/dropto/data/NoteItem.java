@@ -69,6 +69,7 @@ public class NoteItem implements Serializable {
             return true;
         if (!image.getMd5file().isFile())
             return true;
+        // FIXME: for debug only!!!! please uncomment these codes before merge to master branch
 //        if (imageFiles != null && imageFiles.contains(image))
 //            return true;
 
