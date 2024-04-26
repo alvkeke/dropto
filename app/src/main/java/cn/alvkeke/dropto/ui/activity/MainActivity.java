@@ -417,17 +417,22 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
-    private void handleNoteImageShow(NoteItem item) {
+    private void handleNoteImageShow(NoteItem item, int imageIndex) {
         if (imageViewerFragment == null) {
             imageViewerFragment = new ImageViewerFragment();
         }
-        savedImageViewFile = item.getImageAt(0).getMd5file().getAbsolutePath();
+        savedImageViewFile = item.getImageAt(imageIndex).getMd5file().getAbsolutePath();
         imageViewerFragment.setImgFile(item.getImageAt(0).getMd5file());
         imageViewerFragment.show(getSupportFragmentManager(), null);
     }
 
     @Override
     public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e) {
+        onAttempt(attempt, e, null);
+    }
+
+    @Override
+    public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e, Object ext) {
         switch (attempt) {
             case REMOVE:
                 binder.getService().queueTask(CoreService.Task.Type.REMOVE, e);
@@ -448,7 +453,8 @@ public class MainActivity extends AppCompatActivity implements
                 binder.getService().queueTask(CoreService.Task.Type.UPDATE, e);
                 break;
             case SHOW_IMAGE:
-                handleNoteImageShow(e);
+                int imageIndex = (int) ext;
+                handleNoteImageShow(e, imageIndex);
                 break;
         }
     }

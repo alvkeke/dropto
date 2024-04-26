@@ -212,6 +212,23 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
 
     private class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
+        private final View[] image = new View[4];
+        private int checkImageClicked(View v, int x, int y) {
+            image[0] = v.findViewById(R.id.rlist_item_note_img_view);
+            image[1] = v.findViewById(R.id.rlist_item_note_img_view2);
+            image[2] = v.findViewById(R.id.rlist_item_note_img_view3);
+            image[3] = v.findViewById(R.id.rlist_item_note_img_view4);
+            for (int i=0; i<image.length; i++) {
+                if (image[i] != null) {
+                    Rect rect = new Rect();
+                    image[i].getGlobalVisibleRect(rect);
+                    if (rect.contains(x, y)) {
+                        return i;
+                    }
+                }
+            }
+            return -1;
+        }
         @Override
         public boolean onItemClickAt(View v, int index, MotionEvent event) {
             if (isInSelectMode) {
@@ -219,15 +236,10 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             } else {
                 int x = (int) event.getRawX();
                 int y = (int) event.getRawY();
-                View image = v.findViewById(R.id.rlist_item_note_img_view);
-                boolean showImage = false;
-                if (image != null) {
-                    Rect rect = new Rect();
-                    image.getGlobalVisibleRect(rect);
-                    showImage = rect.contains(x, y);
-                }
-                if (showImage) {
-                    showImageView(index, x, y);
+                int imgIdx = checkImageClicked(v, x, y);
+
+                if (imgIdx >= 0) {
+                    showImageView(index, imgIdx, x, y);
                 } else {
                     showItemPopMenu(index, v, x, y);
                 }
@@ -407,9 +419,13 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         }
     }
 
-    private void showImageView(int index, int ignore, int ignore1) {
+    private void showImageView(int index, int imageIndex, int ignore, int ignore1) {
         NoteItem noteItem = category.getNoteItem(index);
-        listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, noteItem);
+        if (noteItem.getImageCount() > 4 && imageIndex == 3) {
+            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, noteItem);
+        } else {
+            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, noteItem, imageIndex);
+        }
     }
 
     private void throwErrorMessage(String msg) {

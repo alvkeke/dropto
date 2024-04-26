@@ -424,6 +424,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 e.addImageFile(imageFile);
                 e.addImageFile(imageFile);
                 e.addImageFile(imageFile);
+                e.addImageFile(imageFile);
+                e.addImageFile(imageFile);
             }
             noteItems.add(e);
             n_notes++;
