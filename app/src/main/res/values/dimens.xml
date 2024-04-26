@@ -2,4 +2,5 @@
 <resources>
     <dimen name="width_note_img">64dp</dimen>
     <dimen name="margin_note_items">8dp</dimen>
+    <dimen name="size_image_guide_point">4dp</dimen>
 </resources>

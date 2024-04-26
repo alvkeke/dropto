@@ -9,6 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.SimpleDateFormat;
@@ -35,16 +36,21 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         private final TextView tvText;
         private final TextView tvCreateTime;
         private final ImageView ivEdited;
-        private final TextView tvImageFile;
-        private final ImageView ivImage;
+        private final ConstraintLayout containerImage;
+        private final ImageView[] ivImages = new ImageView[4];
+        private final View guideView;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvText = itemView.findViewById(R.id.rlist_item_note_text);
             tvCreateTime = itemView.findViewById(R.id.rlist_item_note_create_time);
             ivEdited = itemView.findViewById(R.id.rlist_item_note_is_edited);
-            tvImageFile = itemView.findViewById(R.id.rlist_item_note_img_file);
-            ivImage = itemView.findViewById(R.id.rlist_item_note_img_view);
+            containerImage = itemView.findViewById(R.id.rlist_item_note_img_container);
+            guideView = itemView.findViewById(R.id.rlist_item_note_img_guide_view);
+            ivImages[0] = itemView.findViewById(R.id.rlist_item_note_img_view);
+            ivImages[1] = itemView.findViewById(R.id.rlist_item_note_img_view2);
+            ivImages[2] = itemView.findViewById(R.id.rlist_item_note_img_view3);
+            ivImages[3] = itemView.findViewById(R.id.rlist_item_note_img_view4);
         }
 
         private void showView(View v) {
@@ -86,34 +92,144 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             ivEdited.setVisibility(foo? View.VISIBLE : View.INVISIBLE);
         }
 
-        private void setImageName(String name) {
-            if (name == null || name.isEmpty()) {
-                tvImageFile.setVisibility(View.GONE);
-                return;
+        private void assignImage_1() {
+            ConstraintLayout.LayoutParams params =
+                    (ConstraintLayout.LayoutParams) ivImages[0].getLayoutParams();
+            params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+            params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+            params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+            params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+            ivImages[0].setLayoutParams(params);
+            ivImages[0].setVisibility(View.VISIBLE);
+            for (int i=1; i<ivImages.length; i++) {
+                ivImages[i].setVisibility(View.GONE);
             }
-            tvImageFile.setText(name);
-            tvImageFile.setVisibility(View.VISIBLE);
+        }
+        private void assignImage_2() {
+            for (int i=0; i<2; i++) {
+                ConstraintLayout.LayoutParams params =
+                        (ConstraintLayout.LayoutParams) ivImages[i].getLayoutParams();
+                params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+                params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+                if (i != 0) {
+                    params.startToEnd = guideView.getId();
+                    params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+                } else {
+                    params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+                    params.endToStart = guideView.getId();
+                }
+                ivImages[i].setLayoutParams(params);
+                ivImages[i].setVisibility(View.VISIBLE);
+            }
+            for (int i=2; i<ivImages.length; i++) {
+                ivImages[i].setVisibility(View.GONE);
+            }
+        }
+        private void assignImage_3() {
+            for (int i=0; i<3; i++) {
+                ConstraintLayout.LayoutParams params =
+                        (ConstraintLayout.LayoutParams) ivImages[i].getLayoutParams();
+                if (i == 0) {
+                    params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+                    params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+                    params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+                    params.endToStart = guideView.getId();
+                } else {
+                    params.startToEnd = guideView.getId();
+                    params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+                    if (i == 1) {
+                        params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+                        params.bottomToTop = guideView.getId();
+                    } else {
+                        params.topToBottom = guideView.getId();
+                        params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+                    }
+                }
+                ivImages[i].setLayoutParams(params);
+                ivImages[i].setVisibility(View.VISIBLE);
+            }
+            ivImages[3].setVisibility(View.GONE);
+        }
+        private void assignImage_4() {
+            for (int i=0; i<4; i++) {
+                ConstraintLayout.LayoutParams params =
+                        (ConstraintLayout.LayoutParams) ivImages[i].getLayoutParams();
+                if (i < 2) {
+                    params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+                    params.bottomToTop = guideView.getId();
+                } else {
+                    params.topToBottom = guideView.getId();
+                    params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+                }
+                if (i%2 == 0) {
+                    params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+                    params.endToStart = guideView.getId();
+                } else {
+                    params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+                    params.startToEnd = guideView.getId();
+                }
+                ivImages[i].setLayoutParams(params);
+                ivImages[i].setVisibility(View.VISIBLE);
+            }
         }
 
-        public void setImageView(NoteItem note) {
-            if (note.isNoImage()) {
-                ivImage.setVisibility(View.GONE);
-                return;
+        private void assignImageLayout(int count) {
+            containerImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            switch (count) {
+                case 1:
+                    assignImage_1();
+                    break;
+                case 2:
+                    assignImage_2();
+                    break;
+                case 3:
+                    assignImage_3();
+                    break;
+                default:
+                    assignImage_4();
             }
-            ImageFile imgFile = note.getImageAt(0);
-            ImageLoader.getInstance().loadImageAsync(imgFile.getMd5file(), bitmap -> {
+        }
+        private void loadNoteImageAt(NoteItem note, int index) {
+            ImageFile img = note.getImageAt(index);
+            ImageLoader.getInstance().loadImageAsync(img.getMd5file(), bitmap -> {
                 if (bitmap == null) {
                     String errMsg = "Failed to get image file, skip this item";
                     Log.e(this.toString(), errMsg);
-                    ivImage.setImageResource(R.drawable.img_load_error);
-                    ivImage.setVisibility(View.VISIBLE);
+                    ivImages[index].setImageResource(R.drawable.img_load_error);
                     return;
                 }
-                ivImage.setImageBitmap(bitmap);
-                ivImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-                ivImage.setVisibility(View.VISIBLE);
-                setImageName(imgFile.getName());
+                ivImages[index].setImageBitmap(bitmap);
+                ivImages[index].measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
             });
+        }
+        private void loadNoteImages(NoteItem note) {
+            int count = note.getImageCount();
+            assignImageLayout(count);
+            switch (count) {
+                case 4:
+                    loadNoteImageAt(note, 3);
+                case 3:
+                    loadNoteImageAt(note, 2);
+                case 2:
+                    loadNoteImageAt(note, 1);
+                case 1:
+                    loadNoteImageAt(note, 0);
+                    break;
+                default:
+                    loadNoteImageAt(note, 0);
+                    loadNoteImageAt(note, 1);
+                    loadNoteImageAt(note, 2);
+                    // TODO: set the latest Image as more
+                    break;
+            }
+        }
+        public void setImageView(NoteItem note) {
+            if (note.isNoImage()) {
+                containerImage.setVisibility(View.GONE);
+                return;
+            }
+            containerImage.setVisibility(View.VISIBLE);
+            loadNoteImages(note);
         }
 
     }

@@ -420,6 +420,9 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 if (!e.addImageFile(imageFile)) {
                     Log.e(this.toString(), "Failed to set image file: " + img_md5);
                 }
+                e.addImageFile(imageFile);
+                e.addImageFile(imageFile);
+                e.addImageFile(imageFile);
             }
             noteItems.add(e);
             n_notes++;
