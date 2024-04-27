@@ -93,13 +93,15 @@ public class ShareRecvActivity extends AppCompatActivity
             Toast.makeText(this, "unknown action: " + action, Toast.LENGTH_SHORT).show();
             finish();
         }
-        recvNotes = handleIntent(intent);
-        if (recvNotes.isEmpty()) {
-            Toast.makeText(this, "Failed to create new item",
-                    Toast.LENGTH_SHORT).show();
-            finish();
-            return;
+
+        pendingText = handleTextInfo(intent);
+        String type = intent.getType();
+        if (type != null) {
+            if (type.startsWith("image/")) {
+                pendingUris = handleImageUris(intent);
+            }
         }
+
         categorySelectorFragment = new CategorySelectorFragment();
         categorySelectorFragment.setCategories(Global.getInstance().getCategories());
         getSupportFragmentManager().beginTransaction()
@@ -116,14 +118,29 @@ public class ShareRecvActivity extends AppCompatActivity
         return false;
     }
 
-    private ArrayList<NoteItem> recvNotes;
+    private String pendingText = null;
+    private ArrayList<Uri> pendingUris = null;
+    private boolean noPendingUris() {
+        return pendingUris == null || pendingUris.isEmpty();
+    }
 
     @Override
     public void onSelected(int index, Category category) {
-        for (NoteItem recvNote : recvNotes) {
-            recvNote.setCategoryId(category.getId());
-            binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
+        if (pendingText.isEmpty() && noPendingUris()) {
+            Toast.makeText(this, "Empty item, abort", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
+
+        NoteItem recvNote = new NoteItem(pendingText);
+        recvNote.setCategoryId(category.getId());
+        if (pendingUris != null) {
+            for (Uri uri : pendingUris) {
+                ImageFile imageFile = extraImageFileFromUri(uri);
+                recvNote.addImageFile(imageFile);
+            }
+        }
+        binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
         finish();
     }
 
@@ -138,96 +155,50 @@ public class ShareRecvActivity extends AppCompatActivity
         finish();
     }
 
-    private ArrayList<NoteItem> handleIntent(@NonNull Intent intent) {
-        ArrayList<NoteItem> items = new ArrayList<>();
-        String action = intent.getAction();
-        if (Intent.ACTION_SEND.equals(action)) {
-            NoteItem noteItem = handleSharedInfo(intent);
-            items.add(noteItem);
-        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
-            handleSharedInfoMultiple(intent, items);
-        }
-        return items;
-    }
-
-    private NoteItem handleSharedInfo(Intent intent) {
-        String type = intent.getType();
-
-        if (type == null) {
-            Log.e(this.toString(), "Cannot get type");
-            Toast.makeText(this, "Cannot get type", Toast.LENGTH_SHORT).show();
-            return null;
-        }
-
-        if (type.startsWith("text/")) {
-            return handleText(intent);
-        } else if (type.startsWith("image/")) {
-            return handleImage(intent);
-        } else {
-            Log.e(this.toString(), "Got unsupported type: " + type);
-        }
-        return null;
-    }
-
-    private void handleSharedInfoMultiple(Intent intent, ArrayList<NoteItem> list) {
-        String type = intent.getType();
-        if (type == null) {
-            Log.e(this.toString(), "Cannot get type");
-            Toast.makeText(this, "Cannot get type", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (type.startsWith("image/")) {
-            handleImageMultiple(intent, list);
-        } else {
-            Log.e(this.toString(), "Got unsupported type: "+type);
-        }
-    }
-
-    private NoteItem handleText(Intent intent) {
+    @NonNull
+    private String handleTextInfo(@NonNull Intent intent) {
         String text = intent.getStringExtra(Intent.EXTRA_TEXT);
         if (text == null) {
             Log.e(this.toString(), "Failed to get shared text");
-            return null;
+            return "";
         }
-
-        return new NoteItem(text);
+        return text;
     }
 
-    private NoteItem extraNoteFromUri(Uri uri, String text) {
+    private ArrayList<Uri> handleImageUris(@NonNull Intent intent) {
+        ArrayList<Uri> uris = new ArrayList<>();
+        String action = intent.getAction();
+        if (action == null)
+            return null;
+
+        switch (action) {
+            case Intent.ACTION_SEND:
+                uris.add(handleSingleImageUri(intent));
+                break;
+            case Intent.ACTION_SEND_MULTIPLE:
+                handleMultipleImageUris(intent, uris);
+                break;
+        }
+
+        return uris;
+    }
+
+    private Uri handleSingleImageUri(@NonNull Intent intent) {
+        return intent.getParcelableExtra(Intent.EXTRA_STREAM);
+    }
+
+    private void handleMultipleImageUris(@NonNull Intent intent, ArrayList<Uri> uris) {
+        ArrayList<Uri> imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+        if (imageUris == null || imageUris.isEmpty()) return;
+        uris.addAll(imageUris);
+    }
+
+    private ImageFile extraImageFileFromUri(Uri uri) {
         File folder = Global.getInstance().getFileStoreFolder();
         File md5file = FileHelper.saveUriToFile(this, uri, folder);
         if (md5file == null) return null;
         String imgName = FileHelper.getFileNameFromUri(this, uri);
-        NoteItem item = new NoteItem(text);
-        item.addImageFile(new ImageFile(md5file, imgName));
-        return item;
-    }
-
-    private NoteItem extraNoteFromUri(Uri uri) {
-        return extraNoteFromUri(uri, "");
-    }
-
-    private NoteItem handleImage(Intent intent) {
-        Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        if (uri == null) {
-            return null;
-        }
-
-        String ext_str = intent.getStringExtra(Intent.EXTRA_TEXT);
-
-        return extraNoteFromUri(uri, ext_str);
-    }
-
-    private void handleImageMultiple(Intent intent, ArrayList<NoteItem> list) {
-        ArrayList<Uri> imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
-        if (imageUris == null || imageUris.isEmpty()) return;
-
-        for (Uri uri : imageUris) {
-            if (uri == null) continue;
-            NoteItem e = extraNoteFromUri(uri);
-            if (e == null) continue;
-            list.add(e);
-        }
+        return new ImageFile(md5file, imgName);
     }
 
     @Override
