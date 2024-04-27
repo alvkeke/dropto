@@ -421,8 +421,9 @@ public class MainActivity extends AppCompatActivity implements
         if (imageViewerFragment == null) {
             imageViewerFragment = new ImageViewerFragment();
         }
-        savedImageViewFile = item.getImageAt(imageIndex).getMd5file().getAbsolutePath();
-        imageViewerFragment.setImgFile(item.getImageAt(0).getMd5file());
+        ImageFile imageFile = item.getImageAt(imageIndex);
+        savedImageViewFile = imageFile.getMd5file().getAbsolutePath();
+        imageViewerFragment.setImgFile(imageFile.getMd5file());
         imageViewerFragment.show(getSupportFragmentManager(), null);
     }
 

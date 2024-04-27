@@ -47,10 +47,10 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             ivEdited = itemView.findViewById(R.id.rlist_item_note_is_edited);
             containerImage = itemView.findViewById(R.id.rlist_item_note_img_container);
             guideView = itemView.findViewById(R.id.rlist_item_note_img_guide_view);
-            ivImages[0] = itemView.findViewById(R.id.rlist_item_note_img_view);
-            ivImages[1] = itemView.findViewById(R.id.rlist_item_note_img_view2);
-            ivImages[2] = itemView.findViewById(R.id.rlist_item_note_img_view3);
-            ivImages[3] = itemView.findViewById(R.id.rlist_item_note_img_view4);
+            ivImages[0] = itemView.findViewById(R.id.rlist_item_note_img_view0);
+            ivImages[1] = itemView.findViewById(R.id.rlist_item_note_img_view1);
+            ivImages[2] = itemView.findViewById(R.id.rlist_item_note_img_view2);
+            ivImages[3] = itemView.findViewById(R.id.rlist_item_note_img_view3);
         }
 
         private void showView(View v) {

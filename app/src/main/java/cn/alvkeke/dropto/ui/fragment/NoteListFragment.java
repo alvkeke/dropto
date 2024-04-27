@@ -214,14 +214,14 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     private class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         private final View[] image = new View[4];
+        private final Rect rect = new Rect();
         private int checkImageClicked(View v, int x, int y) {
-            image[0] = v.findViewById(R.id.rlist_item_note_img_view);
-            image[1] = v.findViewById(R.id.rlist_item_note_img_view2);
-            image[2] = v.findViewById(R.id.rlist_item_note_img_view3);
-            image[3] = v.findViewById(R.id.rlist_item_note_img_view4);
+            image[0] = v.findViewById(R.id.rlist_item_note_img_view0);
+            image[1] = v.findViewById(R.id.rlist_item_note_img_view1);
+            image[2] = v.findViewById(R.id.rlist_item_note_img_view2);
+            image[3] = v.findViewById(R.id.rlist_item_note_img_view3);
             for (int i=0; i<image.length; i++) {
                 if (image[i] != null) {
-                    Rect rect = new Rect();
                     image[i].getGlobalVisibleRect(rect);
                     if (rect.contains(x, y)) {
                         return i;
