@@ -135,13 +135,19 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         if (item == null) {
             item = new NoteItem(text);
             listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);
-        } else {
-            item.setText(text, true);
-            if (isImageChanged) {
-                item.useImageFiles(imageList);
-            }
-            listener.onAttempt(NoteAttemptListener.Attempt.UPDATE, item);
+            return;
         }
+        if (text.isEmpty() && isImageChanged && imageList.isEmpty()) {
+            Toast.makeText(requireContext(),
+                    "Got empty item after modifying, remove it", Toast.LENGTH_SHORT).show();
+            listener.onAttempt(NoteAttemptListener.Attempt.REMOVE, item);
+            return;
+        }
+        item.setText(text, true);
+        if (isImageChanged) {
+            item.useImageFiles(imageList);
+        }
+        listener.onAttempt(NoteAttemptListener.Attempt.UPDATE, item);
     }
 
     private class NoteDetailMenuListener implements Toolbar.OnMenuItemClickListener {
