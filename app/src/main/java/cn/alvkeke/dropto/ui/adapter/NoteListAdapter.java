@@ -94,8 +94,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
 
         private void assignImage_1() {
-            ConstraintLayout.LayoutParams params =
-                    (ConstraintLayout.LayoutParams) ivImages[0].getLayoutParams();
+            ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(0, 0);
             params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
             params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
             params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
@@ -108,8 +107,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
         private void assignImage_2() {
             for (int i=0; i<2; i++) {
-                ConstraintLayout.LayoutParams params =
-                        (ConstraintLayout.LayoutParams) ivImages[i].getLayoutParams();
+                ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(0, 0);
                 params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
                 params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
                 if (i != 0) {
@@ -127,10 +125,8 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             }
         }
         private void assignImage_3() {
-            Log.e(this.toString(), "enter images 3");
             for (int i=0; i<3; i++) {
-                ConstraintLayout.LayoutParams params =
-                        (ConstraintLayout.LayoutParams) ivImages[i].getLayoutParams();
+                ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(0, 0);
                 if (i == 0) {
                     params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
                     params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
@@ -154,8 +150,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
         private void assignImage_4() {
             for (int i=0; i<4; i++) {
-                ConstraintLayout.LayoutParams params =
-                        (ConstraintLayout.LayoutParams) ivImages[i].getLayoutParams();
+                ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(0, 0);
                 if (i < 2) {
                     params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
                     params.bottomToTop = guideView.getId();
@@ -207,20 +202,18 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             int count = note.getImageCount();
             assignImageLayout(count);
             switch (count) {
+                default:
                 case 4:
-                    loadNoteImageAt(note, 3);
+                    if (count == 4)
+                        loadNoteImageAt(note, 3);
+                    else
+                        ivImages[3].setImageResource(R.drawable.icon_common_more);
                 case 3:
                     loadNoteImageAt(note, 2);
                 case 2:
                     loadNoteImageAt(note, 1);
                 case 1:
                     loadNoteImageAt(note, 0);
-                    break;
-                default:
-                    loadNoteImageAt(note, 0);
-                    loadNoteImageAt(note, 1);
-                    loadNoteImageAt(note, 2);
-                    ivImages[3].setImageResource(R.drawable.icon_common_more);
                     break;
             }
         }
@@ -229,10 +222,9 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
                 containerImage.setVisibility(View.GONE);
                 return;
             }
-            containerImage.setVisibility(View.VISIBLE);
             loadNoteImages(note);
+            containerImage.setVisibility(View.VISIBLE);
         }
-
     }
 
     private static final View[] image = new View[4];
