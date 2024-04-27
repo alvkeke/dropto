@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Base64;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -43,10 +44,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String NOTE_COLUMN_TEXT_TYPE = "TEXT";
     private static final String NOTE_COLUMN_C_TIME = "ctime";
     private static final String NOTE_COLUMN_C_TIME_TYPE = "INTEGER";
-    private static final String NOTE_COLUMN_IMG_MD5 = "img_md5";
-    private static final String NOTE_COLUMN_IMG_FILE_TYPE = "TEXT";
-    private static final String NOTE_COLUMN_IMG_NAME = "img_name";
-    private static final String NOTE_COLUMN_IMG_NAME_TYPE = "TEXT";
+    private static final String NOTE_COLUMN_IMG_INFO = "img_info";
+    private static final String NOTE_COLUMN_IMG_INFO_TYPE = "TEXT";
 
     private final Context context;
     private SQLiteDatabase db = null;
@@ -77,13 +76,13 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
     private void createNoteTable(SQLiteDatabase db) {
         db.execSQL(String.format(
-                "CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s, %s %s, %s %s)",
+                "CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s, %s %s)",
                 TABLE_NOTE, NOTE_COLUMN_ID, NOTE_COLUMN_ID_TYPE,
                 NOTE_COLUMN_CATE_ID, NOTE_COLUMN_CATE_ID_TYPE,
                 NOTE_COLUMN_TEXT, NOTE_COLUMN_TEXT_TYPE,
                 NOTE_COLUMN_C_TIME, NOTE_COLUMN_C_TIME_TYPE,
-                NOTE_COLUMN_IMG_MD5, NOTE_COLUMN_IMG_FILE_TYPE,
-                NOTE_COLUMN_IMG_NAME, NOTE_COLUMN_IMG_NAME_TYPE));
+                NOTE_COLUMN_IMG_INFO, NOTE_COLUMN_IMG_INFO_TYPE
+        ));
     }
 
     @SuppressWarnings("unused")
@@ -242,7 +241,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
     private static final String NOTE_WHERE_CLAUSE_ID = NOTE_COLUMN_ID + " = ?";
     public long insertNote(long id, long categoryId, String text, long ctime,
-                           String img_md5, String img_name) throws SQLiteException{
+                           String img_info) throws SQLiteException{
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -252,13 +251,12 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_CATE_ID, categoryId);
         values.put(NOTE_COLUMN_TEXT, text);
         values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_MD5, img_md5);
-        values.put(NOTE_COLUMN_IMG_NAME, img_name);
+        values.put(NOTE_COLUMN_IMG_INFO, img_info);
         return db.insertOrThrow(TABLE_NOTE, null, values);
     }
 
     public long insertNote(long categoryId, String text, long ctime,
-                           String img_md5, String img_name) throws SQLiteException {
+                           String img_info) throws SQLiteException {
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return -1;
@@ -267,8 +265,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_CATE_ID, categoryId);
         values.put(NOTE_COLUMN_TEXT, text);
         values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_MD5, img_md5);
-        values.put(NOTE_COLUMN_IMG_NAME, img_name);
+        values.put(NOTE_COLUMN_IMG_INFO, img_info);
         return db.insertOrThrow(TABLE_NOTE, null, values);
     }
 
@@ -280,19 +277,19 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      */
     public long insertNote(NoteItem n) throws SQLiteException{
         long id;
-        String img_name = "";
-        String img_md5 = "";
-        ImageFile imageFile = n.getImageAt(0);
-        if (imageFile != null) {
-            img_md5 = imageFile.getMd5();
-            img_name = imageFile.getName();
+        StringBuilder sb = new StringBuilder();
+        for (int i=0; i<n.getImageCount(); i++) {
+            ImageFile f = n.getImageAt(i);
+            sb.append(f.getMd5());
+            sb.append(':');
+            sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
+            sb.append(',');
         }
         if (n.getId() == NoteItem.ID_NOT_ASSIGNED) {
-            id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(),
-                    img_md5, img_name);
+            id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(), sb.toString());
         } else {
             id = insertNote(n.getId(), n.getCategoryId(), n.getText(), n.getCreateTime(),
-                    img_md5, img_name);
+                    sb.toString());
         }
         if (id < 0) {
             Log.e(this.toString(), "Failed to insert note");
@@ -322,12 +319,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param categoryId the ID of the new category
      * @param text new note text
      * @param ctime new create time
-     * @param img_md5 new image file
-     * @param img_name new name of the file
+     * @param img_info new image file
      * @return count of affected rows
      */
     public int updateNote(long id, long categoryId, String text, long ctime,
-                           String img_md5, String img_name){
+                           String img_info){
         if (db == null) {
             Log.e(this.toString(), "database not opened");
             return 0;
@@ -336,28 +332,28 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put(NOTE_COLUMN_CATE_ID, categoryId);
         values.put(NOTE_COLUMN_TEXT, text);
         values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_MD5, img_md5);
-        values.put(NOTE_COLUMN_IMG_NAME, img_name);
+        values.put(NOTE_COLUMN_IMG_INFO, img_info);
         String[] args = { String.valueOf(id) };
         return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args);
     }
 
     /**
      * update note info in database with specific ID, all data apart of ID will be changed
-     * @param item item object contain updated info
+     * @param note item object contain updated info
      * @return count of affected rows
      */
-    public int updateNote(NoteItem item) {
-        ImageFile img_file = item.getImageAt(0);
-        String s_img_md5 = "";
-        String s_img_name = "";
-        if (img_file != null) {
-            s_img_md5 = img_file.getMd5();
-            s_img_name = img_file.getName();
+    public int updateNote(NoteItem note) {
+        StringBuilder sb = new StringBuilder();
+        for (int i=0; i<note.getImageCount(); i++) {
+            ImageFile f = note.getImageAt(i);
+            sb.append(f.getMd5());
+            sb.append(':');
+            sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
+            sb.append(',');
         }
 
-        return updateNote(item.getId(), item.getCategoryId(), item.getText(),
-                item.getCreateTime(), s_img_md5, s_img_name);
+        return updateNote(note.getId(), note.getCategoryId(), note.getText(),
+                note.getCreateTime(), sb.toString());
     }
 
     /**
@@ -403,22 +399,29 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             idx = cursor.getColumnIndex(NOTE_COLUMN_C_TIME);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
             long ctime = cursor.getLong(idx);
-            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_MD5);
+            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_INFO);
             if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            String img_md5 = cursor.getString(idx);
-            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_NAME);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            String img_name = cursor.getString(idx);
+            String img_info_all = cursor.getString(idx);
 
             NoteItem e = new NoteItem(text, ctime);
             e.setId(id);
             e.setCategoryId(category_id);
-            if (!img_md5.isEmpty()) {
-                ImageFile imageFile = ImageFile.from(Global.getInstance().getFileStoreFolder(),
-                        img_md5, img_name);
+            if (!img_info_all.isEmpty()) {
+                String[] img_info_all_s = img_info_all.split(",");
+                for (String info: img_info_all_s) {
+                    String[] info_s = info.split(":");
+                    if (info_s.length == 0) {
+                        Log.e(this.toString(), "Got Wrong Image Info: " + info);
+                        continue;
+                    }
+                    String s_md5 = info_s[0];
+                    String s_name = info_s.length==1 ? "" : info_s[1];
+                    ImageFile imageFile = ImageFile.from(Global.getInstance().getFileStoreFolder(),
+                            s_md5, s_name);
 
-                if (!e.addImageFile(imageFile)) {
-                    Log.e(this.toString(), "Failed to set image file: " + img_md5);
+                    if (!e.addImageFile(imageFile)) {
+                        Log.e(this.toString(), "Failed to set image file: " + img_info_all);
+                    }
                 }
             }
             noteItems.add(e);
