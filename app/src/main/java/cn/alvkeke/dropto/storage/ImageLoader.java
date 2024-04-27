@@ -57,6 +57,7 @@ public class ImageLoader {
         if (target == null) return;
         Log.d(this.toString(), "[" + target.getKey() +
                 "] expired, remove, last access: " + target.getValue().lastAccessTime);
+        target.getValue().bitmap.recycle();
         imagePool.remove(target.getKey());
     }
 
