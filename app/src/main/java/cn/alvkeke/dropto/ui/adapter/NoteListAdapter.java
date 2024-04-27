@@ -1,6 +1,7 @@
 package cn.alvkeke.dropto.ui.adapter;
 
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -126,6 +127,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             }
         }
         private void assignImage_3() {
+            Log.e(this.toString(), "enter images 3");
             for (int i=0; i<3; i++) {
                 ConstraintLayout.LayoutParams params =
                         (ConstraintLayout.LayoutParams) ivImages[i].getLayoutParams();
@@ -174,7 +176,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         }
 
         private void assignImageLayout(int count) {
-            containerImage.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
             switch (count) {
                 case 1:
                     assignImage_1();
@@ -232,6 +233,27 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
             loadNoteImages(note);
         }
 
+    }
+
+    private static final View[] image = new View[4];
+    private static final Rect rect = new Rect();
+    public static int checkImageClicked(View v, int x, int y) {
+        image[0] = v.findViewById(R.id.rlist_item_note_img_view0);
+        image[1] = v.findViewById(R.id.rlist_item_note_img_view1);
+        image[2] = v.findViewById(R.id.rlist_item_note_img_view2);
+        image[3] = v.findViewById(R.id.rlist_item_note_img_view3);
+        for (int i=0; i<image.length; i++) {
+            if (image[i] == null)
+                continue;
+            if (image[i].getVisibility() != View.VISIBLE)
+                continue;
+
+            image[i].getGlobalVisibleRect(rect);
+            if (rect.contains(x, y)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @NonNull

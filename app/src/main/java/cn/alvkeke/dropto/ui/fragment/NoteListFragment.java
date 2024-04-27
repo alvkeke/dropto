@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -213,23 +212,6 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
 
     private class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
-        private final View[] image = new View[4];
-        private final Rect rect = new Rect();
-        private int checkImageClicked(View v, int x, int y) {
-            image[0] = v.findViewById(R.id.rlist_item_note_img_view0);
-            image[1] = v.findViewById(R.id.rlist_item_note_img_view1);
-            image[2] = v.findViewById(R.id.rlist_item_note_img_view2);
-            image[3] = v.findViewById(R.id.rlist_item_note_img_view3);
-            for (int i=0; i<image.length; i++) {
-                if (image[i] != null) {
-                    image[i].getGlobalVisibleRect(rect);
-                    if (rect.contains(x, y)) {
-                        return i;
-                    }
-                }
-            }
-            return -1;
-        }
         @Override
         public boolean onItemClickAt(View v, int index, MotionEvent event) {
             if (isInSelectMode) {
@@ -237,7 +219,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             } else {
                 int x = (int) event.getRawX();
                 int y = (int) event.getRawY();
-                int imgIdx = checkImageClicked(v, x, y);
+                int imgIdx = NoteListAdapter.checkImageClicked(v, x, y);
 
                 if (imgIdx >= 0) {
                     showImageView(index, imgIdx, x, y);
