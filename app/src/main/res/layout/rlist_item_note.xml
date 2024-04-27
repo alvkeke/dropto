@@ -13,8 +13,8 @@
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginStart="@dimen/margin_note_items"
         android:layout_marginTop="@dimen/margin_note_items"
-        android:layout_width="200dp"
-        android:layout_height="200dp">
+        android:layout_width="160dp"
+        android:layout_height="160dp">
 
         <View
             android:id="@+id/rlist_item_note_img_guide_view"
