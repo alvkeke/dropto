@@ -289,16 +289,6 @@ public class MainActivity extends AppCompatActivity implements
                 getPackageName() + ".fileprovider", file);
     }
 
-    private static void emptyFolder(File folder) {
-        File[] files = folder.listFiles();
-        if (files == null) return;
-        for (File file : files) {
-            if (!file.isDirectory()) {
-                boolean ret = file.delete();
-                Log.d("emptyFolder", "file delete result: " + ret);
-            }
-        }
-    }
     private static void copyFile(File src, File dst) throws IOException {
         FileInputStream in = new FileInputStream(src);
         FileOutputStream out = new FileOutputStream(dst);
@@ -313,16 +303,25 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private File share_folder = null;
-    private File generateFileWithRealName(NoteItem item, boolean needClean) {
+    private void emptyShareFolder() {
+        if (share_folder == null) return;
+        File[] files = share_folder.listFiles();
+        if (files == null) return;
+        for (File file : files) {
+            if (!file.isDirectory()) {
+                boolean ret = file.delete();
+                Log.d("emptyFolder", "file delete result: " + ret);
+            }
+        }
+    }
+    private File generateShareFile(ImageFile imageFile) {
         if (share_folder == null) {
             share_folder = this.getExternalFilesDir("share");
             assert share_folder != null;
         }
         if (share_folder.mkdir()) Log.i(this.toString(), "share folder created");
-        if (needClean) emptyFolder(share_folder);
 
         try {
-            ImageFile imageFile = item.getImageAt(0);
             String imageName = imageFile.getName();
             File fileToShare;
             if (imageName == null) {
@@ -338,60 +337,62 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private ArrayList<File> generateFilesWithRealName(ArrayList<NoteItem> noteItems) {
-        ArrayList<File> files = new ArrayList<>();
-        for (NoteItem e : noteItems) {
-            if (e.isNoImage()) continue;
-            File f = generateFileWithRealName(e, false);
-            if (f == null) { continue; }
-            files.add(f);
-        }
-
-        return files;
-    }
-
-    private boolean handleNoteShareMultiple(ArrayList<NoteItem> items) {
-        ArrayList<File> files = generateFilesWithRealName(items);
-        if (files.isEmpty()) return false;
-        ArrayList<Uri> uris = new ArrayList<>();
-        for (File f : files) {
-            Uri uri = getUriForFile(f);
+    private void generateShareFileAndUriForNote(NoteItem note, @NonNull ArrayList<Uri> uris) {
+        for (int i=0; i<note.getImageCount(); i++) {
+            File ff = generateShareFile(note.getImageAt(i));
+            Uri uri = getUriForFile(ff);
             uris.add(uri);
         }
-
-        Intent sendIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-        sendIntent.setType("image/*");
-        sendIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-        startActivity(Intent.createChooser(sendIntent, "Share multiple images"));
-        return true;
     }
 
-    private boolean handleNoteShare(NoteItem item) {
+    private void triggerShare(String text, ArrayList<Uri> uris) {
         Intent sendIntent = new Intent(Intent.ACTION_SEND);
-
-        // add item text for sharing
-        sendIntent.setType("text/plain");
-        sendIntent.putExtra(Intent.EXTRA_TEXT, item.getText());
-        Log.d(this.toString(), "no image, share text: " + item.getText());
-
-        if (!item.isNoImage()) {
-            // add item image for sharing if exist
+        int count = uris.size();
+        if (count == 0) {
+            sendIntent.setType("text/plain");
+        } else {
             sendIntent.setType("image/*");
-            File file2Share = generateFileWithRealName(item, true);
-            Uri fileUri = getUriForFile(file2Share);
-            sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Log.d(this.toString(), "share image Uri: " + fileUri);
         }
-        Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
 
+        if (count == 1) {
+            sendIntent.putExtra(Intent.EXTRA_STREAM, uris.get(0));
+        } else {
+            sendIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
+            sendIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        }
+
+        sendIntent.putExtra(Intent.EXTRA_TEXT, text);
+        Log.d(this.toString(), "no image, share text: " + text);
+
+        Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
         try {
             this.startActivity(shareIntent);
-            return true;
         } catch (Exception e) {
             Log.e(this.toString(), "Failed to create share Intent: " + e);
-            return false;
         }
+    }
+
+    private void handleNoteShareMultiple(ArrayList<NoteItem> items) {
+        emptyShareFolder();
+        ArrayList<Uri> uris = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        for (NoteItem e : items) {
+            generateShareFileAndUriForNote(e, uris);
+            String text = e.getText();
+            if (!text.isEmpty()) {
+                sb.append(text);
+                sb.append('\n');
+            }
+        }
+        triggerShare(sb.toString(), uris);
+    }
+
+    private void handleNoteShare(NoteItem item) {
+        emptyShareFolder();
+        ArrayList<Uri> uris = new ArrayList<>();
+        generateShareFileAndUriForNote(item, uris);
+        triggerShare(item.getText(), uris);
     }
 
     private void handleTextCopy(String text) {
@@ -493,14 +494,10 @@ public class MainActivity extends AppCompatActivity implements
                 handleTextCopy(sb.toString());
                 break;
             case SHOW_SHARE:
-                boolean ret;
                 if (noteItems.size() == 1)
-                    ret = handleNoteShare(noteItems.get(0));
+                    handleNoteShare(noteItems.get(0));
                 else
-                    ret = handleNoteShareMultiple(noteItems);
-                if (ret) break; // success, return
-                Toast.makeText(MainActivity.this,
-                        "only images are supported to share", Toast.LENGTH_SHORT).show();
+                    handleNoteShareMultiple(noteItems);
                 break;
             default:
                 Log.e(this.toString(), "This operation is not support batch: " +attempt);
