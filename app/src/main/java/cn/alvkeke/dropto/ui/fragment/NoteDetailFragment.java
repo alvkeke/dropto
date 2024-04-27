@@ -1,7 +1,7 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.content.Context;
 import android.content.DialogInterface;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -10,38 +10,36 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
-import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
+import java.util.ArrayList;
+
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.ImageLoader;
+import cn.alvkeke.dropto.ui.comonent.ImageCard;
 import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
 
 public class NoteDetailFragment extends BottomSheetDialogFragment {
 
     private NoteAttemptListener listener;
     private EditText etNoteItemText;
-    private ConstraintLayout image_container;
-    private ImageView image_view;
-    private ImageView image_remove;
-    private TextView image_name;
-    private TextView image_md5;
+    private LinearLayout scrollContainer;
     private NoteItem item;
-    private boolean isRemoveImage = false;
+    private boolean isImageChanged = false;
+    private final ArrayList<ImageFile> imageList = new ArrayList<>();
 
     public NoteDetailFragment() {
     }
@@ -63,12 +61,8 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
 
         MaterialToolbar toolbar = view.findViewById(R.id.note_detail_toolbar);
         etNoteItemText = view.findViewById(R.id.note_detail_text);
-        image_container = view.findViewById(R.id.note_detail_image_container);
         ScrollView scroll_view = view.findViewById(R.id.note_detail_scroll);
-        image_view = view.findViewById(R.id.note_detail_image_view);
-        image_remove = view.findViewById(R.id.note_detail_image_remove);
-        image_name = view.findViewById(R.id.note_detail_image_name);
-        image_md5 = view.findViewById(R.id.note_detail_image_md5);
+        scrollContainer = view.findViewById(R.id.note_detail_scroll_container);
 
         initEssentialVars();
         setPeekHeight(view);
@@ -80,10 +74,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         toolbar.setNavigationIcon(R.drawable.icon_common_cross);
         toolbar.setNavigationOnClickListener(new BackNavigationClick());
         scroll_view.setOnScrollChangeListener(new ScrollViewListener());
-        image_view.setOnClickListener(view1 -> {
-            if (item == null) return;
-            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, item);
-        });
+
     }
 
     private boolean isDraggable = true;
@@ -127,7 +118,6 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     @Override
     public void onDismiss(@NonNull DialogInterface dialog) {
         super.onDismiss(dialog);
-        tryRecycleLoadedBitmap();
     }
 
     private class BackNavigationClick implements View.OnClickListener {
@@ -144,8 +134,8 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
             listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);
         } else {
             item.setText(text, true);
-            if (isRemoveImage) {
-                item.clearImages();
+            if (isImageChanged) {
+                item.useImageFiles(imageList);
             }
             listener.onAttempt(NoteAttemptListener.Attempt.UPDATE, item);
         }
@@ -169,13 +159,6 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
         }
     }
 
-    private Bitmap loadedBitmap = null;
-    private void tryRecycleLoadedBitmap() {
-        if (loadedBitmap != null) {
-            loadedBitmap.recycle();
-        }
-    }
-
     /**
      * load item info to View, input item cannot be null,
      * there is no valid-check for the item.
@@ -183,29 +166,39 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
     private void loadItemData() {
         etNoteItemText.setText(item.getText());
 
-        ImageFile imageFile = item.getImageAt(0);
-        if (imageFile == null) {
-            image_container.setVisibility(View.GONE);
+        if (item.isNoImage())
             return;
+
+        Context context = requireContext();
+        for (int i=0; i<item.getImageCount(); i++) {
+            int imageIndex = i;
+            ImageFile imageFile = item.getImageAt(imageIndex);
+            imageList.add(imageFile);
+
+            ImageCard card = new ImageCard(context);
+            card.setImageMd5(imageFile.getMd5());
+            card.setImageName(imageFile.getName());
+
+            ImageLoader.getInstance().loadImageAsync(imageFile.getMd5file(), (bitmap -> {
+                if (bitmap == null) {
+                    String errMsg = "Failed to get image file, skip this item";
+                    Log.e(this.toString(), errMsg);
+                    Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show();
+                    card.setImageResource(R.drawable.img_load_error);
+                    return;
+                }
+                card.setImage(bitmap);
+            }));
+            card.setRemoveButtonClickListener(view -> {
+                imageList.remove(imageFile);
+                isImageChanged = true;
+                scrollContainer.removeView(card);
+            });
+            card.setImageClickListener(view1 ->
+                    listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, item, imageIndex));
+
+            scrollContainer.addView(card);
         }
-        image_md5.setText(imageFile.getMd5());
-        image_name.setText(imageFile.getName());
-        image_remove.setOnClickListener(view -> {
-            isRemoveImage = true;
-            image_container.setVisibility(View.GONE);
-        });
-        ImageLoader.getInstance().loadImageAsync(imageFile.getMd5file(), (bitmap -> {
-            if (bitmap == null) {
-                String errMsg = "Failed to get image file, skip this item";
-                Log.e(this.toString(), errMsg);
-                Toast.makeText(requireContext(), errMsg, Toast.LENGTH_SHORT).show();
-                image_view.setImageResource(R.drawable.img_load_error);
-                return;
-            }
-            tryRecycleLoadedBitmap();
-            loadedBitmap = bitmap;
-            image_view.setImageBitmap(bitmap);
-        }));
 
     }
 
