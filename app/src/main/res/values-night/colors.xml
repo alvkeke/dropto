@@ -12,4 +12,5 @@
     <color name="popup_menu_item_selected">#6F6F6F</color>
     <color name="note_item_image_name">#EEEEEE</color>
     <color name="note_item_image_name_background">#333333</color>
+    <color name="icon_attach">#C42014</color>
 </resources>

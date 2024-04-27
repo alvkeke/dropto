@@ -126,6 +126,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
 
         btnAddNote.setOnClickListener(new onItemAddClick());
         btnAttach.setOnClickListener(new OnItemAttachClick());
+        btnAttach.setOnLongClickListener(new OnItemAttachLongClick());
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
     }
 
@@ -364,7 +365,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         });
     }
 
-    private Uri imgUri = null;
+    private final ArrayList<Uri> imgUris = new ArrayList<>();
     private final ActivityResultLauncher<String> imagePicker =
             registerForActivityResult(new ActivityResultContracts.GetContent(),
                     new ImageSelectResult());
@@ -374,27 +375,55 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             if (uri == null) {
                 return;
             }
-            setAttachment(uri);
+            addAttachment(uri);
         }
     }
 
-    private void setAttachment(Uri uri) {
-        imgUri = uri;
+    private int getAttachIcon() {
+        switch (imgUris.size()) {
+            case 1:
+                return R.drawable.icon_attach_1;
+            case 2:
+                return R.drawable.icon_attach_2;
+            case 3:
+                return R.drawable.icon_attach_3;
+            case 4:
+                return R.drawable.icon_attach_4;
+            case 5:
+                return R.drawable.icon_attach_5;
+            case 6:
+                return R.drawable.icon_attach_6;
+            case 7:
+                return R.drawable.icon_attach_7;
+            case 8:
+                return R.drawable.icon_attach_8;
+            case 9:
+                return R.drawable.icon_attach_9;
+            default:
+                return R.drawable.icon_attach_9p;
+        }
+    }
+    private void addAttachment(Uri uri) {
+        imgUris.add(uri);
+        imgAttachClear.setImageResource(getAttachIcon());
         imgAttachClear.setVisibility(View.VISIBLE);
     }
     private void clearAttachment() {
-        imgUri = null;
+        imgUris.clear();
         imgAttachClear.setVisibility(View.GONE);
     }
 
     private class OnItemAttachClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            if (imgUri == null) {
-                imagePicker.launch("image/*");
-            } else {
-                clearAttachment();
-            }
+            imagePicker.launch("image/*");
+        }
+    }
+    private class OnItemAttachLongClick implements View.OnLongClickListener {
+        @Override
+        public boolean onLongClick(View view) {
+            clearAttachment();
+            return true;
         }
     }
 
@@ -404,15 +433,16 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             String content = etInputText.getText().toString();
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
-            if (imgUri != null) {
-                File folder = Global.getInstance().getFileStoreFolder();
-                File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
-                String imgName = FileHelper.getFileNameFromUri(context, imgUri);
-                ImageFile imageFile = ImageFile.from(md5file, imgName);
-                item.addImageFile(imageFile);
-            } else {
-                // block new item create without either text or image
+            if (imgUris.isEmpty()) {
                 if (content.isEmpty()) return;
+            } else {
+                for (Uri imgUri: imgUris) {
+                    File folder = Global.getInstance().getFileStoreFolder();
+                    File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
+                    String imgName = FileHelper.getFileNameFromUri(context, imgUri);
+                    ImageFile imageFile = ImageFile.from(md5file, imgName);
+                    item.addImageFile(imageFile);
+                }
             }
             setPendingItem(item);
             listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);
