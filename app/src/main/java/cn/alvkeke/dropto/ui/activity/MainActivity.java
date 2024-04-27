@@ -189,10 +189,10 @@ public class MainActivity extends AppCompatActivity implements
                 .addToBackStack(null)
                 .commit();
     }
-    private void startFragment(Fragment fragment, int anim_in, int anim_out) {
+    private void startFragmentAnime(Fragment fragment) {
         currentFragments.push(fragment);
         getSupportFragmentManager().beginTransaction()
-                .setCustomAnimations(anim_in, anim_out)
+                .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
                 .add(R.id.main_container, fragment, null)
                 .addToBackStack(null)
                 .commit();
@@ -235,7 +235,7 @@ public class MainActivity extends AppCompatActivity implements
         noteListFragment.setCategory(category);
         binder.getService().queueTask(CoreService.Task.Type.READ, category);
         savedNoteListCategoryId = category.getId();
-        startFragment(noteListFragment, R.anim.slide_in, R.anim.slide_out);
+        startFragmentAnime(noteListFragment);
     }
 
     public void showCategoryCreatingDialog() {
