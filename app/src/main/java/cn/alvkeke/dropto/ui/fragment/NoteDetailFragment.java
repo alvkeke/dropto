@@ -1,5 +1,8 @@
 package cn.alvkeke.dropto.ui.fragment;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
@@ -190,9 +193,22 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
                 card.setImage(bitmap);
             }));
             card.setRemoveButtonClickListener(view -> {
-                imageList.remove(imageFile);
-                isImageChanged = true;
-                scrollContainer.removeView(card);
+                int hei = card.getHeight();
+                ValueAnimator animator = ValueAnimator.ofInt(hei, 0);
+                animator.addUpdateListener(valueAnimator -> {
+                    ViewGroup.LayoutParams params = card.getLayoutParams();
+                    params.height = (int) valueAnimator.getAnimatedValue();
+                    card.setLayoutParams(params);
+                });
+                animator.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        imageList.remove(imageFile);
+                        isImageChanged = true;
+                        scrollContainer.removeView(card);
+                    }
+                });
+                animator.start();
             });
             card.setImageClickListener(view1 ->
                     listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, item, imageIndex));
