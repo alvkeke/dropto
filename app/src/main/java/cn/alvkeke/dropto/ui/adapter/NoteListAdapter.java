@@ -219,7 +219,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
                     loadNoteImageAt(note, 0);
                     loadNoteImageAt(note, 1);
                     loadNoteImageAt(note, 2);
-                    // TODO: set the latest Image as more
+                    ivImages[3].setImageResource(R.drawable.icon_common_more);
                     break;
             }
         }
