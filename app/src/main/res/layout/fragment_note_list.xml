@@ -92,7 +92,7 @@
                     android:layout_width="0dp"
                     android:maxHeight="200dp"
                     android:layout_height="wrap_content"
-                    android:inputType="text"
+                    android:inputType="textMultiLine"
                     android:autofillHints="NoteText"
                     tools:ignore="LabelFor" />
 
