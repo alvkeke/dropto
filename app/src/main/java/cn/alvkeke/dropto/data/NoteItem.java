@@ -1,12 +1,9 @@
 package cn.alvkeke.dropto.data;
 
-import android.util.Log;
-
-import androidx.annotation.NonNull;
-
 import java.io.Serializable;
+import java.util.ArrayList;
 
-public class NoteItem implements Cloneable, Serializable {
+public class NoteItem implements Serializable {
 
     public static final long ID_NOT_ASSIGNED = -1;
     private long id;
@@ -14,7 +11,7 @@ public class NoteItem implements Cloneable, Serializable {
     private String text;
     private long createTimeMs;
     private boolean isEdited;
-    private ImageFile imgFile;
+    private ArrayList<ImageFile> imageFiles = null;
 
     /**
      * construct a new NoteItem instance, with auto generated create_time
@@ -38,20 +35,11 @@ public class NoteItem implements Cloneable, Serializable {
         createTimeMs = create_time;
     }
 
-    @NonNull
-    @Override
-    public NoteItem clone() {
-        NoteItem item = new NoteItem(text, createTimeMs);
-        item.setId(this.id);
-        item.setCategoryId(this.categoryId);
-        item.setImageFile(this.imgFile);
-        return item;
-    }
-
     public void update(NoteItem item, boolean set_edited) {
+        if (this == item) return;   // prevent update in place
         setText(item.getText(), set_edited);
         setCreateTime(item.getCreateTime());
-        setImageFile(item.getImageFile());
+        useImageFiles(item.imageFiles);
         setCategoryId(item.getCategoryId());
     }
 
@@ -74,28 +62,52 @@ public class NoteItem implements Cloneable, Serializable {
         return createTimeMs;
     }
 
-    public boolean setImageFile(ImageFile image) {
-        if (image == null) {
-            Log.d(this.toString(), "clear image");
-            this.imgFile = null;
+    private boolean isImageFileInvalid(ImageFile image) {
+        if (image == null)
             return true;
-        }
+        if (!image.getMd5file().exists())
+            return true;
+        if (!image.getMd5file().isFile())
+            return true;
+        if (imageFiles != null && imageFiles.contains(image))
+            return true;
 
-        if (!image.getMd5file().exists()) {
-            Log.d(this.toString(), "add image abort, file not exist: " + image);
-            return false;
-        }
-        if (!image.getMd5file().isFile()) {
-            Log.d(this.toString(), "add image abort, not a file: " + image);
-            return false;
-        }
-        this.imgFile = image;
+        return false;
+    }
 
+    public boolean isNoImage() {
+        if (imageFiles == null) return true;
+        return imageFiles.isEmpty();
+    }
+
+    public int getImageCount() {
+        if (imageFiles == null) return 0;
+        return imageFiles.size();
+    }
+
+    public void useImageFiles(ArrayList<ImageFile> imageFiles) {
+        this.imageFiles.clear();
+        this.imageFiles.addAll(imageFiles);
+    }
+
+    public void clearImages() {
+        this.imageFiles.clear();
+    }
+
+    public boolean addImageFile(ImageFile imageFile) {
+        if (isImageFileInvalid(imageFile))
+            return false;
+        if (imageFiles == null)
+            imageFiles = new ArrayList<>();
+        imageFiles.add(imageFile);
         return true;
     }
 
-    public ImageFile getImageFile() {
-        return this.imgFile;
+    public ImageFile getImageAt(int index) {
+        if (getImageCount() > index) {
+            return imageFiles.get(index);
+        }
+        return null;
     }
 
     public boolean isEdited() {

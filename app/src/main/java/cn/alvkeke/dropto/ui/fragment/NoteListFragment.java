@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,8 +19,8 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -126,6 +125,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
 
         btnAddNote.setOnClickListener(new onItemAddClick());
         btnAttach.setOnClickListener(new OnItemAttachClick());
+        btnAttach.setOnLongClickListener(new OnItemAttachLongClick());
         rlNoteList.setOnTouchListener(new NoteListTouchListener());
     }
 
@@ -219,15 +219,10 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             } else {
                 int x = (int) event.getRawX();
                 int y = (int) event.getRawY();
-                View image = v.findViewById(R.id.rlist_item_note_img_view);
-                boolean showImage = false;
-                if (image != null) {
-                    Rect rect = new Rect();
-                    image.getGlobalVisibleRect(rect);
-                    showImage = rect.contains(x, y);
-                }
-                if (showImage) {
-                    showImageView(index, x, y);
+                int imgIdx = NoteListAdapter.checkImageClicked(v, x, y);
+
+                if (imgIdx >= 0) {
+                    showImageView(index, imgIdx, x, y);
                 } else {
                     showItemPopMenu(index, v, x, y);
                 }
@@ -290,6 +285,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 if (isInSelectMode) {
                     exitSelectMode();
                 }
+                imgUris.clear();
                 getParentFragmentManager().beginTransaction()
                         .remove(NoteListFragment.this).commit();
             }
@@ -352,37 +348,65 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         });
     }
 
-    private Uri imgUri = null;
-    private final ActivityResultLauncher<String> imagePicker =
-            registerForActivityResult(new ActivityResultContracts.GetContent(),
-                    new ImageSelectResult());
-    private class ImageSelectResult implements ActivityResultCallback<Uri> {
-        @Override
-        public void onActivityResult(Uri uri) {
-            if (uri == null) {
-                return;
-            }
-            setAttachment(uri);
+    private final ArrayList<Uri> imgUris = new ArrayList<>();
+    private void addAttachment(Uri uri) {
+        if (!imgUris.contains(uri)) {
+            imgUris.add(uri);
         }
-    }
-
-    private void setAttachment(Uri uri) {
-        imgUri = uri;
+        imgAttachClear.setImageResource(getAttachIcon());
         imgAttachClear.setVisibility(View.VISIBLE);
     }
     private void clearAttachment() {
-        imgUri = null;
+        imgUris.clear();
         imgAttachClear.setVisibility(View.GONE);
+    }
+    private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker =
+            registerForActivityResult(new ActivityResultContracts.
+                            PickMultipleVisualMedia(9), uris-> {
+                for (Uri uri : uris) {
+                    if (uri == null) continue;
+                    addAttachment(uri);
+                }
+            });
+
+    private int getAttachIcon() {
+        switch (imgUris.size()) {
+            case 1:
+                return R.drawable.icon_attach_1;
+            case 2:
+                return R.drawable.icon_attach_2;
+            case 3:
+                return R.drawable.icon_attach_3;
+            case 4:
+                return R.drawable.icon_attach_4;
+            case 5:
+                return R.drawable.icon_attach_5;
+            case 6:
+                return R.drawable.icon_attach_6;
+            case 7:
+                return R.drawable.icon_attach_7;
+            case 8:
+                return R.drawable.icon_attach_8;
+            case 9:
+                return R.drawable.icon_attach_9;
+            default:
+                return R.drawable.icon_attach_9p;
+        }
     }
 
     private class OnItemAttachClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            if (imgUri == null) {
-                imagePicker.launch("image/*");
-            } else {
-                clearAttachment();
-            }
+            imagePicker.launch(new PickVisualMediaRequest.Builder()
+                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                    .build());
+        }
+    }
+    private class OnItemAttachLongClick implements View.OnLongClickListener {
+        @Override
+        public boolean onLongClick(View view) {
+            clearAttachment();
+            return true;
         }
     }
 
@@ -392,24 +416,29 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
             String content = etInputText.getText().toString();
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
-            if (imgUri != null) {
-                File folder = Global.getInstance().getFileStoreFolder();
-                File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
-                String imgName = FileHelper.getFileNameFromUri(context, imgUri);
-                ImageFile imageFile = ImageFile.from(md5file, imgName);
-                item.setImageFile(imageFile);
-            } else {
-                // block new item create without either text or image
+            if (imgUris.isEmpty()) {
                 if (content.isEmpty()) return;
+            } else {
+                for (Uri imgUri: imgUris) {
+                    File folder = Global.getInstance().getFileStoreFolder();
+                    File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
+                    String imgName = FileHelper.getFileNameFromUri(context, imgUri);
+                    ImageFile imageFile = ImageFile.from(md5file, imgName);
+                    item.addImageFile(imageFile);
+                }
             }
             setPendingItem(item);
             listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item);
         }
     }
 
-    private void showImageView(int index, int ignore, int ignore1) {
+    private void showImageView(int index, int imageIndex, int ignore, int ignore1) {
         NoteItem noteItem = category.getNoteItem(index);
-        listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, noteItem);
+        if (noteItem.getImageCount() > 4 && imageIndex == 3) {
+            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, noteItem);
+        } else {
+            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, noteItem, imageIndex);
+        }
     }
 
     private void throwErrorMessage(String msg) {

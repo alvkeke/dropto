@@ -130,7 +130,7 @@ public class DebugFunction {
                     if (img_file.exists()) {
                         dbgLog("add image file: " + img_file);
                         ImageFile imageFile = ImageFile.from(img_file, "");
-                        e.setImageFile(imageFile);
+                        e.addImageFile(imageFile);
                     } else {
                         dbgLog("add image file failed, not exist: " + img_file);
                     }

@@ -32,6 +32,7 @@ import java.util.List;
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
@@ -321,13 +322,14 @@ public class MainActivity extends AppCompatActivity implements
         if (needClean) emptyFolder(share_folder);
 
         try {
-            String imageName = item.getImageFile().getName();
+            ImageFile imageFile = item.getImageAt(0);
+            String imageName = imageFile.getName();
             File fileToShare;
             if (imageName == null) {
-                fileToShare = item.getImageFile().getMd5file();
+                fileToShare = imageFile.getMd5file();
             } else {
                 fileToShare = new File(share_folder, imageName);
-                copyFile(item.getImageFile().getMd5file(), fileToShare);
+                copyFile(imageFile.getMd5file(), fileToShare);
             }
             return fileToShare;
         } catch (IOException e) {
@@ -339,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements
     private ArrayList<File> generateFilesWithRealName(ArrayList<NoteItem> noteItems) {
         ArrayList<File> files = new ArrayList<>();
         for (NoteItem e : noteItems) {
-            if (e.getImageFile() == null) continue;
+            if (e.isNoImage()) continue;
             File f = generateFileWithRealName(e, false);
             if (f == null) { continue; }
             files.add(f);
@@ -372,7 +374,7 @@ public class MainActivity extends AppCompatActivity implements
         sendIntent.putExtra(Intent.EXTRA_TEXT, item.getText());
         Log.d(this.toString(), "no image, share text: " + item.getText());
 
-        if (item.getImageFile() != null) {
+        if (!item.isNoImage()) {
             // add item image for sharing if exist
             sendIntent.setType("image/*");
             File file2Share = generateFileWithRealName(item, true);
@@ -415,17 +417,23 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
-    private void handleNoteImageShow(NoteItem item) {
+    private void handleNoteImageShow(NoteItem item, int imageIndex) {
         if (imageViewerFragment == null) {
             imageViewerFragment = new ImageViewerFragment();
         }
-        savedImageViewFile = item.getImageFile().getMd5file().getAbsolutePath();
-        imageViewerFragment.setImgFile(item.getImageFile().getMd5file());
+        ImageFile imageFile = item.getImageAt(imageIndex);
+        savedImageViewFile = imageFile.getMd5file().getAbsolutePath();
+        imageViewerFragment.setImgFile(imageFile.getMd5file());
         imageViewerFragment.show(getSupportFragmentManager(), null);
     }
 
     @Override
     public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e) {
+        onAttempt(attempt, e, null);
+    }
+
+    @Override
+    public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e, Object ext) {
         switch (attempt) {
             case REMOVE:
                 binder.getService().queueTask(CoreService.Task.Type.REMOVE, e);
@@ -446,7 +454,8 @@ public class MainActivity extends AppCompatActivity implements
                 binder.getService().queueTask(CoreService.Task.Type.UPDATE, e);
                 break;
             case SHOW_IMAGE:
-                handleNoteImageShow(e);
+                int imageIndex = (int) ext;
+                handleNoteImageShow(e, imageIndex);
                 break;
         }
     }

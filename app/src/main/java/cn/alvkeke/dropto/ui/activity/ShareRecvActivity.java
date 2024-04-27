@@ -199,7 +199,7 @@ public class ShareRecvActivity extends AppCompatActivity
         if (md5file == null) return null;
         String imgName = FileHelper.getFileNameFromUri(this, uri);
         NoteItem item = new NoteItem(text);
-        item.setImageFile(new ImageFile(md5file, imgName));
+        item.addImageFile(new ImageFile(md5file, imgName));
         return item;
     }
 

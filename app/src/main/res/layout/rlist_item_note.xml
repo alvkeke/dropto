@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<androidx.constraintlayout.widget.ConstraintLayout android:id="@+id/rlist_item_note_parent"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rlist_item_note_parent"
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -9,36 +10,56 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/rlist_item_note_img_container"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_margin="@dimen/margin_note_items"
-        android:orientation="vertical"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content">
+        android:layout_marginStart="@dimen/margin_note_items"
+        android:layout_marginTop="@dimen/margin_note_items"
+        android:layout_width="160dp"
+        android:layout_height="160dp">
+
+        <View
+            android:id="@+id/rlist_item_note_img_guide_view"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_width="@dimen/size_image_guide_point"
+            android:layout_height="@dimen/size_image_guide_point"/>
 
         <ImageView
-            android:id="@+id/rlist_item_note_img_view"
-            android:adjustViewBounds="true"
-            android:maxHeight="280dp"
-            android:minHeight="160dp"
-            android:minWidth="160dp"
-            android:scaleType="fitStart"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            android:id="@+id/rlist_item_note_img_view0"
+            android:scaleType="centerCrop"
             android:src="@drawable/img_load_error"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/description_of_note_item_image" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/description_of_note_item_image"
+            tools:ignore="MissingConstraints" />
 
-        <TextView
-            android:id="@+id/rlist_item_note_img_file"
-            app:layout_constraintBottom_toBottomOf="@id/rlist_item_note_img_view"
-            app:layout_constraintStart_toStartOf="@id/rlist_item_note_img_view"
-            android:textColor="@color/note_item_image_name"
-            android:background="@color/note_item_image_name_background"
-            android:alpha="0.8"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+        <ImageView
+            android:id="@+id/rlist_item_note_img_view1"
+            android:scaleType="centerCrop"
+            android:src="@drawable/img_load_error"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/description_of_note_item_image"
+            tools:ignore="MissingConstraints" />
+
+        <ImageView
+            android:id="@+id/rlist_item_note_img_view2"
+            android:scaleType="centerCrop"
+            android:src="@drawable/img_load_error"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/description_of_note_item_image"
+            tools:ignore="MissingConstraints" />
+
+        <ImageView
+            android:id="@+id/rlist_item_note_img_view3"
+            android:scaleType="centerCrop"
+            android:src="@drawable/img_load_error"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/description_of_note_item_image"
+            tools:ignore="MissingConstraints" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -49,9 +70,7 @@
         app:layout_constraintStart_toStartOf="@id/rlist_item_note_img_container"
         app:layout_constraintEnd_toEndOf="@id/rlist_item_note_img_container"
         app:layout_constraintTop_toBottomOf="@id/rlist_item_note_img_container"
-        android:layout_marginStart="@dimen/margin_note_items"
-        android:layout_marginEnd="@dimen/margin_note_items"
-        android:layout_marginBottom="@dimen/margin_note_items"
+        android:layout_margin="@dimen/margin_note_items"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
