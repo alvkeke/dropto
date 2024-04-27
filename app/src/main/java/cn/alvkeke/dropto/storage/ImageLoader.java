@@ -2,6 +2,8 @@ package cn.alvkeke.dropto.storage;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import androidx.exifinterface.media.ExifInterface;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -88,7 +90,64 @@ public class ImageLoader {
         options.inSampleSize++;
     }
 
-    private WrappedBitmap getWrappedBitmap(String filePath) {
+    private static int getBitmapOrientation(String path){
+        ExifInterface exif;
+        int orientation = 0;
+        try {
+            exif = new ExifInterface(path);
+            orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_UNDEFINED);
+            Log.e("getBitmapOrientation", "getBitmapOrientation: "+orientation );
+        } catch (Exception ignore) { }
+        return orientation;
+    }
+    private static int convertRotate(int orientation) {
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                return 90;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                return 180;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                return 270;
+        }
+        return 0;
+    }
+    private static Bitmap rotateBitmap(Bitmap bitmap, int orientation) {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(convertRotate(orientation));
+        return Bitmap.createBitmap(bitmap, 0, 0,
+                bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
+
+    private Bitmap loadBitmapWithOption(String filePath, BitmapFactory.Options options) {
+        Bitmap bitmap;
+        if (options == null)
+            bitmap = BitmapFactory.decodeFile(filePath);
+        else
+            bitmap = BitmapFactory.decodeFile(filePath, options);
+        if (bitmap == null)
+            return null;
+        int orientation = getBitmapOrientation(filePath);
+        Bitmap rotatedBitmap = rotateBitmap(bitmap, orientation);
+        if (bitmap != rotatedBitmap)
+            bitmap.recycle();
+        return rotatedBitmap;
+    }
+
+    private Bitmap loadBitmapOriginal(File file) {
+        String filePath = file.getAbsolutePath();
+        return loadBitmapWithOption(filePath, null);
+    }
+
+    private Bitmap loadBitmapSample(String filePath, BitmapFactory.Options options) {
+        options.inJustDecodeBounds = true;  // just check metadata of the image
+        BitmapFactory.decodeFile(filePath, options);
+        setSampleSize(options);
+        options.inJustDecodeBounds = false; // really retrieve image from disk
+        return loadBitmapWithOption(filePath, options);
+    }
+
+    private WrappedBitmap getWrappedBitmapInPool(String filePath) {
         WrappedBitmap wrappedBitmap = imagePool.get(filePath);
         if (wrappedBitmap == null) return null;
         if (wrappedBitmap.bitmap.isRecycled()) {
@@ -99,7 +158,7 @@ public class ImageLoader {
         return wrappedBitmap;
     }
 
-    private void putWrappedBitmap(String filePath, WrappedBitmap wrappedBitmap) {
+    private void putWrappedBitmapInPool(String filePath, WrappedBitmap wrappedBitmap) {
         imagePool.put(filePath, wrappedBitmap);
     }
 
@@ -107,8 +166,9 @@ public class ImageLoader {
         return imagePool.size() >= imagePoolSize;
     }
 
-    private WrappedBitmap loadWrappedBitmap(String filePath) {
-        WrappedBitmap wrappedBitmap = getWrappedBitmap(filePath);
+    private WrappedBitmap loadWrappedBitmap(File file) {
+        String filePath = file.getAbsolutePath();
+        WrappedBitmap wrappedBitmap = getWrappedBitmapInPool(filePath);
         if (wrappedBitmap != null) {
             Log.d(this.toString(), "["+filePath+"] loaded, update access time and return");
             return wrappedBitmap;
@@ -119,31 +179,25 @@ public class ImageLoader {
         Log.d(this.toString(), "["+filePath+"] not loaded, create new one");
 
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;  // just check metadata of the image
-        BitmapFactory.decodeFile(filePath, options);
-        setSampleSize(options);
-        options.inJustDecodeBounds = false; // really retrieve image from disk
-        Bitmap bitmap = BitmapFactory.decodeFile(filePath, options);
+        Bitmap bitmap = loadBitmapSample(filePath, options);
         if (bitmap == null) {
             Log.e(this.toString(), "Cannot load ["+filePath+"]from disk!!!");
             return null;
         }
-        wrappedBitmap = new WrappedBitmap(bitmap, options.inSampleSize>1);
-        putWrappedBitmap(filePath, wrappedBitmap);
+        wrappedBitmap = new WrappedBitmap(bitmap, options.inSampleSize > 1);
+        putWrappedBitmapInPool(filePath, wrappedBitmap);
         return wrappedBitmap;
     }
 
-    private WrappedBitmap loadWrappedBitmap(File file) {
-        return loadWrappedBitmap(file.getAbsolutePath());
-    }
-
     public Bitmap loadImage(File file) {
-        return loadWrappedBitmap(file).bitmap;
+        WrappedBitmap wrappedBitmap = loadWrappedBitmap(file);
+        if (wrappedBitmap == null) return null;
+        return wrappedBitmap.bitmap;
     }
 
     @SuppressWarnings("unused")
     public void loadImageAsync(File file, ImageLoadListener listener) {
-        WrappedBitmap wrappedBitmap = getWrappedBitmap(file.getAbsolutePath());
+        WrappedBitmap wrappedBitmap = getWrappedBitmapInPool(file.getAbsolutePath());
         if (wrappedBitmap !=null) {
             listener.onImageLoaded(wrappedBitmap.bitmap);
             return;
@@ -156,13 +210,13 @@ public class ImageLoader {
 
     @SuppressWarnings("unused")
     public void loadOriginalImageAsync(File file, ImageLoadListener listener) {
-        WrappedBitmap wrappedBitmap = getWrappedBitmap(file.getAbsolutePath());
+        WrappedBitmap wrappedBitmap = getWrappedBitmapInPool(file.getAbsolutePath());
         if (wrappedBitmap != null && !wrappedBitmap.isCut){
             listener.onImageLoaded(wrappedBitmap.bitmap);
             return;
         }
         new Thread(() -> {
-            Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+            Bitmap bitmap = loadBitmapOriginal(file);
             handler.post(() -> listener.onImageLoaded(bitmap));
         }).start();
     }
