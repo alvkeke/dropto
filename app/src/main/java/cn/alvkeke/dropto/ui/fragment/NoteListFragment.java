@@ -19,8 +19,8 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -285,6 +285,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 if (isInSelectMode) {
                     exitSelectMode();
                 }
+                imgUris.clear();
                 getParentFragmentManager().beginTransaction()
                         .remove(NoteListFragment.this).commit();
             }
@@ -348,18 +349,25 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     }
 
     private final ArrayList<Uri> imgUris = new ArrayList<>();
-    private final ActivityResultLauncher<String> imagePicker =
-            registerForActivityResult(new ActivityResultContracts.GetContent(),
-                    new ImageSelectResult());
-    private class ImageSelectResult implements ActivityResultCallback<Uri> {
-        @Override
-        public void onActivityResult(Uri uri) {
-            if (uri == null) {
-                return;
-            }
-            addAttachment(uri);
+    private void addAttachment(Uri uri) {
+        if (!imgUris.contains(uri)) {
+            imgUris.add(uri);
         }
+        imgAttachClear.setImageResource(getAttachIcon());
+        imgAttachClear.setVisibility(View.VISIBLE);
     }
+    private void clearAttachment() {
+        imgUris.clear();
+        imgAttachClear.setVisibility(View.GONE);
+    }
+    private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker =
+            registerForActivityResult(new ActivityResultContracts.
+                            PickMultipleVisualMedia(9), uris-> {
+                for (Uri uri : uris) {
+                    if (uri == null) continue;
+                    addAttachment(uri);
+                }
+            });
 
     private int getAttachIcon() {
         switch (imgUris.size()) {
@@ -385,20 +393,13 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 return R.drawable.icon_attach_9p;
         }
     }
-    private void addAttachment(Uri uri) {
-        imgUris.add(uri);
-        imgAttachClear.setImageResource(getAttachIcon());
-        imgAttachClear.setVisibility(View.VISIBLE);
-    }
-    private void clearAttachment() {
-        imgUris.clear();
-        imgAttachClear.setVisibility(View.GONE);
-    }
 
     private class OnItemAttachClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            imagePicker.launch("image/*");
+            imagePicker.launch(new PickVisualMediaRequest.Builder()
+                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                    .build());
         }
     }
     private class OnItemAttachLongClick implements View.OnLongClickListener {
