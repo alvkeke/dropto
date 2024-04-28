@@ -230,6 +230,9 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
     private static final View[] image = new View[4];
     private static final Rect rect = new Rect();
     public static int checkImageClicked(View v, int x, int y) {
+        View container = v.findViewById(R.id.rlist_item_note_img_container);
+        if (container.getVisibility() != View.VISIBLE)
+            return -1;
         image[0] = v.findViewById(R.id.rlist_item_note_img_view0);
         image[1] = v.findViewById(R.id.rlist_item_note_img_view1);
         image[2] = v.findViewById(R.id.rlist_item_note_img_view2);
