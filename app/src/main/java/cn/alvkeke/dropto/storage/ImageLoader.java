@@ -71,10 +71,11 @@ public class ImageLoader {
         poolLock.writeLock().unlock();
     }
 
-    private void imagePoolPut(String key, WrappedBitmap wrappedBitmap) {
+    private WrappedBitmap imagePoolPut(String key, WrappedBitmap wrappedBitmap) {
         poolLock.writeLock().lock();
-        imagePool.putIfAbsent(key, wrappedBitmap);
+        WrappedBitmap ret = imagePool.putIfAbsent(key, wrappedBitmap);
         poolLock.writeLock().unlock();
+        return ret;
     }
 
     private void removeTimeoutImage() {
@@ -191,8 +192,18 @@ public class ImageLoader {
         return loadBitmapWithOption(filePath, options);
     }
 
-    private void putWrappedBitmapInPool(String filePath, WrappedBitmap wrappedBitmap) {
-        imagePoolPut(filePath, wrappedBitmap);
+    /**
+     * put the wrappedBitmap into the pool, and return the exact one in the pool
+     * @param filePath filepath of the image
+     * @param wrappedBitmap generated wrappedBitmap
+     * @return the real wrappedBitmap in the pool
+     */
+    private WrappedBitmap putWrappedBitmapInPool(String filePath, WrappedBitmap wrappedBitmap) {
+        WrappedBitmap ret = imagePoolPut(filePath, wrappedBitmap);
+        if (ret != null && ret != wrappedBitmap) {
+            return ret;
+        }
+        return wrappedBitmap;
     }
 
     private WrappedBitmap getWrappedBitmapInPool(String filePath) {
@@ -222,8 +233,12 @@ public class ImageLoader {
             return null;
         }
         wrappedBitmap = new WrappedBitmap(bitmap, options.inSampleSize > 1);
-        putWrappedBitmapInPool(filePath, wrappedBitmap);
-        return wrappedBitmap;
+        WrappedBitmap ret = putWrappedBitmapInPool(filePath, wrappedBitmap);
+        // FIXME: NOT a good solution, need prevent one image be loaded multiple times
+        if (ret != wrappedBitmap) {
+            wrappedBitmap.bitmap.recycle();
+        }
+        return ret;
     }
 
     public Bitmap loadImage(File file) {
