@@ -12,6 +12,8 @@ import android.util.Log;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ImageLoader {
 
@@ -40,10 +42,40 @@ public class ImageLoader {
         }
     }
     private final HashMap<String, WrappedBitmap> imagePool = new HashMap<>();
-    private int imagePoolSize = 15;
+    private final ReadWriteLock poolLock = new ReentrantReadWriteLock();
+    private int imagePoolSizeLimit = 15;
     private int imageMaxBytes = 1048576;  // 1*1024*1024;
 
+    private WrappedBitmap imagePoolGet(String key) {
+        WrappedBitmap wrappedBitmap;
+        poolLock.readLock().lock();
+        wrappedBitmap = imagePool.get(key);
+        poolLock.readLock().unlock();
+        return wrappedBitmap;
+    }
+
+    private void imagePoolRemove(String key) {
+        poolLock.writeLock().lock();
+        imagePool.remove(key);
+        poolLock.writeLock().unlock();
+    }
+
+    private void imagePoolPut(String key, WrappedBitmap wrappedBitmap) {
+        poolLock.writeLock().lock();
+        imagePool.putIfAbsent(key, wrappedBitmap);
+        poolLock.writeLock().unlock();
+    }
+
+    private int imagePoolSize() {
+        int size;
+        poolLock.readLock().lock();
+        size = imagePool.size();
+        poolLock.readLock().unlock();
+        return size;
+    }
+
     private void removeLongNotUsedImage() {
+        poolLock.readLock().lock();
         Map.Entry<String, WrappedBitmap> target = null;
         for (Map.Entry<String, WrappedBitmap> current : imagePool.entrySet()) {
             if (target == null) {
@@ -54,11 +86,14 @@ public class ImageLoader {
                 target = current;
             }
         }
-        if (target == null) return;
+        poolLock.readLock().unlock();
+        if (target == null) {
+            return;
+        }
         Log.d(this.toString(), "[" + target.getKey() +
                 "] expired, remove, last access: " + target.getValue().lastAccessTime);
         target.getValue().bitmap.recycle();
-        imagePool.remove(target.getKey());
+        imagePoolRemove(target.getKey());
     }
 
     private static int getPixelDeep(Bitmap.Config config) {
@@ -149,10 +184,10 @@ public class ImageLoader {
     }
 
     private WrappedBitmap getWrappedBitmapInPool(String filePath) {
-        WrappedBitmap wrappedBitmap = imagePool.get(filePath);
+        WrappedBitmap wrappedBitmap = imagePoolGet(filePath);
         if (wrappedBitmap == null) return null;
         if (wrappedBitmap.bitmap.isRecycled()) {
-            imagePool.remove(filePath);
+            imagePoolRemove(filePath);
             return null;
         }
         wrappedBitmap.lastAccessTime = System.currentTimeMillis();
@@ -160,11 +195,11 @@ public class ImageLoader {
     }
 
     private void putWrappedBitmapInPool(String filePath, WrappedBitmap wrappedBitmap) {
-        imagePool.put(filePath, wrappedBitmap);
+        imagePoolPut(filePath, wrappedBitmap);
     }
 
     private boolean isPoolFull() {
-        return imagePool.size() >= imagePoolSize;
+        return imagePoolSize() >= imagePoolSizeLimit;
     }
 
     private WrappedBitmap loadWrappedBitmap(File file) {
@@ -223,8 +258,8 @@ public class ImageLoader {
     }
 
     @SuppressWarnings("unused")
-    public void setImagePoolSize(int imagePoolSize) {
-        this.imagePoolSize = imagePoolSize;
+    public void setImagePoolSizeLimit(int imagePoolSizeLimit) {
+        this.imagePoolSizeLimit = imagePoolSizeLimit;
     }
 
     @SuppressWarnings("unused")
