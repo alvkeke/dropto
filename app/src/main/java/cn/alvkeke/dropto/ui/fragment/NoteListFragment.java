@@ -164,6 +164,12 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
         listener.onAttemptBatch(NoteAttemptListener.Attempt.SHOW_SHARE, items);
     }
 
+    private void handleMenuForward() {
+        ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
+        exitSelectMode();
+        listener.onAttemptBatch(NoteAttemptListener.Attempt.SHOW_FORWARD, items);
+    }
+
     private boolean isInSelectMode = false;
     private class NoteListMenuListener implements Toolbar.OnMenuItemClickListener {
         @Override
@@ -175,6 +181,8 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 handleMenuCopy();
             } else if (R.id.note_list_menu_share == menu_id) {
                 handleMenuShare();
+            } else if (R.id.note_list_menu_forward == menu_id) {
+                handleMenuForward();
             }
             return false;
         }
@@ -470,6 +478,8 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                     listener.onAttempt(NoteAttemptListener.Attempt.COPY, note);
                 } else if (R.id.item_pop_m_share == item_id) {
                     listener.onAttempt(NoteAttemptListener.Attempt.SHOW_SHARE, note);
+                } else if (R.id.item_pop_m_forward == item_id) {
+                    listener.onAttempt(NoteAttemptListener.Attempt.SHOW_FORWARD, note);
                 } else {
                     throwErrorMessage( "Unknown menu id: " +
                             getResources().getResourceEntryName(item_id));

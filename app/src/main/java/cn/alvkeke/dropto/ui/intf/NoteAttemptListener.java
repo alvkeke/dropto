@@ -13,6 +13,7 @@ public interface NoteAttemptListener {
         SHOW_DETAIL,
         SHOW_SHARE,
         SHOW_IMAGE,
+        SHOW_FORWARD,
     }
     void onAttempt(Attempt attempt, NoteItem e);
     void onAttempt(Attempt attempt, NoteItem e, Object ext);

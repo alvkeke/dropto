@@ -37,6 +37,7 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
+import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
@@ -47,7 +48,8 @@ import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
 
 public class MainActivity extends AppCompatActivity implements
         CoreService.TaskResultListener, ErrorMessageHandler,
-        NoteAttemptListener, CategoryAttemptListener {
+        NoteAttemptListener, CategoryAttemptListener,
+        CategorySelectorFragment.CategorySelectListener {
 
     private CoreService.CoreSrvBinder binder = null;
     private final ServiceConnection serviceConn = new ServiceConnection() {
@@ -116,6 +118,9 @@ public class MainActivity extends AppCompatActivity implements
                 } else if (f instanceof ImageViewerFragment) {
                     imageViewerFragment = (ImageViewerFragment) f;
                     recoverImageViewFragment(savedInstanceState);
+                } else if (f instanceof CategorySelectorFragment) {
+                    CategorySelectorFragment fragment = (CategorySelectorFragment) f;
+                    fragment.setCategories(Global.getInstance().getCategories());
                 } else if (f instanceof NoteDetailFragment) {
                     recoverNoteDetailFragment((NoteDetailFragment) f, savedInstanceState);
                 } else if (f instanceof CategoryDetailFragment) {
@@ -428,6 +433,14 @@ public class MainActivity extends AppCompatActivity implements
         imageViewerFragment.show(getSupportFragmentManager(), null);
     }
 
+    private NoteItem pendingForwardNote;
+    private void handleNoteForward(NoteItem note) {
+        pendingForwardNote = note;
+        CategorySelectorFragment forwardFragment = new CategorySelectorFragment();
+        forwardFragment.setCategories(Global.getInstance().getCategories());
+        forwardFragment.show(getSupportFragmentManager(), null);
+    }
+
     @Override
     public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e) {
         onAttempt(attempt, e, null);
@@ -457,6 +470,9 @@ public class MainActivity extends AppCompatActivity implements
             case SHOW_IMAGE:
                 int imageIndex = (int) ext;
                 handleNoteImageShow(e, imageIndex);
+                break;
+            case SHOW_FORWARD:
+                handleNoteForward(e);
                 break;
         }
     }
@@ -505,6 +521,15 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
+    public void onSelected(int index, Category category) {
+        if (pendingForwardNote == null)
+            return;
+        NoteItem item = pendingForwardNote.clone();
+        item.setCategoryId(category.getId());
+        binder.getService().queueTask(CoreService.Task.Type.CREATE, item);
+    }
+
+    @Override
     public void onError(String errMessage) {
         Toast.makeText(this, errMessage, Toast.LENGTH_SHORT).show();
     }
@@ -518,6 +543,8 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onNoteTaskFinish(CoreService.Task.Type taskType, int index, NoteItem n) {
+        if (n == pendingForwardNote)
+            pendingForwardNote = null;
         if (index < 0) return;
         if (noteListFragment == null) return;
         noteListFragment.notifyItemListChanged(CoreService.taskToNotify(taskType), index, n);

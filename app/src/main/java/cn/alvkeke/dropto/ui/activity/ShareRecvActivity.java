@@ -150,11 +150,6 @@ public class ShareRecvActivity extends AppCompatActivity
         finish();
     }
 
-    @Override
-    public void onExit() {
-        finish();
-    }
-
     @NonNull
     private String handleTextInfo(@NonNull Intent intent) {
         String text = intent.getStringExtra(Intent.EXTRA_TEXT);

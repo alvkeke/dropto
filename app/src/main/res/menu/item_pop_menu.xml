@@ -13,6 +13,9 @@
         android:id="@+id/item_pop_m_pin"
         android:title="@string/title_item_pop_menu_pin" />
     <item
+        android:id="@+id/item_pop_m_forward"
+        android:title="@string/title_item_pop_menu_forward"/>
+    <item
         android:id="@+id/item_pop_m_share"
         android:title="@string/title_item_pop_menu_share"/>
 </menu>

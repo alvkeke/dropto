@@ -1,15 +1,19 @@
 package cn.alvkeke.dropto.data;
 
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 
-public class NoteItem implements Serializable {
+public class NoteItem implements Serializable, Cloneable {
 
     public static final long ID_NOT_ASSIGNED = -1;
     private long id;
     private long categoryId;
     private String text;
-    private long createTimeMs;
+    private final long createTimeMs;
     private boolean isEdited;
     private ArrayList<ImageFile> imageFiles = null;
 
@@ -38,9 +42,17 @@ public class NoteItem implements Serializable {
     public void update(NoteItem item, boolean set_edited) {
         if (this == item) return;   // prevent update in place
         setText(item.getText(), set_edited);
-        setCreateTime(item.getCreateTime());
-        useImageFiles(item.imageFiles);
+        if (!item.isNoImage())
+            useImageFiles(item.imageFiles);
         setCategoryId(item.getCategoryId());
+    }
+
+    @NonNull
+    @Override
+    public NoteItem clone() {
+        NoteItem noteItem = new NoteItem(text);
+        noteItem.update(this, false);
+        return noteItem;
     }
 
     public void setText(String text, boolean set_edited) {
@@ -54,10 +66,6 @@ public class NoteItem implements Serializable {
         return text;
     }
 
-    public void setCreateTime(long ms) {
-        this.createTimeMs = ms;
-    }
-
     public long getCreateTime() {
         return createTimeMs;
     }
@@ -65,12 +73,18 @@ public class NoteItem implements Serializable {
     private boolean isImageFileInvalid(ImageFile image) {
         if (image == null)
             return true;
-        if (!image.getMd5file().exists())
+        if (!image.getMd5file().exists()) {
+            Log.d(this.toString(), "not exist, return invalid");
             return true;
-        if (!image.getMd5file().isFile())
+        }
+        if (!image.getMd5file().isFile()) {
+            Log.d(this.toString(), "not a file, return invalid");
             return true;
-        if (imageFiles != null && imageFiles.contains(image))
+        }
+        if (imageFiles != null && imageFiles.contains(image)) {
+            Log.d(this.toString(), "image exist, return invalid");
             return true;
+        }
 
         return false;
     }
@@ -86,7 +100,10 @@ public class NoteItem implements Serializable {
     }
 
     public void useImageFiles(ArrayList<ImageFile> imageFiles) {
-        this.imageFiles.clear();
+        if (this.imageFiles == null) {
+            this.imageFiles = new ArrayList<>();
+        }
+        clearImages();
         this.imageFiles.addAll(imageFiles);
     }
 

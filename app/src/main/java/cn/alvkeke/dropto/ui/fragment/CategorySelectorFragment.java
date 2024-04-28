@@ -21,7 +21,6 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
@@ -31,7 +30,6 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
     public interface CategorySelectListener {
         void onSelected(int index, Category category);
         void onError(String error);
-        void onExit();
     }
 
     private CategorySelectListener listener;
@@ -71,7 +69,7 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
 
             @Override
             public boolean onItemClick(View v, int index) {
-                Category category = Global.getInstance().getCategory(index);
+                Category category = categories.get(index);
                 if (category == null) {
                     listener.onError("Failed to get category in index " + index);
                     finish();
@@ -79,6 +77,7 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
                 }
 
                 listener.onSelected(index, category);
+                finish();
                 return true;
             }
         });
@@ -100,12 +99,6 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
 
     private void finish() {
         this.dismiss();
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        listener.onExit();
     }
 
     @Override
