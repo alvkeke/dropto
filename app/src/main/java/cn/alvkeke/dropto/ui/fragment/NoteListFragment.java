@@ -413,7 +413,7 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     private class onItemAddClick implements View.OnClickListener {
         @Override
         public void onClick(View v) {
-            String content = etInputText.getText().toString();
+            String content = etInputText.getText().toString().trim();
             NoteItem item = new NoteItem(content);
             item.setCategoryId(category.getId());
             if (imgUris.isEmpty()) {

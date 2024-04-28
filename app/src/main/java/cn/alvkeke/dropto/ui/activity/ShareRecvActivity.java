@@ -162,7 +162,7 @@ public class ShareRecvActivity extends AppCompatActivity
             Log.e(this.toString(), "Failed to get shared text");
             return "";
         }
-        return text;
+        return text.trim();
     }
 
     private ArrayList<Uri> handleImageUris(@NonNull Intent intent) {
