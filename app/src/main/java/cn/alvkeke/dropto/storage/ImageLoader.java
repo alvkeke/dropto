@@ -180,11 +180,18 @@ public class ImageLoader {
     }
 
     private Bitmap loadBitmapOriginal(File file) {
+        if (file == null || !file.exists() || !file.isFile()) {
+            return null;
+        }
         String filePath = file.getAbsolutePath();
         return loadBitmapWithOption(filePath, null);
     }
 
-    private Bitmap loadBitmapSample(String filePath, BitmapFactory.Options options) {
+    private Bitmap loadBitmapSample(File file, BitmapFactory.Options options) {
+        if (file == null || !file.exists() || !file.isFile()) {
+            return null;
+        }
+        String filePath = file.getAbsolutePath();
         options.inJustDecodeBounds = true;  // just check metadata of the image
         BitmapFactory.decodeFile(filePath, options);
         setSampleSize(options);
@@ -227,7 +234,7 @@ public class ImageLoader {
         Log.d(this.toString(), "["+filePath+"] not loaded, create new one");
 
         BitmapFactory.Options options = new BitmapFactory.Options();
-        Bitmap bitmap = loadBitmapSample(filePath, options);
+        Bitmap bitmap = loadBitmapSample(file, options);
         if (bitmap == null) {
             Log.e(this.toString(), "Cannot load ["+filePath+"]from disk!!!");
             return null;

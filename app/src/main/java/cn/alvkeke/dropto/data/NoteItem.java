@@ -73,14 +73,6 @@ public class NoteItem implements Serializable, Cloneable {
     private boolean isImageFileInvalid(ImageFile image) {
         if (image == null)
             return true;
-        if (!image.getMd5file().exists()) {
-            Log.d(this.toString(), "not exist, return invalid");
-            return true;
-        }
-        if (!image.getMd5file().isFile()) {
-            Log.d(this.toString(), "not a file, return invalid");
-            return true;
-        }
         if (imageFiles != null && imageFiles.contains(image)) {
             Log.d(this.toString(), "image exist, return invalid");
             return true;
