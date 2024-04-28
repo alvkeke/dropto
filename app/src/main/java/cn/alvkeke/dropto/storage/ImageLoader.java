@@ -74,6 +74,10 @@ public class ImageLoader {
         return size;
     }
 
+    private boolean isPoolFull() {
+        return imagePoolSize() >= imagePoolSizeLimit;
+    }
+
     private void removeLongNotUsedImage() {
         poolLock.readLock().lock();
         Map.Entry<String, WrappedBitmap> target = null;
@@ -183,6 +187,10 @@ public class ImageLoader {
         return loadBitmapWithOption(filePath, options);
     }
 
+    private void putWrappedBitmapInPool(String filePath, WrappedBitmap wrappedBitmap) {
+        imagePoolPut(filePath, wrappedBitmap);
+    }
+
     private WrappedBitmap getWrappedBitmapInPool(String filePath) {
         WrappedBitmap wrappedBitmap = imagePoolGet(filePath);
         if (wrappedBitmap == null) return null;
@@ -192,14 +200,6 @@ public class ImageLoader {
         }
         wrappedBitmap.lastAccessTime = System.currentTimeMillis();
         return wrappedBitmap;
-    }
-
-    private void putWrappedBitmapInPool(String filePath, WrappedBitmap wrappedBitmap) {
-        imagePoolPut(filePath, wrappedBitmap);
-    }
-
-    private boolean isPoolFull() {
-        return imagePoolSize() >= imagePoolSizeLimit;
     }
 
     private WrappedBitmap loadWrappedBitmap(File file) {
