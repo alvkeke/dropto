@@ -10,8 +10,11 @@ import android.os.Looper;
 import android.util.Log;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -24,7 +27,15 @@ public class ImageLoader {
     private static final ImageLoader instance = new ImageLoader();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ImageLoader() {
-
+        Timer imageTimeoutTimer = new Timer(true);
+        TimerTask imageTimeoutTask = new TimerTask() {
+            @Override
+            public void run() {
+                removeTimeoutImage();
+            }
+        };
+        imageTimeoutTimer.scheduleAtFixedRate(imageTimeoutTask,
+                imageTimeOut/2, imageTimeOut/2);
     }
 
     public static ImageLoader getInstance() {
@@ -43,7 +54,7 @@ public class ImageLoader {
     }
     private final HashMap<String, WrappedBitmap> imagePool = new HashMap<>();
     private final ReadWriteLock poolLock = new ReentrantReadWriteLock();
-    private int imagePoolSizeLimit = 15;
+    private long imageTimeOut = 60*1000;    // 60 seconds
     private int imageMaxBytes = 1048576;  // 1*1024*1024;
 
     private WrappedBitmap imagePoolGet(String key) {
@@ -66,38 +77,31 @@ public class ImageLoader {
         poolLock.writeLock().unlock();
     }
 
-    private int imagePoolSize() {
-        int size;
+    private void removeTimeoutImage() {
+        ArrayList<String> keys = new ArrayList<>();
         poolLock.readLock().lock();
-        size = imagePool.size();
-        poolLock.readLock().unlock();
-        return size;
-    }
-
-    private boolean isPoolFull() {
-        return imagePoolSize() >= imagePoolSizeLimit;
-    }
-
-    private void removeLongNotUsedImage() {
-        poolLock.readLock().lock();
-        Map.Entry<String, WrappedBitmap> target = null;
         for (Map.Entry<String, WrappedBitmap> current : imagePool.entrySet()) {
-            if (target == null) {
-                target = current;
+            WrappedBitmap wrappedBitmap = current.getValue();
+            long deltaTime = System.currentTimeMillis() - wrappedBitmap.lastAccessTime;
+            if (deltaTime < imageTimeOut)
                 continue;
-            }
-            if (current.getValue().lastAccessTime < target.getValue().lastAccessTime) {
-                target = current;
-            }
+            keys.add(current.getKey());
         }
         poolLock.readLock().unlock();
-        if (target == null) {
-            return;
+
+        boolean needGc = false;
+        poolLock.writeLock().lock();
+        for (String key : keys) {
+            WrappedBitmap wrappedBitmap = imagePool.get(key);
+            if (wrappedBitmap == null) continue;
+            needGc = true;
+            imagePool.remove(key);
+            Log.d(this.toString(), "[" + key +
+                    "] expired, remove, last access: " + wrappedBitmap.lastAccessTime);
         }
-        Log.d(this.toString(), "[" + target.getKey() +
-                "] expired, remove, last access: " + target.getValue().lastAccessTime);
-        target.getValue().bitmap.recycle();
-        imagePoolRemove(target.getKey());
+        poolLock.writeLock().unlock();
+        if (needGc)
+            new Thread(() -> Runtime.getRuntime().gc()).start();
     }
 
     private static int getPixelDeep(Bitmap.Config config) {
@@ -209,9 +213,6 @@ public class ImageLoader {
             Log.d(this.toString(), "["+filePath+"] loaded, update access time and return");
             return wrappedBitmap;
         }
-        if (isPoolFull()) {
-            removeLongNotUsedImage();
-        }
         Log.d(this.toString(), "["+filePath+"] not loaded, create new one");
 
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -258,8 +259,8 @@ public class ImageLoader {
     }
 
     @SuppressWarnings("unused")
-    public void setImagePoolSizeLimit(int imagePoolSizeLimit) {
-        this.imagePoolSizeLimit = imagePoolSizeLimit;
+    public void setImageTimeout(int timeout_ms) {
+        this.imageTimeOut = timeout_ms;
     }
 
     @SuppressWarnings("unused")
