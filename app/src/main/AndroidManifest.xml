@@ -16,26 +16,32 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DropTo"
         tools:targetApi="31">
+        <activity
+            android:name=".ui.activity.ManagementActivity"
+            android:theme="@style/Theme.DropTo.NoActionBar"
+            android:exported="false" />
+
         <service
             android:name=".service.CoreService"
-            android:foregroundServiceType="dataSync"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <activity
             android:name=".ui.activity.MainActivity"
-            android:theme="@style/Theme.DropTo.NoActionBar"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.DropTo.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
             android:name=".ui.activity.ShareRecvActivity"
-            android:theme="@style/Theme.DropTo.Invisible"
             android:exported="true"
-            android:label="Choose category to drop">
+            android:label="Choose category to drop"
+            android:theme="@style/Theme.DropTo.Invisible">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
@@ -46,6 +52,7 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
