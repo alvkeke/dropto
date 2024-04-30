@@ -17,7 +17,7 @@
         android:theme="@style/Theme.DropTo"
         tools:targetApi="31">
         <activity
-            android:name=".ui.activity.ManagementActivity"
+            android:name=".ui.activity.MgmtActivity"
             android:theme="@style/Theme.DropTo.NoActionBar"
             android:exported="false" />
 

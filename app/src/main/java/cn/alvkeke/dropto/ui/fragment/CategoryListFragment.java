@@ -26,7 +26,7 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.ui.activity.ManagementActivity;
+import cn.alvkeke.dropto.ui.activity.MgmtActivity;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
@@ -85,7 +85,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     private class OnCategoryListMenuClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            Intent intent = new Intent(context, ManagementActivity.class);
+            Intent intent = new Intent(context, MgmtActivity.class);
             startActivity(intent);
         }
     }
