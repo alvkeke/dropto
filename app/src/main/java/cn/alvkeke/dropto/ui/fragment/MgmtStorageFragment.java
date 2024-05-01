@@ -46,9 +46,7 @@ public class MgmtStorageFragment extends Fragment {
         cbImage = view.findViewById(R.id.mgmt_storage_image);
         cbCache = view.findViewById(R.id.mgmt_storage_cache);
         buttonClear = view.findViewById(R.id.mgmt_storage_btn_clear);
-        RecyclerView listFilename = view.findViewById(R.id.mgmt_storage_list_filename);
-
-        buttonClear.setOnClickListener(new OnClearClick());
+        RecyclerView listFilename = view.findViewById(R.id.mgmt_storage_list_files);
 
         Context context = requireContext();
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
@@ -141,7 +139,10 @@ public class MgmtStorageFragment extends Fragment {
         String name = imageListAdapter.get(index);
         if (name == null) return;
 
-        Log.e(this.toString(), "list clicked at: " + name);
+        File imageFile = new File(folderImage, name);
+        ImageViewerFragment fragment = new ImageViewerFragment();
+        fragment.setImgFile(imageFile);
+        fragment.show(getParentFragmentManager(), null);
     }
 
     private final Handler handler = new Handler();
@@ -223,14 +224,5 @@ public class MgmtStorageFragment extends Fragment {
             });
         });
     };
-
-    private class OnClearClick implements View.OnClickListener {
-        @Override
-        public void onClick(View view) {
-            Log.e(this.toString(), "check status: " +
-                    cbCache.isChecked() + ", " + cbImage.isChecked());
-        }
-    }
-
 
 }
