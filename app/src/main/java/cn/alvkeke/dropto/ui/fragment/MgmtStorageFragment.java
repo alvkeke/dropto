@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -121,21 +122,17 @@ public class MgmtStorageFragment extends Fragment {
     private void clearSelectedData(View ignored) {
         buttonClear.setEnabled(false);
         if (cbCache.isChecked()) {
-            emptyFolder(folderCache);
-            try {
-                new Thread(taskCalcCache).start();
-            } catch (Exception e) {
-                Log.e(this.toString(), "Failed to start thread to calc cache size" + e);
-            }
+            new Thread(() -> {
+                emptyFolder(folderCache);
+                taskCalcCache.run();
+            }).start();
         }
         if (cbImage.isChecked()) {
-            emptyFolder(folderImage);
-            imageListAdapter.emptyList();
-            try {
-                new Thread(taskCalcImage).start();
-            } catch (Exception e) {
-                Log.e(this.toString(), "Failed to start thread to calc Images size" + e);
-            }
+            new Thread(() -> {
+                emptyFolder(folderImage);
+                handler.post(() -> imageListAdapter.emptyList());
+                taskCalcImage.run();
+            }).start();
         }
         buttonClear.setEnabled(true);
     }
@@ -150,7 +147,7 @@ public class MgmtStorageFragment extends Fragment {
     private final Handler handler = new Handler();
     private long sizeCache = 0;
     private long sizeImage = 0;
-    private int getSizeType(long size) {
+    private static int getSizeType(long size) {
         if (size < 1000L)
             return 0;
         else if (size < 1000000L)
@@ -160,7 +157,7 @@ public class MgmtStorageFragment extends Fragment {
         else
             return 3;
     }
-    private String getUnitString(int div) {
+    private static String getUnitString(int div) {
         switch (div) {
             case 0:
                 return "B";
@@ -172,8 +169,7 @@ public class MgmtStorageFragment extends Fragment {
                 return "GB";
         }
     }
-
-    private int getDivider(int div) {
+    private static int getDivider(int div) {
         switch (div) {
             case 0:
                 return 1;
@@ -185,39 +181,37 @@ public class MgmtStorageFragment extends Fragment {
                 return 1000000000;
         }
     }
-    private String getSizeString(long size) {
+    private static String getSizeString(long size) {
         int type = getSizeType(size);
         int divider = getDivider(type);
         return size/divider + getUnitString(type);
     }
 
-    private void setCbCacheText() {
-        String text = getResources().getString(R.string.string_cache_storage_usage_prompt);
-        text += " " + getSizeString(sizeCache);
-        cbCache.setText(text);
-    }
-    private void setCbImageText() {
-        String text = getResources().getString(R.string.string_image_storage_usage_prompt);
-        text += " " + getSizeString(sizeImage);
-        cbImage.setText(text);
+    private void setTextSizeString(TextView view, int str_id, long size) {
+        String string = getResources().getString(str_id);
+        string += " " + getSizeString(size);
+        view.setText(string);
     }
 
     private final Runnable taskCalcCache = () -> {
         sizeCache = 0;
         if (folderCache == null) {
-            handler.post(this::setCbCacheText);
+            handler.post(() -> setTextSizeString(cbCache,
+                    R.string.string_cache_storage_usage_prompt, sizeCache));
             return;
         }
         iterateFolder(folderCache, file -> {
-            sizeImage += file.length();
-            handler.post(this::setCbCacheText);
+            sizeCache += file.length();
+            handler.post(() -> setTextSizeString(cbCache,
+                    R.string.string_cache_storage_usage_prompt, sizeCache));
         });
     };
 
     private final Runnable taskCalcImage = () -> {
         sizeImage = 0;
         if (folderImage == null) {
-            handler.post(this::setCbImageText);
+            handler.post(() -> setTextSizeString(cbImage,
+                    R.string.string_image_storage_usage_prompt, sizeImage));
             return;
         }
         iterateFolder(folderImage, file -> {
@@ -225,7 +219,7 @@ public class MgmtStorageFragment extends Fragment {
             handler.post(() -> {
                 if (file.isFile())
                     imageListAdapter.add(file.getName());
-                setCbImageText();
+                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage);
             });
         });
     };
