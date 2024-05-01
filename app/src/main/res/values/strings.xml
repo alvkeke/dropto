@@ -25,4 +25,7 @@
     <string name="description_button_attach_clear">Button to clear the selected attachment</string>
     <string name="description_input_button">Button to add a new note</string>
     <string name="title_toolbar_mgmt_activity">Preference</string>
+    <string name="string_image_storage_usage_prompt">Image storage:</string>
+    <string name="string_cache_storage_usage_prompt">Cache storage:</string>
+    <string name="string_clear_storage_button_prompt">Clear storage:</string>
 </resources>
