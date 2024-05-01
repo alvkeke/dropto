@@ -16,6 +16,7 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
 
     public interface OnItemClickListener {
         void OnClick(int index);
+        boolean OnLongClick(int index);
     }
 
     private final ArrayList<String> images = new ArrayList<>();
@@ -51,6 +52,12 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
             this.notifyItemInserted(index);
     }
 
+    public void remove(int index) {
+        images.remove(index);
+        notifyItemRemoved(index);
+        notifyItemRangeChanged(index, images.size()-index);
+    }
+
     public String get(int index) {
         if (index >= images.size())
             return null;
@@ -77,6 +84,7 @@ public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.View
         public void setOnClickListener(int pos) {
             if (listener != null) {
                 textView.setOnClickListener(view -> listener.OnClick(pos));
+                textView.setOnLongClickListener(view -> listener.OnLongClick(pos));
             }
         }
     }

@@ -55,7 +55,7 @@ public class MgmtStorageFragment extends Fragment {
 
         imageListAdapter = new ImageListAdapter(context);
         listFilename.setAdapter(imageListAdapter);
-        imageListAdapter.setItemClickListener(this::showImageAt);
+        imageListAdapter.setItemClickListener(new OnItemClickListener());
 
         buttonClear.setOnClickListener(this::clearSelectedData);
 
@@ -135,15 +135,34 @@ public class MgmtStorageFragment extends Fragment {
         buttonClear.setEnabled(true);
     }
 
-    private void showImageAt(int index) {
-        String name = imageListAdapter.get(index);
-        if (name == null) return;
+    private class OnItemClickListener implements ImageListAdapter.OnItemClickListener {
 
-        File imageFile = new File(folderImage, name);
-        ImageViewerFragment fragment = new ImageViewerFragment();
-        fragment.setImgFile(imageFile);
-        fragment.show(getParentFragmentManager(), null);
+        @Override
+        public void OnClick(int index) {
+            String name = imageListAdapter.get(index);
+            if (name == null) return;
+
+            File imageFile = new File(folderImage, name);
+            ImageViewerFragment fragment = new ImageViewerFragment();
+            fragment.setImgFile(imageFile);
+            fragment.show(getParentFragmentManager(), null);
+        }
+
+        @Override
+        public boolean OnLongClick(int index) {
+            String name = imageListAdapter.get(index);
+            if (name == null) return false;
+            File imageFile = new File(folderImage, name);
+            long tmp = imageFile.length();
+            if (imageFile.delete()) {
+                sizeImage -= tmp;
+                imageListAdapter.remove(index);
+                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage);
+            }
+            return true;
+        }
     }
+
 
     private final Handler handler = new Handler();
     private long sizeCache = 0;
