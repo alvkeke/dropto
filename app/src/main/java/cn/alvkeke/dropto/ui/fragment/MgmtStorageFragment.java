@@ -221,7 +221,8 @@ public class MgmtStorageFragment extends Fragment {
             return;
         }
         iterateFolder(folderCache, file -> {
-            sizeCache += file.length();
+            if (file.isFile())
+                sizeCache += file.length();
             handler.post(() -> setTextSizeString(cbCache,
                     R.string.string_cache_storage_usage_prompt, sizeCache));
         });
@@ -235,7 +236,8 @@ public class MgmtStorageFragment extends Fragment {
             return;
         }
         iterateFolder(folderImage, file -> {
-            sizeImage += file.length();
+            if (file.isFile())
+                sizeImage += file.length();
             handler.post(() -> {
                 if (file.isFile())
                     imageListAdapter.add(file.getName());
