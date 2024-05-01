@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.fragment;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
+import cn.alvkeke.dropto.ui.activity.MgmtActivity;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
@@ -33,6 +35,7 @@ import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
 public class CategoryListFragment extends Fragment implements ListNotification {
 
+    private Context context;
     private CategoryAttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
     private ArrayList<Category> categories;
@@ -54,7 +57,7 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        Context context = requireContext();
+        context = requireContext();
         listener = (CategoryAttemptListener) context;
         assert categories != null;
 //        assert !categories.isEmpty();
@@ -65,6 +68,8 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         View navigationBar = view.findViewById(R.id.category_list_navigation_bar);
         setSystemBarHeight(view, statusBar, navigationBar);
 
+        toolbar.setNavigationIcon(R.drawable.icon_common_menu);
+        toolbar.setNavigationOnClickListener(new OnCategoryListMenuClick());
         toolbar.inflateMenu(R.menu.category_toolbar);
         toolbar.setOnMenuItemClickListener(new CategoryMenuListener());
 
@@ -75,6 +80,14 @@ public class CategoryListFragment extends Fragment implements ListNotification {
         rlCategory.setLayoutManager(layoutManager);
         rlCategory.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
         rlCategory.setOnTouchListener(new OnListItemClickListener());
+    }
+
+    private class OnCategoryListMenuClick implements View.OnClickListener {
+        @Override
+        public void onClick(View view) {
+            Intent intent = new Intent(context, MgmtActivity.class);
+            startActivity(intent);
+        }
     }
 
     private void setSystemBarHeight(View parent, View status, View navi) {

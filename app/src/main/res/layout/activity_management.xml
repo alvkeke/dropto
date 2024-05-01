@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mgmt_parent"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.activity.MgmtActivity">
+
+    <View
+        android:id="@+id/mgmt_status_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="?android:statusBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="20dp"/>
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/mgmt_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_status_bar"
+        app:title="@string/title_toolbar_mgmt_activity"
+        app:navigationIcon="@drawable/icon_common_back"
+        android:background="?android:statusBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/mgmt_viewpager"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_toolbar"
+        app:layout_constraintBottom_toTopOf="@id/mgmt_navi_bar"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"/>
+
+    <View
+        android:id="@+id/mgmt_navi_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:background="?android:navigationBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="30dp"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
