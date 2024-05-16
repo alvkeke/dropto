@@ -2,11 +2,9 @@ package cn.alvkeke.dropto.ui.activity;
 
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -22,28 +20,26 @@ import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
+import cn.alvkeke.dropto.service.CoreServiceConnection;
+import cn.alvkeke.dropto.service.Task;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 
 public class ShareRecvActivity extends AppCompatActivity
-        implements CategorySelectorFragment.CategorySelectListener, CoreService.TaskResultListener {
+        implements CategorySelectorFragment.CategorySelectListener,
+        Task.ResultListener {
 
-
-
-    private CoreService.CoreSrvBinder binder = null;
-    private final ServiceConnection serviceConn = new ServiceConnection() {
+    private CoreService service = null;
+    private final CoreServiceConnection serviceConn = new CoreServiceConnection(this) {
         @Override
-        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            binder = (CoreService.CoreSrvBinder) iBinder;
-            binder.getService().addTaskListener(ShareRecvActivity.this);
-            binder.getService().queueReadTask(CoreService.Task.Target.Category, 0);
+        public void execOnServiceConnected(ComponentName componentName, Bundle bundleAfterConnected) {
+            service = getService();
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            if (binder == null) return;
-            binder.getService().delTaskListener(ShareRecvActivity.this);
-            binder = null;
+        public void execOnServiceDisconnected() {
+            super.execOnServiceDisconnected();
+            service = null;
         }
     };
 
@@ -58,7 +54,7 @@ public class ShareRecvActivity extends AppCompatActivity
     }
 
     private void clearCoreService() {
-        if (binder == null) return;
+        if (service == null) return;
         unbindService(serviceConn);
     }
 
@@ -103,6 +99,7 @@ public class ShareRecvActivity extends AppCompatActivity
         }
 
         categorySelectorFragment = new CategorySelectorFragment();
+        Global.getInstance().loadCategories(this);
         categorySelectorFragment.setCategories(Global.getInstance().getCategories());
         getSupportFragmentManager().beginTransaction()
                 .add(categorySelectorFragment, null)
@@ -140,7 +137,7 @@ public class ShareRecvActivity extends AppCompatActivity
                 recvNote.addImageFile(imageFile);
             }
         }
-        binder.getService().queueTask(CoreService.Task.Type.CREATE, recvNote);
+        service.queueTask(Task.createNote(recvNote, null));
         finish();
     }
 
@@ -196,13 +193,24 @@ public class ShareRecvActivity extends AppCompatActivity
         return new ImageFile(md5file, imgName);
     }
 
-    @Override
-    public void onCategoryTaskFinish(CoreService.Task.Type taskType, int index, Category c) {
-        if (index < 0) return;
+    private void onCategoryTaskFinish(Task task) {
+        if (task.result < 0) return;
         if (categorySelectorFragment == null) return;
-        categorySelectorFragment.notifyItemListChanged(CoreService.taskToNotify(taskType), index, c);
+        switch (task.job) {
+            case CREATE:
+            case REMOVE:
+            case UPDATE:
+                categorySelectorFragment.notifyItemListChanged(
+                        Task.jobToNotify(task.job), task.result, (Category) task.param);
+                break;
+            default:
+                break;
+        }
     }
 
     @Override
-    public void onNoteTaskFinish(CoreService.Task.Type taskType, int index, NoteItem n) { }
+    public void onTaskFinish(Task task, Object param) {
+        if (task.type == Task.Type.Category)
+            onCategoryTaskFinish(task);
+    }
 }

@@ -25,7 +25,7 @@ import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
-public class CategorySelectorFragment extends BottomSheetDialogFragment implements ListNotification{
+public class CategorySelectorFragment extends BottomSheetDialogFragment implements ListNotification<Category> {
 
     public interface CategorySelectListener {
         void onSelected(int index, Category category);
@@ -102,9 +102,12 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
     }
 
     @Override
-    public void notifyItemListChanged(Notify notify, int index, Object object) {
-        Category category = (Category) object;
-        if (notify != Notify.REMOVED && categories.get(index) != category) {
+    public void notifyItemListChanged(Notify notify, int index, Category category) {
+        if (categoryListAdapter == null) {
+            return;
+        }
+
+        if (notify == Notify.UPDATED && categoryListAdapter.get(index) != category) {
             listener.onError("target Category not exist");
             return;
         }

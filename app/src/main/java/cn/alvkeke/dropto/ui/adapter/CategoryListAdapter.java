@@ -102,11 +102,20 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
         return true;
     }
 
+    public Category get(int index) {
+        return categories.get(index);
+    }
+
     public void remove(Category e) {
         int index = categories.indexOf(e);
         categories.remove(e);
         notifyItemRemoved(index);
         notifyItemRangeChanged(index, categories.size()-index);
+    }
+
+    public void clear() {
+        notifyItemRangeRemoved(0, categories.size());
+        categories.clear();
     }
 
     public void update(int index) {

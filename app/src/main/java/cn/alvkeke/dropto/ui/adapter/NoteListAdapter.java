@@ -316,6 +316,11 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         notifyItemRangeChanged(index, noteList.size()-index);
     }
 
+    public void clear() {
+        notifyItemRangeRemoved(0, noteList.size());
+        noteList.clear();
+    }
+
     public void update(int index) {
         notifyItemChanged(index);
     }

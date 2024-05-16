@@ -5,11 +5,9 @@ import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.Toast;
@@ -35,6 +33,8 @@ import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
+import cn.alvkeke.dropto.service.CoreServiceConnection;
+import cn.alvkeke.dropto.service.Task;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
@@ -47,39 +47,36 @@ import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
 import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
 
 public class MainActivity extends AppCompatActivity implements
-        CoreService.TaskResultListener, ErrorMessageHandler,
+        ErrorMessageHandler, Task.ResultListener,
         NoteAttemptListener, CategoryAttemptListener,
         CategorySelectorFragment.CategorySelectListener {
 
-    private CoreService.CoreSrvBinder binder = null;
-    private final ServiceConnection serviceConn = new ServiceConnection() {
+    private CoreService service = null;
+    private final CoreServiceConnection serviceConn = new CoreServiceConnection(this) {
         @Override
-        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            binder = (CoreService.CoreSrvBinder) iBinder;
-            binder.getService().addTaskListener(MainActivity.this);
-            binder.getService().queueReadTask(CoreService.Task.Target.Category, 0);
+        public void execOnServiceConnected(ComponentName componentName, Bundle bundleAfterConnected) {
+            service = getService();
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            if (binder == null) return;
-            binder.getService().delTaskListener(MainActivity.this);
-            binder = null;
+        public void execOnServiceDisconnected() {
+            service = null;
         }
     };
 
-    private void setupCoreService() {
+    private void setupCoreService(Bundle savedInstanceState) {
         Intent serviceIntent = new Intent(this, CoreService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent);
         } else {
             startService(serviceIntent);
         }
+        serviceConn.setBundleAfterConnected(savedInstanceState);
         bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE);
     }
 
     private void clearCoreService() {
-        if (binder == null) return;
+        if (service == null) return;
         unbindService(serviceConn);
     }
 
@@ -102,11 +99,13 @@ public class MainActivity extends AppCompatActivity implements
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
-        setupCoreService();
-
         getOnBackPressedDispatcher().
                 addCallback(this, new OnFragmentBackPressed(true));
 
+        setupCoreService(savedInstanceState);
+
+        Global.getInstance().loadCategories(this);
+        ArrayList<Category> categories = Global.getInstance().getCategories();
         if (savedInstanceState != null) {
             List<Fragment> fragments = getSupportFragmentManager().getFragments();
             for (Fragment f : fragments) {
@@ -119,8 +118,8 @@ public class MainActivity extends AppCompatActivity implements
                     imageViewerFragment = (ImageViewerFragment) f;
                     recoverImageViewFragment(savedInstanceState);
                 } else if (f instanceof CategorySelectorFragment) {
-                    CategorySelectorFragment fragment = (CategorySelectorFragment) f;
-                    fragment.setCategories(Global.getInstance().getCategories());
+                     CategorySelectorFragment fragment = (CategorySelectorFragment) f;
+                     fragment.setCategories(categories);
                 } else if (f instanceof NoteDetailFragment) {
                     recoverNoteDetailFragment((NoteDetailFragment) f, savedInstanceState);
                 } else if (f instanceof CategoryDetailFragment) {
@@ -134,7 +133,7 @@ public class MainActivity extends AppCompatActivity implements
         if (categoryListFragment == null) {
             categoryListFragment = new CategoryListFragment();
         }
-        categoryListFragment.setCategories(Global.getInstance().getCategories());
+        categoryListFragment.setCategories(categories);
         if (!categoryListFragment.isAdded()) {
             startFragment(categoryListFragment);
         }
@@ -237,8 +236,11 @@ public class MainActivity extends AppCompatActivity implements
         if (noteListFragment == null) {
             noteListFragment = new NoteListFragment();
         }
+        boolean ret = Global.loadCategoryNotes(this, category);
+        if (!ret) {
+            Log.e(this.toString(), "Failed to get noteList from database");
+        }
         noteListFragment.setCategory(category);
-        binder.getService().queueTask(CoreService.Task.Type.READ, category);
         savedNoteListCategoryId = category.getId();
         startFragmentAnime(noteListFragment);
     }
@@ -262,18 +264,18 @@ public class MainActivity extends AppCompatActivity implements
     public void onAttempt(CategoryAttemptListener.Attempt attempt, Category category) {
         switch (attempt) {
             case CREATE:
-                binder.getService().queueTask(CoreService.Task.Type.CREATE, category);
+                service.queueTask(Task.createCategory(category, null));
                 break;
             case REMOVE:
-                binder.getService().queueTask(CoreService.Task.Type.REMOVE, category);
+                service.queueTask(Task.removeCategory(category, null));
                 break;
             case REMOVE_FULL:
                 Log.e(this.toString(), "NoteItems are not removed currently");
                 // TODO: implement this
-                binder.getService().queueTask(CoreService.Task.Type.REMOVE, category);
+                service.queueTask(Task.removeCategory(category, null));
                 break;
             case UPDATE:
-                binder.getService().queueTask(CoreService.Task.Type.UPDATE, category);
+                service.queueTask(Task.updateCategory(category, null));
                 break;
             case SHOW_DETAIL:
                 handleCategoryDetailShow(category);
@@ -329,7 +331,7 @@ public class MainActivity extends AppCompatActivity implements
         try {
             String imageName = imageFile.getName();
             File fileToShare;
-            if (imageName == null) {
+            if (imageName == null || imageName.isEmpty()) {
                 fileToShare = imageFile.getMd5file();
             } else {
                 fileToShare = new File(share_folder, imageName);
@@ -450,10 +452,10 @@ public class MainActivity extends AppCompatActivity implements
     public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e, Object ext) {
         switch (attempt) {
             case REMOVE:
-                binder.getService().queueTask(CoreService.Task.Type.REMOVE, e);
+                service.queueTask(Task.removeNote(e, null));
                 break;
             case CREATE:
-                binder.getService().queueTask(CoreService.Task.Type.CREATE, e);
+                service.queueTask(Task.createNote(e, null));
                 break;
             case SHOW_DETAIL:
                 handleNoteDetailShow(e);
@@ -465,7 +467,7 @@ public class MainActivity extends AppCompatActivity implements
                 handleNoteShare(e);
                 break;
             case UPDATE:
-                binder.getService().queueTask(CoreService.Task.Type.UPDATE, e);
+                service.queueTask(Task.updateNote(e, null));
                 break;
             case SHOW_IMAGE:
                 int imageIndex = (int) ext;
@@ -477,14 +479,14 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private static CoreService.Task.Type convertAttemptToType(NoteAttemptListener.Attempt attempt) {
+    private static Task.Job convertAttemptToJob(NoteAttemptListener.Attempt attempt) {
         switch (attempt) {
             case REMOVE:
-                return CoreService.Task.Type.REMOVE;
+                return Task.Job.REMOVE;
             case UPDATE:
-                return CoreService.Task.Type.UPDATE;
+                return Task.Job.UPDATE;
             case CREATE:
-                return CoreService.Task.Type.CREATE;
+                return Task.Job.CREATE;
         }
         return null;
     }
@@ -494,9 +496,9 @@ public class MainActivity extends AppCompatActivity implements
             case REMOVE:
             case CREATE:
             case UPDATE:
-                CoreService.Task.Type type = convertAttemptToType(attempt);
+                Task.Job job = convertAttemptToJob(attempt);
                 for (NoteItem e : noteItems) {
-                    binder.getService().queueTask(type, e);
+                    service.queueTask(Task.onNoteStorage(job, e, null));
                 }
                 break;
             case COPY:
@@ -526,7 +528,7 @@ public class MainActivity extends AppCompatActivity implements
             return;
         NoteItem item = pendingForwardNote.clone();
         item.setCategoryId(category.getId());
-        binder.getService().queueTask(CoreService.Task.Type.CREATE, item);
+        service.queueTask(Task.createNote(item, null));
     }
 
     @Override
@@ -534,20 +536,37 @@ public class MainActivity extends AppCompatActivity implements
         Toast.makeText(this, errMessage, Toast.LENGTH_SHORT).show();
     }
 
-    @Override
-    public void onCategoryTaskFinish(CoreService.Task.Type taskType, int index, Category c) {
-        if (index < 0) return;
+    private void onCategoryTaskFinish(Task task) {
+        if (task.result < 0) return;
         if (categoryListFragment == null) return;
-        categoryListFragment.notifyItemListChanged(CoreService.taskToNotify(taskType), index, c);
+        switch (task.job) {
+            case CREATE:
+            case REMOVE:
+            case UPDATE:
+                categoryListFragment.notifyItemListChanged(
+                        Task.jobToNotify(task.job), task.result, (Category) task.param);
+                break;
+        }
     }
 
-    @Override
-    public void onNoteTaskFinish(CoreService.Task.Type taskType, int index, NoteItem n) {
+    private void onNoteTaskFinish(Task task) {
+        NoteItem n = (NoteItem) task.param;
+        int index = task.result;
         if (n == pendingForwardNote)
             pendingForwardNote = null;
         if (index < 0) return;
         if (noteListFragment == null) return;
-        noteListFragment.notifyItemListChanged(CoreService.taskToNotify(taskType), index, n);
+        noteListFragment.notifyItemListChanged(Task.jobToNotify(task.job), index, n);
     }
 
+    @Override
+    public void onTaskFinish(Task task, Object param) {
+        switch (task.type) {
+            case Category:
+                onCategoryTaskFinish(task);
+                return;
+            case NoteItem:
+                onNoteTaskFinish(task);
+        }
+    }
 }

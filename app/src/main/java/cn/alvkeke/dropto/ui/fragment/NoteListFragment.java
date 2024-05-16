@@ -55,7 +55,7 @@ import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
-public class NoteListFragment extends Fragment implements ListNotification, FragmentOnBackListener {
+public class NoteListFragment extends Fragment implements ListNotification<NoteItem>, FragmentOnBackListener {
 
     private Context context;
     private NoteAttemptListener listener;
@@ -498,9 +498,8 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
     }
 
     @Override
-    public void notifyItemListChanged(Notify notify, int index, Object object) {
-        NoteItem note = (NoteItem) object;
-        if (note.getCategoryId() != category.getId()) {
+    public void notifyItemListChanged(Notify notify, int index, NoteItem note) {
+        if (note != null && note.getCategoryId() != category.getId()) {
             Log.e(this.toString(), "target NoteItem not exist in current category");
             return;
         }
@@ -520,6 +519,9 @@ public class NoteListFragment extends Fragment implements ListNotification, Frag
                 break;
             case REMOVED:
                 noteItemAdapter.remove(note);
+                break;
+            case CLEARED:
+                noteItemAdapter.clear();
                 break;
             default:
         }

@@ -33,7 +33,7 @@ import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
 
-public class CategoryListFragment extends Fragment implements ListNotification {
+public class CategoryListFragment extends Fragment implements ListNotification<Category> {
 
     private Context context;
     private CategoryAttemptListener listener;
@@ -144,9 +144,8 @@ public class CategoryListFragment extends Fragment implements ListNotification {
     }
 
     @Override
-    public void notifyItemListChanged(ListNotification.Notify notify, int index, Object object) {
-        Category category = (Category) object;
-        if (notify != Notify.REMOVED && categories.get(index) != category) {
+    public void notifyItemListChanged(ListNotification.Notify notify, int index, Category category) {
+        if (notify == Notify.UPDATED && categoryListAdapter.get(index) != category) {
             throwErrorMessage("target Category not exist");
             return;
         }
@@ -160,6 +159,9 @@ public class CategoryListFragment extends Fragment implements ListNotification {
                 break;
             case REMOVED:
                 categoryListAdapter.remove(category);
+                break;
+            case CLEARED:
+                categoryListAdapter.clear();
                 break;
             default:
         }
