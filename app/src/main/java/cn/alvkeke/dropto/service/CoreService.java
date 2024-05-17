@@ -28,6 +28,7 @@ import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
+import cn.alvkeke.dropto.storage.DataLoader;
 
 public class CoreService extends Service {
 
@@ -156,7 +157,7 @@ public class CoreService extends Service {
             helper.start();
             category.setId(helper.insertCategory(category));
             helper.finish();
-            ArrayList<Category> categories = Global.getInstance().getCategories();
+            ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
             categories.add(category);
             task.result = categories.indexOf(category);
         } catch (Exception ex) {
@@ -167,7 +168,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskCategoryRemove(Task task) {
-        ArrayList<Category> categories = Global.getInstance().getCategories();
+        ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
         Category category = (Category) task.param;
 
         int index;
@@ -192,7 +193,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskCategoryUpdate(Task task) {
-        ArrayList<Category> categories = Global.getInstance().getCategories();
+        ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
         Category category = (Category) task.param;
 
         int index;
@@ -233,7 +234,7 @@ public class CoreService extends Service {
 
     private void handleTaskNoteCreate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category category = Global.getInstance().findCategory(newItem.getCategoryId());
+        Category category = DataLoader.getInstance().findCategory(this, newItem.getCategoryId());
 
         newItem.setCategoryId(category.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
@@ -259,7 +260,7 @@ public class CoreService extends Service {
 
     private void handleTaskNoteRemove(Task task) {
         NoteItem e = (NoteItem) task.param;
-        Category c = Global.getInstance().findCategory(e.getCategoryId());
+        Category c = DataLoader.getInstance().findCategory(this, e.getCategoryId());
 
         int index = c.indexNoteItem(e);
         if (index == -1) return;
@@ -281,7 +282,7 @@ public class CoreService extends Service {
 
     private void handleTaskNoteUpdate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category c = Global.getInstance().findCategory(newItem.getCategoryId());
+        Category c = DataLoader.getInstance().findCategory(this, newItem.getCategoryId());
         NoteItem oldItem = c.findNoteItem(newItem.getId());
         if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());

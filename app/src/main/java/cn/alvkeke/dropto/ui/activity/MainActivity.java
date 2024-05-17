@@ -29,12 +29,12 @@ import java.util.List;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.service.CoreServiceConnection;
 import cn.alvkeke.dropto.service.Task;
+import cn.alvkeke.dropto.storage.DataLoader;
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
@@ -104,8 +104,7 @@ public class MainActivity extends AppCompatActivity implements
 
         setupCoreService(savedInstanceState);
 
-        Global.getInstance().loadCategories(this);
-        ArrayList<Category> categories = Global.getInstance().getCategories();
+        ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
         if (savedInstanceState != null) {
             List<Fragment> fragments = getSupportFragmentManager().getFragments();
             for (Fragment f : fragments) {
@@ -145,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverNoteListFragment(Bundle state) {
         savedNoteListCategoryId = state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE);
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
-        Category category = Global.getInstance().findCategory(savedNoteListCategoryId);
+        Category category = DataLoader.getInstance().findCategory(this, savedNoteListCategoryId);
         noteListFragment.setCategory(category);
     }
     private static final long SAVED_NOTE_INFO_NOTE_ID_NONE = -1;
@@ -154,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverNoteDetailFragment(NoteDetailFragment fragment, Bundle state) {
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
         savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE);
-        Category category = Global.getInstance().findCategory(savedNoteListCategoryId);
+        Category category = DataLoader.getInstance().findCategory(this, savedNoteListCategoryId);
         NoteItem item = category.findNoteItem(savedNoteInfoNoteId);
         if (item == null) { fragment.dismiss(); return; }
         fragment.setNoteItem(item);
@@ -165,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverCategoryDetailFragment(CategoryDetailFragment fragment, Bundle state) {
         savedCategoryDetailId = state.getLong(SAVED_CATEGORY_DETAIL_ID, SAVED_CATEGORY_DETAIL_ID_NONE);
         if (savedCategoryDetailId == SAVED_CATEGORY_DETAIL_ID_NONE) return;
-        Category category = Global.getInstance().findCategory(savedCategoryDetailId);
+        Category category = DataLoader.getInstance().findCategory(this, savedCategoryDetailId);
         fragment.setCategory(category);
     }
     private String savedImageViewFile = null;
@@ -236,7 +235,7 @@ public class MainActivity extends AppCompatActivity implements
         if (noteListFragment == null) {
             noteListFragment = new NoteListFragment();
         }
-        boolean ret = Global.loadCategoryNotes(this, category);
+        boolean ret = DataLoader.getInstance().loadCategoryNotes(this, category);
         if (!ret) {
             Log.e(this.toString(), "Failed to get noteList from database");
         }
@@ -439,7 +438,7 @@ public class MainActivity extends AppCompatActivity implements
     private void handleNoteForward(NoteItem note) {
         pendingForwardNote = note;
         CategorySelectorFragment forwardFragment = new CategorySelectorFragment();
-        forwardFragment.setCategories(Global.getInstance().getCategories());
+        forwardFragment.setCategories(DataLoader.getInstance().getCategories(this));
         forwardFragment.show(getSupportFragmentManager(), null);
     }
 

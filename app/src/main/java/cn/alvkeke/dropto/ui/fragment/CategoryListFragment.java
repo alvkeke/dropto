@@ -38,11 +38,11 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
     private Context context;
     private CategoryAttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
-    private ArrayList<Category> categories;
 
     public CategoryListFragment() {
     }
 
+    private ArrayList<Category> categories = null;
     public void setCategories(ArrayList<Category> categories) {
         this.categories = categories;
     }
@@ -59,8 +59,6 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
         super.onViewCreated(view, savedInstanceState);
         context = requireContext();
         listener = (CategoryAttemptListener) context;
-        assert categories != null;
-//        assert !categories.isEmpty();
 
         RecyclerView rlCategory = view.findViewById(R.id.category_list_listview);
         MaterialToolbar toolbar = view.findViewById(R.id.category_list_toolbar);
@@ -73,7 +71,10 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
         toolbar.inflateMenu(R.menu.category_toolbar);
         toolbar.setOnMenuItemClickListener(new CategoryMenuListener());
 
-        categoryListAdapter = new CategoryListAdapter(categories);
+        categoryListAdapter = new CategoryListAdapter();
+        if (categories != null) {
+            categoryListAdapter.setList(categories);
+        }
 
         rlCategory.setAdapter(categoryListAdapter);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
@@ -129,7 +130,7 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
 
         @Override
         public boolean onItemClick(View v, int index) {
-            Category category = categories.get(index);
+            Category category = categoryListAdapter.get(index);
             listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_EXPAND, category);
             return true;
         }
@@ -137,7 +138,7 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
         @Override
         public boolean onItemLongClick(View v, int index) {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            Category category = categories.get(index);
+            Category category = categoryListAdapter.get(index);
             listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_DETAIL, category);
             return true;
         }

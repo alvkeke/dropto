@@ -17,11 +17,10 @@ import cn.alvkeke.dropto.data.Category;
 
 public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapter.ViewHolder> {
 
-    private final ArrayList<Category> categories;
+    private final ArrayList<Category> categories = new ArrayList<>();
 
-    public CategoryListAdapter(ArrayList<Category> categories) {
-        this.categories = new ArrayList<>(categories);
-    }
+    public CategoryListAdapter() { }
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
         private final ImageView ivIcon;
@@ -74,6 +73,13 @@ public class CategoryListAdapter extends RecyclerView.Adapter<CategoryListAdapte
     @Override
     public int getItemCount() {
         return categories.size();
+    }
+
+    public void setList(ArrayList<Category> categories) {
+        notifyItemRangeRemoved(0, this.categories.size());
+        this.categories.clear();
+        this.categories.addAll(categories);
+        notifyItemRangeInserted(0, this.categories.size());
     }
 
     public int add(Category e) {

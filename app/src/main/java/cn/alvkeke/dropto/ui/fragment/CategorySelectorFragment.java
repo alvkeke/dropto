@@ -33,11 +33,11 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
     }
 
     private CategorySelectListener listener;
-    private ArrayList<Category> categories;
     private CategoryListAdapter categoryListAdapter;
 
     public CategorySelectorFragment() { }
 
+    private ArrayList<Category> categories = null;
     public void setCategories(ArrayList<Category> categories) {
         this.categories = categories;
     }
@@ -58,8 +58,11 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
         RecyclerView rlCategory = view.findViewById(R.id.share_recv_rlist);
         setPeekHeight();
 
-        categoryListAdapter = new CategoryListAdapter(categories);
+        categoryListAdapter = new CategoryListAdapter();
         rlCategory.setAdapter(categoryListAdapter);
+        if (categories != null) {
+            categoryListAdapter.setList(categories);
+        }
 
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
         rlCategory.setLayoutManager(layoutManager);
@@ -69,7 +72,7 @@ public class CategorySelectorFragment extends BottomSheetDialogFragment implemen
 
             @Override
             public boolean onItemClick(View v, int index) {
-                Category category = categories.get(index);
+                Category category = categoryListAdapter.get(index);
                 if (category == null) {
                     listener.onError("Failed to get category in index " + index);
                     finish();

@@ -19,18 +19,16 @@ import java.util.Date;
 import java.util.Locale;
 
 import cn.alvkeke.dropto.R;
+import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.ImageLoader;
 
 public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
 
-    private final ArrayList<NoteItem> noteList;
+    private final ArrayList<NoteItem> noteList = new ArrayList<>();
 
-    public NoteListAdapter(ArrayList<NoteItem> list) {
-        // note a real list, prevent the multi-thread race condition.
-        noteList = new ArrayList<>(list);
-    }
+    public NoteListAdapter() { }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
@@ -281,6 +279,13 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
     @Override
     public int getItemCount() {
         return noteList.size();
+    }
+
+    public void setList(ArrayList<NoteItem> noteList) {
+        notifyItemRangeRemoved(0, this.noteList.size());
+        this.noteList.clear();
+        this.noteList.addAll(noteList);
+        notifyItemRangeInserted(0, this.noteList.size());
     }
 
     public int add(NoteItem e) {

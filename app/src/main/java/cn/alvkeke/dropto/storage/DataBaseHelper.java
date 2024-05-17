@@ -313,6 +313,16 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_ID, args);
     }
 
+    private static final String NOTE_WHERE_CLAUSE_CATE_ID = NOTE_COLUMN_CATE_ID + " = ?";
+    public int deleteNotes(long categoryId) {
+        if (db == null) {
+            Log.e(this.toString(), "database not opened");
+            return 0;
+        }
+        String[] args = { String.valueOf(categoryId) };
+        return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_CATE_ID, args);
+    }
+
     /**
      * update note info in database with specific ID, all data apart of ID will be changed
      * @param id ID of noteItem need to be updated

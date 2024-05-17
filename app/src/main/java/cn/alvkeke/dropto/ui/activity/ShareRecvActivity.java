@@ -22,6 +22,7 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.service.CoreServiceConnection;
 import cn.alvkeke.dropto.service.Task;
+import cn.alvkeke.dropto.storage.DataLoader;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
 
@@ -99,8 +100,7 @@ public class ShareRecvActivity extends AppCompatActivity
         }
 
         categorySelectorFragment = new CategorySelectorFragment();
-        Global.getInstance().loadCategories(this);
-        categorySelectorFragment.setCategories(Global.getInstance().getCategories());
+        categorySelectorFragment.setCategories(DataLoader.getInstance().getCategories(this));
         getSupportFragmentManager().beginTransaction()
                 .add(categorySelectorFragment, null)
                 .commit();

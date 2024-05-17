@@ -75,6 +75,9 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
 
     public void setCategory(Category category) {
         this.category = category;
+        if (noteItemAdapter != null) {
+            noteItemAdapter.setList(category.getNoteItems());
+        }
     }
 
     public Category getCategory() {
@@ -115,9 +118,10 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         toolbar.setNavigationOnClickListener(new OnNavigationIconClick());
         toolbar.setOnMenuItemClickListener(new NoteListMenuListener());
 
-        noteItemAdapter = new NoteListAdapter(category.getNoteItems());
+        noteItemAdapter = new NoteListAdapter();
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
         layoutManager.setReverseLayout(true);
+        noteItemAdapter.setList(category.getNoteItems());
 
         rlNoteList.setAdapter(noteItemAdapter);
         rlNoteList.setLayoutManager(layoutManager);
