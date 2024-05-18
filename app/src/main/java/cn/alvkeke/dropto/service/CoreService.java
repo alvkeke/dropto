@@ -174,6 +174,7 @@ public class CoreService extends Service {
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
+            helper.deleteNotes(category.getId());
             if (0 == helper.deleteCategory(category.getId()))
                 Log.e(this.toString(), "no category row be deleted in database");
             helper.finish();
@@ -209,22 +210,6 @@ public class CoreService extends Service {
             task.result = -1;
         }
         notifyListener(task);
-    }
-
-    @SuppressWarnings("unused")
-    private void deleteCategoryRecursion(Task task) {
-        Category category = (Category) task.param;
-        NoteItem e;
-        try (DataBaseHelper helper = new DataBaseHelper(this)) {
-            helper.start();
-            while (null != (e = category.getNoteItem(0))) {
-                if (0 == helper.deleteNote(e.getId()))
-                    Log.i(this.toString(), "no row be deleted");
-                category.delNoteItem(e);
-            }
-            helper.finish();
-        }
-        handleTaskCategoryRemove(task);
     }
 
     private void handleTaskNoteCreate(Task task) {

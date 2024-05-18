@@ -7,7 +7,6 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Spinner;
@@ -136,19 +135,11 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
     private void showDeletingConfirm() {
         Context context = requireContext();
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        LayoutInflater inflater = LayoutInflater.from(context);
-        View dialog = inflater.inflate(R.layout.dialog_category_deleting, null);
-        builder.setView(dialog);
-
-        builder.setTitle("Delete category");
+        builder.setTitle(R.string.dialog_category_deleting_title);
+        builder.setMessage(R.string.dialog_category_deleting_message);
         builder.setNegativeButton(R.string.string_cancel, null);
         builder.setPositiveButton(R.string.string_ok, (dialogInterface, i) -> {
-            CheckBox checkBox = dialog.findViewById(R.id.dialog_category_delete_checkbox);
-            boolean full = checkBox.isChecked();
-            CategoryAttemptListener.Attempt attempt = full ?
-                    CategoryAttemptListener.Attempt.REMOVE_FULL :
-                    CategoryAttemptListener.Attempt.REMOVE;
-            listener.onAttempt(attempt, category);
+            listener.onAttempt(CategoryAttemptListener.Attempt.REMOVE, category);
             finish();
         });
 

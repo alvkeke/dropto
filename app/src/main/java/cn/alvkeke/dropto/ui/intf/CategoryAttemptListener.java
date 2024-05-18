@@ -6,7 +6,6 @@ public interface CategoryAttemptListener {
     enum Attempt {
         CREATE,
         REMOVE,
-        REMOVE_FULL,
         UPDATE,
         SHOW_DETAIL,
         SHOW_CREATE,

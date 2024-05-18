@@ -269,11 +269,6 @@ public class MainActivity extends AppCompatActivity implements
             case REMOVE:
                 service.queueTask(Task.removeCategory(category, null));
                 break;
-            case REMOVE_FULL:
-                Log.e(this.toString(), "NoteItems are not removed currently");
-                // TODO: implement this
-                service.queueTask(Task.removeCategory(category, null));
-                break;
             case UPDATE:
                 service.queueTask(Task.updateCategory(category, null));
                 break;

@@ -24,6 +24,7 @@ import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -150,10 +151,18 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         }
     }
 
-    private void handleMenuDelete() {
+    private void removeSelectedNotes() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
         exitSelectMode();
         listener.onAttemptBatch(NoteAttemptListener.Attempt.REMOVE, items);
+    }
+    private void handleMenuDelete() {
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.dialog_note_delete_selected_title)
+                .setMessage(R.string.dialog_note_delete_selected_message)
+                .setNegativeButton(R.string.string_cancel, null)
+                .setPositiveButton(R.string.string_ok, (dialogIntf, i) -> removeSelectedNotes())
+                .create().show();
     }
 
     private void handleMenuCopy() {
@@ -473,7 +482,13 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
                 NoteItem note = (NoteItem) obj;
                 int item_id = menuItem.getItemId();
                 if (R.id.item_pop_m_delete == item_id) {
-                    listener.onAttempt(NoteAttemptListener.Attempt.REMOVE, note);
+                    new AlertDialog.Builder(context)
+                            .setTitle(R.string.dialog_note_delete_pop_remove_title)
+                            .setMessage(R.string.dialog_note_delete_pop_remove_message)
+                            .setNegativeButton(R.string.string_cancel, null)
+                            .setPositiveButton(R.string.string_ok, (dialogInterface, i) ->
+                                    listener.onAttempt(NoteAttemptListener.Attempt.REMOVE, note))
+                            .create().show();
                 } else if (R.id.item_pop_m_pin == item_id) {
                     throwErrorMessage("try to Pin item at " + index);
                 } else if (R.id.item_pop_m_edit == item_id) {
