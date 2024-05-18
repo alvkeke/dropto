@@ -14,21 +14,15 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 
 import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.ImageLoader;
 
-public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHolder> {
-
-    private final ArrayList<NoteItem> noteList = new ArrayList<>();
-
-    public NoteListAdapter() { }
+public class NoteListAdapter extends SelectableListAdapter<NoteItem, NoteListAdapter.ViewHolder> {
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
@@ -259,7 +253,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        NoteItem note = noteList.get(position);
+        NoteItem note = this.get(position);
         if (note == null) {
             Log.e(this.toString(), "cannot find list item at : " + position);
             return;
@@ -268,93 +262,12 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.ViewHo
         holder.setCreateTime(note.getCreateTime());
         holder.setIsEdited(note.isEdited());
         holder.setImageView(note);
-        if (selectedItems.contains(note)) {
+        if (isSelected(note)) {
             // TODO: use another color for selected item
             holder.itemView.setBackgroundColor(Color.LTGRAY);
         } else {
             holder.itemView.setBackgroundColor(Color.TRANSPARENT);
         }
-    }
-
-    @Override
-    public int getItemCount() {
-        return noteList.size();
-    }
-
-    public void setList(ArrayList<NoteItem> noteList) {
-        notifyItemRangeRemoved(0, this.noteList.size());
-        this.noteList.clear();
-        this.noteList.addAll(noteList);
-        notifyItemRangeInserted(0, this.noteList.size());
-    }
-
-    public int add(NoteItem e) {
-        if (noteList.contains(e)) return -1;
-        boolean result = noteList.add(e);
-        if (!result) {
-            return -1;
-        }
-        int index = noteList.indexOf(e);
-        notifyItemInserted(index);
-        notifyItemRangeChanged(index, noteList.size() - index);
-        return index;
-    }
-
-    public boolean add(int index, NoteItem e) {
-        int idx = noteList.indexOf(e);
-        if (idx >= 0) {
-            if (idx != index) {
-                Log.e(this.toString(), "note exist with mismatch index: "+index+":"+idx);
-            }
-            return false;
-        }
-        noteList.add(index, e);
-        notifyItemInserted(index);
-        notifyItemRangeChanged(index, noteList.size()-index);
-        return true;
-    }
-
-    public void remove(NoteItem e) {
-        int index = noteList.indexOf(e);
-        noteList.remove(e);
-        notifyItemRemoved(index);
-        notifyItemRangeChanged(index, noteList.size()-index);
-    }
-
-    public void clear() {
-        notifyItemRangeRemoved(0, noteList.size());
-        noteList.clear();
-    }
-
-    public void update(int index) {
-        notifyItemChanged(index);
-    }
-
-    public void update(NoteItem e) {
-        int index = noteList.indexOf(e);
-        if (index != -1)
-            notifyItemChanged(index);
-    }
-
-    private ArrayList<NoteItem> selectedItems = new ArrayList<>();
-
-    public int toggleSelectItems(int index) {
-        NoteItem item = noteList.get(index);
-        if (selectedItems.contains(item)) {
-            selectedItems.remove(item);
-        } else {
-            selectedItems.add(item);
-        }
-        notifyItemChanged(index);
-        return selectedItems.size();
-    }
-    public void clearSelectItems() {
-        if (selectedItems.isEmpty()) return;
-        selectedItems = new ArrayList<>();
-        notifyItemRangeChanged(0, noteList.size());
-    }
-    public ArrayList<NoteItem> getSelectedItems() {
-        return selectedItems;
     }
 
 }

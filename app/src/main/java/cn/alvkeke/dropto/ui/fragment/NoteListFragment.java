@@ -49,6 +49,7 @@ import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
+import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter;
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu;
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
@@ -118,10 +119,13 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
         toolbar.setNavigationOnClickListener(new OnNavigationIconClick());
         toolbar.setOnMenuItemClickListener(new NoteListMenuListener());
+        toolbar.inflateMenu(R.menu.fragment_note_list_toolbar);
+        setToolbarMenuVisible(false);
 
         noteItemAdapter = new NoteListAdapter();
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
         layoutManager.setReverseLayout(true);
+        noteItemAdapter.setSelectListener(new NoteListSelectListener());
         noteItemAdapter.setList(category.getNoteItems());
 
         rlNoteList.setAdapter(noteItemAdapter);
@@ -136,24 +140,24 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
 
     @Override
     public boolean onBackPressed() {
-        finish();
+        if (noteItemAdapter.isSelectMode()) {
+            noteItemAdapter.clearSelectItems();
+        } else {
+            finish();
+        }
         return true;
     }
 
     private class OnNavigationIconClick implements View.OnClickListener {
         @Override
         public void onClick(View view) {
-            if (isInSelectMode) {
-                exitSelectMode();
-            } else {
-                finish();
-            }
+            onBackPressed();
         }
     }
 
     private void removeSelectedNotes() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
-        exitSelectMode();
+        noteItemAdapter.clearSelectItems();
         listener.onAttemptBatch(NoteAttemptListener.Attempt.REMOVE, items);
     }
     private void handleMenuDelete() {
@@ -167,23 +171,22 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
 
     private void handleMenuCopy() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
-        exitSelectMode();
+        noteItemAdapter.clearSelectItems();
         listener.onAttemptBatch(NoteAttemptListener.Attempt.COPY, items);
     }
 
     private void handleMenuShare() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
-        exitSelectMode();
+        noteItemAdapter.clearSelectItems();
         listener.onAttemptBatch(NoteAttemptListener.Attempt.SHOW_SHARE, items);
     }
 
     private void handleMenuForward() {
         ArrayList<NoteItem> items = noteItemAdapter.getSelectedItems();
-        exitSelectMode();
+        noteItemAdapter.clearSelectItems();
         listener.onAttemptBatch(NoteAttemptListener.Attempt.SHOW_FORWARD, items);
     }
 
-    private boolean isInSelectMode = false;
     private class NoteListMenuListener implements Toolbar.OnMenuItemClickListener {
         @Override
         public boolean onMenuItemClick(MenuItem item) {
@@ -201,42 +204,39 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         }
     }
 
-    private void hideToolbarMenu() {
-        toolbar.getMenu().clear();
-    }
-
-    private void showToolbarMenu() {
-        toolbar.inflateMenu(R.menu.fragment_note_list_toolbar);
-    }
-
-    private void enterSelectMode() {
-        if (isInSelectMode) return;
-        isInSelectMode = true;
-        showToolbarMenu();
-        toolbar.setNavigationIcon(R.drawable.icon_common_cross);
-    }
-
-    private void exitSelectMode() {
-        if (!isInSelectMode) return;
-        hideToolbarMenu();
-        toolbar.setNavigationIcon(R.drawable.icon_common_back);
-        noteItemAdapter.clearSelectItems();
-        isInSelectMode = false;
-    }
-
-    private void tryToggleItemSelect(int index) {
-        int count = noteItemAdapter.toggleSelectItems(index);
-        if (count == 0) {
-            exitSelectMode();
+    private void setToolbarMenuVisible(boolean visible) {
+        Menu menu = toolbar.getMenu();
+        for (int i=0; i<menu.size(); i++) {
+            MenuItem menuItem = menu.getItem(i);
+            menuItem.setVisible(visible);
         }
+    }
+
+    private class NoteListSelectListener implements SelectableListAdapter.SelectListener {
+        @Override
+        public void onSelectEnter() {
+            setToolbarMenuVisible(true);
+            toolbar.setNavigationIcon(R.drawable.icon_common_cross);
+        }
+
+        @Override
+        public void onSelectExit() {
+            setToolbarMenuVisible(false);
+            toolbar.setNavigationIcon(R.drawable.icon_common_back);
+        }
+
+        @Override
+        public void onSelect(int index) { }
+        @Override
+        public void onUnSelect(int index) { }
     }
 
     private class NoteListTouchListener extends OnRecyclerViewTouchListener {
 
         @Override
         public boolean onItemClickAt(View v, int index, MotionEvent event) {
-            if (isInSelectMode) {
-                tryToggleItemSelect(index);
+            if (noteItemAdapter.isSelectMode()) {
+                noteItemAdapter.toggleSelectItems(index);
             } else {
                 int x = (int) event.getRawX();
                 int y = (int) event.getRawY();
@@ -254,8 +254,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         @Override
         public boolean onItemLongClick(View v, int index) {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            enterSelectMode();
-            tryToggleItemSelect(index);
+            noteItemAdapter.toggleSelectItems(index);
             return true;
         }
 
@@ -303,9 +302,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
             @Override
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
-                if (isInSelectMode) {
-                    exitSelectMode();
-                }
+                noteItemAdapter.clearSelectItems();
                 imgUris.clear();
                 getParentFragmentManager().beginTransaction()
                         .remove(NoteListFragment.this).commit();

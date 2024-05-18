@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -28,6 +29,7 @@ import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.ui.activity.MgmtActivity;
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
+import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter;
 import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
 import cn.alvkeke.dropto.ui.intf.ListNotification;
@@ -38,6 +40,7 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
     private Context context;
     private CategoryAttemptListener listener;
     private CategoryListAdapter categoryListAdapter;
+    private MaterialToolbar toolbar;
 
     public CategoryListFragment() {
     }
@@ -61,7 +64,7 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
         listener = (CategoryAttemptListener) context;
 
         RecyclerView rlCategory = view.findViewById(R.id.category_list_listview);
-        MaterialToolbar toolbar = view.findViewById(R.id.category_list_toolbar);
+        toolbar = view.findViewById(R.id.category_list_toolbar);
         View statusBar = view.findViewById(R.id.category_list_status_bar);
         View navigationBar = view.findViewById(R.id.category_list_navigation_bar);
         setSystemBarHeight(view, statusBar, navigationBar);
@@ -75,6 +78,8 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
         if (categories != null) {
             categoryListAdapter.setList(categories);
         }
+        categoryListAdapter.setSelectListener(new CategorySelectListener());
+        setMenuBySelectedCount();
 
         rlCategory.setAdapter(categoryListAdapter);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
@@ -117,6 +122,22 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
             if (menuId == R.id.category_menu_item_add) {
                 listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_CREATE, null);
             } else if (menuId == R.id.category_menu_item_edit) {
+                Category category = categoryListAdapter.getSelectedItems().get(0);
+                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_DETAIL, category);
+                categoryListAdapter.clearSelectItems();
+            } else if (R.id.category_menu_item_remove == menuId) {
+                new AlertDialog.Builder(context)
+                        .setTitle(R.string.dialog_category_delete_selected_title)
+                        .setMessage(R.string.dialog_category_delete_selected_message)
+                        .setNegativeButton(R.string.string_cancel, null)
+                        .setPositiveButton(R.string.string_ok, (dialogInterface, i) -> {
+                            ArrayList<Category> selected = categoryListAdapter.getSelectedItems();
+                            categoryListAdapter.clearSelectItems();
+                            for (Category c : selected) {
+                                listener.onAttempt(CategoryAttemptListener.Attempt.REMOVE, c);
+                            }
+                        }).create().show();
+            } else if (R.id.category_menu_item_debug == menuId) {
                 listener.onAttempt(CategoryAttemptListener.Attempt.DEBUG_ADD_DATA, null);
             } else {
                 throwErrorMessage("Unknown menu id: " + menuId);
@@ -126,10 +147,51 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
         }
     }
 
+    private void setMenuItemVisible(int id, boolean visible) {
+        MenuItem menuItem = toolbar.getMenu().findItem(id);
+        menuItem.setVisible(visible);
+    }
+    private void setMenuBySelectedCount() {
+        int count = categoryListAdapter.getSelectedCount();
+        if (count == 0) {
+            setMenuItemVisible(R.id.category_menu_item_add, true);
+            setMenuItemVisible(R.id.category_menu_item_debug, true);
+            setMenuItemVisible(R.id.category_menu_item_remove, false);
+            setMenuItemVisible(R.id.category_menu_item_edit, false);
+        } else if (count == 1) {
+            setMenuItemVisible(R.id.category_menu_item_add, false);
+            setMenuItemVisible(R.id.category_menu_item_debug, false);
+            setMenuItemVisible(R.id.category_menu_item_edit, true);
+            setMenuItemVisible(R.id.category_menu_item_remove, true);
+        } else {
+            setMenuItemVisible(R.id.category_menu_item_add, false);
+            setMenuItemVisible(R.id.category_menu_item_debug, false);
+            setMenuItemVisible(R.id.category_menu_item_edit, false);
+            setMenuItemVisible(R.id.category_menu_item_remove, true);
+        }
+    }
+
+    private class CategorySelectListener implements SelectableListAdapter.SelectListener {
+        @Override
+        public void onSelectEnter() { }
+        @Override
+        public void onSelectExit() { }
+
+        @Override
+        public void onSelect(int index) { setMenuBySelectedCount(); }
+
+        @Override
+        public void onUnSelect(int index) { setMenuBySelectedCount(); }
+    }
+
     private class OnListItemClickListener extends OnRecyclerViewTouchListener {
 
         @Override
         public boolean onItemClick(View v, int index) {
+            if (categoryListAdapter.isSelectMode()) {
+                categoryListAdapter.toggleSelectItems(index);
+                return true;
+            }
             Category category = categoryListAdapter.get(index);
             listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_EXPAND, category);
             return true;
@@ -138,8 +200,7 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
         @Override
         public boolean onItemLongClick(View v, int index) {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            Category category = categoryListAdapter.get(index);
-            listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_DETAIL, category);
+            categoryListAdapter.toggleSelectItems(index);
             return true;
         }
     }

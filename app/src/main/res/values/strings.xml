@@ -14,9 +14,13 @@
     <string name="content_description_image_content">Image Content of NoteItem</string>
     <string name="category_menu_title_edit">Edit</string>
     <string name="category_menu_title_add">Add</string>
+    <string name="category_menu_title_remove">remove</string>
+    <string name="category_menu_title_debug">debug</string>
     <string name="hint_category_detail_name">Category name</string>
     <string name="dialog_category_deleting_title">Delete category</string>
     <string name="dialog_category_deleting_message">Are you sure you want to delete this category? (all notes will also be removed)</string>
+    <string name="dialog_category_delete_selected_title">Delete Selected Category(s)</string>
+    <string name="dialog_category_delete_selected_message">Are you sure you want to delete selected category(s)? (all notes will also be removed)</string>
     <string name="dialog_note_delete_selected_title">Delete Selected NoteItems</string>
     <string name="dialog_note_delete_selected_message">Are you sure you want do delete selected note item(s)?</string>
     <string name="dialog_note_delete_pop_remove_title">Delete this note</string>
