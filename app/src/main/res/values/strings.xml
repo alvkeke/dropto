@@ -37,4 +37,5 @@
     <string name="string_cache_storage_usage_prompt">Cache storage:</string>
     <string name="string_clear_storage_button_prompt">Clear storage:</string>
     <string name="string_mgmt_list_label">Image files:</string>
+    <string name="accessibility_service_description">this is for monitoring the clipboard for creating new item when clipboard changed</string>
 </resources>
