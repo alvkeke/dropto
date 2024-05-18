@@ -13,3 +13,4 @@
 8. [x] Image viewing from note list
 9. [x] multiple Images in 1 noteItem
 10. [ ] network sync up support
+11. [ ] system clipboard listen for specific category
