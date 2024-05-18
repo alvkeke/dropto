@@ -23,7 +23,7 @@ public class DataLoader {
 
     private ArrayList<Category> categories = null;
 
-    private void loadCategories(Context context) {
+    public ArrayList<Category> loadCategories(Context context) {
         if (categories == null)
             categories = new ArrayList<>();
         try (DataBaseHelper helper = new DataBaseHelper(context)) {
@@ -33,15 +33,17 @@ public class DataLoader {
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to retrieve category data from database");
         }
-    }
 
-    public ArrayList<Category> getCategories(Context context) {
-        loadCategories(context);
         return categories;
     }
 
-    public Category findCategory(Context context, long id) {
-        loadCategories(context);
+    public ArrayList<Category> getCategories() {
+        return categories;
+    }
+
+    public Category findCategory(long id) {
+        if (categories == null)
+            return null;
 
         for (Category c : categories) {
             if (c.getId() == id)

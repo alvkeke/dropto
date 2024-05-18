@@ -10,6 +10,7 @@ public interface CategoryAttemptListener {
         SHOW_DETAIL,
         SHOW_CREATE,
         SHOW_EXPAND,
+        DEBUG_ADD_DATA,
     }
     void onAttempt(CategoryAttemptListener.Attempt attempt, Category category);
 }

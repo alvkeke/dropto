@@ -117,7 +117,7 @@ public class CategoryListFragment extends Fragment implements ListNotification<C
             if (menuId == R.id.category_menu_item_add) {
                 listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_CREATE, null);
             } else if (menuId == R.id.category_menu_item_edit) {
-                throwErrorMessage("Try edit categories");
+                listener.onAttempt(CategoryAttemptListener.Attempt.DEBUG_ADD_DATA, null);
             } else {
                 throwErrorMessage("Unknown menu id: " + menuId);
                 return false;

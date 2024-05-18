@@ -16,17 +16,12 @@ import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
-import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.storage.DataLoader;
 
@@ -89,25 +84,11 @@ public class CoreService extends Service {
         }
     }
 
-    private void initServiceData() {
-        Global global = Global.getInstance();
-
-        File img_folder = global.getFolderImage(this);
-
-        // TODO: for debug only, remember to remove.
-        if (BuildConfig.DEBUG) {
-            DebugFunction.fill_database_for_category(this);
-            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
-            DebugFunction.fill_database_for_note(this, img_files, 1);
-        }
-    }
-
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(this.toString(), "CoreService onCreate");
         startForeground();
-        initServiceData();
         startTaskRunnerThread();
     }
 
@@ -152,7 +133,7 @@ public class CoreService extends Service {
             helper.start();
             category.setId(helper.insertCategory(category));
             helper.finish();
-            ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
+            ArrayList<Category> categories = DataLoader.getInstance().getCategories();
             categories.add(category);
             task.result = categories.indexOf(category);
         } catch (Exception ex) {
@@ -163,7 +144,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskCategoryRemove(Task task) {
-        ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
+        ArrayList<Category> categories = DataLoader.getInstance().getCategories();
         Category category = (Category) task.param;
 
         int index;
@@ -189,7 +170,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskCategoryUpdate(Task task) {
-        ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
+        ArrayList<Category> categories = DataLoader.getInstance().getCategories();
         Category category = (Category) task.param;
 
         int index;
@@ -214,7 +195,7 @@ public class CoreService extends Service {
 
     private void handleTaskNoteCreate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category category = DataLoader.getInstance().findCategory(this, newItem.getCategoryId());
+        Category category = DataLoader.getInstance().findCategory(newItem.getCategoryId());
 
         newItem.setCategoryId(category.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
@@ -240,7 +221,7 @@ public class CoreService extends Service {
 
     private void handleTaskNoteRemove(Task task) {
         NoteItem e = (NoteItem) task.param;
-        Category c = DataLoader.getInstance().findCategory(this, e.getCategoryId());
+        Category c = DataLoader.getInstance().findCategory(e.getCategoryId());
 
         int index = c.indexNoteItem(e);
         if (index == -1) return;
@@ -262,7 +243,7 @@ public class CoreService extends Service {
 
     private void handleTaskNoteUpdate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category c = DataLoader.getInstance().findCategory(this, newItem.getCategoryId());
+        Category c = DataLoader.getInstance().findCategory(newItem.getCategoryId());
         NoteItem oldItem = c.findNoteItem(newItem.getId());
         if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());

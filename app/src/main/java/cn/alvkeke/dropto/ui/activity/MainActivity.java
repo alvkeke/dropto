@@ -15,6 +15,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
@@ -26,12 +27,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.debug.DebugFunction;
+import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.service.CoreService;
 import cn.alvkeke.dropto.service.CoreServiceConnection;
 import cn.alvkeke.dropto.service.Task;
@@ -105,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements
 
         setupCoreService(savedInstanceState);
 
-        ArrayList<Category> categories = DataLoader.getInstance().getCategories(this);
+        ArrayList<Category> categories = DataLoader.getInstance().loadCategories(this);
         if (savedInstanceState != null) {
             List<Fragment> fragments = getSupportFragmentManager().getFragments();
             for (Fragment f : fragments) {
@@ -145,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverNoteListFragment(Bundle state) {
         savedNoteListCategoryId = state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE);
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
-        Category category = DataLoader.getInstance().findCategory(this, savedNoteListCategoryId);
+        Category category = DataLoader.getInstance().findCategory(savedNoteListCategoryId);
         noteListFragment.setCategory(category);
     }
     private static final long SAVED_NOTE_INFO_NOTE_ID_NONE = -1;
@@ -154,7 +157,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverNoteDetailFragment(NoteDetailFragment fragment, Bundle state) {
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
         savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE);
-        Category category = DataLoader.getInstance().findCategory(this, savedNoteListCategoryId);
+        Category category = DataLoader.getInstance().findCategory(savedNoteListCategoryId);
         NoteItem item = category.findNoteItem(savedNoteInfoNoteId);
         if (item == null) { fragment.dismiss(); return; }
         fragment.setNoteItem(item);
@@ -165,7 +168,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverCategoryDetailFragment(CategoryDetailFragment fragment, Bundle state) {
         savedCategoryDetailId = state.getLong(SAVED_CATEGORY_DETAIL_ID, SAVED_CATEGORY_DETAIL_ID_NONE);
         if (savedCategoryDetailId == SAVED_CATEGORY_DETAIL_ID_NONE) return;
-        Category category = DataLoader.getInstance().findCategory(this, savedCategoryDetailId);
+        Category category = DataLoader.getInstance().findCategory(savedCategoryDetailId);
         fragment.setCategory(category);
     }
     private String savedImageViewFile = null;
@@ -260,6 +263,49 @@ public class MainActivity extends AppCompatActivity implements
                 .commit();
     }
 
+    private void addDebugData() {
+        service.queueTask(Task.createCategory(new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY), null));
+        service.queueTask(Task.createCategory(new Category("REMOTE USERS", Category.Type.REMOTE_USERS), null));
+        service.queueTask(Task.createCategory(new Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV), null));
+
+        new Thread(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ex) {
+                Log.e(this.toString(), "failed to sleep: " + ex);
+            }
+
+            File img_folder = Global.getInstance().getFolderImage(this);
+            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
+            if (img_files == null)
+                return;
+            ArrayList<Category> categories = DataLoader.getInstance().getCategories();
+            if (categories.isEmpty())
+                return;
+
+            Random r = new Random();
+            long cate_id = categories.get(r.nextInt(categories.size())).getId();
+            int idx = 0;
+            for (int i = 0; i < 15; i++) {
+                NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
+                e.setCategoryId(cate_id);
+                if (r.nextBoolean()) {
+                    e.setText(e.getText(), true);
+                }
+                if (idx < img_files.size() && r.nextBoolean()) {
+                    File img_file = img_files.get(idx);
+                    idx++;
+                    if (img_file.exists()) {
+                        ImageFile imageFile = ImageFile.from(img_file, img_file.getName());
+                        e.addImageFile(imageFile);
+                    }
+
+                }
+                service.queueTask(Task.createNote(e, null));
+            }
+        }).start();
+    }
+
     @Override
     public void onAttempt(CategoryAttemptListener.Attempt attempt, Category category) {
         switch (attempt) {
@@ -280,6 +326,14 @@ public class MainActivity extends AppCompatActivity implements
                 break;
             case SHOW_EXPAND:
                 handleCategoryExpand(category);
+                break;
+            case DEBUG_ADD_DATA:
+                new AlertDialog.Builder(this)
+                        .setTitle("Debug function")
+                        .setMessage("Create Debug data?")
+                        .setNegativeButton(R.string.string_cancel, null)
+                        .setPositiveButton(R.string.string_ok, (dialog, i) -> addDebugData())
+                        .create().show();
                 break;
             default:
                 Log.d(this.toString(), "other attempt: " + attempt);
@@ -430,7 +484,7 @@ public class MainActivity extends AppCompatActivity implements
     private void handleNoteForward(NoteItem note) {
         pendingForwardNote = note;
         CategorySelectorFragment forwardFragment = new CategorySelectorFragment();
-        forwardFragment.setCategories(DataLoader.getInstance().getCategories(this));
+        forwardFragment.setCategories(DataLoader.getInstance().getCategories());
         forwardFragment.show(getSupportFragmentManager(), null);
     }
 
