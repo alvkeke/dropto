@@ -16,7 +16,7 @@ import java.io.File;
 import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
@@ -186,7 +186,7 @@ public class ShareRecvActivity extends AppCompatActivity
     }
 
     private ImageFile extraImageFileFromUri(Uri uri) {
-        File folder = Global.getInstance().getFileStoreFolder();
+        File folder = Global.getInstance().getFolderImage(this);
         File md5file = FileHelper.saveUriToFile(this, uri, folder);
         if (md5file == null) return null;
         String imgName = FileHelper.getFileNameFromUri(this, uri);

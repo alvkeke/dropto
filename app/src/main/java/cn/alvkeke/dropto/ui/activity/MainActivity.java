@@ -29,6 +29,7 @@ import java.util.List;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
+import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.service.CoreService;
@@ -321,11 +322,7 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
     private File generateShareFile(ImageFile imageFile) {
-        if (share_folder == null) {
-            share_folder = this.getExternalFilesDir("share");
-            assert share_folder != null;
-        }
-        if (share_folder.mkdir()) Log.i(this.toString(), "share folder created");
+        share_folder = Global.getInstance().getFolderImageShare(this);
 
         try {
             String imageName = imageFile.getName();

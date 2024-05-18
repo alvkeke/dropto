@@ -24,7 +24,7 @@ import java.util.concurrent.Semaphore;
 
 import cn.alvkeke.dropto.BuildConfig;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.debug.DebugFunction;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
@@ -92,12 +92,7 @@ public class CoreService extends Service {
     private void initServiceData() {
         Global global = Global.getInstance();
 
-        File img_folder = this.getExternalFilesDir("imgs");
-        assert img_folder != null;
-        if (!img_folder.exists()) {
-            Log.i(this.toString(), "image folder not exist, create: " + img_folder.mkdir());
-        }
-        global.setFileStoreFolder(img_folder);
+        File img_folder = global.getFolderImage(this);
 
         // TODO: for debug only, remember to remove.
         if (BuildConfig.DEBUG) {

@@ -43,7 +43,7 @@ import java.util.List;
 
 import cn.alvkeke.dropto.R;
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.FileHelper;
@@ -432,7 +432,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
                 if (content.isEmpty()) return;
             } else {
                 for (Uri imgUri: imgUris) {
-                    File folder = Global.getInstance().getFileStoreFolder();
+                    File folder = Global.getInstance().getFolderImage(context);
                     File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
                     String imgName = FileHelper.getFileNameFromUri(context, imgUri);
                     ImageFile imageFile = ImageFile.from(md5file, imgName);

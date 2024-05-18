@@ -23,7 +23,7 @@ import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
 import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.data.Global;
+import cn.alvkeke.dropto.mgmt.Global;
 import cn.alvkeke.dropto.ui.adapter.ImageListAdapter;
 
 public class MgmtStorageFragment extends Fragment {
@@ -70,8 +70,8 @@ public class MgmtStorageFragment extends Fragment {
     File folderImage;
     File folderCache;
     private void initFolders() {
-        folderCache = this.requireActivity().getExternalFilesDir("share");
-        folderImage = Global.getInstance().getFileStoreFolder();
+        folderCache = Global.getInstance().getFolderImageShare(requireContext());
+        folderImage = Global.getInstance().getFolderImage(requireContext());
     }
 
     private interface FolderIterator {
