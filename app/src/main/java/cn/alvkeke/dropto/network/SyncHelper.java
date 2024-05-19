@@ -2,6 +2,8 @@ package cn.alvkeke.dropto.network;
 
 import android.util.Log;
 
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -12,8 +14,6 @@ import cn.alvkeke.dropto.data.NoteItem;
 
 public class SyncHelper {
 
-    // FIXME: debug use
-    private static final boolean disableNetwork = true;
     private static final String DEBUG_TAG = "SyncHelper";
 
     private static final String hostname = "http://10.0.0.143:9000/";
@@ -64,12 +64,13 @@ public class SyncHelper {
         return resp.toString();
     }
 
-    public static void noteCreate(NoteItem note) throws Exception{
+    // FIXME: debug use
+    public static final boolean disableNetwork = false;
+    public static void handleSyncRequest(URL url, JSONObject json) throws Exception{
         if (disableNetwork) return;
 
-        URL url = new URL(buildNoteCreate());
         HttpURLConnection connection = setupConnection(url);
-        sendBody(connection, note.toJSON().toString().getBytes());
+        sendBody(connection, json.toString().getBytes());
 
         int respCode = connection.getResponseCode();
         if (respCode == HttpURLConnection.HTTP_OK) {
@@ -77,36 +78,21 @@ public class SyncHelper {
         } else {
             throw new Exception("connection error: " + respCode);
         }
+    }
+
+    public static void noteCreate(NoteItem note) throws Exception{
+        URL url = new URL(buildNoteCreate());
+        handleSyncRequest(url, note.toJSON());
     }
 
     public static void noteUpdate(NoteItem note) throws Exception {
-        if (disableNetwork) return;
-
         URL url = new URL(buildNoteUpdate());
-        HttpURLConnection connection =  setupConnection(url);
-        sendBody(connection, note.toJSON().toString().getBytes());
-
-        int respCode = connection.getResponseCode();
-        if (respCode == HttpURLConnection.HTTP_OK) {
-            Log.e(DEBUG_TAG, "resp: " + readResponse(connection));
-        } else {
-            throw new Exception("connection error: " + respCode);
-        }
+        handleSyncRequest(url, note.toJSON());
     }
 
     public static void noteRemove(NoteItem note) throws Exception {
-        if (disableNetwork) return;
-
         URL url = new URL(buildNoteRemove());
-        HttpURLConnection connection = setupConnection(url);
-        sendBody(connection, note.toIdOnlyJSON().toString().getBytes());
-
-        int respCode = connection.getResponseCode();
-        if (respCode == HttpURLConnection.HTTP_OK) {
-            Log.e(DEBUG_TAG, "resp: " + readResponse(connection));
-        } else {
-            throw new Exception("connection error: " + respCode);
-        }
+        handleSyncRequest(url, note.toIdOnlyJSON());
     }
 
 }
