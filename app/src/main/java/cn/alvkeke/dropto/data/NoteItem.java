@@ -65,19 +65,20 @@ public class NoteItem implements Serializable, Cloneable {
     public static final String JSON_TAG_TEXT = "text";
     public static final String JSON_TAG_CTIME = "ctime";
     public static final String JSON_TAG_IMG_LIST = "imageList";
-    public JSONObject toJSON() {
+    public JSONObject toJSON() throws JSONException {
         JSONObject json = new JSONObject();
-
-        try {
-            json.put(JSON_TAG_ID, id);
-            json.put(JSON_TAG_CATE_ID, categoryId);
-            json.put(JSON_TAG_TEXT, text);
-            json.put(JSON_TAG_CTIME, createTimeMs);
-            json.put(JSON_TAG_IMG_LIST, getImageListString());
-            return json;
-        } catch (JSONException e) {
-            return null;
-        }
+        json.put(JSON_TAG_ID, id);
+        json.put(JSON_TAG_CATE_ID, categoryId);
+        json.put(JSON_TAG_TEXT, text);
+        json.put(JSON_TAG_CTIME, createTimeMs);
+        json.put(JSON_TAG_IMG_LIST, getImageListString());
+        return json;
+    }
+    public JSONObject toIdOnlyJSON() throws JSONException{
+        JSONObject json = new JSONObject();
+        json.put(JSON_TAG_ID, id);
+        json.put(JSON_TAG_CATE_ID, categoryId);
+        return json;
     }
 
     public void setText(String text, boolean set_edited) {

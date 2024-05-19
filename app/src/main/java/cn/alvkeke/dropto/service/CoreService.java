@@ -22,6 +22,7 @@ import java.util.concurrent.Semaphore;
 
 import cn.alvkeke.dropto.data.Category;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.network.SyncHelper;
 import cn.alvkeke.dropto.storage.DataBaseHelper;
 import cn.alvkeke.dropto.storage.DataLoader;
 
@@ -199,19 +200,21 @@ public class CoreService extends Service {
 
         newItem.setCategoryId(category.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
+            task.result = Task.ERROR_STORAGE;
             dbHelper.start();
             newItem.setId(dbHelper.insertNote(newItem));
             dbHelper.finish();
+            task.result = Task.ERROR_NETWORK;
+            SyncHelper.noteCreate(newItem);
         } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to add new item to database!");
-            task.result = -1;
+            Log.e(this.toString(), "Failed to add new item to database: " + ex);
             notifyListener(task);
             return;
         }
 
         if (!category.isInitialized()) {
             Log.i(this.toString(), "category not initialized, not add new item in the list");
-            task.result = -1;
+            task.result = Task.ERROR_OTHER;
             notifyListener(task);
             return;
         }
@@ -227,17 +230,21 @@ public class CoreService extends Service {
         if (index == -1) return;
 
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)){
+            task.result = Task.ERROR_STORAGE;
             dbHelper.start();
-            if (0 == dbHelper.deleteNote(e.getId()))
-                Log.e(this.toString(), "no row be deleted");
+            if (0 == dbHelper.deleteNote(e.getId())) {
+                throw new Exception("no row be deleted");
+            }
             dbHelper.finish();
-            c.delNoteItem(e);
-            task.result = index;
+            task.result = Task.ERROR_NETWORK;
+            SyncHelper.noteRemove(e);
         } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to remove item with id " +
-                    e.getId() + ", exception: " + e);
-            task.result = -1;
+            Log.e(this.toString(), "Failed to remove item with id " + e.getId() + ": " + ex);
+            notifyListener(task);
+            return;
         }
+        c.delNoteItem(e);
+        task.result = index;
         notifyListener(task);
     }
 
@@ -252,19 +259,21 @@ public class CoreService extends Service {
         int index = c.indexNoteItem(oldItem);
         newItem.setId(oldItem.getId());
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
+            task.result = Task.ERROR_STORAGE;
             dbHelper.start();
             if (0 == dbHelper.updateNote(newItem)) {
-                Log.i(this.toString(), "no item was updated");
-                task.result = -1;
-            } else {
-                dbHelper.finish();
-                oldItem.update(newItem, true);
-                task.result = index;
+                throw new Exception("no item was updated in database");
             }
+            dbHelper.finish();
+            task.result = Task.ERROR_NETWORK;
+            SyncHelper.noteUpdate(newItem);
         } catch (Exception exception) {
             Log.e(this.toString(), "Failed to update note item in database: " + exception);
-            task.result = -1;
+            notifyListener(task);
+            return;
         }
+        oldItem.update(newItem, true);
+        task.result = index;
         notifyListener(task);
     }
 
@@ -335,9 +344,9 @@ public class CoreService extends Service {
     }
 
     public void queueTask(Task task) {
-        new Thread(() -> distributeTask(task)).start();
-//        tasks.offer(task);
-//        taskSemaphore.release();
+//        new Thread(() -> distributeTask(task)).start();
+        tasks.offer(task);
+        taskSemaphore.release();
     }
 
 }

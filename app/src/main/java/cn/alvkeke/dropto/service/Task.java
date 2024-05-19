@@ -6,6 +6,10 @@ import cn.alvkeke.dropto.ui.intf.ListNotification;
 
 public class Task {
 
+    public static final int ERROR_STORAGE = -1;
+    public static final int ERROR_NETWORK = -2;
+    public static final int ERROR_OTHER = -3;
+
     public enum Target {
         Storage,
     }
