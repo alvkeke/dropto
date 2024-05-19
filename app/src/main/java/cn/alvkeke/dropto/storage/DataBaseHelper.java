@@ -6,15 +6,13 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Base64;
 import android.util.Log;
 
 import java.util.ArrayList;
 
 import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.mgmt.Global;
-import cn.alvkeke.dropto.data.ImageFile;
 import cn.alvkeke.dropto.data.NoteItem;
+import cn.alvkeke.dropto.mgmt.Global;
 
 public class DataBaseHelper extends SQLiteOpenHelper {
 
@@ -277,19 +275,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      */
     public long insertNote(NoteItem n) throws SQLiteException{
         long id;
-        StringBuilder sb = new StringBuilder();
-        for (int i=0; i<n.getImageCount(); i++) {
-            ImageFile f = n.getImageAt(i);
-            sb.append(f.getMd5());
-            sb.append(':');
-            sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
-            sb.append(',');
-        }
         if (n.getId() == NoteItem.ID_NOT_ASSIGNED) {
-            id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(), sb.toString());
+            id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(), n.getImageListString());
         } else {
             id = insertNote(n.getId(), n.getCategoryId(), n.getText(), n.getCreateTime(),
-                    sb.toString());
+                    n.getImageListString());
         }
         if (id < 0) {
             Log.e(this.toString(), "Failed to insert note");
@@ -353,17 +343,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @return count of affected rows
      */
     public int updateNote(NoteItem note) {
-        StringBuilder sb = new StringBuilder();
-        for (int i=0; i<note.getImageCount(); i++) {
-            ImageFile f = note.getImageAt(i);
-            sb.append(f.getMd5());
-            sb.append(':');
-            sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
-            sb.append(',');
-        }
-
         return updateNote(note.getId(), note.getCategoryId(), note.getText(),
-                note.getCreateTime(), sb.toString());
+                note.getCreateTime(), note.getImageListString());
     }
 
     /**
@@ -416,25 +397,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             NoteItem e = new NoteItem(text, ctime);
             e.setId(id);
             e.setCategoryId(category_id);
-            if (!img_info_all.isEmpty()) {
-                String[] img_info_all_s = img_info_all.split(",");
-                for (String info: img_info_all_s) {
-                    String[] info_s = info.split(":");
-                    if (info_s.length == 0) {
-                        Log.e(this.toString(), "Got Wrong Image Info: " + info);
-                        continue;
-                    }
-                    String s_md5 = info_s[0];
-                    String s_name = info_s.length == 1 ? "" :
-                        new String(Base64.decode(info_s[1], Base64.DEFAULT));
-                    ImageFile imageFile = ImageFile.from(Global.getInstance().getFolderImage(context),
-                            s_md5, s_name);
-
-                    if (!e.addImageFile(imageFile)) {
-                        Log.e(this.toString(), "Failed to set image file: " + img_info_all);
-                    }
-                }
-            }
+            e.parseImageListFromString(Global.getInstance().getFolderImage(context), img_info_all);
             noteItems.add(e);
             n_notes++;
             if (cb != null)

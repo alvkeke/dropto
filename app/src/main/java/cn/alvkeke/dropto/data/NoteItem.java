@@ -1,9 +1,14 @@
 package cn.alvkeke.dropto.data;
 
+import android.util.Base64;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 
@@ -53,6 +58,26 @@ public class NoteItem implements Serializable, Cloneable {
         NoteItem noteItem = new NoteItem(text);
         noteItem.update(this, false);
         return noteItem;
+    }
+
+    public static final String JSON_TAG_ID = "id";
+    public static final String JSON_TAG_CATE_ID = "categoryId";
+    public static final String JSON_TAG_TEXT = "text";
+    public static final String JSON_TAG_CTIME = "ctime";
+    public static final String JSON_TAG_IMG_LIST = "imageList";
+    public JSONObject toJSON() {
+        JSONObject json = new JSONObject();
+
+        try {
+            json.put(JSON_TAG_ID, id);
+            json.put(JSON_TAG_CATE_ID, categoryId);
+            json.put(JSON_TAG_TEXT, text);
+            json.put(JSON_TAG_CTIME, createTimeMs);
+            json.put(JSON_TAG_IMG_LIST, getImageListString());
+            return json;
+        } catch (JSONException e) {
+            return null;
+        }
     }
 
     public void setText(String text, boolean set_edited) {
@@ -117,6 +142,40 @@ public class NoteItem implements Serializable, Cloneable {
             return imageFiles.get(index);
         }
         return null;
+    }
+
+    public void parseImageListFromString(File folder, String imageList) {
+        if (imageList == null || imageList.isEmpty())
+            return;
+
+        String[] img_info_all_s = imageList.split(",");
+        for (String info: img_info_all_s) {
+            String[] info_s = info.split(":");
+            if (info_s.length == 0) {
+                Log.e(this.toString(), "Got Wrong Image Info: " + info);
+                continue;
+            }
+            String s_md5 = info_s[0];
+            String s_name = info_s.length == 1 ? "" :
+                    new String(Base64.decode(info_s[1], Base64.DEFAULT));
+            ImageFile imageFile = ImageFile.from(folder, s_md5, s_name);
+
+            if (!this.addImageFile(imageFile)) {
+                Log.e(this.toString(), "Failed to set image file: " + imageList);
+            }
+        }
+    }
+
+    public String getImageListString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i=0; i<this.getImageCount(); i++) {
+            ImageFile f = this.getImageAt(i);
+            sb.append(f.getMd5());
+            sb.append(':');
+            sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
+            sb.append(',');
+        }
+        return sb.toString();
     }
 
     public boolean isEdited() {
