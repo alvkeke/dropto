@@ -57,36 +57,41 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <ImageButton
-                    android:id="@+id/note_list_input_attach"
-                    app:layout_constraintStart_toStartOf="parent"
+                <GridLayout
                     app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toStartOf="@id/note_list_input_box"
-                    android:layout_marginStart="10dp"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="10dp"
-                    android:src="@drawable/icon_btn_note_attach"
-                    android:background="@android:color/transparent"
-                    android:layout_width="wrap_content"
-                    android:layout_height="0dp"
-                    android:contentDescription="@string/description_image_attach_button" />
+                    app:layout_constraintBottom_toTopOf="@id/note_list_input_box"
+                    android:layout_margin="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
 
-                <ImageView
-                    android:id="@+id/note_list_input_attach_clear"
-                    app:layout_constraintTop_toTopOf="@id/note_list_input_attach"
-                    app:layout_constraintEnd_toEndOf="@id/note_list_input_attach"
-                    android:src="@drawable/icon_attach_1"
-                    android:visibility="gone"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:contentDescription="@string/description_button_attach_clear" />
+                    <ImageButton
+                        android:id="@+id/note_list_input_attach"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/note_list_input_box"
+                        android:src="@drawable/icon_btn_note_attach"
+                        android:background="@android:color/transparent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/description_image_attach_button" />
+
+                    <ImageView
+                        android:id="@+id/note_list_input_attach_clear"
+                        app:layout_constraintTop_toTopOf="@id/note_list_input_attach"
+                        app:layout_constraintEnd_toEndOf="@id/note_list_input_attach"
+                        android:src="@drawable/icon_attach_1"
+                        android:visibility="gone"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@string/description_button_attach_clear" />
+
+                </GridLayout>
 
                 <EditText
                     android:id="@+id/note_list_input_box"
-                    app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toEndOf="@id/note_list_input_attach"
+                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toStartOf="@id/note_list_input_button"
                     android:layout_margin="10dp"
                     android:layout_width="0dp"
@@ -99,8 +104,8 @@
                 <ImageButton
                     android:id="@+id/note_list_input_button"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/note_list_input_box"
+                    app:layout_constraintBottom_toBottomOf="@id/note_list_input_box"
                     android:layout_marginEnd="10dp"
                     android:src="@drawable/img_btn_note_send"
                     android:background="@android:color/transparent"
