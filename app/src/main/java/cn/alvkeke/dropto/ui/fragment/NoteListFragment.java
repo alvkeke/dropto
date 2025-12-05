@@ -17,7 +17,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
@@ -50,6 +49,7 @@ import cn.alvkeke.dropto.data.NoteItem;
 import cn.alvkeke.dropto.storage.FileHelper;
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter;
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter;
+import cn.alvkeke.dropto.ui.comonent.CountableImageButton;
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu;
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
@@ -66,7 +66,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
     private View fragmentParent;
     private View fragmentView;
     private EditText etInputText;
-    private ImageView imgAttachClear;
+    private CountableImageButton btnAttach;
     private ConstraintLayout contentContainer;
     private View naviBar;
     private MaterialToolbar toolbar;
@@ -104,8 +104,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         fragmentView = view.findViewById(R.id.note_list_fragment_container);
         rlNoteList = view.findViewById(R.id.note_list_listview);
         ImageButton btnAddNote = view.findViewById(R.id.note_list_input_button);
-        ImageButton btnAttach = view.findViewById(R.id.note_list_input_attach);
-        imgAttachClear = view.findViewById(R.id.note_list_input_attach_clear);
+        btnAttach = view.findViewById(R.id.note_list_input_attach);
         etInputText = view.findViewById(R.id.note_list_input_box);
         contentContainer = view.findViewById(R.id.note_list_content_container);
         View statusBar = view.findViewById(R.id.note_list_status_bar);
@@ -371,12 +370,11 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         if (!imgUris.contains(uri)) {
             imgUris.add(uri);
         }
-        imgAttachClear.setImageResource(getAttachIcon());
-        imgAttachClear.setVisibility(View.VISIBLE);
+        btnAttach.setCount(imgUris.size());
     }
     private void clearAttachment() {
         imgUris.clear();
-        imgAttachClear.setVisibility(View.GONE);
+        btnAttach.setCount(imgUris.size());
     }
     private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker =
             registerForActivityResult(new ActivityResultContracts.
@@ -386,31 +384,6 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
                     addAttachment(uri);
                 }
             });
-
-    private int getAttachIcon() {
-        switch (imgUris.size()) {
-            case 1:
-                return R.drawable.icon_attach_1;
-            case 2:
-                return R.drawable.icon_attach_2;
-            case 3:
-                return R.drawable.icon_attach_3;
-            case 4:
-                return R.drawable.icon_attach_4;
-            case 5:
-                return R.drawable.icon_attach_5;
-            case 6:
-                return R.drawable.icon_attach_6;
-            case 7:
-                return R.drawable.icon_attach_7;
-            case 8:
-                return R.drawable.icon_attach_8;
-            case 9:
-                return R.drawable.icon_attach_9;
-            default:
-                return R.drawable.icon_attach_9p;
-        }
-    }
 
     private class OnItemAttachClick implements View.OnClickListener {
         @Override
