@@ -376,11 +376,11 @@ public class MainActivity extends AppCompatActivity implements
         try {
             String imageName = imageFile.getName();
             File fileToShare;
-            if (imageName == null || imageName.isEmpty()) {
-                fileToShare = imageFile.getMd5file();
+            if (imageName.isEmpty()) {
+                fileToShare = imageFile.md5file;
             } else {
                 fileToShare = new File(share_folder, imageName);
-                copyFile(imageFile.getMd5file(), fileToShare);
+                copyFile(imageFile.md5file, fileToShare);
             }
             return fileToShare;
         } catch (IOException e) {
@@ -479,8 +479,8 @@ public class MainActivity extends AppCompatActivity implements
             Log.e(this.toString(), "Failed to get image at index: " + imageIndex);
             return;
         }
-        savedImageViewFile = imageFile.getMd5file().getAbsolutePath();
-        imageViewerFragment.setImgFile(imageFile.getMd5file());
+        savedImageViewFile = imageFile.md5file.getAbsolutePath();
+        imageViewerFragment.setImgFile(imageFile.md5file);
         imageViewerFragment.show(getSupportFragmentManager(), null);
     }
 

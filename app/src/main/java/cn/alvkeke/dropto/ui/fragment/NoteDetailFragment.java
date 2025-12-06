@@ -186,7 +186,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
             card.setImageMd5(imageFile.getMd5());
             card.setImageName(imageFile.getName());
 
-            ImageLoader.getInstance().loadImageAsync(imageFile.getMd5file(), (bitmap -> {
+            ImageLoader.getInstance().loadImageAsync(imageFile.md5file, (bitmap -> {
                 if (bitmap == null) {
                     String errMsg = "Failed to get image file, skip this item";
                     Log.e(this.toString(), errMsg);
