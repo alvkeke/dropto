@@ -276,7 +276,7 @@ public class MainActivity extends AppCompatActivity implements
             }
 
             File img_folder = Global.getInstance().getFolderImage(this);
-            List<File> img_files = DebugFunction.try_extract_res_images(this, img_folder);
+            List<File> img_files = DebugFunction.tryExtractResImages(this, img_folder);
             if (img_files == null)
                 return;
             ArrayList<Category> categories = DataLoader.getInstance().getCategories();
