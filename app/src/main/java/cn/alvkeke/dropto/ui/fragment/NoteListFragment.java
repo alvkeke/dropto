@@ -78,7 +78,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
     public void setCategory(Category category) {
         this.category = category;
         if (noteItemAdapter != null) {
-            noteItemAdapter.setList(category.getNoteItems());
+            noteItemAdapter.setList(category.noteItems);
         }
     }
 
@@ -114,7 +114,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         setSystemBarHeight(view, statusBar, naviBar);
         setIMEViewChange(view);
 
-        toolbar.setTitle(category.getTitle());
+        toolbar.setTitle(category.title);
         toolbar.setNavigationIcon(R.drawable.icon_common_back);
         toolbar.setNavigationOnClickListener(new OnNavigationIconClick());
         toolbar.setOnMenuItemClickListener(new NoteListMenuListener());
@@ -125,7 +125,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         LinearLayoutManager layoutManager = new LinearLayoutManager(context);
         layoutManager.setReverseLayout(true);
         noteItemAdapter.setSelectListener(new NoteListSelectListener());
-        noteItemAdapter.setList(category.getNoteItems());
+        noteItemAdapter.setList(category.noteItems);
 
         rlNoteList.setAdapter(noteItemAdapter);
         rlNoteList.setLayoutManager(layoutManager);
@@ -406,7 +406,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         public void onClick(View v) {
             String content = etInputText.getText().toString().trim();
             NoteItem item = new NoteItem(content);
-            item.categoryId = category.getId();
+            item.categoryId = category.id;
             if (imgUris.isEmpty()) {
                 if (content.isEmpty()) return;
             } else {
@@ -425,6 +425,10 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
 
     private void showImageView(int index, int imageIndex, int ignore, int ignore1) {
         NoteItem noteItem = category.getNoteItem(index);
+        if (noteItem == null) {
+            throwErrorMessage("Failed to get note item at " + index + ", abort");
+            return;
+        }
         if (noteItem.getImageCount() > 4 && imageIndex == 3) {
             listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, noteItem);
         } else {
@@ -488,7 +492,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
 
     @Override
     public void notifyItemListChanged(Notify notify, int index, NoteItem note) {
-        if (note != null && note.categoryId != category.getId()) {
+        if (note != null && note.categoryId != category.id) {
             Log.e(this.toString(), "target NoteItem not exist in current category");
             return;
         }

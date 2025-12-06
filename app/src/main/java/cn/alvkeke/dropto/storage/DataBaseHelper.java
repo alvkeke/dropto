@@ -134,16 +134,16 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public long insertCategory(Category c) throws SQLiteException{
 
         long id;
-        if (c.getId() == Category.ID_NOT_ASSIGNED) {
-            id = insertCategory(c.getTitle(), c.getType(), c.getPreviewText());
+        if (c.id == Category.ID_NOT_ASSIGNED) {
+            id = insertCategory(c.title, c.type, c.previewText);
         } else {
-            id = insertCategory(c.getId(), c.getTitle(), c.getType(), c.getPreviewText());
+            id = insertCategory(c.id, c.title, c.type, c.previewText);
         }
         if (id < 0) {
             Log.e(this.toString(), "Failed to insert category");
             return -1;
         }
-        c.setId(id);
+        c.id = id;
         return id;
     }
 
@@ -170,8 +170,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     }
 
     public int updateCategory(Category category) {
-        return updateCategory(category.getId(), category.getTitle(),
-                category.getType(), category.getPreviewText());
+        return updateCategory(category.id, category.title,
+                category.type, category.previewText);
     }
 
     public void queryCategory(int max_num, ArrayList<Category> categories, IterateCallback<Category> cb) {
@@ -190,7 +190,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             selection = "_id NOT IN (" +  "?,".repeat(categories.size()-1) + "?)";
             args = new String[categories.size()];
             for (int i=0; i<args.length; i++) {
-                args[i] = String.valueOf(categories.get(i).getId());
+                args[i] = String.valueOf(categories.get(i).id);
             }
         }
         Cursor cursor = db.query(TABLE_CATEGORY, null, selection, args, null, null, null);
@@ -224,8 +224,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             Category.Type type = Category.Type.values()[type_num];
 
             Category c = new Category(name, type);
-            c.setId(id);
-            c.setPreviewText(preview);
+            c.id = id;
+            c.previewText = preview;
             categories.add(c);
             n_category++;
             if (cb != null)

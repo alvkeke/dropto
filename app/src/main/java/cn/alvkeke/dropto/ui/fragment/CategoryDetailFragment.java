@@ -93,8 +93,8 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
     }
 
     private void loadCategory() {
-        etCategoryTitle.setText(category.getTitle());
-        spinnerType.setSelection(category.getType().ordinal());
+        etCategoryTitle.setText(category.title);
+        spinnerType.setSelection(category.type.ordinal());
     }
 
     private void finish() {
@@ -112,8 +112,8 @@ public class CategoryDetailFragment extends BottomSheetDialogFragment {
             category = new Category(title, type);
             listener.onAttempt(CategoryAttemptListener.Attempt.CREATE, category);
         } else {
-            category.setTitle(title);
-            category.setType(type);
+            category.title = title;
+            category.type = type;
             listener.onAttempt(CategoryAttemptListener.Attempt.UPDATE, category);
         }
         finish();

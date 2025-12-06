@@ -131,7 +131,7 @@ public class CoreService extends Service {
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
-            category.setId(helper.insertCategory(category));
+            category.id = helper.insertCategory(category);
             helper.finish();
             ArrayList<Category> categories = DataLoader.getInstance().getCategories();
             categories.add(category);
@@ -155,15 +155,15 @@ public class CoreService extends Service {
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
-            helper.deleteNotes(category.getId());
-            if (0 == helper.deleteCategory(category.getId()))
+            helper.deleteNotes(category.id);
+            if (0 == helper.deleteCategory(category.id))
                 Log.e(this.toString(), "no category row be deleted in database");
             helper.finish();
             categories.remove(category);
             task.result = index;
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to remove category with id " +
-                    category.getId() + ", exception: " + ex);
+                    category.id + ", exception: " + ex);
             task.result = -1;
         }
         notifyListener(task);
@@ -197,7 +197,7 @@ public class CoreService extends Service {
         NoteItem newItem = (NoteItem) task.param;
         Category category = DataLoader.getInstance().findCategory(newItem.categoryId);
 
-        newItem.categoryId = category.getId();
+        newItem.categoryId = category.id;
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
             dbHelper.start();
             newItem.id = dbHelper.insertNote(newItem);
@@ -209,7 +209,7 @@ public class CoreService extends Service {
             return;
         }
 
-        if (!category.isInitialized()) {
+        if (!category.isInitialized) {
             Log.i(this.toString(), "category not initialized, not add new item in the list");
             task.result = -1;
             notifyListener(task);

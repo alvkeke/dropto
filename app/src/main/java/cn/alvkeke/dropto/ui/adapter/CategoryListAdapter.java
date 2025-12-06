@@ -60,9 +60,9 @@ public class CategoryListAdapter extends SelectableListAdapter<Category, Categor
             return;
         }
 
-        viewHolder.setTitle(c.getTitle());
-        viewHolder.setPreview(c.getPreviewText());
-        viewHolder.setType(c.getType());
+        viewHolder.setTitle(c.title);
+        viewHolder.setPreview(c.previewText);
+        viewHolder.setType(c.type);
         if (isSelected(i)) {
             // TODO: use another color for selected item
             viewHolder.itemView.setBackgroundColor(Color.LTGRAY);

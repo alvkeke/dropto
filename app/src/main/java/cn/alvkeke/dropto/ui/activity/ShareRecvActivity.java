@@ -130,7 +130,7 @@ public class ShareRecvActivity extends AppCompatActivity
         }
 
         NoteItem recvNote = new NoteItem(pendingText);
-        recvNote.categoryId = category.getId();
+        recvNote.categoryId = category.id;
         if (pendingUris != null) {
             for (Uri uri : pendingUris) {
                 ImageFile imageFile = extraImageFileFromUri(uri);

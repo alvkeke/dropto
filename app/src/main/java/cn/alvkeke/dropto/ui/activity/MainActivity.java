@@ -244,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements
             Log.e(this.toString(), "Failed to get noteList from database");
         }
         noteListFragment.setCategory(category);
-        savedNoteListCategoryId = category.getId();
+        savedNoteListCategoryId = category.id;
         startFragmentAnime(noteListFragment);
     }
 
@@ -256,7 +256,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void handleCategoryDetailShow(Category c) {
-        savedCategoryDetailId = c.getId();
+        savedCategoryDetailId = c.id;
         CategoryDetailFragment fragment = new CategoryDetailFragment(c);
         getSupportFragmentManager().beginTransaction()
                 .add(fragment, null)
@@ -284,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements
                 return;
 
             Random r = new Random();
-            long cate_id = categories.get(r.nextInt(categories.size())).getId();
+            long cate_id = categories.get(r.nextInt(categories.size())).id;
             int idx = 0;
             for (int i = 0; i < 15; i++) {
                 NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
@@ -576,7 +576,7 @@ public class MainActivity extends AppCompatActivity implements
         if (pendingForwardNote == null)
             return;
         NoteItem item = pendingForwardNote.clone();
-        item.categoryId = category.getId();
+        item.categoryId = category.id;
         service.queueTask(Task.createNote(item, null));
     }
 

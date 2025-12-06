@@ -1,135 +1,79 @@
-package cn.alvkeke.dropto.data;
+package cn.alvkeke.dropto.data
 
-import java.util.ArrayList;
+import cn.alvkeke.dropto.R
 
-import cn.alvkeke.dropto.R;
-
-public class Category {
-
-    public static final long ID_NOT_ASSIGNED = -1;
-
-    public enum Type {
+class Category(@JvmField var title: String, @JvmField var type: Type) {
+    enum class Type {
         LOCAL_CATEGORY,
         REMOTE_SELF_DEV,
         REMOTE_USERS,
     }
 
-    public static int typeToIconResource(Type type) {
-        switch (type) {
-            case LOCAL_CATEGORY:
-                return R.drawable.icon_category_local;
-            case REMOTE_USERS:
-                return R.drawable.icon_category_remote_peers;
-            case REMOTE_SELF_DEV:
-                return R.drawable.icon_category_remote_dev;
-            default:
-                return R.drawable.icon_category_unknown;
-        }
-    }
+    @JvmField
+    var id: Long = ID_NOT_ASSIGNED
 
-    public static String typeToName(Type type) {
-        switch (type) {
-            case LOCAL_CATEGORY:
-                return "Local Category";
-            case REMOTE_USERS:
-                return "Remote Peer";
-            case REMOTE_SELF_DEV:
-                return "Remote Device";
-            default:
-                return "(Unknown Category Type)";
-        }
-    }
+    @JvmField
+    var previewText: String = ""
+    @JvmField
+    val noteItems: ArrayList<NoteItem> = ArrayList()
 
-    private long id;
-    private String title;
-    private Type type;
-    private String previewText = "";
-    private final ArrayList<NoteItem> noteItems;
-    private boolean isInitialized = false;
-
-    public Category(String title, Type type) {
-        this.id = ID_NOT_ASSIGNED;
-        this.title = title;
-        this.type = type;
-        this.noteItems = new ArrayList<>();
-    }
-
-    public ArrayList<NoteItem> getNoteItems() {
-        return noteItems;
-    }
+    @JvmField
+    var isInitialized: Boolean = false
 
     /**
      * add a new item into category, and return its new index
      * @param item new item object
      * @return index of the new item
      */
-    public int addNoteItem(NoteItem item) {
-        noteItems.add(0, item);
-        previewText = item.getText();
-        return 0;   // return the index of the new item
+    fun addNoteItem(item: NoteItem): Int {
+        noteItems.add(0, item)
+        previewText = item.text
+        return 0 // return the index of the new item
     }
 
-    public int indexNoteItem(NoteItem e) {
-        return noteItems.indexOf(e);
+    fun indexNoteItem(e: NoteItem): Int {
+        return noteItems.indexOf(e)
     }
 
-    public void delNoteItem(NoteItem item) {
-        noteItems.remove(item);
+    fun delNoteItem(item: NoteItem) {
+        noteItems.remove(item)
         if (!noteItems.isEmpty()) {
-            NoteItem e = noteItems.get(0);
-            previewText = e.getText();
+            val e = noteItems[0]
+            previewText = e.text
         }
     }
 
-    public NoteItem findNoteItem(long id) {
-        for (NoteItem e: noteItems) {
-            if (e.id == id) return e;
+    fun findNoteItem(id: Long): NoteItem? {
+        for (e in noteItems) {
+            if (e.id == id) return e
         }
-        return null;
+        return null
     }
 
-    public NoteItem getNoteItem(int index) {
-        if (index >= noteItems.size()) return null;
-        return noteItems.get(index);
+    fun getNoteItem(index: Int): NoteItem? {
+        if (index >= noteItems.size) return null
+        return noteItems[index]
     }
 
-    public boolean isInitialized() {
-        return isInitialized;
-    }
+    companion object {
+        const val ID_NOT_ASSIGNED: Long = -1
 
-    public void setInitialized(boolean initialized) {
-        isInitialized = initialized;
-    }
+        @JvmStatic
+        fun typeToIconResource(type: Type): Int {
+            return when (type) {
+                Type.LOCAL_CATEGORY -> R.drawable.icon_category_local
+                Type.REMOTE_USERS -> R.drawable.icon_category_remote_peers
+                Type.REMOTE_SELF_DEV -> R.drawable.icon_category_remote_dev
+            }
+        }
 
-    public void setPreviewText(String previewText) {
-        this.previewText = previewText;
-    }
-
-    public String getPreviewText() {
-        return previewText;
-    }
-
-    public String getTitle() {
-        return this.title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public Type getType() {
-        return this.type;
-    }
-
-    public void setType(Type type) {
-        this.type = type;
-    }
-
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
+        @JvmStatic
+        fun typeToName(type: Type): String {
+            return when (type) {
+                Type.LOCAL_CATEGORY -> "Local Category"
+                Type.REMOTE_USERS -> "Remote Peer"
+                Type.REMOTE_SELF_DEV -> "Remote Device"
+            }
+        }
     }
 }

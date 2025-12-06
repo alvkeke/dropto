@@ -46,19 +46,19 @@ public class DataLoader {
             return null;
 
         for (Category c : categories) {
-            if (c.getId() == id)
+            if (c.id == id)
                 return c;
         }
         return null;
     }
 
     public boolean loadCategoryNotes(Context context, Category category) {
-        if (category.isInitialized())
+        if (category.isInitialized)
             return true;
         try (DataBaseHelper helper = new DataBaseHelper(context)) {
             helper.start();
-            helper.queryNote(-1, category.getId(), category.getNoteItems());
-            category.setInitialized(true);
+            helper.queryNote(-1, category.id, category.noteItems);
+            category.isInitialized = true;
             helper.finish();
         } catch (Exception ex) {
             return false;
