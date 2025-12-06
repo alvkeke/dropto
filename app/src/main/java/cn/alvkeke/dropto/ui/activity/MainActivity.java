@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements
 
         setupCoreService(savedInstanceState);
 
-        ArrayList<Category> categories = DataLoader.getInstance().loadCategories(this);
+        ArrayList<Category> categories = DataLoader.loadCategories(this);
         if (savedInstanceState != null) {
             List<Fragment> fragments = getSupportFragmentManager().getFragments();
             for (Fragment f : fragments) {
@@ -148,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverNoteListFragment(Bundle state) {
         savedNoteListCategoryId = state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE);
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
-        Category category = DataLoader.getInstance().findCategory(savedNoteListCategoryId);
+        Category category = DataLoader.findCategory(savedNoteListCategoryId);
         noteListFragment.setCategory(category);
     }
     private static final long SAVED_NOTE_INFO_NOTE_ID_NONE = -1;
@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverNoteDetailFragment(NoteDetailFragment fragment, Bundle state) {
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
         savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE);
-        Category category = DataLoader.getInstance().findCategory(savedNoteListCategoryId);
+        Category category = DataLoader.findCategory(savedNoteListCategoryId);
         NoteItem item = category.findNoteItem(savedNoteInfoNoteId);
         if (item == null) { fragment.dismiss(); return; }
         fragment.setNoteItem(item);
@@ -168,7 +168,7 @@ public class MainActivity extends AppCompatActivity implements
     private void recoverCategoryDetailFragment(CategoryDetailFragment fragment, Bundle state) {
         savedCategoryDetailId = state.getLong(SAVED_CATEGORY_DETAIL_ID, SAVED_CATEGORY_DETAIL_ID_NONE);
         if (savedCategoryDetailId == SAVED_CATEGORY_DETAIL_ID_NONE) return;
-        Category category = DataLoader.getInstance().findCategory(savedCategoryDetailId);
+        Category category = DataLoader.findCategory(savedCategoryDetailId);
         fragment.setCategory(category);
     }
     private String savedImageViewFile = null;
@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity implements
         if (noteListFragment == null) {
             noteListFragment = new NoteListFragment();
         }
-        boolean ret = DataLoader.getInstance().loadCategoryNotes(this, category);
+        boolean ret = DataLoader.loadCategoryNotes(this, category);
         if (!ret) {
             Log.e(this.toString(), "Failed to get noteList from database");
         }
@@ -279,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements
             List<File> img_files = DebugFunction.tryExtractResImages(this, img_folder);
             if (img_files == null)
                 return;
-            ArrayList<Category> categories = DataLoader.getInstance().getCategories();
+            ArrayList<Category> categories = DataLoader.getCategories();
             if (categories.isEmpty())
                 return;
 
@@ -488,7 +488,7 @@ public class MainActivity extends AppCompatActivity implements
     private void handleNoteForward(NoteItem note) {
         pendingForwardNote = note;
         CategorySelectorFragment forwardFragment = new CategorySelectorFragment();
-        forwardFragment.setCategories(DataLoader.getInstance().getCategories());
+        forwardFragment.setCategories(DataLoader.getCategories());
         forwardFragment.show(getSupportFragmentManager(), null);
     }
 

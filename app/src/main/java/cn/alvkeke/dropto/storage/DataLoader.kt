@@ -1,69 +1,55 @@
-package cn.alvkeke.dropto.storage;
+package cn.alvkeke.dropto.storage
 
-import android.content.Context;
-import android.util.Log;
+import android.content.Context
+import android.util.Log
+import cn.alvkeke.dropto.data.Category
 
-import java.util.ArrayList;
+object DataLoader {
 
-import cn.alvkeke.dropto.data.Category;
+    @JvmStatic
+    var categories: ArrayList<Category> = ArrayList()
+        private set
 
-public class DataLoader {
+    @JvmStatic
+    fun loadCategories(context: Context): ArrayList<Category> {
 
-    private static DataLoader instance = null;
-
-    private DataLoader() { }
-
-    public static DataLoader getInstance() {
-        if (instance != null)
-            return instance;
-
-        instance = new DataLoader();
-        return instance;
-    }
-
-    private ArrayList<Category> categories = null;
-
-    public ArrayList<Category> loadCategories(Context context) {
-        if (categories == null)
-            categories = new ArrayList<>();
-        try (DataBaseHelper helper = new DataBaseHelper(context)) {
-            helper.start();
-            helper.queryCategory(-1, categories);
-            helper.finish();
-        } catch (Exception ex) {
-            Log.e(this.toString(), "Failed to retrieve category data from database");
+        try {
+            DataBaseHelper(context).use { helper ->
+                helper.start()
+                helper.queryCategory(-1, categories)
+                helper.finish()
+            }
+        } catch (_: Exception) {
+            Log.e(this.toString(), "Failed to retrieve category data from database")
         }
 
-        return categories;
+        return categories
     }
 
-    public ArrayList<Category> getCategories() {
-        return categories;
-    }
-
-    public Category findCategory(long id) {
-        if (categories == null)
-            return null;
-
-        for (Category c : categories) {
-            if (c.id == id)
-                return c;
+    @JvmStatic
+    fun findCategory(id: Long): Category? {
+        for (c in categories) {
+            if (c.id == id) return c
         }
-        return null;
+        return null
     }
 
-    public boolean loadCategoryNotes(Context context, Category category) {
+    @JvmStatic
+    fun loadCategoryNotes(context: Context, category: Category): Boolean {
         if (category.isInitialized)
-            return true;
-        try (DataBaseHelper helper = new DataBaseHelper(context)) {
-            helper.start();
-            helper.queryNote(-1, category.id, category.noteItems);
-            category.isInitialized = true;
-            helper.finish();
-        } catch (Exception ex) {
-            return false;
+            return true
+
+        try {
+            DataBaseHelper(context).use { helper ->
+                helper.start()
+                helper.queryNote(-1, category.id, category.noteItems)
+                category.isInitialized = true
+                helper.finish()
+            }
+        } catch (_: Exception) {
+            return false
         }
-        return true;
+        return true
     }
 
 }

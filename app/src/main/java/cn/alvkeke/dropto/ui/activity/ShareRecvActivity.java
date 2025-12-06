@@ -100,7 +100,7 @@ public class ShareRecvActivity extends AppCompatActivity
         }
 
         categorySelectorFragment = new CategorySelectorFragment();
-        categorySelectorFragment.setCategories(DataLoader.getInstance().getCategories());
+        categorySelectorFragment.setCategories(DataLoader.getCategories());
         getSupportFragmentManager().beginTransaction()
                 .add(categorySelectorFragment, null)
                 .commit();

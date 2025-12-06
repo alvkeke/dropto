@@ -133,7 +133,7 @@ public class CoreService extends Service {
             helper.start();
             category.id = helper.insertCategory(category);
             helper.finish();
-            ArrayList<Category> categories = DataLoader.getInstance().getCategories();
+            ArrayList<Category> categories = DataLoader.getCategories();
             categories.add(category);
             task.result = categories.indexOf(category);
         } catch (Exception ex) {
@@ -144,7 +144,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskCategoryRemove(Task task) {
-        ArrayList<Category> categories = DataLoader.getInstance().getCategories();
+        ArrayList<Category> categories = DataLoader.getCategories();
         Category category = (Category) task.param;
 
         int index;
@@ -170,7 +170,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskCategoryUpdate(Task task) {
-        ArrayList<Category> categories = DataLoader.getInstance().getCategories();
+        ArrayList<Category> categories = DataLoader.getCategories();
         Category category = (Category) task.param;
 
         int index;
@@ -195,7 +195,13 @@ public class CoreService extends Service {
 
     private void handleTaskNoteCreate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category category = DataLoader.getInstance().findCategory(newItem.categoryId);
+        Category category = DataLoader.findCategory(newItem.categoryId);
+        if (category == null) {
+            Log.e(this.toString(), "Failed to find category with id " + newItem.categoryId);
+            task.result = -1;
+            notifyListener(task);
+            return;
+        }
 
         newItem.categoryId = category.id;
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
@@ -221,7 +227,11 @@ public class CoreService extends Service {
 
     private void handleTaskNoteRemove(Task task) {
         NoteItem e = (NoteItem) task.param;
-        Category c = DataLoader.getInstance().findCategory(e.categoryId);
+        Category c = DataLoader.findCategory(e.categoryId);
+        if (c == null) {
+            Log.e(this.toString(), "Failed to find category with id " + e.categoryId);
+            return;
+        }
 
         int index = c.indexNoteItem(e);
         if (index == -1) return;
@@ -243,7 +253,12 @@ public class CoreService extends Service {
 
     private void handleTaskNoteUpdate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category c = DataLoader.getInstance().findCategory(newItem.categoryId);
+        Category c = DataLoader.findCategory(newItem.categoryId);
+        if (c == null) {
+            Log.e(this.toString(), "Failed to find category with id " + newItem.categoryId);
+            return;
+        }
+
         NoteItem oldItem = c.findNoteItem(newItem.id);
         if (oldItem == null) {
             Log.e(this.toString(), "Failed to get note item with id "+ newItem.id);
