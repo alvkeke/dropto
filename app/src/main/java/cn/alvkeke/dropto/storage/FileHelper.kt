@@ -1,99 +1,97 @@
-package cn.alvkeke.dropto.storage;
+package cn.alvkeke.dropto.storage
 
-import android.content.ContentResolver;
-import android.content.Context;
-import android.database.Cursor;
-import android.net.Uri;
-import android.os.ParcelFileDescriptor;
-import android.provider.OpenableColumns;
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import java.io.File
+import java.io.FileDescriptor
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.security.MessageDigest
 
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.security.MessageDigest;
+object FileHelper {
+    private const val BUFFER_SIZE = 1024
 
-public class FileHelper {
-
-    private static final int BUFFER_SIZE = 1024;
-
-    public static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b & 0xff));
+    fun bytesToHex(bytes: ByteArray): String {
+        val sb = StringBuilder()
+        for (b in bytes) {
+            sb.append(String.format("%02x", b.toInt() and 0xff))
         }
-        return sb.toString();
+        return sb.toString()
     }
 
-    public static byte[] calculateMD5(FileDescriptor fd) throws Exception{
-        MessageDigest md = MessageDigest.getInstance("MD5");
-        try (FileInputStream fis = new FileInputStream(fd)){
-            fis.getChannel().position(0);
-            byte[] buffer = new byte[BUFFER_SIZE];
-            int n_bytes;
-            while ((n_bytes = fis.read(buffer)) != -1) {
-                md.update(buffer, 0, n_bytes);
+    @Throws(Exception::class)
+    fun calculateMD5(fd: FileDescriptor): ByteArray {
+        val md = MessageDigest.getInstance("MD5")
+        FileInputStream(fd).use { fis ->
+            fis.channel.position(0)
+            val buffer = ByteArray(BUFFER_SIZE)
+            var nBytes: Int
+            while ((fis.read(buffer).also { nBytes = it }) != -1) {
+                md.update(buffer, 0, nBytes)
             }
         }
-
-        return md.digest();
+        return md.digest()
     }
 
-    public static File md5ToFile(File folder, byte[] md5) {
-        String name = bytesToHex(md5);
-        return new File(folder, name);
+    fun md5ToFile(folder: File?, md5: ByteArray): File {
+        val name = bytesToHex(md5)
+        return File(folder, name)
     }
 
-    public static void copyFileTo(FileDescriptor fd, File dest) throws IOException {
-        FileInputStream fis = new FileInputStream(fd);
-        FileChannel srcChannel = fis.getChannel().position(0);
-        FileOutputStream fos = new FileOutputStream(dest);
-        FileChannel destChannel = fos.getChannel();
+    @Throws(IOException::class)
+    fun copyFileTo(fd: FileDescriptor, dest: File) {
+        val fis = FileInputStream(fd)
+        val srcChannel = fis.channel.position(0)
+        val fos = FileOutputStream(dest)
+        val destChannel = fos.channel
         // do data copy
-        destChannel.transferFrom(srcChannel, 0, srcChannel.size());
-        srcChannel.close();
-        destChannel.close();
-        fis.close();
-        fos.close();
+        destChannel.transferFrom(srcChannel, 0, srcChannel.size())
+        srcChannel.close()
+        destChannel.close()
+        fis.close()
+        fos.close()
     }
 
-    public static String getFileNameFromUri(Context context, Uri uri) {
+    @JvmStatic
+    fun getFileNameFromUri(context: Context, uri: Uri): String? {
         // ContentResolver to resolve the content Uri
-        ContentResolver resolver = context.getContentResolver();
+        val resolver = context.contentResolver
         // Query the file name from the content Uri
-        Cursor cursor = resolver.query(uri, null, null, null, null);
-        String fileName = null;
+        val cursor = resolver.query(uri, null, null, null, null)
+        var fileName: String? = null
         if (cursor != null && cursor.moveToFirst()) {
-            int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
             if (index != -1) {
-                fileName = cursor.getString(index);
+                fileName = cursor.getString(index)
             }
-            cursor.close();
+            cursor.close()
         }
-        return fileName;
+        return fileName
     }
 
-    public static File saveUriToFile(Context context, Uri uri, File storeFolder) {
+    @JvmStatic
+    fun saveUriToFile(context: Context, uri: Uri, storeFolder: File?): File? {
         if (storeFolder == null) {
-            return null;
+            return null
         }
 
-        try (ParcelFileDescriptor inputPFD = context.getContentResolver().openFileDescriptor(uri, "r")) {
-            if (inputPFD == null) {
-                return null;
+        try {
+            context.contentResolver.openFileDescriptor(uri, "r").use { inputPFD ->
+                if (inputPFD == null) {
+                    return null
+                }
+                val fd = inputPFD.fileDescriptor
+                val md5sum = calculateMD5(fd)
+                val retFile = md5ToFile(storeFolder, md5sum)
+                if (!(retFile.isFile && retFile.exists())) {
+                    copyFileTo(fd, retFile)
+                }
+                return retFile
             }
-            FileDescriptor fd = inputPFD.getFileDescriptor();
-            byte[] md5sum = calculateMD5(fd);
-            File retFile = md5ToFile(storeFolder, md5sum);
-            if (!(retFile.isFile() && retFile.exists())) {
-                copyFileTo(fd, retFile);
-            }
-            return retFile;
-        } catch (Exception e) {
-            return null;
+        } catch (_: Exception) {
+            return null
         }
     }
-
 }
