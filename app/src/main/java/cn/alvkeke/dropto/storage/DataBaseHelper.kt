@@ -1,272 +1,221 @@
-package cn.alvkeke.dropto.storage;
+package cn.alvkeke.dropto.storage
 
-import android.content.ContentValues;
-import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteException;
-import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Base64;
-import android.util.Log;
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
+import android.database.sqlite.SQLiteOpenHelper
+import android.util.Base64
+import android.util.Log
+import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.data.ImageFile.Companion.from
+import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 
-import java.util.ArrayList;
+const val TAG = "DataBaseHelper"
 
-import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.mgmt.Global;
-import cn.alvkeke.dropto.data.ImageFile;
-import cn.alvkeke.dropto.data.NoteItem;
-
-public class DataBaseHelper extends SQLiteOpenHelper {
-
-    public interface IterateCallback<T> {
-        void onIterate(T o);
+class DataBaseHelper(private val context: Context) :
+    SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+    interface IterateCallback<T> {
+        fun onIterate(o: T?)
     }
 
-    private static final String DATABASE_NAME = "note.db";
-    private static final int DATABASE_VERSION = 1;
+    private lateinit var db: SQLiteDatabase
 
-    private static final String TABLE_CATEGORY = "category";
-    private static final String CATEGORY_COLUMN_ID = "_id";
-    private static final String CATEGORY_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT";
-    private static final String CATEGORY_COLUMN_NAME = "name";
-    private static final String CATEGORY_COLUMN_NAME_TYPE = "TEXT";
-    private static final String CATEGORY_COLUMN_PREVIEW = "preview_text";
-    private static final String CATEGORY_COLUMN_PREVIEW_TYPE = "TEXT";
-    private static final String CATEGORY_COLUMN_TYPE = "type";
-    private static final String CATEGORY_COLUMN_TYPE_TYPE = "INTEGER";
-
-    private static final String TABLE_NOTE = "note";
-    private static final String NOTE_COLUMN_ID = "_id";
-    private static final String NOTE_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT";
-    private static final String NOTE_COLUMN_CATE_ID = "category_id";
-    private static final String NOTE_COLUMN_CATE_ID_TYPE = "INTEGER";
-    private static final String NOTE_COLUMN_TEXT = "text";
-    private static final String NOTE_COLUMN_TEXT_TYPE = "TEXT";
-    private static final String NOTE_COLUMN_C_TIME = "ctime";
-    private static final String NOTE_COLUMN_C_TIME_TYPE = "INTEGER";
-    private static final String NOTE_COLUMN_IMG_INFO = "img_info";
-    private static final String NOTE_COLUMN_IMG_INFO_TYPE = "TEXT";
-
-    private final Context context;
-    private SQLiteDatabase db = null;
-
-    public DataBaseHelper(Context context) {
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
-        this.context = context;
+    override fun onCreate(db: SQLiteDatabase) {
+        createCategoryTable(db)
+        createNoteTable(db)
     }
 
-    @Override
-    public void onCreate(SQLiteDatabase db) {
-        createCategoryTable(db);
-        createNoteTable(db);
+    override fun onUpgrade(sqLiteDatabase: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
     }
 
-    @Override
-    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
-
-    }
-
-    private void createCategoryTable(SQLiteDatabase db) {
-        db.execSQL(String.format("CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s)",
+    private fun createCategoryTable(db: SQLiteDatabase) {
+        db.execSQL(
+            String.format(
+                "CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s)",
                 TABLE_CATEGORY, CATEGORY_COLUMN_ID, CATEGORY_COLUMN_ID_TYPE,
                 CATEGORY_COLUMN_TYPE, CATEGORY_COLUMN_TYPE_TYPE,
                 CATEGORY_COLUMN_NAME, CATEGORY_COLUMN_NAME_TYPE,
-                CATEGORY_COLUMN_PREVIEW, CATEGORY_COLUMN_PREVIEW_TYPE));
+                CATEGORY_COLUMN_PREVIEW, CATEGORY_COLUMN_PREVIEW_TYPE
+            )
+        )
     }
 
-    private void createNoteTable(SQLiteDatabase db) {
-        db.execSQL(String.format(
+    private fun createNoteTable(db: SQLiteDatabase) {
+        db.execSQL(
+            String.format(
                 "CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s, %s %s)",
                 TABLE_NOTE, NOTE_COLUMN_ID, NOTE_COLUMN_ID_TYPE,
                 NOTE_COLUMN_CATE_ID, NOTE_COLUMN_CATE_ID_TYPE,
                 NOTE_COLUMN_TEXT, NOTE_COLUMN_TEXT_TYPE,
                 NOTE_COLUMN_C_TIME, NOTE_COLUMN_C_TIME_TYPE,
                 NOTE_COLUMN_IMG_INFO, NOTE_COLUMN_IMG_INFO_TYPE
-        ));
+            )
+        )
     }
 
-    @SuppressWarnings("unused")
-    public void destroyDatabase() {
-        context.deleteDatabase(DATABASE_NAME);
+    @Suppress("unused")
+    fun destroyDatabase() {
+        context.deleteDatabase(DATABASE_NAME)
     }
 
-    public void start() {
-        if (db != null) return;
-        db = this.getWritableDatabase();
+    fun start() {
+        if (::db.isInitialized) return
+        db = this.writableDatabase
     }
 
-    public void finish() {
-        if (db != null) {
-            db.close();
-            db = null;
-        }
+    fun finish() {
+        db.close()
     }
 
-    private static final String CATEGORY_WHERE_CLAUSE_ID = CATEGORY_COLUMN_ID + " = ?";
-    public long insertCategory(long id, String title, Category.Type type, String preview) throws SQLiteException{
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return -1;
-        }
-        ContentValues values = new ContentValues();
-        values.put(CATEGORY_COLUMN_ID, id);
-        values.put(CATEGORY_COLUMN_NAME, title);
-        values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
-        values.put(CATEGORY_COLUMN_PREVIEW, preview);
+    @Throws(SQLiteException::class)
+    fun insertCategory(id: Long, title: String, type: Category.Type, preview: String?): Long {
+        val values = ContentValues()
+        values.put(CATEGORY_COLUMN_ID, id)
+        values.put(CATEGORY_COLUMN_NAME, title)
+        values.put(CATEGORY_COLUMN_TYPE, type.ordinal)
+        values.put(CATEGORY_COLUMN_PREVIEW, preview)
 
-        return db.insertOrThrow(TABLE_CATEGORY, null, values);
+        return db.insertOrThrow(TABLE_CATEGORY, null, values)
     }
 
-    public long insertCategory(String title, Category.Type type, String preview) throws SQLiteException{
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return -1;
-        }
-        ContentValues values = new ContentValues();
-        values.put(CATEGORY_COLUMN_NAME, title);
-        values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
-        values.put(CATEGORY_COLUMN_PREVIEW, preview);
+    @Throws(SQLiteException::class)
+    fun insertCategory(title: String, type: Category.Type, preview: String?): Long {
+        val values = ContentValues()
+        values.put(CATEGORY_COLUMN_NAME, title)
+        values.put(CATEGORY_COLUMN_TYPE, type.ordinal)
+        values.put(CATEGORY_COLUMN_PREVIEW, preview)
 
-        return db.insertOrThrow(TABLE_CATEGORY, null, values);
+        return db.insertOrThrow(TABLE_CATEGORY, null, values)
     }
 
-    @SuppressWarnings("unused")
-    public long insertCategory(Category c) throws SQLiteException{
-
-        long id;
-        if (c.id == Category.ID_NOT_ASSIGNED) {
-            id = insertCategory(c.title, c.type, c.previewText);
+    @Suppress("unused")
+    @Throws(SQLiteException::class)
+    fun insertCategory(c: Category): Long {
+        val id: Long = if (c.id == Category.ID_NOT_ASSIGNED) {
+            insertCategory(c.title, c.type, c.previewText)
         } else {
-            id = insertCategory(c.id, c.title, c.type, c.previewText);
+            insertCategory(c.id, c.title, c.type, c.previewText)
         }
         if (id < 0) {
-            Log.e(this.toString(), "Failed to insert category");
-            return -1;
+            Log.e(TAG, "Failed to insert category")
+            return -1
         }
-        c.id = id;
-        return id;
+        c.id = id
+        return id
     }
 
-    public int deleteCategory(long id) {
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return 0;
-        }
-        String[] args = { String.valueOf(id) };
-        return db.delete(TABLE_CATEGORY, CATEGORY_WHERE_CLAUSE_ID, args);
+    fun deleteCategory(id: Long): Int {
+        val args = arrayOf<String?>(id.toString())
+        return db.delete(TABLE_CATEGORY, CATEGORY_WHERE_CLAUSE_ID, args)
     }
 
-    public int updateCategory(long id, String title, Category.Type type, String previewText) {
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return -1;
-        }
-        ContentValues values = new ContentValues();
-        values.put(CATEGORY_COLUMN_NAME, title);
-        values.put(CATEGORY_COLUMN_TYPE, type.ordinal());
-        values.put(CATEGORY_COLUMN_PREVIEW, previewText);
-        String[] args = { String.valueOf(id) };
-        return db.update(TABLE_CATEGORY, values, CATEGORY_WHERE_CLAUSE_ID, args);
+    fun updateCategory(id: Long, title: String?, type: Category.Type, previewText: String?): Int {
+        val values = ContentValues()
+        values.put(CATEGORY_COLUMN_NAME, title)
+        values.put(CATEGORY_COLUMN_TYPE, type.ordinal)
+        values.put(CATEGORY_COLUMN_PREVIEW, previewText)
+        val args = arrayOf<String?>(id.toString())
+        return db.update(TABLE_CATEGORY, values, CATEGORY_WHERE_CLAUSE_ID, args)
     }
 
-    public int updateCategory(Category category) {
-        return updateCategory(category.id, category.title,
-                category.type, category.previewText);
+    fun updateCategory(category: Category): Int {
+        return updateCategory(
+            category.id, category.title,
+            category.type, category.previewText
+        )
     }
 
-    public void queryCategory(int max_num, ArrayList<Category> categories, IterateCallback<Category> cb) {
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return;
-        }
-        if (categories == null) {
-            Log.i(this.toString(), "uninitialized category list");
-            return;
-        }
+    @JvmOverloads
+    fun queryCategory(
+        maxNum: Int,
+        categories: ArrayList<Category>,
+        cb: IterateCallback<Category>? = null
+    ) {
 
-        String selection = null;
-        String[] args = null;
+        var selection: String? = null
+        var args: Array<String?>? = null
         if (!categories.isEmpty()) {
-            selection = "_id NOT IN (" +  "?,".repeat(categories.size()-1) + "?)";
-            args = new String[categories.size()];
-            for (int i=0; i<args.length; i++) {
-                args[i] = String.valueOf(categories.get(i).id);
+            selection = "_id NOT IN (${"?,".repeat(categories.size-1)}?)"
+            args = arrayOfNulls(categories.size)
+            for (i in args.indices) {
+                args[i] = categories[i].id.toString()
             }
         }
-        Cursor cursor = db.query(TABLE_CATEGORY, null, selection, args, null, null, null);
-        if (cursor == null) {
-            Log.e(this.toString(), "Failed to get cursor");
-            return;
-        }
-        Category.Type[] vv = Category.Type.values();
+        val cursor = db.query(TABLE_CATEGORY, null, selection, args, null, null, null)
+        val vv = Category.Type.entries.toTypedArray()
 
-        int n_category = 0;
-        while(cursor.moveToNext()) {
-            int idx;
+        var nCategory = 0
+        while (cursor.moveToNext()) {
 
-            if (max_num > 0 && n_category >= max_num ) break;
-            idx = cursor.getColumnIndex(CATEGORY_COLUMN_ID);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            long id = cursor.getLong(idx);
-            idx = cursor.getColumnIndex(CATEGORY_COLUMN_NAME);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            String name = cursor.getString(idx);
-            idx = cursor.getColumnIndex(CATEGORY_COLUMN_PREVIEW);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            String preview = cursor.getString(idx);
-            idx = cursor.getColumnIndex(CATEGORY_COLUMN_TYPE);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            int type_num = cursor.getInt(idx);
-            if (type_num < 0 || type_num >= vv.length) {
-                Log.e(this.toString(), "invalid type_num: " + type_num);
-                continue;
+            if (maxNum in 1..nCategory) break
+            var idx: Int = cursor.getColumnIndex(CATEGORY_COLUMN_ID)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
             }
-            Category.Type type = Category.Type.values()[type_num];
+            val id = cursor.getLong(idx)
+            idx = cursor.getColumnIndex(CATEGORY_COLUMN_NAME)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val name = cursor.getString(idx)
+            idx = cursor.getColumnIndex(CATEGORY_COLUMN_PREVIEW)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val preview = cursor.getString(idx)
+            idx = cursor.getColumnIndex(CATEGORY_COLUMN_TYPE)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val typeNum = cursor.getInt(idx)
+            if (typeNum < 0 || typeNum >= vv.size) {
+                Log.e(TAG, "invalid type_num: $typeNum")
+                continue
+            }
+            val type = Category.Type.entries[typeNum]
 
-            Category c = new Category(name, type);
-            c.id = id;
-            c.previewText = preview;
-            categories.add(c);
-            n_category++;
-            if (cb != null)
-                cb.onIterate(c);
+            val c = Category(name, type)
+            c.id = id
+            c.previewText = preview
+            categories.add(c)
+            nCategory++
+            cb?.onIterate(c)
         }
 
-        cursor.close();
+        cursor.close()
     }
 
-    public void queryCategory(int max_num, ArrayList<Category> categories) {
-        queryCategory(max_num, categories, null);
+    @Throws(SQLiteException::class)
+    fun insertNote(
+        id: Long, categoryId: Long, text: String?, ctime: Long,
+        imgInfo: String?
+    ): Long {
+        val values = ContentValues()
+        values.put(NOTE_COLUMN_ID, id)
+        values.put(NOTE_COLUMN_CATE_ID, categoryId)
+        values.put(NOTE_COLUMN_TEXT, text)
+        values.put(NOTE_COLUMN_C_TIME, ctime)
+        values.put(NOTE_COLUMN_IMG_INFO, imgInfo)
+        return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
-    private static final String NOTE_WHERE_CLAUSE_ID = NOTE_COLUMN_ID + " = ?";
-    public long insertNote(long id, long categoryId, String text, long ctime,
-                           String img_info) throws SQLiteException{
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return -1;
-        }
-        ContentValues values = new ContentValues();
-        values.put(NOTE_COLUMN_ID, id);
-        values.put(NOTE_COLUMN_CATE_ID, categoryId);
-        values.put(NOTE_COLUMN_TEXT, text);
-        values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_INFO, img_info);
-        return db.insertOrThrow(TABLE_NOTE, null, values);
-    }
-
-    public long insertNote(long categoryId, String text, long ctime,
-                           String img_info) throws SQLiteException {
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return -1;
-        }
-        ContentValues values = new ContentValues();
-        values.put(NOTE_COLUMN_CATE_ID, categoryId);
-        values.put(NOTE_COLUMN_TEXT, text);
-        values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_INFO, img_info);
-        return db.insertOrThrow(TABLE_NOTE, null, values);
+    @Throws(SQLiteException::class)
+    fun insertNote(
+        categoryId: Long, text: String?, ctime: Long,
+        imgInfo: String?
+    ): Long {
+        val values = ContentValues()
+        values.put(NOTE_COLUMN_CATE_ID, categoryId)
+        values.put(NOTE_COLUMN_TEXT, text)
+        values.put(NOTE_COLUMN_C_TIME, ctime)
+        values.put(NOTE_COLUMN_IMG_INFO, imgInfo)
+        return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
     /**
@@ -275,27 +224,30 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param n the noteItem need to be insert
      * @return the id in database
      */
-    public long insertNote(NoteItem n) throws SQLiteException{
-        long id;
-        StringBuilder sb = new StringBuilder();
-        n.iterateImages().forEachRemaining(f -> {
-            sb.append(f.getMd5());
-            sb.append(':');
-            sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
-            sb.append(',');
-        });
-        if (n.id == NoteItem.ID_NOT_ASSIGNED) {
-            id = insertNote(n.categoryId, n.getText(), n.getCreateTime(), sb.toString());
+    @Throws(SQLiteException::class)
+    fun insertNote(n: NoteItem): Long {
+        val id: Long
+        val sb = StringBuilder()
+        n.iterateImages().forEach { f ->
+            sb.append(f.md5)
+            sb.append(':')
+            sb.append(Base64.encodeToString(f.getName().toByteArray(), Base64.DEFAULT))
+            sb.append(',')
+        }
+        id = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
+            insertNote(n.categoryId, n.text, n.createTime, sb.toString())
         } else {
-            id = insertNote(n.id, n.categoryId, n.getText(), n.getCreateTime(),
-                    sb.toString());
+            insertNote(
+                n.id, n.categoryId, n.text, n.createTime,
+                sb.toString()
+            )
         }
         if (id < 0) {
-            Log.e(this.toString(), "Failed to insert note");
-            return -1;
+            Log.e(TAG, "Failed to insert note")
+            return -1
         }
-        n.id = id;
-        return id;
+        n.id = id
+        return id
     }
 
     /**
@@ -303,23 +255,14 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param id ID of target noteItem
      * @return number of deleted entries
      */
-    public int deleteNote(long id) {
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return 0;
-        }
-        String[] args = { String.valueOf(id) };
-        return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_ID, args);
+    fun deleteNote(id: Long): Int {
+        val args = arrayOf(id.toString())
+        return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_ID, args)
     }
 
-    private static final String NOTE_WHERE_CLAUSE_CATE_ID = NOTE_COLUMN_CATE_ID + " = ?";
-    public int deleteNotes(long categoryId) {
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return 0;
-        }
-        String[] args = { String.valueOf(categoryId) };
-        return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_CATE_ID, args);
+    fun deleteNotes(categoryId: Long): Int {
+        val args = arrayOf(categoryId.toString())
+        return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_CATE_ID, args)
     }
 
     /**
@@ -328,22 +271,20 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param categoryId the ID of the new category
      * @param text new note text
      * @param ctime new create time
-     * @param img_info new image file
+     * @param imgInfo new image file
      * @return count of affected rows
      */
-    public int updateNote(long id, long categoryId, String text, long ctime,
-                           String img_info){
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return 0;
-        }
-        ContentValues values = new ContentValues();
-        values.put(NOTE_COLUMN_CATE_ID, categoryId);
-        values.put(NOTE_COLUMN_TEXT, text);
-        values.put(NOTE_COLUMN_C_TIME, ctime);
-        values.put(NOTE_COLUMN_IMG_INFO, img_info);
-        String[] args = { String.valueOf(id) };
-        return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args);
+    fun updateNote(
+        id: Long, categoryId: Long, text: String?, ctime: Long,
+        imgInfo: String?
+    ): Int {
+        val values = ContentValues()
+        values.put(NOTE_COLUMN_CATE_ID, categoryId)
+        values.put(NOTE_COLUMN_TEXT, text)
+        values.put(NOTE_COLUMN_C_TIME, ctime)
+        values.put(NOTE_COLUMN_IMG_INFO, imgInfo)
+        val args = arrayOf(id.toString())
+        return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args)
     }
 
     /**
@@ -351,99 +292,147 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      * @param note item object contain updated info
      * @return count of affected rows
      */
-    public int updateNote(NoteItem note) {
-        StringBuilder sb = new StringBuilder();
-        note.iterateImages().forEachRemaining(f -> {
-            sb.append(f.getMd5());
-            sb.append(':');
-            sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
-            sb.append(',');
-        });
+    fun updateNote(note: NoteItem): Int {
+        val sb = StringBuilder()
+        note.iterateImages().forEach { f ->
+            sb.append(f.md5)
+            sb.append(':')
+            sb.append(Base64.encodeToString(f.getName().toByteArray(), Base64.DEFAULT))
+            sb.append(',')
+        }
 
-        return updateNote(note.id, note.categoryId, note.getText(),
-                note.getCreateTime(), sb.toString());
+        return updateNote(
+            note.id, note.categoryId, note.text,
+            note.createTime, sb.toString()
+        )
     }
 
     /**
      * retrieve note data from database
-     * @param max_num max count of retrieve items, -1 for unlimited
-     * @param target_category_id id of specific category, -1 for unspecific
+     * @param maxNum max count of retrieve items, -1 for unlimited
+     * @param targetCategoryId id of specific category, -1 for unspecific
      * @param noteItems the list to receive the result
      */
-    public void queryNote(int max_num, long target_category_id, ArrayList<NoteItem> noteItems, IterateCallback<NoteItem> cb) {
-        if (db == null) {
-            Log.e(this.toString(), "database not opened");
-            return;
-        }
-        assert noteItems != null;
+    @JvmOverloads
+    fun queryNote(
+        maxNum: Int,
+        targetCategoryId: Long,
+        noteItems: ArrayList<NoteItem>,
+        cb: IterateCallback<NoteItem>? = null
+    ) {
 
-        String selection = null;
-        String[] selectionArgs = null;
-        if (target_category_id != -1) {
-            selection = NOTE_COLUMN_CATE_ID + " = ?";
-            selectionArgs = new String[]{ String.valueOf(target_category_id), };
+        var selection: String? = null
+        var selectionArgs: Array<String>? = null
+        if (targetCategoryId != -1L) {
+            selection = "$NOTE_COLUMN_CATE_ID = ?"
+            selectionArgs = arrayOf(targetCategoryId.toString())
         }
-        Cursor cursor = db.query(TABLE_NOTE, null, selection, selectionArgs,
-                null, null, NOTE_COLUMN_C_TIME + " DESC");
+        val cursor = db.query(
+            TABLE_NOTE, null, selection, selectionArgs,
+            null, null, "$NOTE_COLUMN_C_TIME DESC"
+        )
         // reverse query by C_TIME, make sure the latest added item can be got
-        if (cursor == null) {
-            Log.e(this.toString(), "Failed to get cursor");
-            return;
-        }
 
-        int n_notes = 0;
-        while(cursor.moveToNext()) {
-            if (max_num > 0 && n_notes >= max_num ) break;
-            int idx;
-            idx = cursor.getColumnIndex(NOTE_COLUMN_ID);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            long id = cursor.getLong(idx);
-            idx = cursor.getColumnIndex(NOTE_COLUMN_CATE_ID);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            long category_id = cursor.getLong(idx);
-            idx = cursor.getColumnIndex(NOTE_COLUMN_TEXT);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            String text = cursor.getString(idx);
-            idx = cursor.getColumnIndex(NOTE_COLUMN_C_TIME);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            long ctime = cursor.getLong(idx);
-            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_INFO);
-            if (idx == -1) { Log.e(this.toString(), "invalid idx"); continue; }
-            String img_info_all = cursor.getString(idx);
+        var nNotes = 0
+        while (cursor.moveToNext()) {
+            if (maxNum in 1..nNotes) break
+            var idx: Int = cursor.getColumnIndex(NOTE_COLUMN_ID)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val id = cursor.getLong(idx)
+            idx = cursor.getColumnIndex(NOTE_COLUMN_CATE_ID)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val categoryId = cursor.getLong(idx)
+            idx = cursor.getColumnIndex(NOTE_COLUMN_TEXT)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val text = cursor.getString(idx)
+            idx = cursor.getColumnIndex(NOTE_COLUMN_C_TIME)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val ctime = cursor.getLong(idx)
+            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_INFO)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx")
+                continue
+            }
+            val imgInfoAll = cursor.getString(idx)
 
-            NoteItem e = new NoteItem(text, ctime);
-            e.id = id;
-            e.categoryId = category_id;
-            if (!img_info_all.isEmpty()) {
-                String[] img_info_all_s = img_info_all.split(",");
-                for (String info: img_info_all_s) {
-                    String[] info_s = info.split(":");
-                    if (info_s.length == 0) {
-                        Log.e(this.toString(), "Got Wrong Image Info: " + info);
-                        continue;
+            val e = NoteItem(text, ctime)
+            e.id = id
+            e.categoryId = categoryId
+            if (!imgInfoAll.isEmpty()) {
+                val imgInfoAllS =
+                    imgInfoAll.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+                for (info in imgInfoAllS) {
+                    val infoS =
+                        info.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+                    if (infoS.isEmpty()) {
+                        Log.e(TAG, "Got Wrong Image Info: $info")
+                        continue
                     }
-                    String s_md5 = info_s[0];
-                    String s_name = info_s.length == 1 ? "" :
-                        new String(Base64.decode(info_s[1], Base64.DEFAULT));
-                    ImageFile imageFile = ImageFile.from(Global.getFolderImage(context),
-                            s_md5, s_name);
+                    val sMd5 = infoS[0]
+                    val sName = if (infoS.size == 1) "" else String(
+                        Base64.decode(
+                            infoS[1],
+                            Base64.DEFAULT
+                        )
+                    )
+                    val imageFile = from(
+                        getFolderImage(context),
+                        sMd5, sName
+                    )
 
                     if (!e.addImageFile(imageFile)) {
-                        Log.e(this.toString(), "Failed to set image file: " + img_info_all);
+                        Log.e(TAG, "Failed to set image file: $imgInfoAll")
                     }
                 }
             }
-            noteItems.add(e);
-            n_notes++;
-            if (cb != null)
-                cb.onIterate(e);
+            noteItems.add(e)
+            nNotes++
+            cb?.onIterate(e)
         }
 
-        cursor.close();
+        cursor.close()
     }
 
-    public void queryNote(int max_num, long target_category_id, ArrayList<NoteItem> noteItems) {
-        queryNote(max_num, target_category_id, noteItems, null);
-    }
+    companion object {
+        private const val DATABASE_NAME = "note.db"
+        private const val DATABASE_VERSION = 1
 
+        private const val TABLE_CATEGORY = "category"
+        private const val CATEGORY_COLUMN_ID = "_id"
+        private const val CATEGORY_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
+        private const val CATEGORY_COLUMN_NAME = "name"
+        private const val CATEGORY_COLUMN_NAME_TYPE = "TEXT"
+        private const val CATEGORY_COLUMN_PREVIEW = "preview_text"
+        private const val CATEGORY_COLUMN_PREVIEW_TYPE = "TEXT"
+        private const val CATEGORY_COLUMN_TYPE = "type"
+        private const val CATEGORY_COLUMN_TYPE_TYPE = "INTEGER"
+
+        private const val TABLE_NOTE = "note"
+        private const val NOTE_COLUMN_ID = "_id"
+        private const val NOTE_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
+        private const val NOTE_COLUMN_CATE_ID = "category_id"
+        private const val NOTE_COLUMN_CATE_ID_TYPE = "INTEGER"
+        private const val NOTE_COLUMN_TEXT = "text"
+        private const val NOTE_COLUMN_TEXT_TYPE = "TEXT"
+        private const val NOTE_COLUMN_C_TIME = "ctime"
+        private const val NOTE_COLUMN_C_TIME_TYPE = "INTEGER"
+        private const val NOTE_COLUMN_IMG_INFO = "img_info"
+        private const val NOTE_COLUMN_IMG_INFO_TYPE = "TEXT"
+
+        private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
+        private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
+        private const val NOTE_WHERE_CLAUSE_CATE_ID: String = "$NOTE_COLUMN_CATE_ID = ?"
+    }
 }
