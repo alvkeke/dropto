@@ -67,7 +67,7 @@ public class ImageViewerFragment extends DialogFragment implements FragmentOnBac
 
         view.setBackgroundColor(Color.BLACK);
         imageView = view.findViewById(R.id.img_viewer_image);
-        ImageLoader.getInstance().loadOriginalImageAsync(imgFile, bitmap -> {
+        ImageLoader.loadOriginalImageAsync(imgFile, bitmap -> {
             loadedBitmap = bitmap;
             imageView.setImageBitmap(bitmap);
         });
