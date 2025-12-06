@@ -288,7 +288,7 @@ public class MainActivity extends AppCompatActivity implements
             int idx = 0;
             for (int i = 0; i < 15; i++) {
                 NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
-                e.setCategoryId(cate_id);
+                e.categoryId = cate_id;
                 if (r.nextBoolean()) {
                     e.setText(e.getText(), true);
                 }
@@ -390,11 +390,11 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void generateShareFileAndUriForNote(NoteItem note, @NonNull ArrayList<Uri> uris) {
-        for (int i=0; i<note.getImageCount(); i++) {
-            File ff = generateShareFile(note.getImageAt(i));
+        note.iterateImages().forEachRemaining(f -> {
+            File ff = generateShareFile(f);
             Uri uri = getUriForFile(ff);
             uris.add(uri);
-        }
+        });
     }
 
     private void triggerShare(String text, ArrayList<Uri> uris) {
@@ -462,7 +462,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void handleNoteDetailShow(NoteItem item) {
-        savedNoteInfoNoteId = item.getId();
+        savedNoteInfoNoteId = item.id;
         NoteDetailFragment fragment = new NoteDetailFragment();
         fragment.setNoteItem(item);
         getSupportFragmentManager().beginTransaction()
@@ -475,6 +475,10 @@ public class MainActivity extends AppCompatActivity implements
             imageViewerFragment = new ImageViewerFragment();
         }
         ImageFile imageFile = item.getImageAt(imageIndex);
+        if (imageFile == null) {
+            Log.e(this.toString(), "Failed to get image at index: " + imageIndex);
+            return;
+        }
         savedImageViewFile = imageFile.getMd5file().getAbsolutePath();
         imageViewerFragment.setImgFile(imageFile.getMd5file());
         imageViewerFragment.show(getSupportFragmentManager(), null);
@@ -572,7 +576,7 @@ public class MainActivity extends AppCompatActivity implements
         if (pendingForwardNote == null)
             return;
         NoteItem item = pendingForwardNote.clone();
-        item.setCategoryId(category.getId());
+        item.categoryId = category.getId();
         service.queueTask(Task.createNote(item, null));
     }
 

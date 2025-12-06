@@ -278,24 +278,23 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public long insertNote(NoteItem n) throws SQLiteException{
         long id;
         StringBuilder sb = new StringBuilder();
-        for (int i=0; i<n.getImageCount(); i++) {
-            ImageFile f = n.getImageAt(i);
+        n.iterateImages().forEachRemaining(f -> {
             sb.append(f.getMd5());
             sb.append(':');
             sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
             sb.append(',');
-        }
-        if (n.getId() == NoteItem.ID_NOT_ASSIGNED) {
-            id = insertNote(n.getCategoryId(), n.getText(), n.getCreateTime(), sb.toString());
+        });
+        if (n.id == NoteItem.ID_NOT_ASSIGNED) {
+            id = insertNote(n.categoryId, n.getText(), n.getCreateTime(), sb.toString());
         } else {
-            id = insertNote(n.getId(), n.getCategoryId(), n.getText(), n.getCreateTime(),
+            id = insertNote(n.id, n.categoryId, n.getText(), n.getCreateTime(),
                     sb.toString());
         }
         if (id < 0) {
             Log.e(this.toString(), "Failed to insert note");
             return -1;
         }
-        n.setId(id);
+        n.id = id;
         return id;
     }
 
@@ -354,15 +353,14 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      */
     public int updateNote(NoteItem note) {
         StringBuilder sb = new StringBuilder();
-        for (int i=0; i<note.getImageCount(); i++) {
-            ImageFile f = note.getImageAt(i);
+        note.iterateImages().forEachRemaining(f -> {
             sb.append(f.getMd5());
             sb.append(':');
             sb.append(Base64.encodeToString(f.getName().getBytes(), Base64.DEFAULT));
             sb.append(',');
-        }
+        });
 
-        return updateNote(note.getId(), note.getCategoryId(), note.getText(),
+        return updateNote(note.id, note.categoryId, note.getText(),
                 note.getCreateTime(), sb.toString());
     }
 
@@ -414,8 +412,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             String img_info_all = cursor.getString(idx);
 
             NoteItem e = new NoteItem(text, ctime);
-            e.setId(id);
-            e.setCategoryId(category_id);
+            e.id = id;
+            e.categoryId = category_id;
             if (!img_info_all.isEmpty()) {
                 String[] img_info_all_s = img_info_all.split(",");
                 for (String info: img_info_all_s) {

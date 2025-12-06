@@ -179,9 +179,7 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
             return;
 
         Context context = requireContext();
-        for (int i=0; i<item.getImageCount(); i++) {
-            int imageIndex = i;
-            ImageFile imageFile = item.getImageAt(imageIndex);
+        item.iterateImages().forEachRemaining(imageFile -> {
             imageList.add(imageFile);
 
             ImageCard card = new ImageCard(context);
@@ -216,11 +214,12 @@ public class NoteDetailFragment extends BottomSheetDialogFragment {
                 });
                 animator.start();
             });
+            int imageIndex = item.indexOf(imageFile);
             card.setImageClickListener(view1 ->
                     listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, item, imageIndex));
 
             scrollContainer.addView(card);
-        }
+        });
 
     }
 

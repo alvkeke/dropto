@@ -120,7 +120,7 @@ public class DebugFunction {
             int idx = 0;
             for (int i = 0; i < 15; i++) {
                 NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
-                e.setCategoryId(cate_id);
+                e.categoryId = cate_id;
                 if (r.nextBoolean()) {
                     e.setText(e.getText(), true);
                 }
@@ -136,7 +136,7 @@ public class DebugFunction {
                     }
 
                 }
-                e.setId(i+1);
+                e.id = i+1;
                 dataBaseHelper.insertNote(e);
             }
             dataBaseHelper.finish();

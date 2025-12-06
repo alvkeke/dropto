@@ -195,12 +195,12 @@ public class CoreService extends Service {
 
     private void handleTaskNoteCreate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category category = DataLoader.getInstance().findCategory(newItem.getCategoryId());
+        Category category = DataLoader.getInstance().findCategory(newItem.categoryId);
 
-        newItem.setCategoryId(category.getId());
+        newItem.categoryId = category.getId();
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
             dbHelper.start();
-            newItem.setId(dbHelper.insertNote(newItem));
+            newItem.id = dbHelper.insertNote(newItem);
             dbHelper.finish();
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to add new item to database!");
@@ -221,21 +221,21 @@ public class CoreService extends Service {
 
     private void handleTaskNoteRemove(Task task) {
         NoteItem e = (NoteItem) task.param;
-        Category c = DataLoader.getInstance().findCategory(e.getCategoryId());
+        Category c = DataLoader.getInstance().findCategory(e.categoryId);
 
         int index = c.indexNoteItem(e);
         if (index == -1) return;
 
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)){
             dbHelper.start();
-            if (0 == dbHelper.deleteNote(e.getId()))
+            if (0 == dbHelper.deleteNote(e.id))
                 Log.e(this.toString(), "no row be deleted");
             dbHelper.finish();
             c.delNoteItem(e);
             task.result = index;
         } catch (Exception ex) {
             Log.e(this.toString(), "Failed to remove item with id " +
-                    e.getId() + ", exception: " + e);
+                    e.id + ", exception: " + e);
             task.result = -1;
         }
         notifyListener(task);
@@ -243,14 +243,14 @@ public class CoreService extends Service {
 
     private void handleTaskNoteUpdate(Task task) {
         NoteItem newItem = (NoteItem) task.param;
-        Category c = DataLoader.getInstance().findCategory(newItem.getCategoryId());
-        NoteItem oldItem = c.findNoteItem(newItem.getId());
+        Category c = DataLoader.getInstance().findCategory(newItem.categoryId);
+        NoteItem oldItem = c.findNoteItem(newItem.id);
         if (oldItem == null) {
-            Log.e(this.toString(), "Failed to get note item with id "+ newItem.getId());
+            Log.e(this.toString(), "Failed to get note item with id "+ newItem.id);
             return;
         }
         int index = c.indexNoteItem(oldItem);
-        newItem.setId(oldItem.getId());
+        newItem.id = oldItem.id;
         try (DataBaseHelper dbHelper = new DataBaseHelper(this)) {
             dbHelper.start();
             if (0 == dbHelper.updateNote(newItem)) {

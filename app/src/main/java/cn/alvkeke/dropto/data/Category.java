@@ -83,7 +83,7 @@ public class Category {
 
     public NoteItem findNoteItem(long id) {
         for (NoteItem e: noteItems) {
-            if (e.getId() == id) return e;
+            if (e.id == id) return e;
         }
         return null;
     }

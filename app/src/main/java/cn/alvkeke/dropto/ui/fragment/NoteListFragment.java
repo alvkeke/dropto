@@ -406,7 +406,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
         public void onClick(View v) {
             String content = etInputText.getText().toString().trim();
             NoteItem item = new NoteItem(content);
-            item.setCategoryId(category.getId());
+            item.categoryId = category.getId();
             if (imgUris.isEmpty()) {
                 if (content.isEmpty()) return;
             } else {
@@ -488,7 +488,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
 
     @Override
     public void notifyItemListChanged(Notify notify, int index, NoteItem note) {
-        if (note != null && note.getCategoryId() != category.getId()) {
+        if (note != null && note.categoryId != category.getId()) {
             Log.e(this.toString(), "target NoteItem not exist in current category");
             return;
         }

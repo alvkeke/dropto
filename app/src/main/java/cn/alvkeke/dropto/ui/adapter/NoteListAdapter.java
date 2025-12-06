@@ -179,6 +179,12 @@ public class NoteListAdapter extends SelectableListAdapter<NoteItem, NoteListAda
         }
         private void loadNoteImageAt(NoteItem note, int index) {
             ImageFile img = note.getImageAt(index);
+            if (img == null) {
+                String errMsg = "Image at index " + index + " is null, skip this item";
+                Log.e(this.toString(), errMsg);
+                ivImages[index].setImageResource(R.drawable.img_load_error);
+                return;
+            }
             ImageLoader.getInstance().loadImageAsync(img.getMd5file(), bitmap -> {
                 if (bitmap == null) {
                     String errMsg = "Failed to get image file, skip this item";
