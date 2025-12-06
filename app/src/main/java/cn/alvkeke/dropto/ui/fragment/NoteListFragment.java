@@ -411,7 +411,7 @@ public class NoteListFragment extends Fragment implements ListNotification<NoteI
                 if (content.isEmpty()) return;
             } else {
                 for (Uri imgUri: imgUris) {
-                    File folder = Global.getInstance().getFolderImage(context);
+                    File folder = Global.getFolderImage(context);
                     File md5file = FileHelper.saveUriToFile(context, imgUri, folder);
                     String imgName = FileHelper.getFileNameFromUri(context, imgUri);
                     ImageFile imageFile = ImageFile.from(md5file, imgName);

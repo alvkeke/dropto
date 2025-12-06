@@ -275,7 +275,7 @@ public class MainActivity extends AppCompatActivity implements
                 Log.e(this.toString(), "failed to sleep: " + ex);
             }
 
-            File img_folder = Global.getInstance().getFolderImage(this);
+            File img_folder = Global.getFolderImage(this);
             List<File> img_files = DebugFunction.tryExtractResImages(this, img_folder);
             if (img_files == null)
                 return;
@@ -371,7 +371,7 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
     private File generateShareFile(ImageFile imageFile) {
-        share_folder = Global.getInstance().getFolderImageShare(this);
+        share_folder = Global.getFolderImageShare(this);
 
         try {
             String imageName = imageFile.getName();

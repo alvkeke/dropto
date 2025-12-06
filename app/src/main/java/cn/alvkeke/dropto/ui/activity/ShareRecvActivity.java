@@ -187,7 +187,7 @@ public class ShareRecvActivity extends AppCompatActivity
     }
 
     private ImageFile extraImageFileFromUri(Uri uri) {
-        File folder = Global.getInstance().getFolderImage(this);
+        File folder = Global.getFolderImage(this);
         File md5file = FileHelper.saveUriToFile(this, uri, folder);
         if (md5file == null) return null;
         String imgName = FileHelper.getFileNameFromUri(this, uri);

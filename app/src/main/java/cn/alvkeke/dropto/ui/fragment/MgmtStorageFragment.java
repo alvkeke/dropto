@@ -70,8 +70,8 @@ public class MgmtStorageFragment extends Fragment {
     File folderImage;
     File folderCache;
     private void initFolders() {
-        folderCache = Global.getInstance().getFolderImageShare(requireContext());
-        folderImage = Global.getInstance().getFolderImage(requireContext());
+        folderCache = Global.getFolderImageShare(requireContext());
+        folderImage = Global.getFolderImage(requireContext());
     }
 
     private interface FolderIterator {

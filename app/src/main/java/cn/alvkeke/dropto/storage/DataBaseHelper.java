@@ -425,7 +425,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                     String s_md5 = info_s[0];
                     String s_name = info_s.length == 1 ? "" :
                         new String(Base64.decode(info_s[1], Base64.DEFAULT));
-                    ImageFile imageFile = ImageFile.from(Global.getInstance().getFolderImage(context),
+                    ImageFile imageFile = ImageFile.from(Global.getFolderImage(context),
                             s_md5, s_name);
 
                     if (!e.addImageFile(imageFile)) {
