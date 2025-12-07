@@ -138,7 +138,7 @@ public class MgmtStorageFragment extends Fragment {
     private class OnItemClickListener implements ImageListAdapter.OnItemClickListener {
 
         @Override
-        public void OnClick(int index) {
+        public void onClick(int index) {
             String name = imageListAdapter.get(index);
             if (name == null) return;
 
@@ -149,7 +149,7 @@ public class MgmtStorageFragment extends Fragment {
         }
 
         @Override
-        public boolean OnLongClick(int index) {
+        public boolean onLongClick(int index) {
             String name = imageListAdapter.get(index);
             if (name == null) return false;
             File imageFile = new File(folderImage, name);

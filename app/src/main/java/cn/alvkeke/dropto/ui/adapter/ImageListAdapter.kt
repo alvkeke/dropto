@@ -1,95 +1,80 @@
-package cn.alvkeke.dropto.ui.adapter;
+package cn.alvkeke.dropto.ui.adapter
 
-import android.content.Context;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
+import android.R
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.RecyclerView;
-
-import java.util.ArrayList;
-
-public class ImageListAdapter extends RecyclerView.Adapter<ImageListAdapter.ViewHolder> {
-
-
-    public interface OnItemClickListener {
-        void OnClick(int index);
-        boolean OnLongClick(int index);
+class ImageListAdapter(context: Context) : RecyclerView.Adapter<ImageListAdapter.ViewHolder>() {
+    interface OnItemClickListener {
+        fun onClick(index: Int)
+        fun onLongClick(index: Int): Boolean
     }
 
-    private final ArrayList<String> images = new ArrayList<>();
-    private OnItemClickListener listener;
+    private val images = ArrayList<String>()
+    private var listener: OnItemClickListener? = null
 
-    private final LayoutInflater inflater;
-    public ImageListAdapter(Context context) {
-        inflater = LayoutInflater.from(context);
+    private val inflater: LayoutInflater = LayoutInflater.from(context)
+
+    override fun onCreateViewHolder(parent: ViewGroup, i: Int): ViewHolder {
+        val v = inflater.inflate(R.layout.simple_list_item_1, parent, false)
+        return ViewHolder(v)
     }
 
-    @NonNull
-    @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int i) {
-        View v = inflater.inflate(android.R.layout.simple_list_item_1, parent, false);
-        return new ViewHolder(v);
+    override fun onBindViewHolder(viewHolder: ViewHolder, i: Int) {
+        viewHolder.setText(images[i])
+        viewHolder.setOnClickListener(i)
     }
 
-    @Override
-    public void onBindViewHolder(@NonNull ViewHolder viewHolder, int i) {
-        viewHolder.setText(images.get(i));
-        viewHolder.setOnClickListener(i);
+    override fun getItemCount(): Int {
+        return images.size
     }
 
-    @Override
-    public int getItemCount() {
-        return images.size();
+    fun add(file: String) {
+        images.add(file)
+        val index = images.indexOf(file)
+        if (index >= 0) this.notifyItemInserted(index)
     }
 
-    public void add(String file) {
-        images.add(file);
-        int index = images.indexOf(file);
-        if (index >= 0)
-            this.notifyItemInserted(index);
+    fun remove(index: Int) {
+        images.removeAt(index)
+        notifyItemRemoved(index)
+        notifyItemRangeChanged(index, images.size - index)
     }
 
-    public void remove(int index) {
-        images.remove(index);
-        notifyItemRemoved(index);
-        notifyItemRangeChanged(index, images.size()-index);
+    fun get(index: Int): String? {
+        if (index >= images.size) return null
+        return images[index]
     }
 
-    public String get(int index) {
-        if (index >= images.size())
-            return null;
-        return images.get(index);
+    fun emptyList() {
+        this.notifyItemRangeRemoved(0, images.size)
+        images.clear()
     }
 
-    public void emptyList() {
-        this.notifyItemRangeRemoved(0, images.size());
-        images.clear();
-    }
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val textView: TextView = itemView.findViewById(R.id.text1)
 
-    public class ViewHolder extends RecyclerView.ViewHolder {
-
-        private final TextView textView;
-        public ViewHolder(@NonNull View itemView) {
-            super(itemView);
-            textView = itemView.findViewById(android.R.id.text1);
+        fun setText(text: String) {
+            textView.text = text
         }
 
-        public void setText(String text) {
-            textView.setText(text);
-        }
-
-        public void setOnClickListener(int pos) {
+        fun setOnClickListener(pos: Int) {
             if (listener != null) {
-                textView.setOnClickListener(view -> listener.OnClick(pos));
-                textView.setOnLongClickListener(view -> listener.OnLongClick(pos));
+                textView.setOnClickListener { _: View ->
+                    listener!!.onClick(pos)
+                }
+                textView.setOnLongClickListener { _: View ->
+                    listener!!.onLongClick(pos)
+                }
             }
         }
     }
 
-    public void setItemClickListener(OnItemClickListener listener) {
-        this.listener = listener;
+    fun setItemClickListener(listener: OnItemClickListener?) {
+        this.listener = listener
     }
 }
