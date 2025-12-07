@@ -16,7 +16,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
-import android.view.WindowManager
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
@@ -69,13 +70,13 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
     private var window: Window? = null
     private var isFull = true
     private fun toggleFullScreen() {
+        val insetsController = window?.insetsController ?: return
         if (isFull) {
-            window!!.setFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-            )
+            insetsController.hide(WindowInsets.Type.systemBars())
+            insetsController.systemBarsBehavior =
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
-            window!!.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            insetsController.show(WindowInsets.Type.systemBars())
         }
         isFull = !isFull
     }
@@ -84,9 +85,12 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
         super.onResume()
         window = requireDialog().window
         if (window == null) return
-        window!!.statusBarColor = Color.TRANSPARENT
         window!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         window!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        window!!.insetsController?.setSystemBarsAppearance(
+            0,
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+        )
         toggleFullScreen()
     }
 
