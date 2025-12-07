@@ -17,7 +17,7 @@ object DebugFunction {
     @Suppress("unused")
     const val LOG_TAG: String = "DebugFunction"
 
-    private fun dbgLog(ignored: String) {
+    private fun dbgLog(log: String) {
 //        if (BuildConfig.DEBUG) android.util.Log.e(LOG_TAG, ignored);
     }
 
@@ -60,7 +60,7 @@ object DebugFunction {
         if (!BuildConfig.DEBUG) return null
         dbgLog("Perform Debug function to extract images")
 
-        val rawIds: MutableList<Int?> = ArrayList()
+        val rawIds: MutableList<Int> = ArrayList()
         val fields = raw::class.java.fields
         for (f in fields) {
             if (f.type == Int::class.javaPrimitiveType) {
@@ -75,7 +75,7 @@ object DebugFunction {
 
         val retFiles: MutableList<File> = ArrayList()
         for (id in rawIds) {
-            val oFile = File(folder, context.resources.getResourceEntryName(id!!) + ".png")
+            val oFile = File(folder, context.resources.getResourceEntryName(id) + ".png")
             if (extractRawFile(context, id, oFile)) retFiles.add(oFile)
         }
 
@@ -87,6 +87,7 @@ object DebugFunction {
      * fill category database for debugging, this function will be exec only in DEBUG build
      * @param context context
      */
+    @Suppress("unused")
     fun fillDatabaseForCategory(context: Context) {
         if (!BuildConfig.DEBUG) return
         dbgLog("Perform Debug function to fill database for categories")
@@ -104,6 +105,7 @@ object DebugFunction {
         }
     }
 
+    @Suppress("unused")
     fun fillDatabaseForNote(context: Context, imgFiles: MutableList<File>, categoryId: Long) {
         if (!BuildConfig.DEBUG) return
         dbgLog("Perform Debug function to fill database for noteItems")

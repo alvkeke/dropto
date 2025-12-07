@@ -30,7 +30,7 @@ class MgmtStorageFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         return inflater.inflate(R.layout.fragment_mgmt_storage, container, false)
     }
 
@@ -87,7 +87,7 @@ class MgmtStorageFragment : Fragment() {
             iterator.on(folder)
             return
         }
-        val folders = LinkedList<File?>()
+        val folders = LinkedList<File>()
         folders.push(folder)
 
         while (true) {
@@ -120,7 +120,7 @@ class MgmtStorageFragment : Fragment() {
         }
     }
 
-    private fun clearSelectedData(ignored: View) {
+    private fun clearSelectedData(v: View) {
         buttonClear.isEnabled = false
         if (cbCache.isChecked) {
             Thread {
@@ -140,7 +140,7 @@ class MgmtStorageFragment : Fragment() {
 
     private inner class OnItemClickListener : ImageListAdapter.OnItemClickListener {
         override fun onClick(index: Int) {
-            val name = imageListAdapter.get(index) ?: return
+            val name = imageListAdapter.get(index)
 
             val imageFile = File(folderImage, name)
             val fragment = ImageViewerFragment()
@@ -149,7 +149,7 @@ class MgmtStorageFragment : Fragment() {
         }
 
         override fun onLongClick(index: Int): Boolean {
-            val name = imageListAdapter.get(index) ?: return false
+            val name = imageListAdapter.get(index)
             val imageFile = File(folderImage, name)
             val tmp = imageFile.length()
             if (imageFile.delete()) {

@@ -24,6 +24,7 @@ class ImageFile {
         return name
     }
 
+    @Suppress("unused")
     fun setName(name: String) {
         this.name = name
     }

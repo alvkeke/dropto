@@ -141,7 +141,7 @@ open class GestureListener : OnTouchListener {
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
-        val p: Point?
+//        val p: Point
         when (motionEvent.actionMasked) {
             MotionEvent.ACTION_POINTER_DOWN -> {
                 downCount = 0
@@ -182,7 +182,7 @@ open class GestureListener : OnTouchListener {
                     handleGesture(view, mode, motionEvent)
                     return true
                 }
-                p = pointFromEvent(motionEvent)
+                val p = pointFromEvent(motionEvent)
                 mode = getMode(pointDown, p)
             }
 

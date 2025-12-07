@@ -163,12 +163,6 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
 
         private fun loadNoteImageAt(note: NoteItem, index: Int) {
             val img = note.getImageAt(index)
-            if (img == null) {
-                val errMsg = "Image at index $index is null, skip this item"
-                Log.e(this.toString(), errMsg)
-                ivImages[index].setImageResource(R.drawable.img_load_error)
-                return
-            }
             loadImageAsync(img.md5file) { bitmap: Bitmap? ->
                 if (bitmap == null) {
                     val errMsg = "Failed to get image file, skip this item"

@@ -45,8 +45,7 @@ class ImageListAdapter(context: Context) : RecyclerView.Adapter<ImageListAdapter
         notifyItemRangeChanged(index, images.size - index)
     }
 
-    fun get(index: Int): String? {
-        if (index >= images.size) return null
+    fun get(index: Int): String {
         return images[index]
     }
 

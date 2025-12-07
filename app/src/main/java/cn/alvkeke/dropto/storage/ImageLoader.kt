@@ -262,7 +262,7 @@ object ImageLoader {
     }
 
     private fun getBitmapOrientation(path: String): Int {
-        val exif: ExifInterface?
+        val exif: ExifInterface
         var orientation = 0
         try {
             exif = ExifInterface(path)

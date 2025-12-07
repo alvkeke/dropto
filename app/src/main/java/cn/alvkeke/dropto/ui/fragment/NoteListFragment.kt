@@ -430,10 +430,6 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private fun showImageView(index: Int, imageIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
-        if (noteItem == null) {
-            throwErrorMessage("Failed to get note item at $index, abort")
-            return
-        }
         if (noteItem.imageCount > 4 && imageIndex == 3) {
             listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, noteItem)
         } else {
@@ -450,10 +446,6 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private var myPopupMenu: MyPopupMenu? = null
     private fun showItemPopMenu(index: Int, v: View, x: Int, y: Int) {
         val noteItem = category!!.getNoteItem(index)
-        if (noteItem == null) {
-            throwErrorMessage("Failed to get note item at $index, abort")
-            return
-        }
         if (myPopupMenu == null) {
             val menu = PopupMenu(context, v).menu
             requireActivity().menuInflater.inflate(R.menu.item_pop_menu, menu)

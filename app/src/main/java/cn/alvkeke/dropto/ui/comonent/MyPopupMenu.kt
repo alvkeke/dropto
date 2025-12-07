@@ -28,7 +28,7 @@ class MyPopupMenu(private val context: Context) : PopupWindow(context) {
     private var listener: OnMenuItemClickListener? = null
     private var menu: Menu? = null
 
-    fun setListener(listener: OnMenuItemClickListener?): MyPopupMenu {
+    fun setListener(listener: OnMenuItemClickListener): MyPopupMenu {
         this.listener = listener
         return this
     }
@@ -128,7 +128,7 @@ class MyPopupMenu(private val context: Context) : PopupWindow(context) {
         return this
     }
 
-    fun show(anchorView: View, ignore: Int, y: Int) {
+    fun show(anchorView: View, x: Int, y: Int) {
         val linearLayout = LinearLayout(context)
         linearLayout.orientation = LinearLayout.VERTICAL
         val screenWidth = context.resources.displayMetrics.widthPixels

@@ -35,7 +35,7 @@ object FileHelper {
         return md.digest()
     }
 
-    fun md5ToFile(folder: File?, md5: ByteArray): File {
+    fun md5ToFile(folder: File, md5: ByteArray): File {
         val name = bytesToHex(md5)
         return File(folder, name)
     }
@@ -72,10 +72,7 @@ object FileHelper {
     }
 
     @JvmStatic
-    fun saveUriToFile(context: Context, uri: Uri, storeFolder: File?): File? {
-        if (storeFolder == null) {
-            return null
-        }
+    fun saveUriToFile(context: Context, uri: Uri, storeFolder: File): File? {
 
         try {
             context.contentResolver.openFileDescriptor(uri, "r").use { inputPFD ->

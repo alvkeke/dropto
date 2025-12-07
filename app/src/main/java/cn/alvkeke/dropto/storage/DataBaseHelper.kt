@@ -27,7 +27,7 @@ class DataBaseHelper(private val context: Context) :
         createNoteTable(db)
     }
 
-    override fun onUpgrade(sqLiteDatabase: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
+    override fun onUpgrade(sqLiteDatabase: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
     }
 
     private fun createCategoryTable(db: SQLiteDatabase) {
@@ -107,7 +107,7 @@ class DataBaseHelper(private val context: Context) :
     }
 
     fun deleteCategory(id: Long): Int {
-        val args = arrayOf<String?>(id.toString())
+        val args = arrayOf(id.toString())
         return db.delete(TABLE_CATEGORY, CATEGORY_WHERE_CLAUSE_ID, args)
     }
 
@@ -116,7 +116,7 @@ class DataBaseHelper(private val context: Context) :
         values.put(CATEGORY_COLUMN_NAME, title)
         values.put(CATEGORY_COLUMN_TYPE, type.ordinal)
         values.put(CATEGORY_COLUMN_PREVIEW, previewText)
-        val args = arrayOf<String?>(id.toString())
+        val args = arrayOf(id.toString())
         return db.update(TABLE_CATEGORY, values, CATEGORY_WHERE_CLAUSE_ID, args)
     }
 

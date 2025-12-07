@@ -92,11 +92,8 @@ class NoteItem : Serializable, Cloneable {
         return true
     }
 
-    fun getImageAt(index: Int): ImageFile? {
-        if (this.imageCount > index) {
-            return imageFiles[index]
-        }
-        return null
+    fun getImageAt(index: Int): ImageFile {
+        return imageFiles[index]
     }
 
     fun indexOf(imageFile: ImageFile): Int {

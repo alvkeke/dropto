@@ -36,7 +36,7 @@ class CategorySelectorFragment : BottomSheetDialogFragment(), ListNotification<C
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         return inflater.inflate(R.layout.fragment_share_recv, container, false)
     }
 

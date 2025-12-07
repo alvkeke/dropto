@@ -50,8 +50,7 @@ class Category(@JvmField var title: String, @JvmField var type: Type) {
         return null
     }
 
-    fun getNoteItem(index: Int): NoteItem? {
-        if (index >= noteItems.size) return null
+    fun getNoteItem(index: Int): NoteItem {
         return noteItems[index]
     }
 

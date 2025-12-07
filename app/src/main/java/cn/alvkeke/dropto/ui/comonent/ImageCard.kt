@@ -26,11 +26,11 @@ class ImageCard(context: Context) : ConstraintLayout(context) {
         this.addView(view)
     }
 
-    fun setImageName(name: String?) {
+    fun setImageName(name: String) {
         tvImageName.text = name
     }
 
-    fun setImageMd5(md5: String?) {
+    fun setImageMd5(md5: String) {
         tvImageMd5.text = md5
     }
 
@@ -42,11 +42,11 @@ class ImageCard(context: Context) : ConstraintLayout(context) {
         imageView.setImageResource(resId)
     }
 
-    fun setRemoveButtonClickListener(listener: OnClickListener?) {
+    fun setRemoveButtonClickListener(listener: OnClickListener) {
         btnRemove.setOnClickListener(listener)
     }
 
-    fun setImageClickListener(listener: OnClickListener?) {
+    fun setImageClickListener(listener: OnClickListener) {
         imageView.setOnClickListener(listener)
     }
 }

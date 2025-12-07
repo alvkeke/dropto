@@ -135,7 +135,7 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
                 val dy = imageView.translationY
                 val animator = ValueAnimator.ofFloat(dy, 0f)
                 animator.addUpdateListener { valueAnimator: ValueAnimator ->
-                    imageView.translationY = (valueAnimator.animatedValue as Float?)!!
+                    imageView.translationY = (valueAnimator.animatedValue as Float)
                 }
                 animator.start()
                 parentView.background.alpha = 0xff
@@ -336,8 +336,8 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
         val endY = parentView.height.toFloat()
         val startT = parentView.alpha
         val animator = ValueAnimator.ofFloat(startY, endY)
-        animator.addUpdateListener { valueAnimator: ValueAnimator? ->
-            imageView.translationY = (valueAnimator!!.animatedValue as Float)
+        animator.addUpdateListener { valueAnimator: ValueAnimator ->
+            imageView.translationY = (valueAnimator.animatedValue as Float)
             val progress = valueAnimator.animatedFraction
             parentView.alpha = startT - startT * progress
         }

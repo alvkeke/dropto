@@ -443,11 +443,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
 
     private fun handleTextCopy(text: String) {
         val clipboardManager =
-            getSystemService(CLIPBOARD_SERVICE) as ClipboardManager?
-        if (clipboardManager == null) {
-            Log.e(this.toString(), "Failed to get ClipboardManager")
-            return
-        }
+            getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         val data = ClipData.newPlainText("text", text)
         clipboardManager.setPrimaryClip(data)
     }
@@ -470,10 +466,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
             imageViewerFragment = ImageViewerFragment()
         }
         val imageFile = item.getImageAt(imageIndex)
-        if (imageFile == null) {
-            Log.e(this.toString(), "Failed to get image at index: $imageIndex")
-            return
-        }
         savedImageViewFile = imageFile.md5file.absolutePath
         imageViewerFragment!!.setImgFile(imageFile.md5file)
         imageViewerFragment!!.show(supportFragmentManager, null)

@@ -45,7 +45,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         return inflater.inflate(R.layout.fragment_category_list, container, false)
     }
 
@@ -90,8 +90,8 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
     private fun setSystemBarHeight(parent: View, status: View, navi: View) {
         ViewCompat.setOnApplyWindowInsetsListener(
             parent
-        ) { _: View, winInsets: WindowInsetsCompat? ->
-            val statusHei: Int = winInsets!!.getInsets(WindowInsetsCompat.Type.statusBars()).top
+        ) { _: View, winInsets: WindowInsetsCompat ->
+            val statusHei: Int = winInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top
             val naviHei: Int = winInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             status.layoutParams.height = statusHei
             navi.layoutParams.height = naviHei
