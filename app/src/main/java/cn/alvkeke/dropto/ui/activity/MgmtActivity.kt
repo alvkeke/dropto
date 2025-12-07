@@ -1,52 +1,46 @@
-package cn.alvkeke.dropto.ui.activity;
+package cn.alvkeke.dropto.ui.activity
 
-import android.os.Bundle;
-import android.view.View;
+import android.os.Bundle
+import android.view.View
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.viewpager2.widget.ViewPager2
+import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.ui.adapter.MgmtViewPagerAdapter
 
-import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.viewpager2.widget.ViewPager2;
+class MgmtActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        this.enableEdgeToEdge()
+        setContentView(R.layout.activity_management)
 
-import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.ui.adapter.MgmtViewPagerAdapter;
+        val mgmtParent = findViewById<View>(R.id.mgmt_parent)
+        val viewPager = findViewById<ViewPager2>(R.id.mgmt_viewpager)
+        val status = findViewById<View>(R.id.mgmt_status_bar)
+        val navi = findViewById<View>(R.id.mgmt_navi_bar)
+        val toolbar = findViewById<Toolbar>(R.id.mgmt_toolbar)
 
-public class MgmtActivity extends AppCompatActivity {
+        setSystemBarHeight(mgmtParent, status, navi)
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_management);
-
-        View mgmtParent = findViewById(R.id.mgmt_parent);
-        ViewPager2 viewPager = findViewById(R.id.mgmt_viewpager);
-        View status = findViewById(R.id.mgmt_status_bar);
-        View navi = findViewById(R.id.mgmt_navi_bar);
-        Toolbar toolbar = findViewById(R.id.mgmt_toolbar);
-
-        setSystemBarHeight(mgmtParent, status, navi);
-
-        toolbar.setNavigationOnClickListener(view -> finish());
+        toolbar.setNavigationOnClickListener { _: View -> finish() }
 
 
-
-        MgmtViewPagerAdapter adapter = new MgmtViewPagerAdapter(this);
-        viewPager.setAdapter(adapter);
+        val adapter = MgmtViewPagerAdapter(this)
+        viewPager.setAdapter(adapter)
     }
 
-    private void setSystemBarHeight(View parent, View status, View navi) {
-        ViewCompat.setOnApplyWindowInsetsListener(parent, (v, insets) -> {
-            int statusHei, naviHei;
-            statusHei = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-            naviHei = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-            status.getLayoutParams().height = statusHei;
-            navi.getLayoutParams().height = naviHei;
-            return WindowInsetsCompat.CONSUMED;
-        });
+    private fun setSystemBarHeight(parent: View, status: View, navi: View) {
+        ViewCompat.setOnApplyWindowInsetsListener(
+            parent
+        ) { _: View, insets: WindowInsetsCompat ->
+            val statusHei: Int = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            val naviHei: Int = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            status.layoutParams.height = statusHei
+            navi.layoutParams.height = naviHei
+            WindowInsetsCompat.CONSUMED
+        }
     }
-
-
 }

@@ -20,8 +20,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class CategorySelectorFragment : BottomSheetDialogFragment(), ListNotification<Category> {
     interface CategorySelectListener {
-        fun onSelected(index: Int, category: Category?)
-        fun onError(error: String?)
+        fun onSelected(index: Int, category: Category)
+        fun onError(error: String)
     }
 
     private lateinit var listener: CategorySelectListener

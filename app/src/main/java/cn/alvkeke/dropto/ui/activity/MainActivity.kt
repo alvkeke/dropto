@@ -1,622 +1,615 @@
-package cn.alvkeke.dropto.ui.activity;
+package cn.alvkeke.dropto.ui.activity
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.WindowManager;
-import android.widget.Toast;
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.ComponentName
+import android.content.DialogInterface
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import android.view.WindowManager
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
+import androidx.fragment.app.Fragment
+import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.data.ImageFile
+import cn.alvkeke.dropto.data.ImageFile.Companion.from
+import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
+import cn.alvkeke.dropto.mgmt.Global.getFolderImage
+import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
+import cn.alvkeke.dropto.service.CoreService
+import cn.alvkeke.dropto.service.CoreServiceConnection
+import cn.alvkeke.dropto.service.Task
+import cn.alvkeke.dropto.service.Task.Companion.createCategory
+import cn.alvkeke.dropto.service.Task.Companion.createNote
+import cn.alvkeke.dropto.service.Task.Companion.jobToNotify
+import cn.alvkeke.dropto.service.Task.Companion.removeCategory
+import cn.alvkeke.dropto.service.Task.Companion.removeNote
+import cn.alvkeke.dropto.service.Task.Companion.updateCategory
+import cn.alvkeke.dropto.service.Task.Companion.updateNote
+import cn.alvkeke.dropto.service.Task.ResultListener
+import cn.alvkeke.dropto.storage.DataLoader.categories
+import cn.alvkeke.dropto.storage.DataLoader.findCategory
+import cn.alvkeke.dropto.storage.DataLoader.loadCategories
+import cn.alvkeke.dropto.storage.DataLoader.loadCategoryNotes
+import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment
+import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
+import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
+import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment
+import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment
+import cn.alvkeke.dropto.ui.fragment.NoteListFragment
+import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener
+import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
+import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
+import cn.alvkeke.dropto.ui.intf.NoteAttemptListener
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.LinkedList
+import java.util.Random
+import java.util.function.Consumer
 
-import androidx.activity.EdgeToEdge;
-import androidx.activity.OnBackPressedCallback;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.FileProvider;
-import androidx.fragment.app.Fragment;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
-
-import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.ImageFile;
-import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.debug.DebugFunction;
-import cn.alvkeke.dropto.mgmt.Global;
-import cn.alvkeke.dropto.service.CoreService;
-import cn.alvkeke.dropto.service.CoreServiceConnection;
-import cn.alvkeke.dropto.service.Task;
-import cn.alvkeke.dropto.storage.DataLoader;
-import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment;
-import cn.alvkeke.dropto.ui.fragment.CategoryListFragment;
-import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment;
-import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment;
-import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment;
-import cn.alvkeke.dropto.ui.fragment.NoteListFragment;
-import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
-import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
-import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
-import cn.alvkeke.dropto.ui.intf.NoteAttemptListener;
-
-public class MainActivity extends AppCompatActivity implements
-        ErrorMessageHandler, Task.ResultListener,
-        NoteAttemptListener, CategoryAttemptListener,
-        CategorySelectorFragment.CategorySelectListener {
-
-    private CoreService service = null;
-    private final CoreServiceConnection serviceConn = new CoreServiceConnection(this) {
-        @Override
-        public void execOnServiceConnected(ComponentName componentName, Bundle bundleAfterConnected) {
-            service = getService();
+class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, NoteAttemptListener,
+    CategoryAttemptListener, CategorySelectorFragment.CategorySelectListener {
+    private var myService : CoreService? = null
+    private val serviceConn: CoreServiceConnection = object : CoreServiceConnection(this) {
+        override fun execOnServiceConnected(
+            componentName: ComponentName,
+            bundleAfterConnected: Bundle?
+        ) {
+            myService = service
         }
 
-        @Override
-        public void execOnServiceDisconnected() {
-            service = null;
+        override fun execOnServiceDisconnected() {
+            myService = null
         }
-    };
+    }
 
-    private void setupCoreService(Bundle savedInstanceState) {
-        Intent serviceIntent = new Intent(this, CoreService.class);
+    private fun setupCoreService(savedInstanceState: Bundle?) {
+        val serviceIntent = Intent(this, CoreService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
+            startForegroundService(serviceIntent)
         } else {
-            startService(serviceIntent);
+            startService(serviceIntent)
         }
-        serviceConn.setBundleAfterConnected(savedInstanceState);
-        bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE);
+        serviceConn.setBundleAfterConnected(savedInstanceState)
+        bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE)
     }
 
-    private void clearCoreService() {
-        if (service == null) return;
-        unbindService(serviceConn);
+    private fun clearCoreService() {
+        if (myService == null) return
+        unbindService(serviceConn)
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        clearCoreService();
+    override fun onDestroy() {
+        super.onDestroy()
+        clearCoreService()
     }
 
-    private CategoryListFragment categoryListFragment;
-    private NoteListFragment noteListFragment;
-    private ImageViewerFragment imageViewerFragment;
+    private var categoryListFragment: CategoryListFragment? = null
+    private var noteListFragment: NoteListFragment? = null
+    private var imageViewerFragment: ImageViewerFragment? = null
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_main);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        this.enableEdgeToEdge()
+        setContentView(R.layout.activity_main)
 
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        )
 
-        getOnBackPressedDispatcher().
-                addCallback(this, new OnFragmentBackPressed(true));
+        onBackPressedDispatcher.addCallback(this, OnFragmentBackPressed(true))
 
-        setupCoreService(savedInstanceState);
+        setupCoreService(savedInstanceState)
 
-        ArrayList<Category> categories = DataLoader.loadCategories(this);
+        val categories: ArrayList<Category> = loadCategories(this)
         if (savedInstanceState != null) {
-            List<Fragment> fragments = getSupportFragmentManager().getFragments();
-            for (Fragment f : fragments) {
-                if (f instanceof CategoryListFragment) {
-                    categoryListFragment = (CategoryListFragment) f;
-                } else if (f instanceof NoteListFragment) {
-                    noteListFragment = (NoteListFragment) f;
-                    recoverNoteListFragment(savedInstanceState);
-                } else if (f instanceof ImageViewerFragment) {
-                    imageViewerFragment = (ImageViewerFragment) f;
-                    recoverImageViewFragment(savedInstanceState);
-                } else if (f instanceof CategorySelectorFragment) {
-                     CategorySelectorFragment fragment = (CategorySelectorFragment) f;
-                     fragment.setCategories(categories);
-                } else if (f instanceof NoteDetailFragment) {
-                    recoverNoteDetailFragment((NoteDetailFragment) f, savedInstanceState);
-                } else if (f instanceof CategoryDetailFragment) {
-                    recoverCategoryDetailFragment((CategoryDetailFragment) f, savedInstanceState);
-                } else {
-                    Log.e(this.toString(), "unknown fragment: " + f);
+            val fragments = supportFragmentManager.fragments
+            for (f in fragments) {
+                when (f) {
+                    is CategoryListFragment -> {
+                        categoryListFragment = f
+                    }
+
+                    is NoteListFragment -> {
+                        noteListFragment = f
+                        recoverNoteListFragment(savedInstanceState)
+                    }
+
+                    is ImageViewerFragment -> {
+                        imageViewerFragment = f
+                        recoverImageViewFragment(savedInstanceState)
+                    }
+
+                    is CategorySelectorFragment -> {
+                        f.setCategories(categories)
+                    }
+
+                    is NoteDetailFragment -> {
+                        recoverNoteDetailFragment(f, savedInstanceState)
+                    }
+
+                    is CategoryDetailFragment -> {
+                        recoverCategoryDetailFragment(f, savedInstanceState)
+                    }
+
+                    else -> {
+                        Log.e(this.toString(), "unknown fragment: $f")
+                    }
                 }
             }
         }
 
         if (categoryListFragment == null) {
-            categoryListFragment = new CategoryListFragment();
+            categoryListFragment = CategoryListFragment()
         }
-        categoryListFragment.setCategories(categories);
-        if (!categoryListFragment.isAdded()) {
-            startFragment(categoryListFragment);
+        categoryListFragment!!.setCategories(categories)
+        if (!categoryListFragment!!.isAdded) {
+            startFragment(categoryListFragment!!)
         }
     }
 
-    private static final long SAVED_NOTE_LIST_CATEGORY_ID_NONE = -1;
-    private long savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
-    private static final String SAVED_NOTE_LIST_CATEGORY_ID = "SAVED_NOTE_LIST_CATEGORY_ID";
-    private void recoverNoteListFragment(Bundle state) {
-        savedNoteListCategoryId = state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE);
-        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
-        Category category = DataLoader.findCategory(savedNoteListCategoryId);
-        noteListFragment.setCategory(category);
-    }
-    private static final long SAVED_NOTE_INFO_NOTE_ID_NONE = -1;
-    private long savedNoteInfoNoteId = SAVED_NOTE_INFO_NOTE_ID_NONE;
-    private static final String SAVED_NOTE_INFO_NOTE_ID = "SAVED_NOTE_INFO_NOTE_ID";
-    private void recoverNoteDetailFragment(NoteDetailFragment fragment, Bundle state) {
-        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
-        savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE);
-        Category category = DataLoader.findCategory(savedNoteListCategoryId);
-        if (category == null) { fragment.dismiss(); return; }
-        NoteItem item = category.findNoteItem(savedNoteInfoNoteId);
-        if (item == null) { fragment.dismiss(); return; }
-        fragment.setNoteItem(item);
-    }
-    private static final long SAVED_CATEGORY_DETAIL_ID_NONE = -1;
-    private long savedCategoryDetailId = SAVED_CATEGORY_DETAIL_ID_NONE;
-    private static final String SAVED_CATEGORY_DETAIL_ID = "SAVED_CATEGORY_DETAIL_ID";
-    private void recoverCategoryDetailFragment(CategoryDetailFragment fragment, Bundle state) {
-        savedCategoryDetailId = state.getLong(SAVED_CATEGORY_DETAIL_ID, SAVED_CATEGORY_DETAIL_ID_NONE);
-        if (savedCategoryDetailId == SAVED_CATEGORY_DETAIL_ID_NONE) return;
-        Category category = DataLoader.findCategory(savedCategoryDetailId);
-        fragment.setCategory(category);
-    }
-    private String savedImageViewFile = null;
-    private static final String SAVED_IMAGE_VIEW_FILE = "SAVED_IMAGE_VIEW_FILE";
-    private void recoverImageViewFragment(Bundle state) {
-        savedImageViewFile = state.getString(SAVED_IMAGE_VIEW_FILE);
-        if (savedImageViewFile == null) return;
-        imageViewerFragment.setImgFile(new File(savedImageViewFile));
+    private var savedNoteListCategoryId: Long = SAVED_NOTE_LIST_CATEGORY_ID_NONE
+    private fun recoverNoteListFragment(state: Bundle) {
+        savedNoteListCategoryId =
+            state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE)
+        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return
+        val category = findCategory(savedNoteListCategoryId)
+        noteListFragment!!.setCategory(category!!)
     }
 
-    @Override
-    protected void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putLong(SAVED_NOTE_LIST_CATEGORY_ID, savedNoteListCategoryId);
-        outState.putLong(SAVED_NOTE_INFO_NOTE_ID, savedNoteInfoNoteId);
-        outState.putLong(SAVED_CATEGORY_DETAIL_ID, savedCategoryDetailId);
-        outState.putString(SAVED_IMAGE_VIEW_FILE, savedImageViewFile);
-    }
-
-    private final LinkedList<Fragment> currentFragments = new LinkedList<>();
-    private void startFragment(Fragment fragment) {
-        currentFragments.push(fragment);
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.main_container, fragment, null)
-                .addToBackStack(null)
-                .commit();
-    }
-    private void startFragmentAnime(Fragment fragment) {
-        currentFragments.push(fragment);
-        getSupportFragmentManager().beginTransaction()
-                .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
-                .add(R.id.main_container, fragment, null)
-                .addToBackStack(null)
-                .commit();
-    }
-    private Fragment popFragment() {
-        Fragment fragment;
-        while ((fragment=currentFragments.pop()) != null) {
-            if (!fragment.isVisible())
-                continue;
-            return fragment;
+    private var savedNoteInfoNoteId: Long = SAVED_NOTE_INFO_NOTE_ID_NONE
+    private fun recoverNoteDetailFragment(fragment: NoteDetailFragment, state: Bundle) {
+        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return
+        savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE)
+        val category = findCategory(savedNoteListCategoryId)
+        if (category == null) {
+            fragment.dismiss()
+            return
         }
-        return null;
+        val item = category.findNoteItem(savedNoteInfoNoteId)
+        if (item == null) {
+            fragment.dismiss()
+            return
+        }
+        fragment.setNoteItem(item)
     }
 
-    class OnFragmentBackPressed extends OnBackPressedCallback {
-        public OnFragmentBackPressed(boolean enabled) {
-            super(enabled);
-        }
+    private var savedCategoryDetailId: Long = SAVED_CATEGORY_DETAIL_ID_NONE
+    private fun recoverCategoryDetailFragment(fragment: CategoryDetailFragment, state: Bundle) {
+        savedCategoryDetailId =
+            state.getLong(SAVED_CATEGORY_DETAIL_ID, SAVED_CATEGORY_DETAIL_ID_NONE)
+        if (savedCategoryDetailId == SAVED_CATEGORY_DETAIL_ID_NONE) return
+        val category = findCategory(savedCategoryDetailId)
+        fragment.setCategory(category!!)
+    }
 
-        @Override
-        public void handleOnBackPressed() {
-            Fragment fragment = popFragment();
-            if (fragment instanceof NoteListFragment) {
-                savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE;
+    private var savedImageViewFile: String? = null
+    private fun recoverImageViewFragment(state: Bundle) {
+        savedImageViewFile = state.getString(SAVED_IMAGE_VIEW_FILE)
+        if (savedImageViewFile == null) return
+        imageViewerFragment!!.setImgFile(File(savedImageViewFile!!))
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putLong(SAVED_NOTE_LIST_CATEGORY_ID, savedNoteListCategoryId)
+        outState.putLong(SAVED_NOTE_INFO_NOTE_ID, savedNoteInfoNoteId)
+        outState.putLong(SAVED_CATEGORY_DETAIL_ID, savedCategoryDetailId)
+        outState.putString(SAVED_IMAGE_VIEW_FILE, savedImageViewFile)
+    }
+
+    private val currentFragments = LinkedList<Fragment>()
+    private fun startFragment(fragment: Fragment) {
+        currentFragments.push(fragment)
+        supportFragmentManager.beginTransaction()
+            .add(R.id.main_container, fragment, null)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun startFragmentAnime(fragment: Fragment) {
+        currentFragments.push(fragment)
+        supportFragmentManager.beginTransaction()
+            .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
+            .add(R.id.main_container, fragment, null)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun popFragment(): Fragment? {
+        var fragment: Fragment?
+        while ((currentFragments.pop().also { fragment = it }) != null) {
+            if (!fragment!!.isVisible) continue
+            return fragment
+        }
+        return null
+    }
+
+    internal inner class OnFragmentBackPressed(enabled: Boolean) : OnBackPressedCallback(enabled) {
+        override fun handleOnBackPressed() {
+            val fragment = popFragment()
+            if (fragment is NoteListFragment) {
+                savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE
             }
-            boolean ret = false;
-            if (fragment instanceof FragmentOnBackListener) {
-                ret = ((FragmentOnBackListener) fragment).onBackPressed();
+            var ret = false
+            if (fragment is FragmentOnBackListener) {
+                ret = (fragment as FragmentOnBackListener).onBackPressed()
             }
             if (!ret) {
-                MainActivity.this.finish();
+                this@MainActivity.finish()
             }
         }
     }
 
-    public void handleCategoryExpand(Category category) {
+    fun handleCategoryExpand(category: Category) {
         if (noteListFragment == null) {
-            noteListFragment = new NoteListFragment();
+            noteListFragment = NoteListFragment()
         }
-        boolean ret = DataLoader.loadCategoryNotes(this, category);
+        val ret = loadCategoryNotes(this, category)
         if (!ret) {
-            Log.e(this.toString(), "Failed to get noteList from database");
+            Log.e(this.toString(), "Failed to get noteList from database")
         }
-        noteListFragment.setCategory(category);
-        savedNoteListCategoryId = category.id;
-        startFragmentAnime(noteListFragment);
+        noteListFragment!!.setCategory(category)
+        savedNoteListCategoryId = category.id
+        startFragmentAnime(noteListFragment!!)
     }
 
-    public void showCategoryCreatingDialog() {
-        savedCategoryDetailId = SAVED_CATEGORY_DETAIL_ID_NONE;
-        getSupportFragmentManager().beginTransaction()
-                .add(new CategoryDetailFragment(null), null)
-                .commit();
+    fun showCategoryCreatingDialog() {
+        savedCategoryDetailId = SAVED_CATEGORY_DETAIL_ID_NONE
+        supportFragmentManager.beginTransaction()
+            .add(CategoryDetailFragment(null), null)
+            .commit()
     }
 
-    private void handleCategoryDetailShow(Category c) {
-        savedCategoryDetailId = c.id;
-        CategoryDetailFragment fragment = new CategoryDetailFragment(c);
-        getSupportFragmentManager().beginTransaction()
-                .add(fragment, null)
-                .commit();
+    private fun handleCategoryDetailShow(c: Category) {
+        savedCategoryDetailId = c.id
+        val fragment = CategoryDetailFragment(c)
+        supportFragmentManager.beginTransaction()
+            .add(fragment, null)
+            .commit()
     }
 
-    private void addDebugData() {
-        service.queueTask(Task.createCategory(new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY)));
-        service.queueTask(Task.createCategory(new Category("REMOTE USERS", Category.Type.REMOTE_USERS)));
-        service.queueTask(Task.createCategory(new Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV)));
+    private fun addDebugData() {
+        myService!!.queueTask(createCategory(Category("Local(Debug)", Category.Type.LOCAL_CATEGORY)))
+        myService!!.queueTask(createCategory(Category("REMOTE USERS", Category.Type.REMOTE_USERS)))
+        myService!!.queueTask(
+            createCategory(
+                Category(
+                    "REMOTE SELF DEVICE",
+                    Category.Type.REMOTE_SELF_DEV
+                )
+            )
+        )
 
-        new Thread(() -> {
+        Thread(Runnable {
             try {
-                Thread.sleep(1000);
-            } catch (InterruptedException ex) {
-                Log.e(this.toString(), "failed to sleep: " + ex);
+                Thread.sleep(1000)
+            } catch (ex: InterruptedException) {
+                Log.e(this.toString(), "failed to sleep: $ex")
             }
+            val imgFolder = getFolderImage(this)
+            val imgFiles = tryExtractResImages(this, imgFolder) ?: return@Runnable
+            val categories: ArrayList<Category> = categories
+            if (categories.isEmpty()) return@Runnable
 
-            File img_folder = Global.getFolderImage(this);
-            List<File> img_files = DebugFunction.tryExtractResImages(this, img_folder);
-            if (img_files == null)
-                return;
-            ArrayList<Category> categories = DataLoader.getCategories();
-            if (categories.isEmpty())
-                return;
-
-            Random r = new Random();
-            long cate_id = categories.get(r.nextInt(categories.size())).id;
-            int idx = 0;
-            for (int i = 0; i < 15; i++) {
-                NoteItem e = new NoteItem("ITEM" + i + i, System.currentTimeMillis());
-                e.categoryId = cate_id;
+            val r = Random()
+            val cateId = categories[r.nextInt(categories.size)].id
+            var idx = 0
+            for (i in 0..14) {
+                val e = NoteItem("ITEM$i$i", System.currentTimeMillis())
+                e.categoryId = cateId
                 if (r.nextBoolean()) {
-                    e.setText(e.getText(), true);
+                    e.setText(e.text, true)
                 }
-                if (idx < img_files.size() && r.nextBoolean()) {
-                    File img_file = img_files.get(idx);
-                    idx++;
-                    if (img_file.exists()) {
-                        ImageFile imageFile = ImageFile.from(img_file, img_file.getName());
-                        e.addImageFile(imageFile);
+                if (idx < imgFiles.size && r.nextBoolean()) {
+                    val imgFile = imgFiles[idx]
+                    idx++
+                    if (imgFile.exists()) {
+                        val imageFile = from(imgFile, imgFile.name)
+                        e.addImageFile(imageFile)
                     }
-
                 }
-                service.queueTask(Task.createNote(e));
+                myService!!.queueTask(createNote(e))
             }
-        }).start();
+        }).start()
     }
 
-    @Override
-    public void onAttempt(CategoryAttemptListener.Attempt attempt, Category category) {
-        switch (attempt) {
-            case CREATE:
-                service.queueTask(Task.createCategory(category));
-                break;
-            case REMOVE:
-                service.queueTask(Task.removeCategory(category));
-                break;
-            case UPDATE:
-                service.queueTask(Task.updateCategory(category));
-                break;
-            case SHOW_DETAIL:
-                handleCategoryDetailShow(category);
-                break;
-            case SHOW_CREATE:
-                showCategoryCreatingDialog();
-                break;
-            case SHOW_EXPAND:
-                handleCategoryExpand(category);
-                break;
-            case DEBUG_ADD_DATA:
-                new AlertDialog.Builder(this)
-                        .setTitle("Debug function")
-                        .setMessage("Create Debug data?")
-                        .setNegativeButton(R.string.string_cancel, null)
-                        .setPositiveButton(R.string.string_ok, (dialog, i) -> addDebugData())
-                        .create().show();
-                break;
-            default:
-                Log.d(this.toString(), "other attempt: " + attempt);
+    override fun onAttempt(attempt: CategoryAttemptListener.Attempt, category: Category?) {
+        when (attempt) {
+            CategoryAttemptListener.Attempt.CREATE -> myService!!.queueTask(createCategory(category!!))
+            CategoryAttemptListener.Attempt.REMOVE -> myService!!.queueTask(removeCategory(category!!))
+            CategoryAttemptListener.Attempt.UPDATE -> myService!!.queueTask(updateCategory(category!!))
+            CategoryAttemptListener.Attempt.SHOW_DETAIL -> handleCategoryDetailShow(category!!)
+            CategoryAttemptListener.Attempt.SHOW_CREATE -> showCategoryCreatingDialog()
+            CategoryAttemptListener.Attempt.SHOW_EXPAND -> handleCategoryExpand(category!!)
+            CategoryAttemptListener.Attempt.DEBUG_ADD_DATA -> AlertDialog.Builder(this)
+                .setTitle("Debug function")
+                .setMessage("Create Debug data?")
+                .setNegativeButton(R.string.string_cancel, null)
+                .setPositiveButton(
+                    R.string.string_ok
+                ) { _: DialogInterface, _: Int -> addDebugData() }
+                .create().show()
         }
     }
 
-    private Uri getUriForFile(File file) {
-        return FileProvider.getUriForFile(this,
-                getPackageName() + ".fileprovider", file);
+    private fun getUriForFile(file: File): Uri {
+        return FileProvider.getUriForFile(
+            this,
+            "$packageName.fileprovider", file
+        )
     }
 
-    private static void copyFile(File src, File dst) throws IOException {
-        FileInputStream in = new FileInputStream(src);
-        FileOutputStream out = new FileOutputStream(dst);
-        byte[] buffer = new byte[1024];
-        int length;
-        while ((length = in.read(buffer)) > 0) {
-            out.write(buffer, 0, length);
-        }
-        in.close();
-        out.close();
-
-    }
-
-    private File share_folder = null;
-    private void emptyShareFolder() {
-        if (share_folder == null) return;
-        File[] files = share_folder.listFiles();
-        if (files == null) return;
-        for (File file : files) {
-            if (!file.isDirectory()) {
-                boolean ret = file.delete();
-                Log.d("emptyFolder", "file delete result: " + ret);
+    private var shareFolder: File? = null
+    private fun emptyShareFolder() {
+        if (shareFolder == null) return
+        val files = shareFolder!!.listFiles() ?: return
+        for (file in files) {
+            if (!file.isDirectory) {
+                val ret = file.delete()
+                Log.d("emptyFolder", "file delete result: $ret")
             }
         }
     }
-    private File generateShareFile(ImageFile imageFile) {
-        share_folder = Global.getFolderImageShare(this);
+
+    private fun generateShareFile(imageFile: ImageFile): File? {
+        shareFolder = getFolderImageShare(this)
 
         try {
-            String imageName = imageFile.getName();
-            File fileToShare;
+            val imageName = imageFile.getName()
+            val fileToShare: File?
             if (imageName.isEmpty()) {
-                fileToShare = imageFile.md5file;
+                fileToShare = imageFile.md5file
             } else {
-                fileToShare = new File(share_folder, imageName);
-                copyFile(imageFile.md5file, fileToShare);
+                fileToShare = File(shareFolder, imageName)
+                copyFile(imageFile.md5file, fileToShare)
             }
-            return fileToShare;
-        } catch (IOException e) {
-            Log.e(this.toString(), "Failed to copy file: " + e);
-            return null;
+            return fileToShare
+        } catch (e: IOException) {
+            Log.e(this.toString(), "Failed to copy file: $e")
+            return null
         }
     }
 
-    private void generateShareFileAndUriForNote(NoteItem note, @NonNull ArrayList<Uri> uris) {
-        note.iterateImages().forEachRemaining(f -> {
-            File ff = generateShareFile(f);
-            Uri uri = getUriForFile(ff);
-            uris.add(uri);
-        });
+    private fun generateShareFileAndUriForNote(note: NoteItem, uris: ArrayList<Uri>) {
+        note.iterateImages().forEachRemaining(Consumer { f: ImageFile ->
+            val ff = generateShareFile(f)
+            val uri = getUriForFile(ff!!)
+            uris.add(uri)
+        })
     }
 
-    private void triggerShare(String text, ArrayList<Uri> uris) {
-        Intent sendIntent = new Intent(Intent.ACTION_SEND);
-        int count = uris.size();
+    private fun triggerShare(text: String, uris: ArrayList<Uri>) {
+        val sendIntent = Intent(Intent.ACTION_SEND)
+        val count = uris.size
         if (count == 0) {
-            sendIntent.setType("text/plain");
+            sendIntent.type = "text/plain"
         } else {
-            sendIntent.setType("image/*");
-            sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            sendIntent.type = "image/*"
+            sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
         if (count == 1) {
-            sendIntent.putExtra(Intent.EXTRA_STREAM, uris.get(0));
+            sendIntent.putExtra(Intent.EXTRA_STREAM, uris[0])
         } else {
-            sendIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
-            sendIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+            sendIntent.action = Intent.ACTION_SEND_MULTIPLE
+            sendIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
         }
 
-        sendIntent.putExtra(Intent.EXTRA_TEXT, text);
-        Log.d(this.toString(), "no image, share text: " + text);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, text)
+        Log.d(this.toString(), "no image, share text: $text")
 
-        Intent shareIntent = Intent.createChooser(sendIntent, "Share to");
+        val shareIntent = Intent.createChooser(sendIntent, "Share to")
         try {
-            this.startActivity(shareIntent);
-        } catch (Exception e) {
-            Log.e(this.toString(), "Failed to create share Intent: " + e);
+            this.startActivity(shareIntent)
+        } catch (e: Exception) {
+            Log.e(this.toString(), "Failed to create share Intent: $e")
         }
     }
 
-    private void handleNoteShareMultiple(ArrayList<NoteItem> items) {
-        emptyShareFolder();
-        ArrayList<Uri> uris = new ArrayList<>();
-        StringBuilder sb = new StringBuilder();
-        for (NoteItem e : items) {
-            generateShareFileAndUriForNote(e, uris);
-            String text = e.getText();
+    private fun handleNoteShareMultiple(items: ArrayList<NoteItem>) {
+        emptyShareFolder()
+        val uris = ArrayList<Uri>()
+        val sb = StringBuilder()
+        for (e in items) {
+            generateShareFileAndUriForNote(e, uris)
+            val text = e.text
             if (!text.isEmpty()) {
-                sb.append(text);
-                sb.append('\n');
+                sb.append(text)
+                sb.append('\n')
             }
         }
-        triggerShare(sb.toString(), uris);
+        triggerShare(sb.toString(), uris)
     }
 
-    private void handleNoteShare(NoteItem item) {
-        emptyShareFolder();
-        ArrayList<Uri> uris = new ArrayList<>();
-        generateShareFileAndUriForNote(item, uris);
-        triggerShare(item.getText(), uris);
+    private fun handleNoteShare(item: NoteItem) {
+        emptyShareFolder()
+        val uris = ArrayList<Uri>()
+        generateShareFileAndUriForNote(item, uris)
+        triggerShare(item.text, uris)
     }
 
-    private void handleTextCopy(String text) {
-        ClipboardManager clipboardManager =
-                (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+    private fun handleTextCopy(text: String) {
+        val clipboardManager =
+            getSystemService(CLIPBOARD_SERVICE) as ClipboardManager?
         if (clipboardManager == null) {
-            Log.e(this.toString(), "Failed to get ClipboardManager");
-            return;
+            Log.e(this.toString(), "Failed to get ClipboardManager")
+            return
         }
-        ClipData data = ClipData.newPlainText("text", text);
-        clipboardManager.setPrimaryClip(data);
-    }
-    private void handleNoteCopy(NoteItem e) {
-        handleTextCopy(e.getText());
+        val data = ClipData.newPlainText("text", text)
+        clipboardManager.setPrimaryClip(data)
     }
 
-    private void handleNoteDetailShow(NoteItem item) {
-        savedNoteInfoNoteId = item.id;
-        NoteDetailFragment fragment = new NoteDetailFragment();
-        fragment.setNoteItem(item);
-        getSupportFragmentManager().beginTransaction()
-                .add(fragment, null)
-                .commit();
+    private fun handleNoteCopy(e: NoteItem) {
+        handleTextCopy(e.text)
     }
 
-    private void handleNoteImageShow(NoteItem item, int imageIndex) {
+    private fun handleNoteDetailShow(item: NoteItem) {
+        savedNoteInfoNoteId = item.id
+        val fragment = NoteDetailFragment()
+        fragment.setNoteItem(item)
+        supportFragmentManager.beginTransaction()
+            .add(fragment, null)
+            .commit()
+    }
+
+    private fun handleNoteImageShow(item: NoteItem, imageIndex: Int) {
         if (imageViewerFragment == null) {
-            imageViewerFragment = new ImageViewerFragment();
+            imageViewerFragment = ImageViewerFragment()
         }
-        ImageFile imageFile = item.getImageAt(imageIndex);
+        val imageFile = item.getImageAt(imageIndex)
         if (imageFile == null) {
-            Log.e(this.toString(), "Failed to get image at index: " + imageIndex);
-            return;
+            Log.e(this.toString(), "Failed to get image at index: $imageIndex")
+            return
         }
-        savedImageViewFile = imageFile.md5file.getAbsolutePath();
-        imageViewerFragment.setImgFile(imageFile.md5file);
-        imageViewerFragment.show(getSupportFragmentManager(), null);
+        savedImageViewFile = imageFile.md5file.absolutePath
+        imageViewerFragment!!.setImgFile(imageFile.md5file)
+        imageViewerFragment!!.show(supportFragmentManager, null)
     }
 
-    private NoteItem pendingForwardNote;
-    private void handleNoteForward(NoteItem note) {
-        pendingForwardNote = note;
-        CategorySelectorFragment forwardFragment = new CategorySelectorFragment();
-        forwardFragment.setCategories(DataLoader.getCategories());
-        forwardFragment.show(getSupportFragmentManager(), null);
+    private var pendingForwardNote: NoteItem? = null
+    private fun handleNoteForward(note: NoteItem) {
+        pendingForwardNote = note
+        val forwardFragment = CategorySelectorFragment()
+        forwardFragment.setCategories(categories)
+        forwardFragment.show(supportFragmentManager, null)
     }
 
-    @Override
-    public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e) {
-        onAttempt(attempt, e, null);
+    override fun onAttempt(attempt: NoteAttemptListener.Attempt, e: NoteItem) {
+        onAttempt(attempt, e, null)
     }
 
-    @Override
-    public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e, Object ext) {
-        switch (attempt) {
-            case REMOVE:
-                service.queueTask(Task.removeNote(e));
-                break;
-            case CREATE:
-                service.queueTask(Task.createNote(e));
-                break;
-            case SHOW_DETAIL:
-                handleNoteDetailShow(e);
-                break;
-            case COPY:
-                handleNoteCopy(e);
-                break;
-            case SHOW_SHARE:
-                handleNoteShare(e);
-                break;
-            case UPDATE:
-                service.queueTask(Task.updateNote(e));
-                break;
-            case SHOW_IMAGE:
-                int imageIndex = (int) ext;
-                handleNoteImageShow(e, imageIndex);
-                break;
-            case SHOW_FORWARD:
-                handleNoteForward(e);
-                break;
+    override fun onAttempt(attempt: NoteAttemptListener.Attempt, e: NoteItem, ext: Any?) {
+        when (attempt) {
+            NoteAttemptListener.Attempt.REMOVE -> myService!!.queueTask(removeNote(e))
+            NoteAttemptListener.Attempt.CREATE -> myService!!.queueTask(createNote(e))
+            NoteAttemptListener.Attempt.SHOW_DETAIL -> handleNoteDetailShow(e)
+            NoteAttemptListener.Attempt.COPY -> handleNoteCopy(e)
+            NoteAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
+            NoteAttemptListener.Attempt.UPDATE -> myService!!.queueTask(updateNote(e))
+            NoteAttemptListener.Attempt.SHOW_IMAGE -> {
+                val imageIndex = ext as Int
+                handleNoteImageShow(e, imageIndex)
+            }
+
+            NoteAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
         }
     }
 
-    private static Task.Job convertAttemptToJob(NoteAttemptListener.Attempt attempt) {
-        switch (attempt) {
-            case REMOVE:
-                return Task.Job.REMOVE;
-            case UPDATE:
-                return Task.Job.UPDATE;
-            case CREATE:
-                return Task.Job.CREATE;
-        }
-        return null;
-    }
-    @Override
-    public void onAttemptBatch(NoteAttemptListener.Attempt attempt, ArrayList<NoteItem> noteItems) {
-        switch (attempt) {
-            case REMOVE:
-            case CREATE:
-            case UPDATE:
-                Task.Job job = convertAttemptToJob(attempt);
-                for (NoteItem e : noteItems) {
-                    service.queueTask(Task.onNoteStorage(job, e));
+    override fun onAttemptBatch(
+        attempt: NoteAttemptListener.Attempt,
+        noteItems: ArrayList<NoteItem>
+    ) {
+        when (attempt) {
+            NoteAttemptListener.Attempt.REMOVE, NoteAttemptListener.Attempt.CREATE, NoteAttemptListener.Attempt.UPDATE -> {
+                val job: Task.Job? = convertAttemptToJob(attempt)
+                for (e in noteItems) {
+                    myService!!.queueTask(Task.onNoteStorage(job!!, e))
                 }
-                break;
-            case COPY:
-                StringBuilder sb = new StringBuilder();
-                NoteItem listOne = noteItems.get(noteItems.size()-1);
-                for (NoteItem e : noteItems) {
-                    sb.append(e.getText());
-                    if (e == listOne) continue;
-                    sb.append("\n");
+            }
+
+            NoteAttemptListener.Attempt.COPY -> {
+                val sb = StringBuilder()
+                val listOne: NoteItem = noteItems[noteItems.size - 1]
+                for (e in noteItems) {
+                    sb.append(e.text)
+                    if (e == listOne) continue
+                    sb.append("\n")
                 }
-                handleTextCopy(sb.toString());
-                break;
-            case SHOW_SHARE:
-                if (noteItems.size() == 1)
-                    handleNoteShare(noteItems.get(0));
-                else
-                    handleNoteShareMultiple(noteItems);
-                break;
-            default:
-                Log.e(this.toString(), "This operation is not support batch: " +attempt);
+                handleTextCopy(sb.toString())
+            }
+
+            NoteAttemptListener.Attempt.SHOW_SHARE -> if (noteItems.size == 1) handleNoteShare(
+                noteItems[0]
+            )
+            else handleNoteShareMultiple(noteItems)
+
+            else -> Log.e(this.toString(), "This operation is not support batch: $attempt")
         }
     }
 
-    @Override
-    public void onSelected(int index, Category category) {
-        if (pendingForwardNote == null)
-            return;
-        NoteItem item = pendingForwardNote.clone();
-        item.categoryId = category.id;
-        service.queueTask(Task.createNote(item));
+    override fun onSelected(index: Int, category: Category) {
+        if (pendingForwardNote == null) return
+        val item = pendingForwardNote!!.clone()
+        item.categoryId = category.id
+        myService!!.queueTask(createNote(item))
     }
 
-    @Override
-    public void onError(@NonNull String errMessage) {
-        Toast.makeText(this, errMessage, Toast.LENGTH_SHORT).show();
+    override fun onError(error: String) {
+        Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
     }
 
-    private void onCategoryTaskFinish(Task task) {
-        if (task.result < 0) return;
-        if (categoryListFragment == null) return;
-        switch (task.job) {
-            case CREATE:
-            case REMOVE:
-            case UPDATE:
-                categoryListFragment.notifyItemListChanged(
-                        Task.jobToNotify(task.job), task.result, (Category) task.taskObj);
-                break;
+    private fun onCategoryTaskFinish(task: Task) {
+        if (task.result < 0) return
+        if (categoryListFragment == null) return
+        when (task.job) {
+            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE -> categoryListFragment!!.notifyItemListChanged(
+                jobToNotify(task.job), task.result, task.taskObj as Category
+            )
         }
     }
 
-    private void onNoteTaskFinish(Task task) {
-        NoteItem n = (NoteItem) task.taskObj;
-        int index = task.result;
-        if (n == pendingForwardNote)
-            pendingForwardNote = null;
-        if (index < 0) return;
-        if (noteListFragment == null) return;
-        noteListFragment.notifyItemListChanged(Task.jobToNotify(task.job), index, n);
+    private fun onNoteTaskFinish(task: Task) {
+        val n = task.taskObj as NoteItem
+        val index = task.result
+        if (n == pendingForwardNote) pendingForwardNote = null
+        if (index < 0) return
+        if (noteListFragment == null) return
+        noteListFragment!!.notifyItemListChanged(jobToNotify(task.job), index, n)
     }
 
-    @Override
-    public void onTaskFinish(Task task) {
-        switch (task.type) {
-            case Category:
-                onCategoryTaskFinish(task);
-                return;
-            case NoteItem:
-                onNoteTaskFinish(task);
+    override fun onTaskFinish(task: Task) {
+        when (task.type) {
+            Task.Type.Category -> {
+                onCategoryTaskFinish(task)
+                return
+            }
+
+            Task.Type.NoteItem -> onNoteTaskFinish(task)
+        }
+    }
+
+    companion object {
+        private const val SAVED_NOTE_LIST_CATEGORY_ID_NONE: Long = -1
+        private const val SAVED_NOTE_LIST_CATEGORY_ID = "SAVED_NOTE_LIST_CATEGORY_ID"
+        private const val SAVED_NOTE_INFO_NOTE_ID_NONE: Long = -1
+        private const val SAVED_NOTE_INFO_NOTE_ID = "SAVED_NOTE_INFO_NOTE_ID"
+        private const val SAVED_CATEGORY_DETAIL_ID_NONE: Long = -1
+        private const val SAVED_CATEGORY_DETAIL_ID = "SAVED_CATEGORY_DETAIL_ID"
+        private const val SAVED_IMAGE_VIEW_FILE = "SAVED_IMAGE_VIEW_FILE"
+
+        @Throws(IOException::class)
+        private fun copyFile(src: File, dst: File) {
+            val fi = FileInputStream(src)
+            val fo = FileOutputStream(dst)
+            val buffer = ByteArray(1024)
+            var length: Int
+            while ((fi.read(buffer).also { length = it }) > 0) {
+                fo.write(buffer, 0, length)
+            }
+            fi.close()
+            fo.close()
+        }
+
+        private fun convertAttemptToJob(attempt: NoteAttemptListener.Attempt): Task.Job? {
+            return when (attempt) {
+                NoteAttemptListener.Attempt.REMOVE -> Task.Job.REMOVE
+                NoteAttemptListener.Attempt.UPDATE -> Task.Job.UPDATE
+                NoteAttemptListener.Attempt.CREATE -> Task.Job.CREATE
+                else -> null
+            }
         }
     }
 }
