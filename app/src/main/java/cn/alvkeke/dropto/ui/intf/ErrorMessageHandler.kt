@@ -1,5 +1,5 @@
-package cn.alvkeke.dropto.ui.intf;
+package cn.alvkeke.dropto.ui.intf
 
-public interface ErrorMessageHandler {
-    void onError(String errMessage);
+interface ErrorMessageHandler {
+    fun onError(errMessage: String)
 }

@@ -582,7 +582,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onError(String errMessage) {
+    public void onError(@NonNull String errMessage) {
         Toast.makeText(this, errMessage, Toast.LENGTH_SHORT).show();
     }
 

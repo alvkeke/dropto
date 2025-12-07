@@ -1,5 +1,5 @@
-package cn.alvkeke.dropto.ui.intf;
+package cn.alvkeke.dropto.ui.intf
 
-public interface FragmentOnBackListener {
-    boolean onBackPressed();
+interface FragmentOnBackListener {
+    fun onBackPressed(): Boolean
 }

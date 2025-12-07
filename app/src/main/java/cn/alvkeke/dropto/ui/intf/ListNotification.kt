@@ -1,12 +1,12 @@
-package cn.alvkeke.dropto.ui.intf;
+package cn.alvkeke.dropto.ui.intf
 
-public interface ListNotification<T> {
-    enum Notify {
+interface ListNotification<T> {
+    enum class Notify {
         INSERTED,
         REMOVED,
         UPDATED,
         CLEARED,
     }
 
-    void notifyItemListChanged(Notify notify, int index, T object);
+    fun notifyItemListChanged(notify: Notify, index: Int, itemObj: T)
 }

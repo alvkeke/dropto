@@ -1,11 +1,9 @@
-package cn.alvkeke.dropto.ui.intf;
+package cn.alvkeke.dropto.ui.intf
 
-import java.util.ArrayList;
+import cn.alvkeke.dropto.data.NoteItem
 
-import cn.alvkeke.dropto.data.NoteItem;
-
-public interface NoteAttemptListener {
-    enum Attempt {
+interface NoteAttemptListener {
+    enum class Attempt {
         CREATE,
         REMOVE,
         UPDATE,
@@ -15,7 +13,8 @@ public interface NoteAttemptListener {
         SHOW_IMAGE,
         SHOW_FORWARD,
     }
-    void onAttempt(Attempt attempt, NoteItem e);
-    void onAttempt(Attempt attempt, NoteItem e, Object ext);
-    void onAttemptBatch(Attempt attempt, ArrayList<NoteItem> noteItems);
+
+    fun onAttempt(attempt: Attempt, e: NoteItem)
+    fun onAttempt(attempt: Attempt, e: NoteItem, ext: Any?)
+    fun onAttemptBatch(attempt: Attempt, noteItems: ArrayList<NoteItem>)
 }

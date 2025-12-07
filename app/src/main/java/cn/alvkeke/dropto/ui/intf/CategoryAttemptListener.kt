@@ -1,9 +1,9 @@
-package cn.alvkeke.dropto.ui.intf;
+package cn.alvkeke.dropto.ui.intf
 
-import cn.alvkeke.dropto.data.Category;
+import cn.alvkeke.dropto.data.Category
 
-public interface CategoryAttemptListener {
-    enum Attempt {
+interface CategoryAttemptListener {
+    enum class Attempt {
         CREATE,
         REMOVE,
         UPDATE,
@@ -12,6 +12,7 @@ public interface CategoryAttemptListener {
         SHOW_EXPAND,
         DEBUG_ADD_DATA,
     }
-    void onAttempt(CategoryAttemptListener.Attempt attempt, Category category);
+
+    fun onAttempt(attempt: Attempt, category: Category?)
 }
 
