@@ -1,61 +1,52 @@
-package cn.alvkeke.dropto.ui.comonent;
+package cn.alvkeke.dropto.ui.comonent
 
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.content.Context
+import android.graphics.Bitmap
+import android.view.LayoutInflater
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
+import cn.alvkeke.dropto.R
 
-import androidx.annotation.NonNull;
-import androidx.constraintlayout.widget.ConstraintLayout;
+class ImageCard(context: Context) : ConstraintLayout(context) {
+    private val imageView: ImageView
+    private val btnRemove: ImageView
+    private val tvImageName: TextView
+    private val tvImageMd5: TextView
 
-import cn.alvkeke.dropto.R;
+    init {
+        val inflater = LayoutInflater.from(context)
+        val view = inflater.inflate(R.layout.component_image_card, this, false)
 
+        imageView = view.findViewById(R.id.note_detail_image_view)
+        btnRemove = view.findViewById(R.id.note_detail_image_remove)
+        tvImageMd5 = view.findViewById(R.id.note_detail_image_md5)
+        tvImageName = view.findViewById(R.id.note_detail_image_name)
 
-public class ImageCard extends ConstraintLayout {
-
-    private final ImageView imageView;
-    private final ImageView btnRemove;
-    private final TextView tvImageName;
-    private final TextView tvImageMd5;
-
-    public ImageCard(@NonNull Context context) {
-        super(context);
-
-        LayoutInflater inflater = LayoutInflater.from(context);
-        View view = inflater.inflate(R.layout.component_image_card, this, false);
-
-        imageView = view.findViewById(R.id.note_detail_image_view);
-        btnRemove = view.findViewById(R.id.note_detail_image_remove);
-        tvImageMd5 = view.findViewById(R.id.note_detail_image_md5);
-        tvImageName = view.findViewById(R.id.note_detail_image_name);
-
-        this.addView(view);
+        this.addView(view)
     }
 
-    public void setImageName(String name) {
-        tvImageName.setText(name);
+    fun setImageName(name: String?) {
+        tvImageName.text = name
     }
 
-    public void setImageMd5(String md5) {
-        tvImageMd5.setText(md5);
+    fun setImageMd5(md5: String?) {
+        tvImageMd5.text = md5
     }
 
-    public void setImage(Bitmap bitmap) {
-        imageView.setImageBitmap(bitmap);
+    fun setImage(bitmap: Bitmap) {
+        imageView.setImageBitmap(bitmap)
     }
 
-    public void setImageResource(int resId) {
-        imageView.setImageResource(resId);
+    fun setImageResource(resId: Int) {
+        imageView.setImageResource(resId)
     }
 
-    public void setRemoveButtonClickListener(OnClickListener listener) {
-        btnRemove.setOnClickListener(listener);
+    fun setRemoveButtonClickListener(listener: OnClickListener?) {
+        btnRemove.setOnClickListener(listener)
     }
 
-    public void setImageClickListener(OnClickListener listener) {
-        imageView.setOnClickListener(listener);
+    fun setImageClickListener(listener: OnClickListener?) {
+        imageView.setOnClickListener(listener)
     }
-
 }

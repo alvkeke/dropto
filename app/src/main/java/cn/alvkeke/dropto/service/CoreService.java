@@ -127,7 +127,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskCategoryCreate(Task task) {
-        Category category = (Category) task.param;
+        Category category = (Category) task.taskObj;
 
         try (DataBaseHelper helper = new DataBaseHelper(this)) {
             helper.start();
@@ -145,7 +145,7 @@ public class CoreService extends Service {
 
     private void handleTaskCategoryRemove(Task task) {
         ArrayList<Category> categories = DataLoader.getCategories();
-        Category category = (Category) task.param;
+        Category category = (Category) task.taskObj;
 
         int index;
         if ((index = categories.indexOf(category)) == -1) {
@@ -171,7 +171,7 @@ public class CoreService extends Service {
 
     private void handleTaskCategoryUpdate(Task task) {
         ArrayList<Category> categories = DataLoader.getCategories();
-        Category category = (Category) task.param;
+        Category category = (Category) task.taskObj;
 
         int index;
         if (-1 == (index = categories.indexOf(category))) {
@@ -194,7 +194,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskNoteCreate(Task task) {
-        NoteItem newItem = (NoteItem) task.param;
+        NoteItem newItem = (NoteItem) task.taskObj;
         Category category = DataLoader.findCategory(newItem.categoryId);
         if (category == null) {
             Log.e(this.toString(), "Failed to find category with id " + newItem.categoryId);
@@ -226,7 +226,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskNoteRemove(Task task) {
-        NoteItem e = (NoteItem) task.param;
+        NoteItem e = (NoteItem) task.taskObj;
         Category c = DataLoader.findCategory(e.categoryId);
         if (c == null) {
             Log.e(this.toString(), "Failed to find category with id " + e.categoryId);
@@ -252,7 +252,7 @@ public class CoreService extends Service {
     }
 
     private void handleTaskNoteUpdate(Task task) {
-        NoteItem newItem = (NoteItem) task.param;
+        NoteItem newItem = (NoteItem) task.taskObj;
         Category c = DataLoader.findCategory(newItem.categoryId);
         if (c == null) {
             Log.e(this.toString(), "Failed to find category with id " + newItem.categoryId);

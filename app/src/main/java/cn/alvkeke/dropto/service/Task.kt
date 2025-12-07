@@ -1,106 +1,121 @@
-package cn.alvkeke.dropto.service;
+package cn.alvkeke.dropto.service
 
-import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.data.NoteItem;
-import cn.alvkeke.dropto.ui.intf.ListNotification;
+import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
 
-public class Task {
-
-    public enum Target {
+class Task {
+    enum class Target {
         Storage,
     }
-    @SuppressWarnings("unused")
-    public static final Target[] Targets = Target.values();
 
-    public enum Type {
+    enum class Type {
         Category,
         NoteItem,
     }
-    @SuppressWarnings("unused")
-    public static final Type[] Types = Type.values();
 
-    public enum Job {
+    enum class Job {
         CREATE,
         REMOVE,
         UPDATE,
     }
-    @SuppressWarnings("unused")
-    public static final Job[] Jobs = Job.values();
-    public static ListNotification.Notify jobToNotify(Job job) {
-        switch (job) {
-            case CREATE:
-                return ListNotification.Notify.INSERTED;
-            case UPDATE:
-                return ListNotification.Notify.UPDATED;
-            case REMOVE:
-                return ListNotification.Notify.REMOVED;
-        }
-        assert false;   // should not reach here
-        return null;
+
+    val target: Target
+    @JvmField
+    val type: Type
+    @JvmField
+    val job: Job
+    @JvmField
+    val taskObj: Any
+    var callerParam: Any? = null
+    @JvmField
+    var result: Int = 0
+
+    @Suppress("unused")
+    constructor(task: Task) {
+        this.target = task.target
+        this.type = task.type
+        this.job = task.job
+        this.taskObj = task.taskObj
+        this.callerParam = task.callerParam
+        this.result = task.result
     }
 
-    public final Target target;
-    public final Type type;
-    public final Job job;
-    public final Object param;
-    public Object callerParam;
-    public int result;
-
-    @SuppressWarnings("unused")
-    public Task(Task task) {
-        this.target = task.target;
-        this.type = task.type;
-        this.job = task.job;
-        this.param = task.param;
-        this.callerParam = task.callerParam;
-        this.result = task.result;
+    constructor(target: Target, type: Type, job: Job, taskObj: Any) {
+        this.target = target
+        this.type = type
+        this.job = job
+        this.taskObj = taskObj
     }
 
-    public Task(Target target, Type type, Job job, Object param) {
-        this.target = target;
-        this.type = type;
-        this.job = job;
-        this.param = param;
-    }
-
-    public static Task onCategoryStorage(Job job, Object param, Object callerParam) {
-        Task task = new Task(Target.Storage, Type.Category, job, param);
-        task.callerParam = callerParam;
-        return task;
-    }
-    public static Task createCategory(Category category, Object callerParam) {
-        return onCategoryStorage(Job.CREATE, category, callerParam);
-    }
-    public static Task updateCategory(Category category, Object callerParam) {
-        return onCategoryStorage(Job.UPDATE, category, callerParam);
-    }
-    public static Task removeCategory(Category category, Object callerParam) {
-        return onCategoryStorage(Job.REMOVE, category, callerParam);
-    }
-
-    public static Task onNoteStorage(Job job, Object param, Object callerParam) {
-        Task task = new Task(Target.Storage, Type.NoteItem, job, param);
-        task.callerParam = callerParam;
-        return task;
-    }
-    public static Task createNote(NoteItem noteItem, Object callerParam) {
-        return onNoteStorage(Job.CREATE, noteItem, callerParam);
-    }
-    public static Task updateNote(NoteItem noteItem, Object callerParam) {
-        return onNoteStorage(Job.UPDATE, noteItem, callerParam);
-    }
-    public static Task removeNote(NoteItem noteItem, Object callerParam) {
-        return onNoteStorage(Job.REMOVE, noteItem, callerParam);
-    }
-
-    public interface ResultListener {
-
+    interface ResultListener {
         /**
          * this will be invoked after a task be handled
          * @param task the task instance passed to from caller
-         * @param param param if needed
+         * @param taskObj param if needed
          */
-        void onTaskFinish(Task task, Object param);
+        fun onTaskFinish(task: Task, taskObj: Any?)
     }
 
+    companion object {
+        @Suppress("unused")
+        val Targets: Array<Target> = Target.entries.toTypedArray()
+
+        @Suppress("unused")
+        val Types: Array<Type> = Type.entries.toTypedArray()
+
+        @Suppress("unused")
+        val Jobs: Array<Job> = Job.entries.toTypedArray()
+        @JvmStatic
+        fun jobToNotify(job: Job): Notify {
+            return when (job) {
+                Job.CREATE -> Notify.INSERTED
+                Job.UPDATE -> Notify.UPDATED
+                Job.REMOVE -> Notify.REMOVED
+            }
+        }
+
+        fun onCategoryStorage(job: Job, taskObj: Any, callerParam: Any?): Task {
+            val task = Task(Target.Storage, Type.Category, job, taskObj)
+            task.callerParam = callerParam
+            return task
+        }
+
+        @JvmStatic
+        fun createCategory(category: Category, callerParam: Any?): Task {
+            return onCategoryStorage(Job.CREATE, category, callerParam)
+        }
+
+        @JvmStatic
+        fun updateCategory(category: Category, callerParam: Any?): Task {
+            return onCategoryStorage(Job.UPDATE, category, callerParam)
+        }
+
+        @JvmStatic
+        fun removeCategory(category: Category, callerParam: Any?): Task {
+            return onCategoryStorage(Job.REMOVE, category, callerParam)
+        }
+
+        @JvmStatic
+        fun onNoteStorage(job: Job, taskObj: Any, callerParam: Any?): Task {
+            val task = Task(Target.Storage, Type.NoteItem, job, taskObj)
+            task.callerParam = callerParam
+            return task
+        }
+
+        @JvmStatic
+        fun createNote(noteItem: NoteItem, callerParam: Any?): Task {
+            return onNoteStorage(Job.CREATE, noteItem, callerParam)
+        }
+
+        @JvmStatic
+        fun updateNote(noteItem: NoteItem, callerParam: Any?): Task {
+            return onNoteStorage(Job.UPDATE, noteItem, callerParam)
+        }
+
+        @JvmStatic
+        fun removeNote(noteItem: NoteItem, callerParam: Any?): Task {
+            return onNoteStorage(Job.REMOVE, noteItem, callerParam)
+        }
+    }
 }

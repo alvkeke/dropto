@@ -158,6 +158,7 @@ public class MainActivity extends AppCompatActivity implements
         if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return;
         savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE);
         Category category = DataLoader.findCategory(savedNoteListCategoryId);
+        if (category == null) { fragment.dismiss(); return; }
         NoteItem item = category.findNoteItem(savedNoteInfoNoteId);
         if (item == null) { fragment.dismiss(); return; }
         fragment.setNoteItem(item);
@@ -593,13 +594,13 @@ public class MainActivity extends AppCompatActivity implements
             case REMOVE:
             case UPDATE:
                 categoryListFragment.notifyItemListChanged(
-                        Task.jobToNotify(task.job), task.result, (Category) task.param);
+                        Task.jobToNotify(task.job), task.result, (Category) task.taskObj);
                 break;
         }
     }
 
     private void onNoteTaskFinish(Task task) {
-        NoteItem n = (NoteItem) task.param;
+        NoteItem n = (NoteItem) task.taskObj;
         int index = task.result;
         if (n == pendingForwardNote)
             pendingForwardNote = null;
@@ -609,7 +610,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onTaskFinish(Task task, Object param) {
+    public void onTaskFinish(Task task, Object taskObj) {
         switch (task.type) {
             case Category:
                 onCategoryTaskFinish(task);

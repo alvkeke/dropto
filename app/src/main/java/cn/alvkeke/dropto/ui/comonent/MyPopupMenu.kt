@@ -1,170 +1,161 @@
-package cn.alvkeke.dropto.ui.comonent;
+package cn.alvkeke.dropto.ui.comonent
+
+import android.animation.ValueAnimator
+import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.drawable.GradientDrawable
+import android.util.DisplayMetrics
+import android.view.Gravity
+import android.view.Menu
+import android.view.MenuItem
+import android.view.MotionEvent
+import android.view.View
+import android.view.View.OnTouchListener
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.TextView
+import cn.alvkeke.dropto.R
+import kotlin.math.roundToInt
+import androidx.core.view.size
+import androidx.core.view.get
 
 
-import android.animation.ValueAnimator;
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.graphics.drawable.GradientDrawable;
-import android.util.DisplayMetrics;
-import android.view.Gravity;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
-import android.widget.LinearLayout;
-import android.widget.PopupWindow;
-import android.widget.TextView;
-
-import cn.alvkeke.dropto.R;
-
-public class MyPopupMenu extends PopupWindow{
-
-    public interface OnMenuItemClickListener {
-        void onMenuItemClick(MenuItem menuItem, Object extraData);
+class MyPopupMenu(private val context: Context) : PopupWindow(context) {
+    interface OnMenuItemClickListener {
+        fun onMenuItemClick(menuItem: MenuItem?, extraData: Any?)
     }
 
-    private final Context context;
-    private OnMenuItemClickListener listener;
-    private Menu menu;
+    private var listener: OnMenuItemClickListener? = null
+    private var menu: Menu? = null
 
-    public MyPopupMenu(Context context) {
-        super(context);
-        this.context = context;
+    fun setListener(listener: OnMenuItemClickListener?): MyPopupMenu {
+        this.listener = listener
+        return this
     }
 
-    public MyPopupMenu setListener(OnMenuItemClickListener listener) {
-        this.listener = listener;
-        return this;
+    fun setMenu(menu: Menu): MyPopupMenu {
+        this.menu = menu
+        return this
     }
 
-    public MyPopupMenu setMenu(Menu menu) {
-        this.menu = menu;
-        return this;
-    }
-
-    private int getTextViewMargin() {
-        DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
-        return Math.round((float) 15 * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT));
-    }
-
-    private boolean isPointInView(View view, float x, float y) {
-        int viewWidth = view.getWidth();
-        int viewHeight = view.getHeight();
-        return (x >= 0 && x < viewWidth && y >= 0 && y < viewHeight);
-    }
-
-    private static final int RoundCornerRadius = 18;
-    @SuppressLint("ClickableViewAccessibility")
-    private TextView setupItemForPopupWindow(MenuItem item) {
-        TextView textView = new TextView(context);
-        textView.setText(item.getTitle());
-        int margin = getTextViewMargin();
-        textView.setPadding(margin, margin, margin, margin);
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setShape(GradientDrawable.RECTANGLE);
-        drawable.setCornerRadius(RoundCornerRadius);
-        drawable.setColor(context.getColor(R.color.popup_menu_item_selected));
-        textView.setBackground(drawable);
-        textView.getBackground().setAlpha(0);
-        textView.setOnTouchListener(new OnItemTouchListener(item));
-        return textView;
-    }
-
-    private class OnItemTouchListener implements View.OnTouchListener {
-
-        private ValueAnimator animatorOut = null;
-        private boolean canClick = false;
-        private final MenuItem item;
-
-        OnItemTouchListener(MenuItem item) {
-            this.item = item;
+    private val textViewMargin: Int
+        get() {
+            val displayMetrics = context.resources.displayMetrics
+            return (15f * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT)).roundToInt()
         }
+
+    private fun isPointInView(view: View, x: Float, y: Float): Boolean {
+        val viewWidth = view.width
+        val viewHeight = view.height
+        return (x >= 0 && x < viewWidth && y >= 0 && y < viewHeight)
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupItemForPopupWindow(item: MenuItem): TextView {
+        val textView = TextView(context)
+        textView.text = item.title
+        val margin = this.textViewMargin
+        textView.setPadding(margin, margin, margin, margin)
+        val drawable = GradientDrawable()
+        drawable.shape = GradientDrawable.RECTANGLE
+        drawable.cornerRadius = ROUND_CORNER_RADIUS.toFloat()
+        drawable.setColor(context.getColor(R.color.popup_menu_item_selected))
+        textView.background = drawable
+        textView.background.alpha = 0
+        textView.setOnTouchListener(OnItemTouchListener(item))
+        return textView
+    }
+
+    private inner class OnItemTouchListener(private val item: MenuItem?) : OnTouchListener {
+        private var animatorOut: ValueAnimator? = null
+        private var canClick = false
 
         @SuppressLint("ClickableViewAccessibility")
-        @Override
-        public boolean onTouch(View view, MotionEvent motionEvent) {
+        override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
             if (animatorOut == null) {
-                animatorOut = new ValueAnimator();
-                animatorOut.addUpdateListener(valueAnimator -> {
-                    int alpha = (int) valueAnimator.getAnimatedValue();
-                    view.getBackground().setAlpha(alpha);
-                });
-            }
-            switch (motionEvent.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                {
-                    canClick = true;
-                    ValueAnimator animatorDown = ValueAnimator.ofInt(0, 255);
-                    animatorDown.addUpdateListener(valueAnimator -> {
-                        int alpha = (int) valueAnimator.getAnimatedValue();
-                        view.getBackground().setAlpha(alpha);
-                    });
-                    animatorDown.setDuration(200);
-                    animatorDown.start();
-                    return true;
+                animatorOut = ValueAnimator()
+                animatorOut!!.addUpdateListener { valueAnimator: ValueAnimator ->
+                    val alpha = valueAnimator.animatedValue as Int
+                    view.background.alpha = alpha
                 }
-                case MotionEvent.ACTION_MOVE:
-                {
-                    if (!isPointInView(view, motionEvent.getX(), motionEvent.getY())) {
-                        canClick = false;
-                        if (!animatorOut.isStarted()) {
-                            int startAlpha = view.getBackground().getAlpha();
+            }
+            when (motionEvent.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    canClick = true
+                    val animatorDown = ValueAnimator.ofInt(0, 255)
+                    animatorDown.addUpdateListener { valueAnimator: ValueAnimator ->
+                        val alpha = valueAnimator.animatedValue as Int
+                        view.background.alpha = alpha
+                    }
+                    animatorDown.duration = 200
+                    animatorDown.start()
+                    return true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    if (!isPointInView(view, motionEvent.x, motionEvent.y)) {
+                        canClick = false
+                        if (!animatorOut!!.isStarted) {
+                            val startAlpha = view.background.alpha
                             if (startAlpha != 0) {
-                                animatorOut.setIntValues(startAlpha, 0);
-                                animatorOut .setDuration(200);
-                                animatorOut.start();
+                                animatorOut!!.setIntValues(startAlpha, 0)
+                                animatorOut!!.duration = 200
+                                animatorOut!!.start()
                             }
                         }
-                        return true;
+                        return true
                     }
                 }
-                break;
-                case MotionEvent.ACTION_UP:
-                {
+
+                MotionEvent.ACTION_UP -> {
                     if (canClick) {
                         if (listener != null) {
-                            listener.onMenuItemClick(item, object);
+                            listener!!.onMenuItemClick(item, `object`)
                         }
-                        dismiss();
-                        return true;
+                        dismiss()
+                        return true
                     }
                 }
             }
-            return false;
+            return false
         }
     }
 
-    private Object object;
-    public MyPopupMenu setData(Object o) {
-        this.object = o;
-        return this;
+    private var `object`: Any? = null
+
+    fun setData(o: Any?): MyPopupMenu {
+        this.`object` = o
+        return this
     }
 
-    public void show(View anchorView, int ignore, int y) {
-        LinearLayout linearLayout = new LinearLayout(context);
-        linearLayout.setOrientation(LinearLayout.VERTICAL);
-        int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
-        linearLayout.setMinimumWidth(screenWidth / 2);
+    fun show(anchorView: View?, ignore: Int, y: Int) {
+        val linearLayout = LinearLayout(context)
+        linearLayout.orientation = LinearLayout.VERTICAL
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        linearLayout.minimumWidth = screenWidth / 2
 
-        for (int i = 0; i < menu.size(); i++) {
-            MenuItem item = menu.getItem(i);
-            TextView textView = setupItemForPopupWindow(item);
-            linearLayout.addView(textView);
+        for (i in 0..<menu!!.size) {
+            val item = menu!![i]
+            val textView = setupItemForPopupWindow(item)
+            linearLayout.addView(textView)
         }
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setShape(GradientDrawable.RECTANGLE);
-        drawable.setCornerRadius(RoundCornerRadius);
-        drawable.setColor(context.getColor(R.color.popup_menu_background));
+        val drawable = GradientDrawable()
+        drawable.shape = GradientDrawable.RECTANGLE
+        drawable.cornerRadius = ROUND_CORNER_RADIUS.toFloat()
+        drawable.setColor(context.getColor(R.color.popup_menu_background))
 
-        setBackgroundDrawable(drawable);
-        setContentView(linearLayout);
-        setFocusable(true);
-        setOutsideTouchable(false);
+        setBackgroundDrawable(drawable)
+        contentView = linearLayout
+        isFocusable = true
+        isOutsideTouchable = false
 
-        linearLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int showX = screenWidth / 6;
-        int showY = y - linearLayout.getMeasuredHeight()/2;
-        showAtLocation(anchorView, Gravity.NO_GRAVITY, showX, showY);
+        linearLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val showX = screenWidth / 6
+        val showY = y - linearLayout.measuredHeight / 2
+        showAtLocation(anchorView, Gravity.NO_GRAVITY, showX, showY)
     }
 
+    companion object {
+        private const val ROUND_CORNER_RADIUS = 18
+    }
 }

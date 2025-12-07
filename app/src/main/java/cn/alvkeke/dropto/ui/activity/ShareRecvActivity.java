@@ -202,7 +202,7 @@ public class ShareRecvActivity extends AppCompatActivity
             case REMOVE:
             case UPDATE:
                 categorySelectorFragment.notifyItemListChanged(
-                        Task.jobToNotify(task.job), task.result, (Category) task.param);
+                        Task.jobToNotify(task.job), task.result, (Category) task.taskObj);
                 break;
             default:
                 break;
@@ -210,7 +210,7 @@ public class ShareRecvActivity extends AppCompatActivity
     }
 
     @Override
-    public void onTaskFinish(Task task, Object param) {
+    public void onTaskFinish(Task task, Object taskObj) {
         if (task.type == Task.Type.Category)
             onCategoryTaskFinish(task);
     }
