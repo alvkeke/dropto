@@ -13,7 +13,6 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.ImageLoader.ImageLoadListener
 import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -170,21 +169,19 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
                 ivImages[index].setImageResource(R.drawable.img_load_error)
                 return
             }
-            loadImageAsync(img.md5file, object : ImageLoadListener {
-                override fun onImageLoaded(bitmap: Bitmap?) {
-                    if (bitmap == null) {
-                        val errMsg = "Failed to get image file, skip this item"
-                        Log.e(this.toString(), errMsg)
-                        ivImages[index].setImageResource(R.drawable.img_load_error)
-                        return
-                    }
+            loadImageAsync(img.md5file) { bitmap: Bitmap? ->
+                if (bitmap == null) {
+                    val errMsg = "Failed to get image file, skip this item"
+                    Log.e(this.toString(), errMsg)
+                    ivImages[index].setImageResource(R.drawable.img_load_error)
+                } else {
                     ivImages[index].setImageBitmap(bitmap)
                     ivImages[index].measure(
                         View.MeasureSpec.UNSPECIFIED,
                         View.MeasureSpec.UNSPECIFIED
                     )
                 }
-            })
+            }
         }
 
         private fun loadNoteImages(note: NoteItem) {

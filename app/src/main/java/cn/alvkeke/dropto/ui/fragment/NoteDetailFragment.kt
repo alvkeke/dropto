@@ -20,7 +20,6 @@ import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.ImageFile
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.ImageLoader.ImageLoadListener
 import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
 import cn.alvkeke.dropto.ui.comonent.ImageCard
 import cn.alvkeke.dropto.ui.intf.NoteAttemptListener
@@ -174,18 +173,16 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
             card.setImageMd5(imageFile.md5)
             card.setImageName(imageFile.getName())
 
-            loadImageAsync(imageFile.md5file, (object : ImageLoadListener {
-                override fun onImageLoaded(bitmap: Bitmap?) {
-                    if (bitmap == null) {
-                        val errMsg = "Failed to get image file, skip this item"
-                        Log.e(this.toString(), errMsg)
-                        Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
-                        card.setImageResource(R.drawable.img_load_error)
-                        return
-                    }
+            loadImageAsync(imageFile.md5file) { bitmap: Bitmap? ->
+                if (bitmap == null) {
+                    val errMsg = "Failed to get image file, skip this item"
+                    Log.e(this.toString(), errMsg)
+                    Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
+                    card.setImageResource(R.drawable.img_load_error)
+                } else {
                     card.setImage(bitmap)
                 }
-            }))
+            }
             card.setRemoveButtonClickListener { _: View ->
                 val hei = card.height
                 val animator = ValueAnimator.ofInt(hei, 0)

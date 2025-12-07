@@ -46,7 +46,7 @@ class Task {
         this.taskObj = taskObj
     }
 
-    interface ResultListener {
+    fun interface ResultListener {
         /**
          * this will be invoked after a task be handled
          * @param task the task instance passed to from caller

@@ -22,7 +22,6 @@ import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.storage.ImageLoader
-import cn.alvkeke.dropto.storage.ImageLoader.ImageLoadListener
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.GestureListener
 import java.io.File
@@ -60,12 +59,10 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
 
         view.setBackgroundColor(Color.BLACK)
         imageView = view.findViewById(R.id.img_viewer_image)
-        ImageLoader.loadOriginalImageAsync(imgFile!!, object : ImageLoadListener {
-            override fun onImageLoaded(bitmap: Bitmap?) {
-                loadedBitmap = bitmap
-                imageView.setImageBitmap(bitmap)
-            }
-        })
+        ImageLoader.loadOriginalImageAsync(imgFile!!) { bitmap ->
+            loadedBitmap = bitmap
+            imageView.setImageBitmap(bitmap)
+        }
         view.setOnTouchListener(ImageGestureListener())
     }
 

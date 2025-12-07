@@ -458,55 +458,53 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             val menu = PopupMenu(context, v).menu
             requireActivity().menuInflater.inflate(R.menu.item_pop_menu, menu)
             myPopupMenu = MyPopupMenu(context).setMenu(menu)
-                .setListener(object : MyPopupMenu.OnMenuItemClickListener {
-                    override fun onMenuItemClick(menuItem: MenuItem, extraData: Any?) {
-                        val note = extraData as NoteItem
-                        when (val itemId = menuItem.itemId) {
-                            R.id.item_pop_m_delete -> {
-                                AlertDialog.Builder(context)
-                                    .setTitle(R.string.dialog_note_delete_pop_remove_title)
-                                    .setMessage(R.string.dialog_note_delete_pop_remove_message)
-                                    .setNegativeButton(R.string.string_cancel, null)
-                                    .setPositiveButton(
-                                        R.string.string_ok
-                                    ) { _: DialogInterface, _: Int ->
-                                        listener.onAttempt(
-                                            NoteAttemptListener.Attempt.REMOVE,
-                                            note
-                                        )
-                                    }
-                                    .create().show()
-                            }
+                .setListener { menuItem, extraData ->
+                    val note = extraData as NoteItem
+                    when (val itemId = menuItem.itemId) {
+                        R.id.item_pop_m_delete -> {
+                            AlertDialog.Builder(context)
+                                .setTitle(R.string.dialog_note_delete_pop_remove_title)
+                                .setMessage(R.string.dialog_note_delete_pop_remove_message)
+                                .setNegativeButton(R.string.string_cancel, null)
+                                .setPositiveButton(
+                                    R.string.string_ok
+                                ) { _: DialogInterface, _: Int ->
+                                    listener.onAttempt(
+                                        NoteAttemptListener.Attempt.REMOVE,
+                                        note
+                                    )
+                                }
+                                .create().show()
+                        }
 
-                            R.id.item_pop_m_pin -> {
-                                throwErrorMessage("try to Pin item at $index")
-                            }
+                        R.id.item_pop_m_pin -> {
+                            throwErrorMessage("try to Pin item at $index")
+                        }
 
-                            R.id.item_pop_m_edit -> {
-                                listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, note)
-                            }
+                        R.id.item_pop_m_edit -> {
+                            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, note)
+                        }
 
-                            R.id.item_pop_m_copy_text -> {
-                                listener.onAttempt(NoteAttemptListener.Attempt.COPY, note)
-                            }
+                        R.id.item_pop_m_copy_text -> {
+                            listener.onAttempt(NoteAttemptListener.Attempt.COPY, note)
+                        }
 
-                            R.id.item_pop_m_share -> {
-                                listener.onAttempt(NoteAttemptListener.Attempt.SHOW_SHARE, note)
-                            }
+                        R.id.item_pop_m_share -> {
+                            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_SHARE, note)
+                        }
 
-                            R.id.item_pop_m_forward -> {
-                                listener.onAttempt(NoteAttemptListener.Attempt.SHOW_FORWARD, note)
-                            }
+                        R.id.item_pop_m_forward -> {
+                            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_FORWARD, note)
+                        }
 
-                            else -> {
-                                throwErrorMessage(
-                                    "Unknown menu id: " +
-                                            resources.getResourceEntryName(itemId)
-                                )
-                            }
+                        else -> {
+                            throwErrorMessage(
+                                "Unknown menu id: " +
+                                        resources.getResourceEntryName(itemId)
+                            )
                         }
                     }
-                })
+                }
         }
         myPopupMenu!!.setData(noteItem).show(v, x, y)
     }

@@ -16,8 +16,8 @@ const val TAG = "DataBaseHelper"
 
 class DataBaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
-    interface IterateCallback<T> {
-        fun onIterate(o: T?)
+    fun interface IterateCallback<T> {
+        fun onIterate(o: T)
     }
 
     private lateinit var db: SQLiteDatabase

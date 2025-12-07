@@ -21,7 +21,7 @@ import androidx.core.view.get
 
 
 class MyPopupMenu(private val context: Context) : PopupWindow(context) {
-    interface OnMenuItemClickListener {
+    fun interface OnMenuItemClickListener {
         fun onMenuItemClick(menuItem: MenuItem, extraData: Any?)
     }
 
@@ -123,12 +123,12 @@ class MyPopupMenu(private val context: Context) : PopupWindow(context) {
 
     private var `object`: Any? = null
 
-    fun setData(o: Any?): MyPopupMenu {
+    fun setData(o: Any): MyPopupMenu {
         this.`object` = o
         return this
     }
 
-    fun show(anchorView: View?, ignore: Int, y: Int) {
+    fun show(anchorView: View, ignore: Int, y: Int) {
         val linearLayout = LinearLayout(context)
         linearLayout.orientation = LinearLayout.VERTICAL
         val screenWidth = context.resources.displayMetrics.widthPixels

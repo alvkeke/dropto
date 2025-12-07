@@ -21,7 +21,7 @@ object ImageLoader {
 
     const val TAG: String = "ImageLoader"
 
-    interface ImageLoadListener {
+    fun interface ImageLoadListener {
         fun onImageLoaded(bitmap: Bitmap?)
     }
 
