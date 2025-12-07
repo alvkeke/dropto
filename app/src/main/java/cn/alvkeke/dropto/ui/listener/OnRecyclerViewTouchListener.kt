@@ -1,148 +1,169 @@
-package cn.alvkeke.dropto.ui.listener;
+package cn.alvkeke.dropto.ui.listener
 
-import android.annotation.SuppressLint;
-import android.os.Handler;
-import android.view.MotionEvent;
-import android.view.View;
+import android.annotation.SuppressLint
+import android.os.Handler
+import android.view.MotionEvent
+import android.view.View
+import android.view.View.OnTouchListener
+import androidx.recyclerview.widget.RecyclerView
+import kotlin.math.abs
 
-import androidx.recyclerview.widget.RecyclerView;
+open class OnRecyclerViewTouchListener : OnTouchListener {
+    private var timeDown: Long = 0
+    private var downRawX = 0f
+    private var downRawY = 0f
+    private var isSliding = false
+    private var isSlidable = false
+    private var isLongClickHold = false
+    private var isShortClick = false
 
+    private val handler = Handler()
+    private lateinit var longPressView: View
+    private var longPressItemView: View? = null
 
-public class OnRecyclerViewTouchListener implements View.OnTouchListener {
-
-
-    private static final long TIME_THRESHOLD_CLICK = 200;
-    private static final long TIME_THRESHOLD_LONG_CLICK = 500;
-    private static final int THRESHOLD_SLIDE = 45;
-    private static final int THRESHOLD_NO_MOVED = 20;
-    private long timeDown;
-    private float downRawX, downRawY;
-    private boolean isSliding = false;
-    private boolean isSlidable = false;
-    private boolean isLongClickHold = false;
-    private boolean isShortClick = false;
     @SuppressLint("ClickableViewAccessibility")
-    public boolean onTouch(View view, MotionEvent motionEvent) {
-        RecyclerView recyclerView = (RecyclerView) view;
-        View itemView;
-        float deltaRawX, deltaRawY;
-        switch (motionEvent.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                downRawX = motionEvent.getRawX();
-                downRawY = motionEvent.getRawY();
-                timeDown = System.currentTimeMillis();
-                longPressItemView = recyclerView.
-                        findChildViewUnder(motionEvent.getX(), motionEvent.getY());
-                longPressView = view;
-                handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK);
-                isShortClick = true;
-                isSlidable = true;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                deltaRawX = motionEvent.getRawX() - downRawX;
-                deltaRawY = motionEvent.getRawY() - downRawY;
-                if (Math.abs(deltaRawX) > THRESHOLD_NO_MOVED || Math.abs(deltaRawY) > THRESHOLD_NO_MOVED) {
-                    handler.removeCallbacks(longPressRunnable);
-                    isShortClick = false;
+    override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
+        val recyclerView = view as RecyclerView
+        val itemView: View?
+        val deltaRawX: Float
+        val deltaRawY: Float
+        when (motionEvent.action) {
+            MotionEvent.ACTION_DOWN -> {
+                downRawX = motionEvent.rawX
+                downRawY = motionEvent.rawY
+                timeDown = System.currentTimeMillis()
+                longPressView = view
+                longPressItemView =
+                    recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
+                handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK)
+                isShortClick = true
+                isSlidable = true
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                deltaRawX = motionEvent.rawX - downRawX
+                deltaRawY = motionEvent.rawY - downRawY
+                if (abs(deltaRawX) > THRESHOLD_NO_MOVED || abs(deltaRawY) > THRESHOLD_NO_MOVED) {
+                    handler.removeCallbacks(longPressRunnable)
+                    isShortClick = false
                 }
-                if (isLongClickHold) return true; // block all event
-                if (isSliding) {
-                    if (onSlideOnGoing(view, motionEvent, deltaRawX, deltaRawY)) return true;
-                }
-                if (Math.abs(deltaRawY) > THRESHOLD_NO_MOVED)
-                    isSlidable = false;
-                if (isSlidable && deltaRawX > THRESHOLD_SLIDE)
-                    isSliding = true;
-                break;
-            case MotionEvent.ACTION_UP:
-                handler.removeCallbacks(longPressRunnable);
                 if (isLongClickHold) {
-                    isLongClickHold = false;
-                    return true;
+                    return true // block all event
+                }
+
+                if (isSliding) {
+                    if (onSlideOnGoing(view, motionEvent, deltaRawX, deltaRawY)) {
+                        return true
+                    }
+                }
+                if (abs(deltaRawY) > THRESHOLD_NO_MOVED) {
+                    isSlidable = false
+                }
+                if (isSlidable && deltaRawX > THRESHOLD_SLIDE) {
+                    isSliding = true
+                }
+            }
+
+            MotionEvent.ACTION_UP -> {
+                handler.removeCallbacks(longPressRunnable)
+                if (isLongClickHold) {
+                    isLongClickHold = false
+                    return true
                 }
                 if (isShortClick && System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK) {
-                    isShortClick = false;
-                    itemView = recyclerView.findChildViewUnder(motionEvent.getX(), motionEvent.getY());
+                    isShortClick = false
+                    itemView =
+                        recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                     if (itemView != null) {
-                        if (handleItemClick(recyclerView, itemView, motionEvent)) return true;
-                        if (handleItemClick(recyclerView, itemView, null)) return true;
+                        if (handleItemClick(recyclerView, itemView, motionEvent)) {
+                            return true
+                        }
+                        if (handleItemClick(recyclerView, itemView, null)) {
+                            return true
+                        }
 //                        if (handleListItemClick(recyclerView, itemView, false)) return true;
                     }
-                    if (onClick(view, motionEvent)) return true;
+                    if (onClick(view, motionEvent)) {
+                        return true
+                    }
                 }
                 if (isSliding) {
-                    deltaRawX = motionEvent.getRawX() - downRawX;
-                    deltaRawY = motionEvent.getRawY() - downRawY;
-                    isSliding = false;
-                    if (onSlideEnd(view, motionEvent, deltaRawX, deltaRawY)) return true;
+                    deltaRawX = motionEvent.rawX - downRawX
+                    deltaRawY = motionEvent.rawY - downRawY
+                    isSliding = false
+                    if (onSlideEnd(view, motionEvent, deltaRawX, deltaRawY)) {
+                        return true
+                    }
                 }
-                break;
+            }
         }
-        return false;
+        return false
     }
 
-    public boolean onSlideEnd(View v, MotionEvent e, float deltaX, float deltaY) {
-        return false;
+    open fun onSlideEnd(v: View, e: MotionEvent, deltaX: Float, deltaY: Float): Boolean {
+        return false
     }
 
-    public boolean onSlideOnGoing(View v, MotionEvent e, float deltaX, float deltaY) {
-        return false;
+    open fun onSlideOnGoing(v: View, e: MotionEvent, deltaX: Float, deltaY: Float): Boolean {
+        return false
     }
 
-    public boolean onClick(View ignored, MotionEvent ignored1) {
-        return false;
+    fun onClick(ignored: View, ignored1: MotionEvent): Boolean {
+        return false
     }
 
-    private final Handler handler = new Handler();
-    private View longPressView;
-    private View longPressItemView;
-    private final Runnable longPressRunnable = new Runnable() {
-        @Override
-        public void run() {
+    private val longPressRunnable: Runnable = object : Runnable {
+        override fun run() {
             if (longPressItemView != null) {
-                if (handleItemLongClick(longPressView, longPressItemView)) {
-                    isLongClickHold = true;
-                    return;
+                if (handleItemLongClick(longPressView, longPressItemView!!)) {
+                    isLongClickHold = true
+                    return
                 }
             }
             if (onLongClick(longPressView)) {
-                isLongClickHold = true;
+                isLongClickHold = true
             }
         }
-    };
-
-    public boolean onLongClick(View ignored) {
-        return false;
     }
 
-    private boolean handleItemLongClick(View parent, View itemView) {
-        RecyclerView recyclerView = (RecyclerView) parent;
-        int index = recyclerView.getChildLayoutPosition(itemView);
-        assert index != -1;
-        return onItemLongClick(itemView, index);
+    fun onLongClick(ignored: View): Boolean {
+        return false
     }
 
-    private boolean handleItemClick(View parent, View itemView, MotionEvent e) {
-        RecyclerView recyclerView = (RecyclerView) parent;
-        int index = recyclerView.getChildLayoutPosition(itemView);
-        assert index != -1;
-        if (e == null) {
-            return onItemClick(itemView, index);
+    private fun handleItemLongClick(parent: View, itemView: View): Boolean {
+        val recyclerView = parent as RecyclerView
+        val index = recyclerView.getChildLayoutPosition(itemView)
+        assert(index != -1)
+        return onItemLongClick(itemView, index)
+    }
+
+    private fun handleItemClick(parent: View, itemView: View, e: MotionEvent?): Boolean {
+        val recyclerView = parent as RecyclerView
+        val index = recyclerView.getChildLayoutPosition(itemView)
+        assert(index != -1)
+        return if (e == null) {
+            onItemClick(itemView, index)
         } else {
-            return onItemClickAt(itemView, index, e);
+            onItemClickAt(itemView, index, e)
         }
     }
 
-    public boolean onItemClick(View v, int index) {
-        return false;
+    open fun onItemClick(v: View, index: Int): Boolean {
+        return false
     }
 
-    public boolean onItemClickAt(View v, int index, MotionEvent event) {
-        return false;
+    open fun onItemClickAt(v: View, index: Int, event: MotionEvent): Boolean {
+        return false
     }
 
-    public boolean onItemLongClick(View v, int index) {
-        return false;
+    open fun onItemLongClick(v: View, index: Int): Boolean {
+        return false
     }
 
+    companion object {
+        private const val TIME_THRESHOLD_CLICK: Long = 200
+        private const val TIME_THRESHOLD_LONG_CLICK: Long = 500
+        private const val THRESHOLD_SLIDE = 45
+        private const val THRESHOLD_NO_MOVED = 20
+    }
 }
