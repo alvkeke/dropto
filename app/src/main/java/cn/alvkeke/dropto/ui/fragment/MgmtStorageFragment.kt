@@ -1,249 +1,230 @@
-package cn.alvkeke.dropto.ui.fragment;
+package cn.alvkeke.dropto.ui.fragment
 
-import android.content.Context;
-import android.os.Bundle;
-import android.os.Handler;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.TextView;
+import android.os.Bundle
+import android.os.Handler
+import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.TextView
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.mgmt.Global.getFolderImage
+import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
+import cn.alvkeke.dropto.ui.adapter.ImageListAdapter
+import java.io.File
+import java.util.LinkedList
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+class MgmtStorageFragment : Fragment() {
+    private lateinit var cbImage: CheckBox
+    private lateinit var cbCache: CheckBox
+    private lateinit var buttonClear: Button
+    private lateinit var imageListAdapter: ImageListAdapter
 
-import java.io.File;
-import java.util.LinkedList;
-import java.util.NoSuchElementException;
-
-import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.mgmt.Global;
-import cn.alvkeke.dropto.ui.adapter.ImageListAdapter;
-
-public class MgmtStorageFragment extends Fragment {
-
-    private CheckBox cbImage;
-    private CheckBox cbCache;
-    private Button buttonClear;
-    private ImageListAdapter imageListAdapter;
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_mgmt_storage, container, false);
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.fragment_mgmt_storage, container, false)
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        cbImage = view.findViewById(R.id.mgmt_storage_image);
-        cbCache = view.findViewById(R.id.mgmt_storage_cache);
-        buttonClear = view.findViewById(R.id.mgmt_storage_btn_clear);
-        RecyclerView listFilename = view.findViewById(R.id.mgmt_storage_list_files);
+        cbImage = view.findViewById(R.id.mgmt_storage_image)
+        cbCache = view.findViewById(R.id.mgmt_storage_cache)
+        buttonClear = view.findViewById(R.id.mgmt_storage_btn_clear)
+        val listFilename = view.findViewById<RecyclerView>(R.id.mgmt_storage_list_files)
 
-        Context context = requireContext();
-        LinearLayoutManager layoutManager = new LinearLayoutManager(context);
-        listFilename.setLayoutManager(layoutManager);
-        listFilename.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
+        val context = requireContext()
+        val layoutManager = LinearLayoutManager(context)
+        listFilename.setLayoutManager(layoutManager)
+        listFilename.addItemDecoration(
+            DividerItemDecoration(
+                context,
+                DividerItemDecoration.VERTICAL
+            )
+        )
 
-        imageListAdapter = new ImageListAdapter(context);
-        listFilename.setAdapter(imageListAdapter);
-        imageListAdapter.setItemClickListener(new OnItemClickListener());
+        imageListAdapter = ImageListAdapter(context)
+        listFilename.setAdapter(imageListAdapter)
+        imageListAdapter.setItemClickListener(OnItemClickListener())
 
-        buttonClear.setOnClickListener(this::clearSelectedData);
-
-        cbImage.setChecked(true);
-        cbCache.setChecked(true);
-
-        initFolders();
-        new Thread(taskCalcCache).start();
-        new Thread(taskCalcImage).start();
-    }
-
-    File folderImage;
-    File folderCache;
-    private void initFolders() {
-        folderCache = Global.getFolderImageShare(requireContext());
-        folderImage = Global.getFolderImage(requireContext());
-    }
-
-    private interface FolderIterator {
-        void on(File file);
-    }
-    private void iterateFolder(File folder, FolderIterator iterator) {
-        if (folder.isFile()) {
-            iterator.on(folder);
-            return;
+        buttonClear.setOnClickListener { ignored: View ->
+            this.clearSelectedData(
+                ignored
+            )
         }
-        LinkedList<File> folders = new LinkedList<>();
-        folders.push(folder);
+
+        cbImage.isChecked = true
+        cbCache.isChecked = true
+
+        initFolders()
+        Thread(taskCalcCache).start()
+        Thread(taskCalcImage).start()
+    }
+
+    lateinit var folderImage: File
+    lateinit var folderCache: File
+    private fun initFolders() {
+        folderCache = getFolderImageShare(requireContext())
+        folderImage = getFolderImage(requireContext())
+    }
+
+    private fun interface FolderIterator {
+        fun on(file: File)
+    }
+
+    private fun iterateFolder(folder: File, iterator: FolderIterator) {
+        var folder = folder
+        if (folder.isFile) {
+            iterator.on(folder)
+            return
+        }
+        val folders = LinkedList<File?>()
+        folders.push(folder)
 
         while (true) {
             try {
-                folder = folders.pop();
-            } catch (NoSuchElementException e) {
-                return;
+                folder = folders.pop()!!
+            } catch (_: NoSuchElementException) {
+                return
             }
 
-            File[] files = folder.listFiles();
-            if (files == null)
-                continue;
+            val files = folder.listFiles() ?: continue
 
-            for (File ff : files) {
-                if (ff.isDirectory()) {
-                    folders.push(ff);
-                    continue;
+            for (ff in files) {
+                if (ff.isDirectory) {
+                    folders.push(ff)
+                    continue
                 }
-                iterator.on(ff);
+                iterator.on(ff)
             }
-            iterator.on(folder);
+            iterator.on(folder)
         }
     }
 
-    private void emptyFolder(File folder) {
-        iterateFolder(folder, file -> {
-            if (file == folder) return;
-            boolean ret = file.delete();
+    private fun emptyFolder(folder: File) {
+        iterateFolder(folder) { file ->
+            if (file === folder) return@iterateFolder
+            val ret = file.delete()
             if (!ret) {
-                Log.e(this.toString(), "failed to remove " + file.getAbsolutePath());
+                Log.e(this.toString(), "failed to remove " + file.absolutePath)
             }
-        });
+        }
     }
 
-    private void clearSelectedData(View ignored) {
-        buttonClear.setEnabled(false);
-        if (cbCache.isChecked()) {
-            new Thread(() -> {
-                emptyFolder(folderCache);
-                taskCalcCache.run();
-            }).start();
+    private fun clearSelectedData(ignored: View) {
+        buttonClear.isEnabled = false
+        if (cbCache.isChecked) {
+            Thread {
+                emptyFolder(folderCache)
+                taskCalcCache.run()
+            }.start()
         }
-        if (cbImage.isChecked()) {
-            new Thread(() -> {
-                emptyFolder(folderImage);
-                handler.post(() -> imageListAdapter.emptyList());
-                taskCalcImage.run();
-            }).start();
+        if (cbImage.isChecked) {
+            Thread {
+                emptyFolder(folderImage)
+                handler.post { imageListAdapter.emptyList() }
+                taskCalcImage.run()
+            }.start()
         }
-        buttonClear.setEnabled(true);
+        buttonClear.isEnabled = true
     }
 
-    private class OnItemClickListener implements ImageListAdapter.OnItemClickListener {
+    private inner class OnItemClickListener : ImageListAdapter.OnItemClickListener {
+        override fun onClick(index: Int) {
+            val name = imageListAdapter.get(index) ?: return
 
-        @Override
-        public void onClick(int index) {
-            String name = imageListAdapter.get(index);
-            if (name == null) return;
-
-            File imageFile = new File(folderImage, name);
-            ImageViewerFragment fragment = new ImageViewerFragment();
-            fragment.setImgFile(imageFile);
-            fragment.show(getParentFragmentManager(), null);
+            val imageFile = File(folderImage, name)
+            val fragment = ImageViewerFragment()
+            fragment.setImgFile(imageFile)
+            fragment.show(getParentFragmentManager(), null)
         }
 
-        @Override
-        public boolean onLongClick(int index) {
-            String name = imageListAdapter.get(index);
-            if (name == null) return false;
-            File imageFile = new File(folderImage, name);
-            long tmp = imageFile.length();
+        override fun onLongClick(index: Int): Boolean {
+            val name = imageListAdapter.get(index) ?: return false
+            val imageFile = File(folderImage, name)
+            val tmp = imageFile.length()
             if (imageFile.delete()) {
-                sizeImage -= tmp;
-                imageListAdapter.remove(index);
-                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage);
+                sizeImage -= tmp
+                imageListAdapter.remove(index)
+                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage)
             }
-            return true;
+            return true
         }
     }
 
 
-    private final Handler handler = new Handler();
-    private long sizeCache = 0;
-    private long sizeImage = 0;
-    private static int getSizeType(long size) {
-        if (size < 1000L)
-            return 0;
-        else if (size < 1000000L)
-            return 1;
-        else if (size < 1000000000L)
-            return 2;
-        else
-            return 3;
-    }
-    private static String getUnitString(int div) {
-        switch (div) {
-            case 0:
-                return "B";
-            case 1:
-                return "KB";
-            case 2:
-                return "MB";
-            default:
-                return "GB";
-        }
-    }
-    private static int getDivider(int div) {
-        switch (div) {
-            case 0:
-                return 1;
-            case 1:
-                return 1000;
-            case 2:
-                return 1000000;
-            default:
-                return 1000000000;
-        }
-    }
-    private static String getSizeString(long size) {
-        int type = getSizeType(size);
-        int divider = getDivider(type);
-        return size/divider + getUnitString(type);
+    private val handler = Handler()
+    private var sizeCache: Long = 0
+    private var sizeImage: Long = 0
+    private fun setTextSizeString(view: TextView, strId: Int, size: Long) {
+        var string = resources.getString(strId)
+        string += " " + getSizeString(size)
+        view.text = string
     }
 
-    private void setTextSizeString(TextView view, int str_id, long size) {
-        String string = getResources().getString(str_id);
-        string += " " + getSizeString(size);
-        view.setText(string);
+    private val taskCalcCache = Runnable {
+        sizeCache = 0
+        iterateFolder(folderCache) { file ->
+            if (file.isFile) sizeCache += file.length()
+            handler.post {
+                setTextSizeString(
+                    cbCache,
+                    R.string.string_cache_storage_usage_prompt, sizeCache
+                )
+            }
+        }
     }
 
-    private final Runnable taskCalcCache = () -> {
-        sizeCache = 0;
-        if (folderCache == null) {
-            handler.post(() -> setTextSizeString(cbCache,
-                    R.string.string_cache_storage_usage_prompt, sizeCache));
-            return;
+    private val taskCalcImage = Runnable {
+        sizeImage = 0
+        iterateFolder(folderImage) { file ->
+            if (file.isFile) sizeImage += file.length()
+            handler.post {
+                if (file.isFile) imageListAdapter.add(file.name)
+                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage)
+            }
         }
-        iterateFolder(folderCache, file -> {
-            if (file.isFile())
-                sizeCache += file.length();
-            handler.post(() -> setTextSizeString(cbCache,
-                    R.string.string_cache_storage_usage_prompt, sizeCache));
-        });
-    };
+    }
 
-    private final Runnable taskCalcImage = () -> {
-        sizeImage = 0;
-        if (folderImage == null) {
-            handler.post(() -> setTextSizeString(cbImage,
-                    R.string.string_image_storage_usage_prompt, sizeImage));
-            return;
+    companion object {
+        private fun getSizeType(size: Long): Int {
+            return if (size < 1000L) 0
+            else if (size < 1000000L) 1
+            else if (size < 1000000000L) 2
+            else 3
         }
-        iterateFolder(folderImage, file -> {
-            if (file.isFile())
-                sizeImage += file.length();
-            handler.post(() -> {
-                if (file.isFile())
-                    imageListAdapter.add(file.getName());
-                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage);
-            });
-        });
-    };
 
+        private fun getUnitString(div: Int): String {
+            return when (div) {
+                0 -> "B"
+                1 -> "KB"
+                2 -> "MB"
+                else -> "GB"
+            }
+        }
+
+        private fun getDivider(div: Int): Int {
+            return when (div) {
+                0 -> 1
+                1 -> 1000
+                2 -> 1000000
+                else -> 1000000000
+            }
+        }
+
+        private fun getSizeString(size: Long): String {
+            val type: Int = getSizeType(size)
+            val divider: Int = getDivider(type)
+            return (size / divider).toString() + getUnitString(type)
+        }
+    }
 }

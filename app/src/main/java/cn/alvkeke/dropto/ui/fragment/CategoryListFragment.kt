@@ -1,232 +1,214 @@
-package cn.alvkeke.dropto.ui.fragment;
+package cn.alvkeke.dropto.ui.fragment
 
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
-import android.view.HapticFeedbackConstants;
-import android.view.LayoutInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.DialogInterface
+import android.content.Intent
+import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.view.LayoutInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.Toolbar
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.ui.activity.MgmtActivity
+import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
+import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
+import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener
+import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
+import cn.alvkeke.dropto.ui.intf.ListNotification
+import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
+import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
+import com.google.android.material.appbar.MaterialToolbar
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+class CategoryListFragment : Fragment(), ListNotification<Category> {
+    private lateinit var context: Context
+    private lateinit var listener: CategoryAttemptListener
+    private lateinit var categoryListAdapter: CategoryListAdapter
+    private lateinit var toolbar: MaterialToolbar
 
-import com.google.android.material.appbar.MaterialToolbar;
-
-import java.util.ArrayList;
-
-import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.data.Category;
-import cn.alvkeke.dropto.ui.activity.MgmtActivity;
-import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter;
-import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter;
-import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener;
-import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler;
-import cn.alvkeke.dropto.ui.intf.ListNotification;
-import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener;
-
-public class CategoryListFragment extends Fragment implements ListNotification<Category> {
-
-    private Context context;
-    private CategoryAttemptListener listener;
-    private CategoryListAdapter categoryListAdapter;
-    private MaterialToolbar toolbar;
-
-    public CategoryListFragment() {
+    private var categories: ArrayList<Category>? = null
+    fun setCategories(categories: ArrayList<Category>) {
+        this.categories = categories
     }
 
-    private ArrayList<Category> categories = null;
-    public void setCategories(ArrayList<Category> categories) {
-        this.categories = categories;
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_category_list, container, false);
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.fragment_category_list, container, false)
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        context = requireContext();
-        listener = (CategoryAttemptListener) context;
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        context = requireContext()
+        listener = context as CategoryAttemptListener
 
-        RecyclerView rlCategory = view.findViewById(R.id.category_list_listview);
-        toolbar = view.findViewById(R.id.category_list_toolbar);
-        View statusBar = view.findViewById(R.id.category_list_status_bar);
-        View navigationBar = view.findViewById(R.id.category_list_navigation_bar);
-        setSystemBarHeight(view, statusBar, navigationBar);
+        val rlCategory = view.findViewById<RecyclerView>(R.id.category_list_listview)
+        toolbar = view.findViewById(R.id.category_list_toolbar)
+        val statusBar = view.findViewById<View>(R.id.category_list_status_bar)
+        val navigationBar = view.findViewById<View>(R.id.category_list_navigation_bar)
+        setSystemBarHeight(view, statusBar, navigationBar)
 
-        toolbar.setNavigationIcon(R.drawable.icon_common_menu);
-        toolbar.setNavigationOnClickListener(new OnCategoryListMenuClick());
-        toolbar.inflateMenu(R.menu.category_toolbar);
-        toolbar.setOnMenuItemClickListener(new CategoryMenuListener());
+        toolbar.setNavigationIcon(R.drawable.icon_common_menu)
+        toolbar.setNavigationOnClickListener(OnCategoryListMenuClick())
+        toolbar.inflateMenu(R.menu.category_toolbar)
+        toolbar.setOnMenuItemClickListener(CategoryMenuListener())
 
-        categoryListAdapter = new CategoryListAdapter();
+        categoryListAdapter = CategoryListAdapter()
         if (categories != null) {
-            categoryListAdapter.setList(categories);
+            categoryListAdapter.setList(categories!!)
         }
-        categoryListAdapter.setSelectListener(new CategorySelectListener());
-        setMenuBySelectedCount();
+        categoryListAdapter.setSelectListener(CategorySelectListener())
+        setMenuBySelectedCount()
 
-        rlCategory.setAdapter(categoryListAdapter);
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(context);
-        rlCategory.setLayoutManager(layoutManager);
-        rlCategory.addItemDecoration(new DividerItemDecoration(context, DividerItemDecoration.VERTICAL));
-        rlCategory.setOnTouchListener(new OnListItemClickListener());
+        rlCategory.setAdapter(categoryListAdapter)
+        val layoutManager: RecyclerView.LayoutManager = LinearLayoutManager(context)
+        rlCategory.setLayoutManager(layoutManager)
+        rlCategory.addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
+        rlCategory.setOnTouchListener(OnListItemClickListener())
     }
 
-    private class OnCategoryListMenuClick implements View.OnClickListener {
-        @Override
-        public void onClick(View view) {
-            Intent intent = new Intent(context, MgmtActivity.class);
-            startActivity(intent);
+    private inner class OnCategoryListMenuClick : View.OnClickListener {
+        override fun onClick(view: View) {
+            val intent = Intent(context, MgmtActivity::class.java)
+            startActivity(intent)
         }
     }
 
-    private void setSystemBarHeight(View parent, View status, View navi) {
-        ViewCompat.setOnApplyWindowInsetsListener(parent, (v, winInsets) -> {
-            int statusHei, naviHei;
-            statusHei = winInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-            naviHei = winInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-            status.getLayoutParams().height = statusHei;
-            navi.getLayoutParams().height = naviHei;
-
-            return winInsets;
-        });
+    private fun setSystemBarHeight(parent: View, status: View, navi: View) {
+        ViewCompat.setOnApplyWindowInsetsListener(
+            parent
+        ) { _: View, winInsets: WindowInsetsCompat? ->
+            val statusHei: Int = winInsets!!.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            val naviHei: Int = winInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            status.layoutParams.height = statusHei
+            navi.layoutParams.height = naviHei
+            winInsets
+        }
     }
 
-    private void throwErrorMessage(String msg) {
-        if (!(listener instanceof ErrorMessageHandler)) return;
-        ErrorMessageHandler handler = (ErrorMessageHandler) listener;
-        handler.onError(msg);
+    private fun throwErrorMessage(msg: String) {
+        if (listener !is ErrorMessageHandler) return
+        val handler = listener as ErrorMessageHandler
+        handler.onError(msg)
     }
 
-    private class CategoryMenuListener implements Toolbar.OnMenuItemClickListener {
-
-        @Override
-        public boolean onMenuItemClick(MenuItem item) {
-            int menuId = item.getItemId();
+    private inner class CategoryMenuListener : Toolbar.OnMenuItemClickListener {
+        override fun onMenuItemClick(item: MenuItem): Boolean {
+            val menuId = item.itemId
             if (menuId == R.id.category_menu_item_add) {
-                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_CREATE, null);
+                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_CREATE, null)
             } else if (menuId == R.id.category_menu_item_edit) {
-                Category category = categoryListAdapter.getSelectedItems().get(0);
-                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_DETAIL, category);
-                categoryListAdapter.clearSelectItems();
+                val category = categoryListAdapter.selectedItems[0]
+                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_DETAIL, category)
+                categoryListAdapter.clearSelectItems()
             } else if (R.id.category_menu_item_remove == menuId) {
-                new AlertDialog.Builder(context)
-                        .setTitle(R.string.dialog_category_delete_selected_title)
-                        .setMessage(R.string.dialog_category_delete_selected_message)
-                        .setNegativeButton(R.string.string_cancel, null)
-                        .setPositiveButton(R.string.string_ok, (dialogInterface, i) -> {
-                            ArrayList<Category> selected = categoryListAdapter.getSelectedItems();
-                            categoryListAdapter.clearSelectItems();
-                            for (Category c : selected) {
-                                listener.onAttempt(CategoryAttemptListener.Attempt.REMOVE, c);
-                            }
-                        }).create().show();
+                AlertDialog.Builder(context)
+                    .setTitle(R.string.dialog_category_delete_selected_title)
+                    .setMessage(R.string.dialog_category_delete_selected_message)
+                    .setNegativeButton(R.string.string_cancel, null)
+                    .setPositiveButton(
+                        R.string.string_ok
+                    ) { _: DialogInterface, _: Int ->
+                        val selected: ArrayList<Category> = categoryListAdapter.selectedItems
+                        categoryListAdapter.clearSelectItems()
+                        for (c in selected) {
+                            listener.onAttempt(CategoryAttemptListener.Attempt.REMOVE, c)
+                        }
+                    }.create().show()
             } else if (R.id.category_menu_item_debug == menuId) {
-                listener.onAttempt(CategoryAttemptListener.Attempt.DEBUG_ADD_DATA, null);
+                listener.onAttempt(CategoryAttemptListener.Attempt.DEBUG_ADD_DATA, null)
             } else {
-                throwErrorMessage("Unknown menu id: " + menuId);
-                return false;
+                throwErrorMessage("Unknown menu id: $menuId")
+                return false
             }
-            return true;
+            return true
         }
     }
 
-    private void setMenuItemVisible(int id, boolean visible) {
-        MenuItem menuItem = toolbar.getMenu().findItem(id);
-        menuItem.setVisible(visible);
-    }
-    private void setMenuBySelectedCount() {
-        int count = categoryListAdapter.getSelectedCount();
-        if (count == 0) {
-            setMenuItemVisible(R.id.category_menu_item_add, true);
-            setMenuItemVisible(R.id.category_menu_item_debug, true);
-            setMenuItemVisible(R.id.category_menu_item_remove, false);
-            setMenuItemVisible(R.id.category_menu_item_edit, false);
-        } else if (count == 1) {
-            setMenuItemVisible(R.id.category_menu_item_add, false);
-            setMenuItemVisible(R.id.category_menu_item_debug, false);
-            setMenuItemVisible(R.id.category_menu_item_edit, true);
-            setMenuItemVisible(R.id.category_menu_item_remove, true);
-        } else {
-            setMenuItemVisible(R.id.category_menu_item_add, false);
-            setMenuItemVisible(R.id.category_menu_item_debug, false);
-            setMenuItemVisible(R.id.category_menu_item_edit, false);
-            setMenuItemVisible(R.id.category_menu_item_remove, true);
-        }
+    private fun setMenuItemVisible(id: Int, visible: Boolean) {
+        val menuItem = toolbar.getMenu().findItem(id)
+        menuItem.isVisible = visible
     }
 
-    private class CategorySelectListener implements SelectableListAdapter.SelectListener {
-        @Override
-        public void onSelectEnter() { }
-        @Override
-        public void onSelectExit() { }
-
-        @Override
-        public void onSelect(int index) { setMenuBySelectedCount(); }
-
-        @Override
-        public void onUnSelect(int index) { setMenuBySelectedCount(); }
-    }
-
-    private class OnListItemClickListener extends OnRecyclerViewTouchListener {
-
-        @Override
-        public boolean onItemClick(View v, int index) {
-            if (categoryListAdapter.isSelectMode()) {
-                categoryListAdapter.toggleSelectItems(index);
-                return true;
+    private fun setMenuBySelectedCount() {
+        val count = categoryListAdapter.selectedCount
+        when (count) {
+            0 -> {
+                setMenuItemVisible(R.id.category_menu_item_add, true)
+                setMenuItemVisible(R.id.category_menu_item_debug, true)
+                setMenuItemVisible(R.id.category_menu_item_remove, false)
+                setMenuItemVisible(R.id.category_menu_item_edit, false)
             }
-            Category category = categoryListAdapter.get(index);
-            listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_EXPAND, category);
-            return true;
-        }
-
-        @Override
-        public boolean onItemLongClick(View v, int index) {
-            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            categoryListAdapter.toggleSelectItems(index);
-            return true;
-        }
-    }
-
-    @Override
-    public void notifyItemListChanged(ListNotification.Notify notify, int index, Category category) {
-        if (notify == Notify.UPDATED && categoryListAdapter.get(index) != category) {
-            throwErrorMessage("target Category not exist");
-            return;
-        }
-
-        switch (notify) {
-            case INSERTED:
-                categoryListAdapter.add(index, category);
-                break;
-            case UPDATED:
-                categoryListAdapter.update(category);
-                break;
-            case REMOVED:
-                categoryListAdapter.remove(category);
-                break;
-            case CLEARED:
-                categoryListAdapter.clear();
-                break;
-            default:
+            1 -> {
+                setMenuItemVisible(R.id.category_menu_item_add, false)
+                setMenuItemVisible(R.id.category_menu_item_debug, false)
+                setMenuItemVisible(R.id.category_menu_item_edit, true)
+                setMenuItemVisible(R.id.category_menu_item_remove, true)
+            }
+            else -> {
+                setMenuItemVisible(R.id.category_menu_item_add, false)
+                setMenuItemVisible(R.id.category_menu_item_debug, false)
+                setMenuItemVisible(R.id.category_menu_item_edit, false)
+                setMenuItemVisible(R.id.category_menu_item_remove, true)
+            }
         }
     }
 
+    private inner class CategorySelectListener : SelectListener {
+        override fun onSelectEnter() {}
+        override fun onSelectExit() {}
+
+        override fun onSelect(index: Int) {
+            setMenuBySelectedCount()
+        }
+
+        override fun onUnSelect(index: Int) {
+            setMenuBySelectedCount()
+        }
+    }
+
+    private inner class OnListItemClickListener : OnRecyclerViewTouchListener() {
+        override fun onItemClick(v: View, index: Int): Boolean {
+            if (categoryListAdapter.isSelectMode) {
+                categoryListAdapter.toggleSelectItems(index)
+                return true
+            }
+            val category = categoryListAdapter.get(index)
+            listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_EXPAND, category)
+            return true
+        }
+
+        override fun onItemLongClick(v: View, index: Int): Boolean {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            categoryListAdapter.toggleSelectItems(index)
+            return true
+        }
+    }
+
+    override fun notifyItemListChanged(notify: Notify, index: Int, itemObj: Category) {
+        if (notify == Notify.UPDATED && categoryListAdapter.get(index) != itemObj) {
+            throwErrorMessage("target Category not exist")
+            return
+        }
+
+        when (notify) {
+            Notify.INSERTED -> categoryListAdapter.add(index, itemObj)
+            Notify.UPDATED -> categoryListAdapter.update(itemObj)
+            Notify.REMOVED -> categoryListAdapter.remove(itemObj)
+            Notify.CLEARED -> categoryListAdapter.clear()
+        }
+    }
 }

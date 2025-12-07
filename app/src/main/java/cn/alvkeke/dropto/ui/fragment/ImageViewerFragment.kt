@@ -1,374 +1,362 @@
-package cn.alvkeke.dropto.ui.fragment;
+package cn.alvkeke.dropto.ui.fragment
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
-import android.annotation.SuppressLint;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.PointF;
-import android.graphics.RectF;
-import android.graphics.drawable.ColorDrawable;
-import android.os.Bundle;
-import android.util.TypedValue;
-import android.view.LayoutInflater;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.ImageView;
-import android.widget.Toast;
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.PointF
+import android.graphics.RectF
+import android.graphics.drawable.ColorDrawable
+import android.os.Bundle
+import android.util.TypedValue
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
+import android.widget.ImageView
+import android.widget.Toast
+import androidx.fragment.app.DialogFragment
+import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.storage.ImageLoader.ImageLoadListener
+import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
+import cn.alvkeke.dropto.ui.listener.GestureListener
+import java.io.File
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.DialogFragment;
+class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
+    private lateinit var parentView: View
+    private lateinit var imageView: ImageView
+    private var imgFile: File? = null
+    private var loadedBitmap: Bitmap? = null
 
-import java.io.File;
-
-import cn.alvkeke.dropto.R;
-import cn.alvkeke.dropto.storage.ImageLoader;
-import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener;
-import cn.alvkeke.dropto.ui.listener.GestureListener;
-
-
-public class ImageViewerFragment extends DialogFragment implements FragmentOnBackListener {
-
-
-    private View parentView;
-    private ImageView imageView;
-    private File imgFile;
-    private Bitmap loadedBitmap = null;
-
-    public ImageViewerFragment() {
+    fun setImgFile(imgFile: File) {
+        this.imgFile = imgFile
     }
 
-    public void setImgFile(File imgFile) {
-        this.imgFile = imgFile;
-    }
-
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        parentView = inflater.inflate(R.layout.fragment_image_viewer, container, false);
-        return parentView;
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        parentView = inflater.inflate(R.layout.fragment_image_viewer, container, false)
+        return parentView
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        if (imgFile == null || !imgFile.exists() || !imgFile.isFile()) {
-            Toast.makeText(requireContext(), "no Image view, exit", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
+        if (imgFile == null || !imgFile!!.exists() || !imgFile!!.isFile) {
+            Toast.makeText(requireContext(), "no Image view, exit", Toast.LENGTH_SHORT).show()
+            finish()
+            return
         }
 
-        view.setBackgroundColor(Color.BLACK);
-        imageView = view.findViewById(R.id.img_viewer_image);
-        ImageLoader.loadOriginalImageAsync(imgFile, bitmap -> {
-            loadedBitmap = bitmap;
-            imageView.setImageBitmap(bitmap);
-        });
-        view.setOnTouchListener(new ImageGestureListener());
+        view.setBackgroundColor(Color.BLACK)
+        imageView = view.findViewById(R.id.img_viewer_image)
+        ImageLoader.loadOriginalImageAsync(imgFile!!, object : ImageLoadListener {
+            override fun onImageLoaded(bitmap: Bitmap?) {
+                loadedBitmap = bitmap
+                imageView.setImageBitmap(bitmap)
+            }
+        })
+        view.setOnTouchListener(ImageGestureListener())
     }
 
-    private Window window;
-    private boolean isFull = true;
-    private void toggleFullScreen() {
+    private var window: Window? = null
+    private var isFull = true
+    private fun toggleFullScreen() {
         if (isFull) {
-            window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            window!!.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
         } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            window!!.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         }
-        isFull = !isFull;
+        isFull = !isFull
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        window = requireDialog().getWindow();
-        if (window == null) return;
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        toggleFullScreen();
+    override fun onResume() {
+        super.onResume()
+        window = requireDialog().window
+        if (window == null) return
+        window!!.statusBarColor = Color.TRANSPARENT
+        window!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        toggleFullScreen()
     }
 
-    @Override
-    public boolean onBackPressed() {
-        finish();
-        return true;
+    override fun onBackPressed(): Boolean {
+        finish()
+        return true
     }
 
-    private class ImageGestureListener extends GestureListener {
-
-        @Override
-        public void onClick(View v, MotionEvent e) {
-            toggleFullScreen();
+    private inner class ImageGestureListener : GestureListener() {
+        override fun onClick(v: View, e: MotionEvent) {
+            toggleFullScreen()
         }
 
-        @Override
-        public void onDoubleClick(View v, MotionEvent e) {
+        override fun onDoubleClick(v: View, e: MotionEvent) {
             if (scaleFactor > 1) {
-                animeScaleImageTo(1);
-                animeTranslateImageTo(0, 0);
+                animeScaleImageTo(1f)
+                animeTranslateImageTo(0f, 0f)
             } else {
-                animeScaleImageTo(2);
+                animeScaleImageTo(2f)
             }
         }
 
-        private float getExitThreshold() {
-            return TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
-        }
-        @Override
-        public boolean onScrollVertical(View view, float deltaY) {
-            if (scaleFactor != 1) return false;
-            float length = (float) imageView.getHeight() /3;
-            float y = Math.abs(imageView.getTranslationY());
-            float current = Math.min(y, length);
-            float ratio = 1 - (current / length);
-            ratio = Math.max(ratio, 0f);    // limit background transparent
+        val exitThreshold: Float
+            get() = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 100f, resources.displayMetrics
+            )
 
-            parentView.getBackground().setAlpha((int) (ratio * 0xff));
-            imageView.setTranslationY(imageView.getTranslationY() + deltaY);
-            return true;
+        override fun onScrollVertical(view: View, deltaY: Float): Boolean {
+            if (scaleFactor != 1f) return false
+            val length = imageView.height.toFloat() / 3
+            val y = abs(imageView.translationY)
+            val current = min(y, length)
+            var ratio = 1 - (current / length)
+            ratio = max(ratio, 0f) // limit background transparent
+
+            parentView.background.alpha = (ratio * 0xff).toInt()
+            imageView.translationY += deltaY
+            return true
         }
 
-        @Override
-        public boolean onScrollVerticalEnd(View view, MotionEvent motionEvent) {
-            if (scaleFactor != 1) return false;
-            if (Math.abs(imageView.getTranslationY()) > getExitThreshold()) {
-                finish();
+        override fun onScrollVerticalEnd(view: View, motionEvent: MotionEvent): Boolean {
+            if (scaleFactor != 1f) return false
+            if (abs(imageView.translationY) > this.exitThreshold) {
+                finish()
             } else {
-                float dy = imageView.getTranslationY();
-                ValueAnimator animator = ValueAnimator.ofFloat(dy, 0);
-                animator.addUpdateListener(valueAnimator ->
-                        imageView.setTranslationY((Float) valueAnimator.getAnimatedValue()));
-                animator.start();
-                parentView.getBackground().setAlpha(0xff);
+                val dy = imageView.translationY
+                val animator = ValueAnimator.ofFloat(dy, 0f)
+                animator.addUpdateListener { valueAnimator: ValueAnimator ->
+                    imageView.translationY = (valueAnimator.animatedValue as Float?)!!
+                }
+                animator.start()
+                parentView.background.alpha = 0xff
             }
-            return true;
+            return true
         }
 
-        @Override
-        public boolean onScrollHorizontal(View view, float deltaX) {
-            return scaleFactor == 1;
+        override fun onScrollHorizontal(view: View, deltaX: Float): Boolean {
+            return scaleFactor == 1f
         }
 
-        @Override
-        public boolean onScrollHorizontalEnd(View view, MotionEvent motionEvent) {
-            return scaleFactor == 1;
+        override fun onScrollHorizontalEnd(view: View, motionEvent: MotionEvent): Boolean {
+            return scaleFactor == 1f
         }
 
-        @Override
-        public void onDrag(View view, float deltaX, float deltaY) {
-            if (scaleFactor == 1) return;
-            translateImage(deltaX, deltaY);
+        override fun onDrag(view: View, deltaX: Float, deltaY: Float) {
+            if (scaleFactor == 1f) return
+            translateImage(deltaX, deltaY)
         }
 
-        private final PointF pointF = new PointF();
-        @Override
-        public void onDragEnd(View view, MotionEvent motionEvent) {
-            if (scaleFactor == 1) return;
-            adjustImagePosition(pointF);
-            animeTranslateImageTo(pointF.x, pointF.y);
+        private val pointF = PointF()
+        override fun onDragEnd(view: View, motionEvent: MotionEvent) {
+            if (scaleFactor == 1f) return
+            adjustImagePosition(pointF)
+            animeTranslateImageTo(pointF.x, pointF.y)
         }
 
-        @Override
-        public void onZoom(View view, float ratio) {
-            scaleImage(ratio);
+        override fun onZoom(view: View, ratio: Float) {
+            scaleImage(ratio)
         }
 
-        @Override
-        public void onZoomEnd(View view) {
-            if (scaleFactor< 1) {
-                animeScaleImageTo(1);
-                animeTranslateImageTo(0, 0);
+        override fun onZoomEnd(view: View) {
+            if (scaleFactor < 1) {
+                animeScaleImageTo(1f)
+                animeTranslateImageTo(0f, 0f)
             } else {
-                adjustImagePosition(pointF);
-                animeTranslateImageTo(pointF.x, pointF.y);
+                adjustImagePosition(pointF)
+                animeTranslateImageTo(pointF.x, pointF.y)
             }
         }
     }
 
-    private float imageFixHeight = -1;
-    private float imageFixWidth = -1;
-    private void calcImageFixSize() {
-        float ratio1 = (float) imageView.getHeight() /imageView.getWidth();
-        float ratio2 = (float) loadedBitmap.getHeight() /loadedBitmap.getWidth();
+    private var imageFixHeight = -1f
+    private var imageFixWidth = -1f
+    private fun calcImageFixSize() {
+        val ratio1 = imageView.height.toFloat() / imageView.width
+        val ratio2 = loadedBitmap!!.height.toFloat() / loadedBitmap!!.width
         if (ratio1 > ratio2) {
-            imageFixWidth = imageView.getWidth();
-            imageFixHeight = imageFixWidth * ratio2;
+            imageFixWidth = imageView.width.toFloat()
+            imageFixHeight = imageFixWidth * ratio2
         } else {
-            imageFixHeight = imageView.getHeight();
-            imageFixWidth = imageFixHeight / ratio2;
+            imageFixHeight = imageView.height.toFloat()
+            imageFixWidth = imageFixHeight / ratio2
         }
     }
-    public float getImageFixHeight() {
-        if (imageFixHeight == -1)
-            calcImageFixSize();
-        return imageFixHeight;
+
+    fun getImageFixHeight(): Float {
+        if (imageFixHeight == -1f) calcImageFixSize()
+        return imageFixHeight
     }
 
-    public float getImageFixWidth() {
-        if (imageFixWidth == -1)
-            calcImageFixSize();
-        return imageFixWidth;
+    fun getImageFixWidth(): Float {
+        if (imageFixWidth == -1f) calcImageFixSize()
+        return imageFixWidth
     }
 
-    private float getImageCenterX() {
-        return imageView.getTranslationX() + (float) imageView.getWidth() /2;
-    }
-    private float getImageCenterY() {
-        return imageView.getTranslationY() + (float) imageView.getHeight() / 2;
-    }
-    private void getVisibleRect(RectF rect) {
-        float centerX = getImageCenterX();
-        float centerY = getImageCenterY();
-        float width_half = getImageFixWidth() * scaleFactor / 2;
-        float height_half = getImageFixHeight() * scaleFactor / 2;
-        float left = centerX - width_half;
-        float right = centerX + width_half;
-        float top = centerY - height_half;
-        float bottom = centerY + height_half;
-        rect.set(left, top, right, bottom);
-    }
-    private void centerToTranslation(PointF point) {
-        point.x -= (float) imageView.getWidth() /2;
-        point.y -= (float) imageView.getHeight() /2;
-    }
-    private final RectF rect = new RectF();
-    private void adjustImagePosition(PointF point) {
-        float maxRight = parentView.getWidth();
-        float maxBottom = parentView.getHeight();
-        getVisibleRect(rect);
+    private val imageCenterX: Float
+        get() = imageView.translationX + imageView.width.toFloat() / 2
+    private val imageCenterY: Float
+        get() = imageView.translationY + imageView.height.toFloat() / 2
 
-        float diff;
-        float length;
-        if ((length = rect.width()) < maxRight) {
-            diff = maxRight - length;
-            diff /= 2;
-            rect.offsetTo(diff, rect.top);
+    private fun getVisibleRect(rect: RectF) {
+        val centerX = this.imageCenterX
+        val centerY = this.imageCenterY
+        val widthHalf = getImageFixWidth() * scaleFactor / 2
+        val heightHalf = getImageFixHeight() * scaleFactor / 2
+        val left = centerX - widthHalf
+        val right = centerX + widthHalf
+        val top = centerY - heightHalf
+        val bottom = centerY + heightHalf
+        rect.set(left, top, right, bottom)
+    }
+
+    private fun centerToTranslation(point: PointF) {
+        point.x -= imageView.width.toFloat() / 2
+        point.y -= imageView.height.toFloat() / 2
+    }
+
+    private val rect = RectF()
+    private fun adjustImagePosition(point: PointF) {
+        val maxRight = parentView.width.toFloat()
+        val maxBottom = parentView.height.toFloat()
+        getVisibleRect(rect)
+
+        var diff: Float
+        var length: Float
+        if ((rect.width().also { length = it }) < maxRight) {
+            diff = maxRight - length
+            diff /= 2f
+            rect.offsetTo(diff, rect.top)
         } else {
-            if (rect.left > 0)
-                rect.offset(-rect.left, 0);
-            if ((diff = maxRight - rect.right) > 0)
-                rect.offset(diff, 0);
+            if (rect.left > 0) rect.offset(-rect.left, 0f)
+            if (((maxRight - rect.right).also { diff = it }) > 0) rect.offset(diff, 0f)
         }
 
-        if ((length = rect.height()) < maxBottom) {
-            diff = maxBottom - length;
-            diff /= 2;
-            rect.offsetTo(rect.left, diff);
+        if ((rect.height().also { length = it }) < maxBottom) {
+            diff = maxBottom - length
+            diff /= 2f
+            rect.offsetTo(rect.left, diff)
         } else {
-            if (rect.top > 0)
-                rect.offset(0, -rect.top);
-            if ((diff = maxBottom - rect.bottom) > 0)
-                rect.offset(0, diff);
+            if (rect.top > 0) rect.offset(0f, -rect.top)
+            if (((maxBottom - rect.bottom).also { diff = it }) > 0) rect.offset(0f, diff)
         }
 
-        point.set(rect.centerX(), rect.centerY());
-        centerToTranslation(point);
+        point.set(rect.centerX(), rect.centerY())
+        centerToTranslation(point)
     }
 
-    private float scaleFactor = 1;
-    private void scaleImage() {
-        imageView.setScaleX(scaleFactor);
-        imageView.setScaleY(scaleFactor);
+    private var scaleFactor = 1f
+    private fun scaleImage() {
+        imageView.scaleX = scaleFactor
+        imageView.scaleY = scaleFactor
     }
-    private void scaleImage(float scale) {
-        scaleFactor *= scale;
-        if (scaleFactor > 10) scaleFactor = 10f;
-        if (scaleFactor < 0.1) scaleFactor = 0.1f;
-        scaleImage();
+
+    private fun scaleImage(scale: Float) {
+        scaleFactor *= scale
+        if (scaleFactor > 10) scaleFactor = 10f
+        if (scaleFactor < 0.1) scaleFactor = 0.1f
+        scaleImage()
     }
-    private void scaleImageTo(float targetScale) {
-        scaleFactor = targetScale;
-        scaleImage();
+
+    private fun scaleImageTo(targetScale: Float) {
+        scaleFactor = targetScale
+        scaleImage()
     }
-    private void animeScaleImageTo(float targetScale) {
-        ValueAnimator animator = ValueAnimator.ofFloat(scaleFactor, targetScale);
-        animator.addUpdateListener(valueAnimator ->
-                scaleImageTo((Float) valueAnimator.getAnimatedValue()));
-        animator.start();
-    }
-    private void translateImage(float x, float y) {
-        translateImageTo(x + imageView.getTranslationX(),
-                y + imageView.getTranslationY());
-    }
-    private void translateImageTo(float targetX, float targetY) {
-        imageView.setTranslationX(targetX);
-        imageView.setTranslationY(targetY);
-    }
-    private void animeTranslateImageTo(float targetX, float targetY) {
-        float startX = imageView.getTranslationX();
-        float startY = imageView.getTranslationY();
-        float diffX = targetX - startX;
-        float diffY = targetY - startY;
-        if (diffY == 0 && diffX == 0) return;
-        boolean useY;
-        float start, end;
-        if (diffY != 0) {
-            useY = true;
-            start = startY;
-            end = targetY;
-        } else {
-            useY = false;
-            start = startX;
-            end = targetX;
+
+    private fun animeScaleImageTo(targetScale: Float) {
+        val animator = ValueAnimator.ofFloat(scaleFactor, targetScale)
+        animator.addUpdateListener { valueAnimator: ValueAnimator ->
+            scaleImageTo((valueAnimator.animatedValue as Float))
         }
-        ValueAnimator animator = ValueAnimator.ofFloat(start, end);
-        animator.addUpdateListener(valueAnimator -> {
-            float x, y;
+        animator.start()
+    }
+
+    private fun translateImage(x: Float, y: Float) {
+        translateImageTo(
+            x + imageView.translationX,
+            y + imageView.translationY
+        )
+    }
+
+    private fun translateImageTo(targetX: Float, targetY: Float) {
+        imageView.translationX = targetX
+        imageView.translationY = targetY
+    }
+
+    private fun animeTranslateImageTo(targetX: Float, targetY: Float) {
+        val startX = imageView.translationX
+        val startY = imageView.translationY
+        val diffX = targetX - startX
+        val diffY = targetY - startY
+        if (diffY == 0f && diffX == 0f) return
+        val useY: Boolean
+        val start: Float
+        val end: Float
+        if (diffY != 0f) {
+            useY = true
+            start = startY
+            end = targetY
+        } else {
+            useY = false
+            start = startX
+            end = targetX
+        }
+        val animator = ValueAnimator.ofFloat(start, end)
+        animator.addUpdateListener { valueAnimator: ValueAnimator ->
+            val x: Float
+            val y: Float
             if (useY) {
-                y = (float) valueAnimator.getAnimatedValue();
-                x = startX + diffX * valueAnimator.getAnimatedFraction();
+                y = valueAnimator.animatedValue as Float
+                x = startX + diffX * valueAnimator.animatedFraction
             } else {
-                x = (float) valueAnimator.getAnimatedValue();
-                y = startY + diffY * valueAnimator.getAnimatedFraction();
+                x = valueAnimator.animatedValue as Float
+                y = startY + diffY * valueAnimator.animatedFraction
             }
-            translateImageTo(x, y);
-        });
-        animator.start();
-    }
-
-    private void fragmentEnd() {
-        dismiss();
-    }
-    public void finish() {
-        if (imageView == null || parentView == null) {
-            fragmentEnd();
-            return;
+            translateImageTo(x, y)
         }
-
-        float startY = imageView.getTranslationY();
-        float endY = parentView.getHeight();
-        float startT = parentView.getAlpha();
-        ValueAnimator animator = ValueAnimator.ofFloat(startY, endY);
-        animator.addUpdateListener(valueAnimator -> {
-            imageView.setTranslationY((Float) valueAnimator.getAnimatedValue());
-            float progress = valueAnimator.getAnimatedFraction();
-            parentView.setAlpha(startT - startT*progress);
-        });
-        animator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                fragmentEnd();
-            }
-        });
-        animator.start();
+        animator.start()
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    private fun fragmentEnd() {
+        dismiss()
+    }
+
+    fun finish() {
+
+        val startY = imageView.translationY
+        val endY = parentView.height.toFloat()
+        val startT = parentView.alpha
+        val animator = ValueAnimator.ofFloat(startY, endY)
+        animator.addUpdateListener { valueAnimator: ValueAnimator? ->
+            imageView.translationY = (valueAnimator!!.animatedValue as Float)
+            val progress = valueAnimator.animatedFraction
+            parentView.alpha = startT - startT * progress
+        }
+        animator.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                fragmentEnd()
+            }
+        })
+        animator.start()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
         if (loadedBitmap != null) {
-            loadedBitmap.recycle();
-            loadedBitmap = null;
+            loadedBitmap!!.recycle()
+            loadedBitmap = null
         }
     }
 }

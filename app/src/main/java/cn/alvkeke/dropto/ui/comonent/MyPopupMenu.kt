@@ -22,7 +22,7 @@ import androidx.core.view.get
 
 class MyPopupMenu(private val context: Context) : PopupWindow(context) {
     interface OnMenuItemClickListener {
-        fun onMenuItemClick(menuItem: MenuItem?, extraData: Any?)
+        fun onMenuItemClick(menuItem: MenuItem, extraData: Any?)
     }
 
     private var listener: OnMenuItemClickListener? = null
@@ -66,7 +66,7 @@ class MyPopupMenu(private val context: Context) : PopupWindow(context) {
         return textView
     }
 
-    private inner class OnItemTouchListener(private val item: MenuItem?) : OnTouchListener {
+    private inner class OnItemTouchListener(private val item: MenuItem) : OnTouchListener {
         private var animatorOut: ValueAnimator? = null
         private var canClick = false
 
