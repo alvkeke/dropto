@@ -123,7 +123,7 @@ public class CoreService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private void notifyListener(Task task) {
         handler.post(() ->
-                iterateTaskListener(listener -> listener.onTaskFinish(task, null)));
+                iterateTaskListener(listener -> listener.onTaskFinish(task)));
     }
 
     private void handleTaskCategoryCreate(Task task) {

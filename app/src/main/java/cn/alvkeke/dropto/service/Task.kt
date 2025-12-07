@@ -27,7 +27,6 @@ class Task {
     val job: Job
     @JvmField
     val taskObj: Any
-    var callerParam: Any? = null
     @JvmField
     var result: Int = 0
 
@@ -37,7 +36,6 @@ class Task {
         this.type = task.type
         this.job = task.job
         this.taskObj = task.taskObj
-        this.callerParam = task.callerParam
         this.result = task.result
     }
 
@@ -52,9 +50,8 @@ class Task {
         /**
          * this will be invoked after a task be handled
          * @param task the task instance passed to from caller
-         * @param taskObj param if needed
          */
-        fun onTaskFinish(task: Task, taskObj: Any?)
+        fun onTaskFinish(task: Task)
     }
 
     companion object {
@@ -75,47 +72,45 @@ class Task {
             }
         }
 
-        fun onCategoryStorage(job: Job, taskObj: Any, callerParam: Any?): Task {
+        fun onCategoryStorage(job: Job, taskObj: Any): Task {
             val task = Task(Target.Storage, Type.Category, job, taskObj)
-            task.callerParam = callerParam
             return task
         }
 
         @JvmStatic
-        fun createCategory(category: Category, callerParam: Any?): Task {
-            return onCategoryStorage(Job.CREATE, category, callerParam)
+        fun createCategory(category: Category): Task {
+            return onCategoryStorage(Job.CREATE, category)
         }
 
         @JvmStatic
-        fun updateCategory(category: Category, callerParam: Any?): Task {
-            return onCategoryStorage(Job.UPDATE, category, callerParam)
+        fun updateCategory(category: Category): Task {
+            return onCategoryStorage(Job.UPDATE, category)
         }
 
         @JvmStatic
-        fun removeCategory(category: Category, callerParam: Any?): Task {
-            return onCategoryStorage(Job.REMOVE, category, callerParam)
+        fun removeCategory(category: Category): Task {
+            return onCategoryStorage(Job.REMOVE, category)
         }
 
         @JvmStatic
-        fun onNoteStorage(job: Job, taskObj: Any, callerParam: Any?): Task {
+        fun onNoteStorage(job: Job, taskObj: Any): Task {
             val task = Task(Target.Storage, Type.NoteItem, job, taskObj)
-            task.callerParam = callerParam
             return task
         }
 
         @JvmStatic
-        fun createNote(noteItem: NoteItem, callerParam: Any?): Task {
-            return onNoteStorage(Job.CREATE, noteItem, callerParam)
+        fun createNote(noteItem: NoteItem): Task {
+            return onNoteStorage(Job.CREATE, noteItem)
         }
 
         @JvmStatic
-        fun updateNote(noteItem: NoteItem, callerParam: Any?): Task {
-            return onNoteStorage(Job.UPDATE, noteItem, callerParam)
+        fun updateNote(noteItem: NoteItem): Task {
+            return onNoteStorage(Job.UPDATE, noteItem)
         }
 
         @JvmStatic
-        fun removeNote(noteItem: NoteItem, callerParam: Any?): Task {
-            return onNoteStorage(Job.REMOVE, noteItem, callerParam)
+        fun removeNote(noteItem: NoteItem): Task {
+            return onNoteStorage(Job.REMOVE, noteItem)
         }
     }
 }

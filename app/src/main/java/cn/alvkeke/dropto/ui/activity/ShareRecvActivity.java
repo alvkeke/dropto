@@ -138,7 +138,7 @@ public class ShareRecvActivity extends AppCompatActivity
                     recvNote.addImageFile(imageFile);
             }
         }
-        service.queueTask(Task.createNote(recvNote, null));
+        service.queueTask(Task.createNote(recvNote));
         finish();
     }
 
@@ -210,7 +210,7 @@ public class ShareRecvActivity extends AppCompatActivity
     }
 
     @Override
-    public void onTaskFinish(Task task, Object taskObj) {
+    public void onTaskFinish(Task task) {
         if (task.type == Task.Type.Category)
             onCategoryTaskFinish(task);
     }

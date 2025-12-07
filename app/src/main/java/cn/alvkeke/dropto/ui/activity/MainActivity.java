@@ -265,9 +265,9 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void addDebugData() {
-        service.queueTask(Task.createCategory(new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY), null));
-        service.queueTask(Task.createCategory(new Category("REMOTE USERS", Category.Type.REMOTE_USERS), null));
-        service.queueTask(Task.createCategory(new Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV), null));
+        service.queueTask(Task.createCategory(new Category("Local(Debug)", Category.Type.LOCAL_CATEGORY)));
+        service.queueTask(Task.createCategory(new Category("REMOTE USERS", Category.Type.REMOTE_USERS)));
+        service.queueTask(Task.createCategory(new Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV)));
 
         new Thread(() -> {
             try {
@@ -302,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements
                     }
 
                 }
-                service.queueTask(Task.createNote(e, null));
+                service.queueTask(Task.createNote(e));
             }
         }).start();
     }
@@ -311,13 +311,13 @@ public class MainActivity extends AppCompatActivity implements
     public void onAttempt(CategoryAttemptListener.Attempt attempt, Category category) {
         switch (attempt) {
             case CREATE:
-                service.queueTask(Task.createCategory(category, null));
+                service.queueTask(Task.createCategory(category));
                 break;
             case REMOVE:
-                service.queueTask(Task.removeCategory(category, null));
+                service.queueTask(Task.removeCategory(category));
                 break;
             case UPDATE:
-                service.queueTask(Task.updateCategory(category, null));
+                service.queueTask(Task.updateCategory(category));
                 break;
             case SHOW_DETAIL:
                 handleCategoryDetailShow(category);
@@ -502,10 +502,10 @@ public class MainActivity extends AppCompatActivity implements
     public void onAttempt(NoteAttemptListener.Attempt attempt, NoteItem e, Object ext) {
         switch (attempt) {
             case REMOVE:
-                service.queueTask(Task.removeNote(e, null));
+                service.queueTask(Task.removeNote(e));
                 break;
             case CREATE:
-                service.queueTask(Task.createNote(e, null));
+                service.queueTask(Task.createNote(e));
                 break;
             case SHOW_DETAIL:
                 handleNoteDetailShow(e);
@@ -517,7 +517,7 @@ public class MainActivity extends AppCompatActivity implements
                 handleNoteShare(e);
                 break;
             case UPDATE:
-                service.queueTask(Task.updateNote(e, null));
+                service.queueTask(Task.updateNote(e));
                 break;
             case SHOW_IMAGE:
                 int imageIndex = (int) ext;
@@ -548,7 +548,7 @@ public class MainActivity extends AppCompatActivity implements
             case UPDATE:
                 Task.Job job = convertAttemptToJob(attempt);
                 for (NoteItem e : noteItems) {
-                    service.queueTask(Task.onNoteStorage(job, e, null));
+                    service.queueTask(Task.onNoteStorage(job, e));
                 }
                 break;
             case COPY:
@@ -578,7 +578,7 @@ public class MainActivity extends AppCompatActivity implements
             return;
         NoteItem item = pendingForwardNote.clone();
         item.categoryId = category.id;
-        service.queueTask(Task.createNote(item, null));
+        service.queueTask(Task.createNote(item));
     }
 
     @Override
@@ -610,7 +610,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onTaskFinish(Task task, Object taskObj) {
+    public void onTaskFinish(Task task) {
         switch (task.type) {
             case Category:
                 onCategoryTaskFinish(task);
