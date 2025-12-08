@@ -3,7 +3,6 @@ package cn.alvkeke.dropto.ui.activity
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -43,11 +42,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
 
     private fun setupCoreService() {
         val serviceIntent = Intent(this, CoreService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
+        startForegroundService(serviceIntent)
         bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE)
     }
 
@@ -160,11 +155,11 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
     }
 
     private fun handleSingleImageUri(intent: Intent): Uri? {
-        return intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        return intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
     }
 
     private fun handleMultipleImageUris(intent: Intent, uris: ArrayList<Uri>) {
-        val imageUris = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+        val imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
         if (imageUris == null || imageUris.isEmpty()) return
         uris.addAll(imageUris)
     }

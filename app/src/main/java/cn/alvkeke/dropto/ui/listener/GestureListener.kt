@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.listener
 
 import android.annotation.SuppressLint
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.view.MotionEvent.PointerCoords
@@ -109,7 +110,7 @@ open class GestureListener : OnTouchListener {
         onZoomEnd(view)
     }
 
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
 
     private var downTime: Long = 0
     private var downCount = 0

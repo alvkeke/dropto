@@ -8,7 +8,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.LayoutInflater
@@ -20,6 +19,7 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.DialogFragment
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.storage.ImageLoader
@@ -85,7 +85,7 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
         super.onResume()
         window = requireDialog().window
         if (window == null) return
-        window!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window!!.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         window!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window!!.insetsController?.setSystemBarsAppearance(
             0,

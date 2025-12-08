@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Binder
-import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -55,10 +54,6 @@ class CoreService : Service() {
     private fun startForeground() {
         val notification = createNotification()
         try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                Log.i(this.toString(), "SDK version lower then Q(29), skip")
-                return
-            }
             startForeground(CHANNEL_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             Log.d(this.toString(), "startForeground finished")
         } catch (e: Exception) {
@@ -81,7 +76,7 @@ class CoreService : Service() {
         super.onDestroy()
         Log.d(this.toString(), "CoreService onDestroy")
         tryStopTaskRunnerThread()
-        stopForeground(true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private val listeners = ArrayList<ResultListener>()

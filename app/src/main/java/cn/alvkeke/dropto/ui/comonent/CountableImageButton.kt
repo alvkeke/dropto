@@ -62,12 +62,12 @@ class CountableImageButton @JvmOverloads constructor(
             val numLeft = width / 2f
             val numTop = height / 2f
             val numSize = (width / 2f).coerceAtMost(height / 2f)
-            Log.e("alvkeke", "onDraw: draw count $countNumber at $numLeft, $numTop, size $numSize")
+            Log.e(this.toString(), "onDraw: draw count $countNumber at $numLeft, $numTop, size $numSize")
             drawCountNumber(canvas, numLeft, numTop, numSize)
         }
     }
 
-    private fun drawCountNumber(canvas: Canvas, startx: Float, starty: Float, size: Float) {
+    private fun drawCountNumber(canvas: Canvas, startX: Float, startY: Float, size: Float) {
         if (countNumber < 1) return
 
         val text = if (countNumber < 10) {
@@ -77,8 +77,8 @@ class CountableImageButton @JvmOverloads constructor(
         }
 
         // Calculate circle center and radius
-        val centerX = startx + size / 2f
-        val centerY = starty + size / 2f
+        val centerX = startX + size / 2f
+        val centerY = startY + size / 2f
         var radius = size / 2f
 
         val circleAlpha = 150

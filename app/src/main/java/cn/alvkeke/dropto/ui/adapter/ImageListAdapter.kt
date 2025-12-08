@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.ui.adapter
 
-import android.R
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
@@ -20,7 +19,7 @@ class ImageListAdapter(context: Context) : RecyclerView.Adapter<ImageListAdapter
     private val inflater: LayoutInflater = LayoutInflater.from(context)
 
     override fun onCreateViewHolder(parent: ViewGroup, i: Int): ViewHolder {
-        val v = inflater.inflate(R.layout.simple_list_item_1, parent, false)
+        val v = inflater.inflate(android.R.layout.simple_list_item_1, parent, false)
         return ViewHolder(v)
     }
 
@@ -55,7 +54,7 @@ class ImageListAdapter(context: Context) : RecyclerView.Adapter<ImageListAdapter
     }
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val textView: TextView = itemView.findViewById(R.id.text1)
+        private val textView: TextView = itemView.findViewById(android.R.id.text1)
 
         fun setText(text: String) {
             textView.text = text

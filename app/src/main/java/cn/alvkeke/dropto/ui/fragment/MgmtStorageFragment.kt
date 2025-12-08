@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.fragment
 
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -162,7 +163,7 @@ class MgmtStorageFragment : Fragment() {
     }
 
 
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
     private var sizeCache: Long = 0
     private var sizeImage: Long = 0
     private fun setTextSizeString(view: TextView, strId: Int, size: Long) {

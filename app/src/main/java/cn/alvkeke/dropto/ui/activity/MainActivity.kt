@@ -6,7 +6,6 @@ import android.content.ComponentName
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
@@ -76,11 +75,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
 
     private fun setupCoreService(savedInstanceState: Bundle?) {
         val serviceIntent = Intent(this, CoreService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
+        startForegroundService(serviceIntent)
         serviceConn.setBundleAfterConnected(savedInstanceState)
         bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE)
     }

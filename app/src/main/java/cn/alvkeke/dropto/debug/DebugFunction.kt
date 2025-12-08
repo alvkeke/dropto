@@ -1,7 +1,6 @@
 package cn.alvkeke.dropto.debug
 
 import android.content.Context
-import android.os.Build
 import cn.alvkeke.dropto.BuildConfig
 import cn.alvkeke.dropto.R.raw
 import cn.alvkeke.dropto.data.Category
@@ -17,6 +16,7 @@ object DebugFunction {
     @Suppress("unused")
     const val LOG_TAG: String = "DebugFunction"
 
+    @Suppress("UNUSED_PARAMETER")
     private fun dbgLog(log: String) {
 //        if (BuildConfig.DEBUG) android.util.Log.e(LOG_TAG, ignored);
     }
@@ -29,10 +29,6 @@ object DebugFunction {
             // file exist, return true to indicate can be load
             dbgLog("file exist, don't extract:$oFile")
             return true
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            dbgLog("SDK_VERSION error: " + Build.VERSION.SDK_INT)
-            return false
         }
         val buffer = ByteArray(1024)
         try {

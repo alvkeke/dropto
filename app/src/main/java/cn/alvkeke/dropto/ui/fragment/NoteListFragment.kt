@@ -52,6 +52,8 @@ import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
 import cn.alvkeke.dropto.ui.intf.NoteAttemptListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
+import androidx.core.view.get
+import androidx.core.view.size
 
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
     private lateinit var context: Context
@@ -205,8 +207,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private fun setToolbarMenuVisible(visible: Boolean) {
         val menu = toolbar.getMenu()
-        for (i in 0..<menu.size()) {
-            val menuItem = menu.getItem(i)
+        for (i in 0..<menu.size) {
+            val menuItem = menu[i]
             menuItem.isVisible = visible
         }
     }

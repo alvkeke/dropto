@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.ui.listener
 
 import android.annotation.SuppressLint
 import android.os.Handler
+import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnTouchListener
@@ -17,7 +18,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
     private var isLongClickHold = false
     private var isShortClick = false
 
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
     private lateinit var longPressView: View
     private var longPressItemView: View? = null
 
@@ -108,7 +109,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
         return false
     }
 
-    fun onClick(ignored: View, ignored1: MotionEvent): Boolean {
+    fun onClick(v: View, e: MotionEvent): Boolean {
         return false
     }
 
@@ -126,7 +127,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
         }
     }
 
-    fun onLongClick(ignored: View): Boolean {
+    fun onLongClick(v: View): Boolean {
         return false
     }
 
