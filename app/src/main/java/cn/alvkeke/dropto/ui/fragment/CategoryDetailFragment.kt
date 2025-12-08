@@ -13,13 +13,13 @@ import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.ui.adapter.CategoryTypeSpinnerAdapter
-import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener
+import cn.alvkeke.dropto.ui.intf.CategoryDBAttemptListener
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class CategoryDetailFragment : BottomSheetDialogFragment {
-    private lateinit var listener: CategoryAttemptListener
+    private lateinit var listener: CategoryDBAttemptListener
     private lateinit var etCategoryTitle: EditText
     private lateinit var spinnerType: Spinner
     private var category: Category? = null
@@ -48,7 +48,7 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         val toolbar = view.findViewById<MaterialToolbar>(R.id.category_detail_toolbar)
         etCategoryTitle = view.findViewById(R.id.category_detail_title)
         spinnerType = view.findViewById(R.id.category_detail_type_spinner)
-        listener = requireContext() as CategoryAttemptListener
+        listener = requireContext() as CategoryDBAttemptListener
 
         setPeekHeight(view)
         fillTypeSpinner()
@@ -104,11 +104,11 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         val type = spinnerType.selectedItem as Category.Type
         if (category == null) {
             category = Category(title, type)
-            listener.onAttempt(CategoryAttemptListener.Attempt.CREATE, category)
+            listener.onAttempt(CategoryDBAttemptListener.Attempt.CREATE, category!!)
         } else {
             category!!.title = title
             category!!.type = type
-            listener.onAttempt(CategoryAttemptListener.Attempt.UPDATE, category)
+            listener.onAttempt(CategoryDBAttemptListener.Attempt.UPDATE, category!!)
         }
         finish()
     }
@@ -134,7 +134,7 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         builder.setPositiveButton(
             R.string.string_ok
         ) { _: DialogInterface, _: Int ->
-            listener.onAttempt(CategoryAttemptListener.Attempt.REMOVE, category)
+            listener.onAttempt(CategoryDBAttemptListener.Attempt.REMOVE, category!!)
             finish()
         }
 

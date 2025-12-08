@@ -22,7 +22,8 @@ import cn.alvkeke.dropto.data.ImageFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
 import cn.alvkeke.dropto.ui.comonent.ImageCard
-import cn.alvkeke.dropto.ui.intf.NoteAttemptListener
+import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
+import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -30,7 +31,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import java.util.function.Consumer
 
 class NoteDetailFragment : BottomSheetDialogFragment() {
-    private lateinit var listener: NoteAttemptListener
+    private lateinit var dbListener: NoteDBAttemptListener
+    private lateinit var uiListener: NoteUIAttemptListener
     private lateinit var etNoteItemText: EditText
     private lateinit var scrollContainer: LinearLayout
 
@@ -52,7 +54,8 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        listener = requireContext() as NoteAttemptListener
+        dbListener = requireContext() as NoteDBAttemptListener
+        uiListener = requireContext() as NoteUIAttemptListener
 
         val toolbar = view.findViewById<MaterialToolbar>(R.id.note_detail_toolbar)
         etNoteItemText = view.findViewById(R.id.note_detail_text)
@@ -122,7 +125,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         val text = etNoteItemText.text.toString()
         if (item == null) {
             item = NoteItem(text)
-            listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item!!)
+            dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, item!!)
             return
         }
         if (text.isEmpty() && isImageChanged && imageList.isEmpty()) {
@@ -130,14 +133,14 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
                 requireContext(),
                 "Got empty item after modifying, remove it", Toast.LENGTH_SHORT
             ).show()
-            listener.onAttempt(NoteAttemptListener.Attempt.REMOVE, item!!)
+            dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, item!!)
             return
         }
         item!!.setText(text, true)
         if (isImageChanged) {
             item!!.useImageFiles(imageList)
         }
-        listener.onAttempt(NoteAttemptListener.Attempt.UPDATE, item!!)
+        dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, item!!)
     }
 
     private inner class NoteDetailMenuListener : Toolbar.OnMenuItemClickListener {
@@ -147,7 +150,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
                 handleOk()
             } else if (R.id.note_detail_menu_item_delete == menuId) {
                 Log.d(this.toString(), "remove item")
-                listener.onAttempt(NoteAttemptListener.Attempt.REMOVE, item!!)
+                dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, item!!)
             } else {
                 Log.e(this.toString(), "got unknown menu id: $menuId")
                 return false
@@ -202,8 +205,8 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
             }
             val imageIndex = item.indexOf(imageFile)
             card.setImageClickListener { _: View ->
-                listener.onAttempt(
-                    NoteAttemptListener.Attempt.SHOW_IMAGE,
+                uiListener.onAttempt(
+                    NoteUIAttemptListener.Attempt.SHOW_IMAGE,
                     item,
                     imageIndex
                 )

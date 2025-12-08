@@ -2,11 +2,8 @@ package cn.alvkeke.dropto.ui.intf
 
 import cn.alvkeke.dropto.data.NoteItem
 
-interface NoteAttemptListener {
+interface NoteUIAttemptListener {
     enum class Attempt {
-        CREATE,
-        REMOVE,
-        UPDATE,
         COPY,
         SHOW_DETAIL,
         SHOW_SHARE,
@@ -15,6 +12,10 @@ interface NoteAttemptListener {
     }
 
     fun onAttempt(attempt: Attempt, e: NoteItem)
-    fun onAttempt(attempt: Attempt, e: NoteItem, ext: Any?)
+    /**
+     * index: the index of the image in the NoteItem's image list,
+     *        currently is used for UI_SHOW_IMAGE only
+     */
+    fun onAttempt(attempt: Attempt, e: NoteItem, index: Int)
     fun onAttemptBatch(attempt: Attempt, noteItems: ArrayList<NoteItem>)
 }

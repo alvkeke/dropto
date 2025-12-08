@@ -49,15 +49,17 @@ import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.ListNotification
 import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
-import cn.alvkeke.dropto.ui.intf.NoteAttemptListener
+import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import androidx.core.view.get
 import androidx.core.view.size
+import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
     private lateinit var context: Context
-    private lateinit var listener: NoteAttemptListener
+    private lateinit var dbListener: NoteDBAttemptListener
+    private lateinit var uiListener: NoteUIAttemptListener
     private lateinit var fragmentParent: View
     private lateinit var fragmentView: View
     private lateinit var etInputText: EditText
@@ -95,7 +97,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
-        listener = context as NoteAttemptListener
+        dbListener = context as NoteDBAttemptListener
+        uiListener = context as NoteUIAttemptListener
         checkNotNull(category)
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
@@ -157,7 +160,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private fun removeSelectedNotes() {
         val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
         noteItemAdapter!!.clearSelectItems()
-        listener.onAttemptBatch(NoteAttemptListener.Attempt.REMOVE, items)
+        dbListener.onAttemptBatch(NoteDBAttemptListener.Attempt.REMOVE, items)
     }
 
     private fun handleMenuDelete() {
@@ -174,19 +177,19 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private fun handleMenuCopy() {
         val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
         noteItemAdapter!!.clearSelectItems()
-        listener.onAttemptBatch(NoteAttemptListener.Attempt.COPY, items)
+        uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.COPY, items)
     }
 
     private fun handleMenuShare() {
         val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
         noteItemAdapter!!.clearSelectItems()
-        listener.onAttemptBatch(NoteAttemptListener.Attempt.SHOW_SHARE, items)
+        uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.SHOW_SHARE, items)
     }
 
     private fun handleMenuForward() {
         val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
         noteItemAdapter!!.clearSelectItems()
-        listener.onAttemptBatch(NoteAttemptListener.Attempt.SHOW_FORWARD, items)
+        uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.SHOW_FORWARD, items)
     }
 
     private inner class NoteListMenuListener : Toolbar.OnMenuItemClickListener {
@@ -426,22 +429,22 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                 }
             }
             setPendingItem(item)
-            listener.onAttempt(NoteAttemptListener.Attempt.CREATE, item)
+            dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, item)
         }
     }
 
     private fun showImageView(index: Int, imageIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
         if (noteItem.imageCount > 4 && imageIndex == 3) {
-            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, noteItem)
+            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, noteItem)
         } else {
-            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_IMAGE, noteItem, imageIndex)
+            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_IMAGE, noteItem, imageIndex)
         }
     }
 
     private fun throwErrorMessage(msg: String) {
-        if (listener !is ErrorMessageHandler) return
-        val handler = listener as ErrorMessageHandler
+        if (dbListener !is ErrorMessageHandler) return
+        val handler = dbListener as ErrorMessageHandler
         handler.onError(msg)
     }
 
@@ -463,8 +466,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                                 .setPositiveButton(
                                     R.string.string_ok
                                 ) { _: DialogInterface, _: Int ->
-                                    listener.onAttempt(
-                                        NoteAttemptListener.Attempt.REMOVE,
+                                    dbListener.onAttempt(
+                                        NoteDBAttemptListener.Attempt.REMOVE,
                                         note
                                     )
                                 }
@@ -476,19 +479,19 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                         }
 
                         R.id.item_pop_m_edit -> {
-                            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_DETAIL, note)
+                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, note)
                         }
 
                         R.id.item_pop_m_copy_text -> {
-                            listener.onAttempt(NoteAttemptListener.Attempt.COPY, note)
+                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.COPY, note)
                         }
 
                         R.id.item_pop_m_share -> {
-                            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_SHARE, note)
+                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_SHARE, note)
                         }
 
                         R.id.item_pop_m_forward -> {
-                            listener.onAttempt(NoteAttemptListener.Attempt.SHOW_FORWARD, note)
+                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_FORWARD, note)
                         }
 
                         else -> {

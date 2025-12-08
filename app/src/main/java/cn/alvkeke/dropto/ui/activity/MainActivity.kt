@@ -45,10 +45,12 @@ import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
 import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment
 import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment
-import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener
+import cn.alvkeke.dropto.ui.intf.CategoryDBAttemptListener
+import cn.alvkeke.dropto.ui.intf.CategoryUIAttemptListener
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
-import cn.alvkeke.dropto.ui.intf.NoteAttemptListener
+import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
+import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -57,8 +59,10 @@ import java.util.LinkedList
 import java.util.Random
 import java.util.function.Consumer
 
-class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, NoteAttemptListener,
-    CategoryAttemptListener, CategorySelectorFragment.CategorySelectListener {
+class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
+    NoteDBAttemptListener, NoteUIAttemptListener,
+    CategoryDBAttemptListener, CategoryUIAttemptListener,
+    CategorySelectorFragment.CategorySelectListener {
     private var myService : CoreService? = null
     private val serviceConn: CoreServiceConnection = object : CoreServiceConnection(this) {
         override fun execOnServiceConnected(
@@ -321,15 +325,21 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
         }).start()
     }
 
-    override fun onAttempt(attempt: CategoryAttemptListener.Attempt, category: Category?) {
+    override fun onAttempt(attempt: CategoryDBAttemptListener.Attempt, category: Category) {
         when (attempt) {
-            CategoryAttemptListener.Attempt.CREATE -> myService!!.queueTask(createCategory(category!!))
-            CategoryAttemptListener.Attempt.REMOVE -> myService!!.queueTask(removeCategory(category!!))
-            CategoryAttemptListener.Attempt.UPDATE -> myService!!.queueTask(updateCategory(category!!))
-            CategoryAttemptListener.Attempt.SHOW_DETAIL -> handleCategoryDetailShow(category!!)
-            CategoryAttemptListener.Attempt.SHOW_CREATE -> showCategoryCreatingDialog()
-            CategoryAttemptListener.Attempt.SHOW_EXPAND -> handleCategoryExpand(category!!)
-            CategoryAttemptListener.Attempt.DEBUG_ADD_DATA -> AlertDialog.Builder(this)
+            CategoryDBAttemptListener.Attempt.CREATE ->
+                myService!!.queueTask(createCategory(category))
+            CategoryDBAttemptListener.Attempt.REMOVE ->
+                myService!!.queueTask(removeCategory(category))
+            CategoryDBAttemptListener.Attempt.UPDATE ->
+                myService!!.queueTask(updateCategory(category))
+        }
+    }
+
+    override fun onAttempt(attempt: CategoryUIAttemptListener.Attempt) {
+        when (attempt) {
+            CategoryUIAttemptListener.Attempt.SHOW_CREATE -> showCategoryCreatingDialog()
+            CategoryUIAttemptListener.Attempt.DEBUG_ADD_DATA -> AlertDialog.Builder(this)
                 .setTitle("Debug function")
                 .setMessage("Create Debug data?")
                 .setNegativeButton(R.string.string_cancel, null)
@@ -337,6 +347,15 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
                     R.string.string_ok
                 ) { _: DialogInterface, _: Int -> addDebugData() }
                 .create().show()
+            else -> error("Unsupported UI attempt without category: $attempt")
+        }
+    }
+
+    override fun onAttempt(attempt: CategoryUIAttemptListener.Attempt, category: Category) {
+        when (attempt) {
+            CategoryUIAttemptListener.Attempt.SHOW_DETAIL -> handleCategoryDetailShow(category)
+            CategoryUIAttemptListener.Attempt.SHOW_EXPAND -> handleCategoryExpand(category)
+            else -> error("Unsupported UI attempt with category: $attempt")
         }
     }
 
@@ -474,40 +493,51 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
         forwardFragment.show(supportFragmentManager, null)
     }
 
-    override fun onAttempt(attempt: NoteAttemptListener.Attempt, e: NoteItem) {
-        onAttempt(attempt, e, null)
-    }
-
-    override fun onAttempt(attempt: NoteAttemptListener.Attempt, e: NoteItem, ext: Any?) {
+    override fun onAttempt(attempt: NoteDBAttemptListener.Attempt, e: NoteItem) {
         when (attempt) {
-            NoteAttemptListener.Attempt.REMOVE -> myService!!.queueTask(removeNote(e))
-            NoteAttemptListener.Attempt.CREATE -> myService!!.queueTask(createNote(e))
-            NoteAttemptListener.Attempt.SHOW_DETAIL -> handleNoteDetailShow(e)
-            NoteAttemptListener.Attempt.COPY -> handleNoteCopy(e)
-            NoteAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
-            NoteAttemptListener.Attempt.UPDATE -> myService!!.queueTask(updateNote(e))
-            NoteAttemptListener.Attempt.SHOW_IMAGE -> {
-                val imageIndex = ext as Int
-                handleNoteImageShow(e, imageIndex)
-            }
-
-            NoteAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
+            NoteDBAttemptListener.Attempt.REMOVE -> myService!!.queueTask(removeNote(e))
+            NoteDBAttemptListener.Attempt.CREATE -> myService!!.queueTask(createNote(e))
+            NoteDBAttemptListener.Attempt.UPDATE -> myService!!.queueTask(updateNote(e))
         }
     }
 
     override fun onAttemptBatch(
-        attempt: NoteAttemptListener.Attempt,
+        attempt: NoteDBAttemptListener.Attempt,
         noteItems: ArrayList<NoteItem>
     ) {
         when (attempt) {
-            NoteAttemptListener.Attempt.REMOVE, NoteAttemptListener.Attempt.CREATE, NoteAttemptListener.Attempt.UPDATE -> {
-                val job: Task.Job? = convertAttemptToJob(attempt)
+            NoteDBAttemptListener.Attempt.REMOVE,
+            NoteDBAttemptListener.Attempt.CREATE,
+            NoteDBAttemptListener.Attempt.UPDATE -> {
+                val job: Task.Job = convertAttemptToJob(attempt)
                 for (e in noteItems) {
-                    myService!!.queueTask(Task.onNoteStorage(job!!, e))
+                    myService!!.queueTask(Task.onNoteStorage(job, e))
                 }
             }
+        }
+    }
 
-            NoteAttemptListener.Attempt.COPY -> {
+    override fun onAttempt(attempt: NoteUIAttemptListener.Attempt, e: NoteItem) {
+        // pass in index -1 to make sure this method is not invoked for UI_SHOW_IMAGE
+        onAttempt(attempt, e, -1)
+    }
+
+    override fun onAttempt(attempt: NoteUIAttemptListener.Attempt, e: NoteItem, index: Int) {
+        when (attempt) {
+            NoteUIAttemptListener.Attempt.COPY -> handleNoteCopy(e)
+            NoteUIAttemptListener.Attempt.SHOW_DETAIL -> handleNoteDetailShow(e)
+            NoteUIAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
+            NoteUIAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
+            NoteUIAttemptListener.Attempt.SHOW_IMAGE -> handleNoteImageShow(e, index)
+        }
+    }
+
+    override fun onAttemptBatch(
+        attempt: NoteUIAttemptListener.Attempt,
+        noteItems: ArrayList<NoteItem>
+    ) {
+        when (attempt) {
+            NoteUIAttemptListener.Attempt.COPY -> {
                 val sb = StringBuilder()
                 val listOne: NoteItem = noteItems[noteItems.size - 1]
                 for (e in noteItems) {
@@ -518,12 +548,14 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
                 handleTextCopy(sb.toString())
             }
 
-            NoteAttemptListener.Attempt.SHOW_SHARE -> if (noteItems.size == 1) handleNoteShare(
-                noteItems[0]
-            )
-            else handleNoteShareMultiple(noteItems)
+            NoteUIAttemptListener.Attempt.SHOW_SHARE -> {
+                if (noteItems.size == 1)
+                    handleNoteShare(noteItems[0])
+                else
+                    handleNoteShareMultiple(noteItems)
+            }
 
-            else -> Log.e(this.toString(), "This operation is not support batch: $attempt")
+            else -> Log.e(this.toString(), "unsupported batch UI attempt: $attempt")
         }
     }
 
@@ -590,12 +622,11 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener, N
             fo.close()
         }
 
-        private fun convertAttemptToJob(attempt: NoteAttemptListener.Attempt): Task.Job? {
+        private fun convertAttemptToJob(attempt: NoteDBAttemptListener.Attempt): Task.Job {
             return when (attempt) {
-                NoteAttemptListener.Attempt.REMOVE -> Task.Job.REMOVE
-                NoteAttemptListener.Attempt.UPDATE -> Task.Job.UPDATE
-                NoteAttemptListener.Attempt.CREATE -> Task.Job.CREATE
-                else -> null
+                NoteDBAttemptListener.Attempt.REMOVE -> Task.Job.REMOVE
+                NoteDBAttemptListener.Attempt.UPDATE -> Task.Job.UPDATE
+                NoteDBAttemptListener.Attempt.CREATE -> Task.Job.CREATE
             }
         }
     }

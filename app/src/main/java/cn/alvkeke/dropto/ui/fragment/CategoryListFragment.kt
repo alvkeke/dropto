@@ -23,7 +23,8 @@ import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.ui.activity.MgmtActivity
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
-import cn.alvkeke.dropto.ui.intf.CategoryAttemptListener
+import cn.alvkeke.dropto.ui.intf.CategoryDBAttemptListener
+import cn.alvkeke.dropto.ui.intf.CategoryUIAttemptListener
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
 import cn.alvkeke.dropto.ui.intf.ListNotification
 import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
@@ -32,7 +33,8 @@ import com.google.android.material.appbar.MaterialToolbar
 
 class CategoryListFragment : Fragment(), ListNotification<Category> {
     private lateinit var context: Context
-    private lateinit var listener: CategoryAttemptListener
+    private lateinit var dbListener: CategoryDBAttemptListener
+    private lateinit var uiListener: CategoryUIAttemptListener
     private lateinit var categoryListAdapter: CategoryListAdapter
     private lateinit var toolbar: MaterialToolbar
 
@@ -53,7 +55,8 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
-        listener = context as CategoryAttemptListener
+        dbListener = context as CategoryDBAttemptListener
+        uiListener = context as CategoryUIAttemptListener
 
         val rlCategory = view.findViewById<RecyclerView>(R.id.category_list_listview)
         toolbar = view.findViewById(R.id.category_list_toolbar)
@@ -100,8 +103,8 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
     }
 
     private fun throwErrorMessage(msg: String) {
-        if (listener !is ErrorMessageHandler) return
-        val handler = listener as ErrorMessageHandler
+        if (dbListener !is ErrorMessageHandler) return
+        val handler = dbListener as ErrorMessageHandler
         handler.onError(msg)
     }
 
@@ -109,10 +112,10 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
         override fun onMenuItemClick(item: MenuItem): Boolean {
             val menuId = item.itemId
             if (menuId == R.id.category_menu_item_add) {
-                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_CREATE, null)
+                uiListener.onAttempt(CategoryUIAttemptListener.Attempt.SHOW_CREATE)
             } else if (menuId == R.id.category_menu_item_edit) {
                 val category = categoryListAdapter.selectedItems[0]
-                listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_DETAIL, category)
+                uiListener.onAttempt(CategoryUIAttemptListener.Attempt.SHOW_DETAIL, category)
                 categoryListAdapter.clearSelectItems()
             } else if (R.id.category_menu_item_remove == menuId) {
                 AlertDialog.Builder(context)
@@ -125,11 +128,11 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
                         val selected: ArrayList<Category> = categoryListAdapter.selectedItems
                         categoryListAdapter.clearSelectItems()
                         for (c in selected) {
-                            listener.onAttempt(CategoryAttemptListener.Attempt.REMOVE, c)
+                            dbListener.onAttempt(CategoryDBAttemptListener.Attempt.REMOVE, c)
                         }
                     }.create().show()
             } else if (R.id.category_menu_item_debug == menuId) {
-                listener.onAttempt(CategoryAttemptListener.Attempt.DEBUG_ADD_DATA, null)
+                uiListener.onAttempt(CategoryUIAttemptListener.Attempt.DEBUG_ADD_DATA)
             } else {
                 throwErrorMessage("Unknown menu id: $menuId")
                 return false
@@ -187,7 +190,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
                 return true
             }
             val category = categoryListAdapter.get(index)
-            listener.onAttempt(CategoryAttemptListener.Attempt.SHOW_EXPAND, category)
+            uiListener.onAttempt(CategoryUIAttemptListener.Attempt.SHOW_EXPAND, category)
             return true
         }
 
