@@ -79,32 +79,13 @@ class CoreService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
-    private val listeners = ArrayList<ResultListener>()
-
-    fun addTaskListener(listener: ResultListener) {
-        this.listeners.add(listener)
-    }
-
-    fun delTaskListener(listener: ResultListener) {
-        this.listeners.remove(listener)
-    }
-
-    private fun interface TaskListenerIterator {
-        fun onIterate(listener: ResultListener)
-    }
-
-    private fun iterateTaskListener(iterator: TaskListenerIterator) {
-        for (listener in listeners) {
-            iterator.onIterate(listener)
-        }
-    }
+    @JvmField
+    var resultListener: ResultListener? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private fun notifyListener(task: Task) {
         handler.post {
-            iterateTaskListener { listener: ResultListener ->
-                listener.onTaskFinish(task)
-            }
+            resultListener?.onTaskFinish(task)
         }
     }
 

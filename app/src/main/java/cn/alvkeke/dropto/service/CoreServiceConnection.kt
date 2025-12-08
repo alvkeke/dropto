@@ -2,39 +2,27 @@ package cn.alvkeke.dropto.service
 
 import android.content.ComponentName
 import android.content.ServiceConnection
-import android.os.Bundle
 import android.os.IBinder
 import cn.alvkeke.dropto.service.CoreService.CoreSrvBinder
-import cn.alvkeke.dropto.service.Task.ResultListener
 
-open class CoreServiceConnection(private val listener: ResultListener?) : ServiceConnection {
-    @get:Suppress("unused")
-    var binder: CoreSrvBinder? = null
+open class CoreServiceConnection() : ServiceConnection {
+
+    lateinit var binder: CoreSrvBinder
         private set
-    var service: CoreService? = null
+    lateinit var service: CoreService
         private set
-    private var bundleAfterConnected: Bundle? = null
 
     override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
         binder = iBinder as CoreSrvBinder
-        service = binder!!.service
-        if (listener != null) service!!.addTaskListener(listener)
-        execOnServiceConnected(componentName, bundleAfterConnected)
+        service = binder.service
+        execOnServiceConnected(componentName)
     }
 
     override fun onServiceDisconnected(componentName: ComponentName) {
-        if (binder == null) return
-        if (listener != null) service!!.delTaskListener(listener)
-        execOnServiceDisconnected()
-        service = null
-        binder = null
+        execOnServiceDisconnected(componentName)
     }
 
-    fun setBundleAfterConnected(bundleAfterConnected: Bundle?) {
-        this.bundleAfterConnected = bundleAfterConnected
-    }
+    open fun execOnServiceConnected(componentName: ComponentName) {}
 
-    open fun execOnServiceConnected(componentName: ComponentName, bundleAfterConnected: Bundle?) {}
-
-    open fun execOnServiceDisconnected() {}
+    open fun execOnServiceDisconnected(componentName: ComponentName) {}
 }

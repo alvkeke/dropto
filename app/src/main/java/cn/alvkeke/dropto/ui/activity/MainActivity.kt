@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.ui.activity
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
@@ -16,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.ImageFile
@@ -24,8 +24,6 @@ import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
-import cn.alvkeke.dropto.service.CoreService
-import cn.alvkeke.dropto.service.CoreServiceConnection
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createCategory
 import cn.alvkeke.dropto.service.Task.Companion.createNote
@@ -63,43 +61,29 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     NoteDBAttemptListener, NoteUIAttemptListener,
     CategoryDBAttemptListener, CategoryUIAttemptListener,
     CategorySelectorFragment.CategorySelectListener {
-    private var myService : CoreService? = null
-    private val serviceConn: CoreServiceConnection = object : CoreServiceConnection(this) {
-        override fun execOnServiceConnected(
-            componentName: ComponentName,
-            bundleAfterConnected: Bundle?
-        ) {
-            myService = service
-        }
 
-        override fun execOnServiceDisconnected() {
-            myService = null
-        }
-    }
-
-    private fun setupCoreService(savedInstanceState: Bundle?) {
-        val serviceIntent = Intent(this, CoreService::class.java)
-        startForegroundService(serviceIntent)
-        serviceConn.setBundleAfterConnected(savedInstanceState)
-        bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE)
-    }
-
-    private fun clearCoreService() {
-        if (myService == null) return
-        unbindService(serviceConn)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        clearCoreService()
-    }
+    private val app: DroptoApplication
+        get() = application as DroptoApplication
 
     private var categoryListFragment: CategoryListFragment? = null
     private var noteListFragment: NoteListFragment? = null
     private var imageViewerFragment: ImageViewerFragment? = null
 
+    override fun onStart() {
+        super.onStart()
+        Log.d(this.toString(), "MainActivity onStart")
+        app.addTaskListener(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d(this.toString(), "MainActivity onStop")
+        app.delTaskListener(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(this.toString(), "MainActivity onCreate")
         this.enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
@@ -110,7 +94,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
         onBackPressedDispatcher.addCallback(this, OnFragmentBackPressed(true))
 
-        setupCoreService(savedInstanceState)
 
         val categories: ArrayList<Category> = loadCategories(this)
         if (savedInstanceState != null) {
@@ -281,9 +264,9 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun addDebugData() {
-        myService!!.queueTask(createCategory(Category("Local(Debug)", Category.Type.LOCAL_CATEGORY)))
-        myService!!.queueTask(createCategory(Category("REMOTE USERS", Category.Type.REMOTE_USERS)))
-        myService!!.queueTask(
+        app.service?.queueTask(createCategory(Category("Local(Debug)", Category.Type.LOCAL_CATEGORY)))
+        app.service?.queueTask(createCategory(Category("REMOTE USERS", Category.Type.REMOTE_USERS)))
+        app.service?.queueTask(
             createCategory(
                 Category(
                     "REMOTE SELF DEVICE",
@@ -320,7 +303,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                         e.addImageFile(imageFile)
                     }
                 }
-                myService!!.queueTask(createNote(e))
+                app.service?.queueTask(createNote(e))
             }
         }).start()
     }
@@ -328,11 +311,11 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     override fun onAttempt(attempt: CategoryDBAttemptListener.Attempt, category: Category) {
         when (attempt) {
             CategoryDBAttemptListener.Attempt.CREATE ->
-                myService!!.queueTask(createCategory(category))
+                app.service?.queueTask(createCategory(category))
             CategoryDBAttemptListener.Attempt.REMOVE ->
-                myService!!.queueTask(removeCategory(category))
+                app.service?.queueTask(removeCategory(category))
             CategoryDBAttemptListener.Attempt.UPDATE ->
-                myService!!.queueTask(updateCategory(category))
+                app.service?.queueTask(updateCategory(category))
         }
     }
 
@@ -495,9 +478,9 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
     override fun onAttempt(attempt: NoteDBAttemptListener.Attempt, e: NoteItem) {
         when (attempt) {
-            NoteDBAttemptListener.Attempt.REMOVE -> myService!!.queueTask(removeNote(e))
-            NoteDBAttemptListener.Attempt.CREATE -> myService!!.queueTask(createNote(e))
-            NoteDBAttemptListener.Attempt.UPDATE -> myService!!.queueTask(updateNote(e))
+            NoteDBAttemptListener.Attempt.REMOVE -> app.service?.queueTask(removeNote(e))
+            NoteDBAttemptListener.Attempt.CREATE -> app.service?.queueTask(createNote(e))
+            NoteDBAttemptListener.Attempt.UPDATE -> app.service?.queueTask(updateNote(e))
         }
     }
 
@@ -511,7 +494,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             NoteDBAttemptListener.Attempt.UPDATE -> {
                 val job: Task.Job = convertAttemptToJob(attempt)
                 for (e in noteItems) {
-                    myService!!.queueTask(Task.onNoteStorage(job, e))
+                    app.service?.queueTask(Task.onNoteStorage(job, e))
                 }
             }
         }
@@ -563,7 +546,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         if (pendingForwardNote == null) return
         val item = pendingForwardNote!!.clone()
         item.categoryId = category.id
-        myService!!.queueTask(createNote(item))
+        app.service?.queueTask(createNote(item))
     }
 
     override fun onError(error: String) {

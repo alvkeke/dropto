@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.ui.activity
 
-import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -8,12 +7,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.ImageFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
-import cn.alvkeke.dropto.service.CoreService
-import cn.alvkeke.dropto.service.CoreServiceConnection
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createNote
 import cn.alvkeke.dropto.service.Task.Companion.jobToNotify
@@ -25,38 +23,22 @@ import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
 
 class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.CategorySelectListener,
     ResultListener {
-    private var myService: CoreService? = null
-    private val serviceConn: CoreServiceConnection = object : CoreServiceConnection(this) {
-        override fun execOnServiceConnected(
-            componentName: ComponentName,
-            bundleAfterConnected: Bundle?
-        ) {
-            myService= service
-        }
 
-        override fun execOnServiceDisconnected() {
-            super.execOnServiceDisconnected()
-            myService = null
-        }
-    }
-
-    private fun setupCoreService() {
-        val serviceIntent = Intent(this, CoreService::class.java)
-        startForegroundService(serviceIntent)
-        bindService(serviceIntent, serviceConn, BIND_AUTO_CREATE)
-    }
-
-    private fun clearCoreService() {
-        if (myService == null) return
-        unbindService(serviceConn)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        clearCoreService()
-    }
+    private val app: DroptoApplication
+        get() = application as DroptoApplication
 
     private lateinit var categorySelectorFragment: CategorySelectorFragment
+
+    override fun onStart() {
+        super.onStart()
+        app.addTaskListener(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        app.delTaskListener(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         this.enableEdgeToEdge()
@@ -67,7 +49,6 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
             return
         }
 
-        setupCoreService()
         val intent = getIntent()
         val action = intent.action
         if (action == null) {
@@ -124,7 +105,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
                 if (imageFile != null) recvNote.addImageFile(imageFile)
             }
         }
-        myService!!.queueTask(createNote(recvNote))
+        app.service?.queueTask(createNote(recvNote))
         finish()
     }
 
