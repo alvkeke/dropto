@@ -15,14 +15,16 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
+import android.view.View.OnClickListener
 import android.view.View.OnLongClickListener
 import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
 import android.widget.EditText
 import android.widget.ImageButton
+import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
-import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.Toolbar
@@ -56,6 +58,9 @@ import androidx.core.view.get
 import androidx.core.view.size
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 
+
+const val TAG: String = "NoteListFragment"
+
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
     private lateinit var context: Context
     private lateinit var dbListener: NoteDBAttemptListener
@@ -63,7 +68,9 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private lateinit var fragmentParent: View
     private lateinit var fragmentView: View
     private lateinit var etInputText: EditText
-    private lateinit var btnAttach: CountableImageButton
+    private lateinit var btnAttachImage: CountableImageButton
+    private lateinit var btnAttachFile: CountableImageButton
+    private val btnAttachList: ArrayList<CountableImageButton> = ArrayList()
     private lateinit var contentContainer: ConstraintLayout
     private lateinit var naviBar: View
     private lateinit var toolbar: MaterialToolbar
@@ -104,7 +111,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
         val btnAddNote = view.findViewById<ImageButton>(R.id.note_list_input_button)
-        btnAttach = view.findViewById(R.id.note_list_input_attach)
+        btnAttachImage = view.findViewById(R.id.note_list_input_attach_image)
+        btnAttachFile = view.findViewById(R.id.note_list_input_attach_file)
         etInputText = view.findViewById(R.id.note_list_input_box)
         contentContainer = view.findViewById(R.id.note_list_content_container)
         val statusBar = view.findViewById<View>(R.id.note_list_status_bar)
@@ -137,8 +145,22 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         )
 
         btnAddNote.setOnClickListener(OnItemAddClick())
-        btnAttach.setOnClickListener(OnItemAttachClick())
-        btnAttach.setOnLongClickListener(OnItemAttachLongClick())
+        btnAttachList.add(btnAttachFile)
+        btnAttachList.add(btnAttachImage)
+        val btnAttachImageCallback = CountableButtonCallback(btnAttachImage)
+        val btnAttachFileCallback = CountableButtonCallback(btnAttachFile)
+//        imagePicker = registerForActivityResult(
+//            PickMultipleVisualMedia(9),
+//            btnAttachImageCallback
+//        )
+//        filePicker = registerForActivityResult(
+//            ActivityResultContracts.OpenMultipleDocuments(),
+//            btnAttachFileCallback
+//        )
+        btnAttachImage.setOnClickListener(btnAttachImageCallback)
+        btnAttachImage.setOnLongClickListener(btnAttachImageCallback)
+        btnAttachFile.setOnClickListener(btnAttachFileCallback)
+        btnAttachFile.setOnLongClickListener(btnAttachFileCallback)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
     }
 
@@ -151,7 +173,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         return true
     }
 
-    private inner class OnNavigationIconClick : View.OnClickListener {
+    private inner class OnNavigationIconClick : OnClickListener {
         override fun onClick(view: View) {
             onBackPressed()
         }
@@ -309,7 +331,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             override fun onAnimationEnd(animation: Animator) {
                 super.onAnimationEnd(animation)
                 noteItemAdapter!!.clearSelectItems()
-                imgUris.clear()
+                attachments.clear()
                 getParentFragmentManager().beginTransaction()
                     .remove(this@NoteListFragment).commit()
             }
@@ -373,54 +395,82 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             })
     }
 
-    private val imgUris = ArrayList<Uri>()
-    private fun addAttachment(uri: Uri) {
-        if (!imgUris.contains(uri)) {
-            imgUris.add(uri)
+    private val attachments = ArrayList<Uri>()
+    private var currentButton: CountableImageButton? = null
+
+    private fun addAttachments(btn: CountableImageButton, uris: List<Uri>) {
+        currentButton = btn
+        for (uri in uris) {
+            if (attachments.contains(uri))
+                continue
+            attachments.add(uri)
         }
-        btnAttach.setCount(imgUris.size)
+        btn.setCount(attachments.size)
+        inactiveOtherButtons(btn)
     }
 
-    private fun clearAttachment() {
-        imgUris.clear()
-        btnAttach.setCount(imgUris.size)
+    private fun clearAttachments(btn: CountableImageButton) {
+        attachments.clear()
+        btn.setCount(attachments.size)
+        activeAllButtons()
     }
 
-    private val imagePicker =
-        registerForActivityResult(
-            PickMultipleVisualMedia(9)
-        ) { uris ->
-            for (uri in uris) {
-                addAttachment(uri)
+    private fun inactiveOtherButtons(currentButton: CountableImageButton) {
+        for (btn in btnAttachList) {
+            if (btn != currentButton) {
+                btn.isEnabled = false
+            }
+        }
+    }
+
+    private fun activeAllButtons() {
+        for (btn in btnAttachList) {
+            btn.isEnabled = true
+        }
+    }
+
+    private inner class CountableButtonCallback(private val btn: CountableImageButton) :
+        ActivityResultCallback<List<Uri>>, OnClickListener, OnLongClickListener {
+
+        private var imagePicker = registerForActivityResult(
+        PickMultipleVisualMedia(9), this )
+        private var filePicker = registerForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments(), this)
+
+        override fun onActivityResult(result: List<Uri>) {
+            if (result.isEmpty()) {
+                Log.d(TAG, "No item selected")
+                return
+            }
+            // only try to update UI if the list is not empty
+            addAttachments(btn, result)
+        }
+
+        override fun onClick(view: View) {
+            when (btn) {
+                btnAttachImage -> imagePicker.launch(PickVisualMediaRequest.Builder()
+                            .setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                            .build())
+                btnAttachFile -> filePicker.launch(arrayOf("*/*"))
+                else -> error("Unknown attachment button clicked, not allowed")
             }
         }
 
-    private inner class OnItemAttachClick : View.OnClickListener {
-        override fun onClick(view: View) {
-            imagePicker.launch(
-                PickVisualMediaRequest.Builder()
-                    .setMediaType(ImageOnly)
-                    .build()
-            )
-        }
-    }
-
-    private inner class OnItemAttachLongClick : OnLongClickListener {
         override fun onLongClick(view: View): Boolean {
-            clearAttachment()
+            clearAttachments(btn)
             return true
         }
     }
 
-    private inner class OnItemAddClick : View.OnClickListener {
+    private inner class OnItemAddClick : OnClickListener {
         override fun onClick(v: View) {
             val content = etInputText.text.toString().trim { it <= ' ' }
             val item = NoteItem(content)
             item.categoryId = category!!.id
-            if (imgUris.isEmpty()) {
+            if (attachments.isEmpty()) {
                 if (content.isEmpty()) return
             } else {
-                for (imgUri in imgUris) {
+                for (imgUri in attachments) {
                     val folder = Global.getFolderImage(context)
                     val md5file = FileHelper.saveUriToFile(context, imgUri, folder)
                     val imgName = FileHelper.getFileNameFromUri(context, imgUri)
@@ -528,7 +578,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     clearPendingItem()
                     // clear input box text for manually added item
                     etInputText.setText("")
-                    clearAttachment()
+                    clearAttachments(currentButton!!)
                 }
             }
 

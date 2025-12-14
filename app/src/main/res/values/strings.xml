@@ -29,7 +29,7 @@
     <string name="description_of_note_item_image">Image for noteItem</string>
     <string name="description_note_item_modify_icon">Icon to show this item was mosified</string>
     <string name="description_of_image_viewer_image_view">imageView to contain the image that need to be show for user</string>
-    <string name="description_image_attach_button">Button to select image</string>
+    <string name="description_button_attach_image">Button to select image</string>
     <string name="description_button_attach_clear">Button to clear the selected attachment</string>
     <string name="description_input_button">Button to add a new note</string>
     <string name="title_toolbar_mgmt_activity">Preference</string>
@@ -37,4 +37,5 @@
     <string name="string_cache_storage_usage_prompt">Cache storage:</string>
     <string name="string_clear_storage_button_prompt">Clear storage:</string>
     <string name="string_mgmt_list_label">Image files:</string>
+    <string name="description_button_attach_file">Select file attachments</string>
 </resources>
