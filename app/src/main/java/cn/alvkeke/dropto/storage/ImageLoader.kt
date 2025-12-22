@@ -3,7 +3,6 @@ package cn.alvkeke.dropto.storage
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -14,7 +13,6 @@ import java.util.TimerTask
 import java.util.concurrent.locks.ReadWriteLock
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.math.ceil
-
 
 
 object ImageLoader {
@@ -93,7 +91,6 @@ object ImageLoader {
     }
 
     private fun setSampleSize(options: BitmapFactory.Options) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
         val byteCount: Int = options.outWidth * options.outHeight * getPixelDeep(options.outConfig)
         if (byteCount <= imageMaxBytes) return
@@ -236,28 +233,16 @@ object ImageLoader {
     }
 
     private fun getPixelDeep(config: Bitmap.Config): Int {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when (config) {
-                Bitmap.Config.HARDWARE -> {
-                    Log.i("$TAG:$config", "Got HARDWARE, treat it as 1 byte deep")
-                    return 1
-                }
+        when (config) {
+            Bitmap.Config.HARDWARE -> {
+                Log.i("$TAG:$config", "Got HARDWARE, treat it as 1 byte deep")
+                return 1
+            }
 
-                Bitmap.Config.ALPHA_8 -> return 1
-                Bitmap.Config.RGB_565, Bitmap.Config.ARGB_4444 -> return 2
-                Bitmap.Config.RGBA_F16 -> return 8
-                Bitmap.Config.RGBA_1010102, Bitmap.Config.ARGB_8888 -> return 4
-            }
-        } else {
-            when (config) {
-                Bitmap.Config.ALPHA_8 -> return 1
-                Bitmap.Config.RGB_565, Bitmap.Config.ARGB_4444 -> return 2
-                Bitmap.Config.ARGB_8888 -> return 4
-                else -> {
-                    Log.i("$TAG:$config", "Unknown config, treat it as ARGB_8888")
-                    return 4
-                }
-            }
+            Bitmap.Config.ALPHA_8 -> return 1
+            Bitmap.Config.RGB_565, Bitmap.Config.ARGB_4444 -> return 2
+            Bitmap.Config.RGBA_F16 -> return 8
+            Bitmap.Config.RGBA_1010102, Bitmap.Config.ARGB_8888 -> return 4
         }
     }
 

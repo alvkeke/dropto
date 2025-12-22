@@ -18,7 +18,7 @@ import android.widget.ScrollView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.ImageFile
+import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
 import cn.alvkeke.dropto.ui.comonent.ImageCard
@@ -38,7 +38,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
 
     private var item: NoteItem? = null
     private var isImageChanged = false
-    private val imageList = ArrayList<ImageFile>()
+    private val imageList = ArrayList<AttachmentFile>()
 
     fun setNoteItem(item: NoteItem) {
         this.item = item
@@ -138,7 +138,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         }
         item!!.setText(text, true)
         if (isImageChanged) {
-            item!!.useImageFiles(imageList)
+            item!!.useImageFiles(imageList, item!!.attachmentType)
         }
         dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, item!!)
     }
@@ -167,14 +167,14 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
     private fun loadItemDataToUI(item: NoteItem) {
         etNoteItemText.setText(item.text)
 
-        if (item.isNoImage) return
+        if (item.noAttachment) return
 
         val context = requireContext()
-        item.iterateImages().forEachRemaining(Consumer { imageFile: ImageFile ->
+        item.iterateImages().forEachRemaining(Consumer { imageFile: AttachmentFile ->
             imageList.add(imageFile)
             val card = ImageCard(context)
             card.setImageMd5(imageFile.md5)
-            card.setImageName(imageFile.getName())
+            card.setImageName(imageFile.name)
 
             loadImageAsync(imageFile.md5file) { bitmap: Bitmap? ->
                 if (bitmap == null) {

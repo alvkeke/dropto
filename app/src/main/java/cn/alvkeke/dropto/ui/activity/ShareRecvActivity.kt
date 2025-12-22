@@ -9,7 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.ImageFile
+import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.service.Task
@@ -102,7 +102,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         if (pendingUris != null) {
             for (uri in pendingUris) {
                 val imageFile = extraImageFileFromUri(uri)
-                if (imageFile != null) recvNote.addImageFile(imageFile)
+                if (imageFile != null) recvNote.addAttachment(imageFile)
             }
         }
         app.service?.queueTask(createNote(recvNote))
@@ -145,11 +145,11 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         uris.addAll(imageUris)
     }
 
-    private fun extraImageFileFromUri(uri: Uri): ImageFile? {
+    private fun extraImageFileFromUri(uri: Uri): AttachmentFile? {
         val folder = getFolderImage(this)
         val md5file = saveUriToFile(this, uri, folder) ?: return null
         val imgName = getFileNameFromUri(this, uri)
-        return ImageFile(md5file, imgName!!)
+        return AttachmentFile(md5file, imgName!!)
     }
 
     private fun onCategoryTaskFinish(task: Task) {

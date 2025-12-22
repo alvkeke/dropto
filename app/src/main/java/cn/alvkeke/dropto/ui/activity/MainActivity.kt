@@ -18,8 +18,8 @@ import androidx.fragment.app.Fragment
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.ImageFile
-import cn.alvkeke.dropto.data.ImageFile.Companion.from
+import cn.alvkeke.dropto.data.AttachmentFile
+import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
@@ -300,7 +300,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                     idx++
                     if (imgFile.exists()) {
                         val imageFile = from(imgFile, imgFile.name)
-                        e.addImageFile(imageFile)
+                        e.addAttachment(imageFile)
                     }
                 }
                 app.service?.queueTask(createNote(e))
@@ -361,11 +361,11 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         }
     }
 
-    private fun generateShareFile(imageFile: ImageFile): File? {
+    private fun generateShareFile(imageFile: AttachmentFile): File? {
         shareFolder = getFolderImageShare(this)
 
         try {
-            val imageName = imageFile.getName()
+            val imageName = imageFile.name
             val fileToShare: File?
             if (imageName.isEmpty()) {
                 fileToShare = imageFile.md5file
@@ -381,7 +381,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun generateShareFileAndUriForNote(note: NoteItem, uris: ArrayList<Uri>) {
-        note.iterateImages().forEachRemaining(Consumer { f: ImageFile ->
+        note.iterateImages().forEachRemaining(Consumer { f: AttachmentFile ->
             val ff = generateShareFile(f)
             val uri = getUriForFile(ff!!)
             uris.add(uri)
@@ -462,7 +462,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
         }
-        val imageFile = item.getImageAt(imageIndex)
+        val imageFile = item.attachments[imageIndex]
         savedImageViewFile = imageFile.md5file.absolutePath
         imageViewerFragment!!.setImgFile(imageFile.md5file)
         imageViewerFragment!!.show(supportFragmentManager, null)

@@ -13,7 +13,25 @@ class NoteItem : Serializable, Cloneable {
     val createTime: Long
     var isEdited: Boolean = false
         private set
-    private var imageFiles: ArrayList<ImageFile> = ArrayList()
+    private var attachedFiles: ArrayList<AttachmentFile> = ArrayList()
+    val attachments
+        get() = attachedFiles
+    val attachmentCount: Int
+        get() {
+            return attachedFiles.size
+        }
+
+    enum class AttachmentType {
+        NONE,
+        IMAGE,
+        FILE
+    }
+
+    var attachmentType: AttachmentType = AttachmentType.NONE
+        set(type) {
+            assert(type != AttachmentType.NONE) // assign the type to NONE manually is not allowed
+            field = type
+        }
 
     /**
      * construct a new NoteItem instance, with auto generated create_time
@@ -41,7 +59,7 @@ class NoteItem : Serializable, Cloneable {
         if (this === item) return  // prevent update in place
 
         setText(item.text, edited)
-        if (!item.isNoImage) useImageFiles(item.imageFiles)
+        if (!item.noAttachment) useImageFiles(item.attachedFiles, item.attachmentType)
         this.categoryId = item.categoryId
     }
 
@@ -58,8 +76,8 @@ class NoteItem : Serializable, Cloneable {
         }
     }
 
-    private fun isImageFileInvalid(image: ImageFile): Boolean {
-        if (imageFiles.contains(image)) {
+    private fun isAttachmentInvalid(image: AttachmentFile): Boolean {
+        if (attachedFiles.contains(image)) {
             Log.d(this.toString(), "image exist, return invalid")
             return true
         }
@@ -67,41 +85,35 @@ class NoteItem : Serializable, Cloneable {
         return false
     }
 
-    val isNoImage: Boolean
+    val noAttachment: Boolean
         get() {
-            return imageFiles.isEmpty()
+            return attachedFiles.isEmpty()
         }
 
-    val imageCount: Int
-        get() {
-            return imageFiles.size
-        }
 
-    fun useImageFiles(imageFiles: ArrayList<ImageFile>) {
-        clearImages()
-        this.imageFiles.addAll(imageFiles)
+    fun clearAttachments() {
+        this.attachedFiles.clear()
+        this.attachmentType = AttachmentType.NONE
     }
 
-    fun clearImages() {
-        this.imageFiles.clear()
+    fun useImageFiles(attachments: ArrayList<AttachmentFile>, type: AttachmentType) {
+        clearAttachments()
+        this.attachedFiles.addAll(attachments)
+        this.attachmentType = type
     }
 
-    fun addImageFile(imageFile: ImageFile): Boolean {
-        if (isImageFileInvalid(imageFile)) return false
-        imageFiles.add(imageFile)
+    fun addAttachment(attachment: AttachmentFile): Boolean {
+        if (isAttachmentInvalid(attachment)) return false
+        attachedFiles.add(attachment)
         return true
     }
 
-    fun getImageAt(index: Int): ImageFile {
-        return imageFiles[index]
+    fun indexOf(imageFile: AttachmentFile): Int {
+        return attachedFiles.indexOf(imageFile)
     }
 
-    fun indexOf(imageFile: ImageFile): Int {
-        return imageFiles.indexOf(imageFile)
-    }
-
-    fun iterateImages(): Iterator<ImageFile> {
-        return imageFiles.iterator()
+    fun iterateImages(): Iterator<AttachmentFile> {
+        return attachedFiles.iterator()
     }
 
     companion object {

@@ -38,7 +38,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.ImageFile
+import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.storage.FileHelper
@@ -149,14 +149,6 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         btnAttachList.add(btnAttachImage)
         val btnAttachImageCallback = CountableButtonCallback(btnAttachImage)
         val btnAttachFileCallback = CountableButtonCallback(btnAttachFile)
-//        imagePicker = registerForActivityResult(
-//            PickMultipleVisualMedia(9),
-//            btnAttachImageCallback
-//        )
-//        filePicker = registerForActivityResult(
-//            ActivityResultContracts.OpenMultipleDocuments(),
-//            btnAttachFileCallback
-//        )
         btnAttachImage.setOnClickListener(btnAttachImageCallback)
         btnAttachImage.setOnLongClickListener(btnAttachImageCallback)
         btnAttachFile.setOnClickListener(btnAttachFileCallback)
@@ -470,12 +462,17 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             if (attachments.isEmpty()) {
                 if (content.isEmpty()) return
             } else {
+                item.attachmentType = when (currentButton) {
+                    btnAttachImage -> NoteItem.AttachmentType.IMAGE
+                    btnAttachFile -> NoteItem.AttachmentType.FILE
+                    else -> error("attachment is not empty but currentButton is null")
+                }
                 for (imgUri in attachments) {
                     val folder = Global.getFolderImage(context)
                     val md5file = FileHelper.saveUriToFile(context, imgUri, folder)
                     val imgName = FileHelper.getFileNameFromUri(context, imgUri)
-                    val imageFile = ImageFile.from(md5file!!, imgName!!)
-                    item.addImageFile(imageFile)
+                    val imageFile = AttachmentFile.from(md5file!!, imgName!!)
+                    item.addAttachment(imageFile)
                 }
             }
             setPendingItem(item)
@@ -485,7 +482,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private fun showImageView(index: Int, imageIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
-        if (noteItem.imageCount > 4 && imageIndex == 3) {
+        if (noteItem.attachmentCount > 4 && imageIndex == 3) {
             uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, noteItem)
         } else {
             uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_IMAGE, noteItem, imageIndex)
