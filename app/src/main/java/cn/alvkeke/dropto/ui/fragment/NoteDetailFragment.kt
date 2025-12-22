@@ -138,7 +138,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         }
         item!!.setText(text, true)
         if (isImageChanged) {
-            item!!.useImageFiles(imageList, item!!.attachmentType)
+            item!!.useImageFiles(imageList)
         }
         dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, item!!)
     }

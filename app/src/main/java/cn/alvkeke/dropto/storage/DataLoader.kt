@@ -46,7 +46,8 @@ object DataLoader {
                 category.isInitialized = true
                 helper.finish()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "${e.printStackTrace()}")
             return false
         }
         return true

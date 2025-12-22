@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile
+import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.service.Task
@@ -149,7 +150,8 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         val folder = getFolderImage(this)
         val md5file = saveUriToFile(this, uri, folder) ?: return null
         val imgName = getFileNameFromUri(this, uri)
-        return AttachmentFile(md5file, imgName!!)
+        // FIXME: need to fix this with correct type
+        return AttachmentFile(md5file, imgName!!, Type.IMAGE)
     }
 
     private fun onCategoryTaskFinish(task: Task) {

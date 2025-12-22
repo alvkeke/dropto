@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.adapter
 
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
 import android.util.Log
@@ -11,7 +12,9 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -162,27 +165,28 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         }
 
         private fun loadNoteImageAt(note: NoteItem, index: Int) {
-            val img = note.attachments[index]
-//            loadImageAsync(img.md5file) { bitmap: Bitmap? ->
-//                if (bitmap == null) {
-//                    val errMsg = "Failed to get image file, skip this item"
-//                    Log.e(this.toString(), errMsg)
-//                    ivImages[index].setImageResource(R.drawable.img_load_error)
-//                } else {
-//                    ivImages[index].setImageBitmap(bitmap)
-//                    ivImages[index].measure(
-//                        View.MeasureSpec.UNSPECIFIED,
-//                        View.MeasureSpec.UNSPECIFIED
-//                    )
-//                }
-//            }
+            val attachment = note.attachments[index]
+            if (attachment.type == Type.IMAGE)
+                loadImageAsync(attachment.md5file) { bitmap: Bitmap? ->
+                if (bitmap == null) {
+                    val errMsg = "Failed to get image file, skip this item"
+                    Log.e(this.toString(), errMsg)
+                    ivImages[index].setImageResource(R.drawable.img_load_error)
+                } else {
+                    ivImages[index].setImageBitmap(bitmap)
+                    ivImages[index].measure(
+                        View.MeasureSpec.UNSPECIFIED,
+                        View.MeasureSpec.UNSPECIFIED
+                    )
+                }
+            }
 
             // TODO: fix the UI display
-            Log.e("Debug:$TAG", "loadAttachment: for note ${note.id}, type: ${note.attachmentType}, index $index, md5 ${img.md5}, filename: ${img.name}" )
+            Log.e("Debug:$TAG", "loadAttachment: for note ${note.id}, index $index, type: ${attachment.type}, md5 ${attachment.md5}, filename: ${attachment.name}" )
         }
 
         private fun loadAttachments(note: NoteItem) {
-            val count = note.attachmentCount
+            val count = note.attachmentsCount
             assignImageLayout(count)
             when (count) {
                 4 -> {

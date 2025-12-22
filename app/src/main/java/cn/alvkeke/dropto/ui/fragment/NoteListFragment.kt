@@ -387,37 +387,34 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             })
     }
 
-    private val attachments = ArrayList<Uri>()
-    private var currentButton: CountableImageButton? = null
+    private class TmpAttachment(val uri: Uri, val type: AttachmentFile.Type)
+    private val attachments = ArrayList<TmpAttachment>()
+    private fun ArrayList<TmpAttachment>.contains(uri: Uri): Boolean {
+        for (att in this) {
+            if (att.uri == uri) return true
+        }
+        return false
+    }
 
     private fun addAttachments(btn: CountableImageButton, uris: List<Uri>) {
-        currentButton = btn
+        val type = when(btn) {
+            btnAttachImage -> AttachmentFile.Type.IMAGE
+            btnAttachFile -> AttachmentFile.Type.FILE
+            else -> error("Unknown attachment button clicked, not allowed")
+        }
+
         for (uri in uris) {
             if (attachments.contains(uri))
                 continue
-            attachments.add(uri)
+            attachments.add(TmpAttachment(uri, type))
         }
         btn.setCount(attachments.size)
-        inactiveOtherButtons(btn)
     }
 
-    private fun clearAttachments(btn: CountableImageButton) {
+    private fun clearAttachments() {
         attachments.clear()
-        btn.setCount(attachments.size)
-        activeAllButtons()
-    }
-
-    private fun inactiveOtherButtons(currentButton: CountableImageButton) {
         for (btn in btnAttachList) {
-            if (btn != currentButton) {
-                btn.isEnabled = false
-            }
-        }
-    }
-
-    private fun activeAllButtons() {
-        for (btn in btnAttachList) {
-            btn.isEnabled = true
+            btn.setCount(0)
         }
     }
 
@@ -449,7 +446,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         }
 
         override fun onLongClick(view: View): Boolean {
-            clearAttachments(btn)
+            clearAttachments()
             return true
         }
     }
@@ -462,16 +459,11 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             if (attachments.isEmpty()) {
                 if (content.isEmpty()) return
             } else {
-                item.attachmentType = when (currentButton) {
-                    btnAttachImage -> NoteItem.AttachmentType.IMAGE
-                    btnAttachFile -> NoteItem.AttachmentType.FILE
-                    else -> error("attachment is not empty but currentButton is null")
-                }
-                for (imgUri in attachments) {
+                for (a in attachments) {
                     val folder = Global.getFolderImage(context)
-                    val md5file = FileHelper.saveUriToFile(context, imgUri, folder)
-                    val imgName = FileHelper.getFileNameFromUri(context, imgUri)
-                    val imageFile = AttachmentFile.from(md5file!!, imgName!!)
+                    val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
+                    val imgName = FileHelper.getFileNameFromUri(context, a.uri)
+                    val imageFile = AttachmentFile.from(md5file!!, imgName!!, a.type)
                     item.addAttachment(imageFile)
                 }
             }
@@ -482,7 +474,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private fun showImageView(index: Int, imageIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
-        if (noteItem.attachmentCount > 4 && imageIndex == 3) {
+        if (noteItem.attachmentsCount > 4 && imageIndex == 3) {
             uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, noteItem)
         } else {
             uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_IMAGE, noteItem, imageIndex)
@@ -575,7 +567,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     clearPendingItem()
                     // clear input box text for manually added item
                     etInputText.setText("")
-                    clearAttachments(currentButton!!)
+                    clearAttachments()
                 }
             }
 

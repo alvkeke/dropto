@@ -20,6 +20,7 @@ import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
+import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
@@ -299,7 +300,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                     val imgFile = imgFiles[idx]
                     idx++
                     if (imgFile.exists()) {
-                        val imageFile = from(imgFile, imgFile.name)
+                        val imageFile = from(imgFile, imgFile.name, Type.IMAGE)
                         e.addAttachment(imageFile)
                     }
                 }
