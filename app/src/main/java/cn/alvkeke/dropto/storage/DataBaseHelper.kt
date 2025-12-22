@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.storage
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
@@ -345,6 +346,61 @@ class DataBaseHelper(private val context: Context) :
         )
     }
 
+    private fun Cursor.parseCurrentNoteItem(): NoteItem? {
+        var idx: Int = getColumnIndex(NOTE_COLUMN_ID)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for id")
+            return null
+        }
+        val id = getLong(idx)
+        idx = getColumnIndex(NOTE_COLUMN_CATE_ID)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for category id")
+            return null
+        }
+        val categoryId = getLong(idx)
+        idx = getColumnIndex(NOTE_COLUMN_TEXT)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for text")
+            return null
+        }
+        val text = getString(idx)
+        idx = getColumnIndex(NOTE_COLUMN_C_TIME)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for ctime")
+            return null
+        }
+        val ctime = getLong(idx)
+        idx = getColumnIndex(NOTE_COLUMN_ATTACHMENT_INFO)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for attachment_info")
+            return null
+        }
+        val attachInfoAll: String? = getString(idx)
+
+        val e = NoteItem(text, ctime)
+        e.id = id
+        e.categoryId = categoryId
+        if (attachInfoAll != null && !attachInfoAll.isEmpty()) {
+            Log.d(TAG, "imgInfoAll: $attachInfoAll")
+
+            val imgInfoAllS =
+                attachInfoAll.split(",".toRegex())
+                    .dropLastWhile { it.isEmpty() }
+                    .toTypedArray()
+            for (info in imgInfoAllS) {
+                if (info.isEmpty()) continue
+                val imageFile = parseAttachmentFile(info) ?: continue
+                if (!e.addAttachment(imageFile)) {
+                    Log.e(TAG, "Failed to set image file: $attachInfoAll")
+                }
+            }
+        } else {
+            Log.d(TAG, "no attachment info")
+        }
+        return e
+    }
+
     /**
      * retrieve note data from database
      * @param maxNum max count of retrieve items, -1 for unlimited
@@ -374,58 +430,8 @@ class DataBaseHelper(private val context: Context) :
         var nNotes = 0
         while (cursor.moveToNext()) {
             if (maxNum in 1..nNotes) break
-            var idx: Int = cursor.getColumnIndex(NOTE_COLUMN_ID)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx for id")
-                continue
-            }
-            val id = cursor.getLong(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_CATE_ID)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx for category id")
-                continue
-            }
-            val categoryId = cursor.getLong(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_TEXT)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx for text")
-                continue
-            }
-            val text = cursor.getString(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_C_TIME)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx for ctime")
-                continue
-            }
-            val ctime = cursor.getLong(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_ATTACHMENT_INFO)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx for attachment_info")
-                continue
-            }
-            val attachInfoAll: String? = cursor.getString(idx)
 
-            val e = NoteItem(text, ctime)
-            e.id = id
-            e.categoryId = categoryId
-            if (attachInfoAll != null && !attachInfoAll.isEmpty()) {
-                Log.d(TAG, "imgInfoAll: $attachInfoAll")
-
-                val imgInfoAllS =
-                    attachInfoAll.split(",".toRegex())
-                        .dropLastWhile { it.isEmpty() }
-                        .toTypedArray()
-                for (info in imgInfoAllS) {
-
-                    if (info.isEmpty()) continue
-                    val imageFile = parseAttachmentFile(info) ?: continue
-                    if (!e.addAttachment(imageFile)) {
-                        Log.e(TAG, "Failed to set image file: $attachInfoAll")
-                    }
-                }
-            } else {
-                Log.d(TAG, "no attachment info")
-            }
+            val e = cursor.parseCurrentNoteItem() ?: continue
             noteItems.add(e)
             nNotes++
             cb?.onIterate(e)
