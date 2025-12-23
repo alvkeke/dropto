@@ -403,12 +403,14 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             else -> error("Unknown attachment button clicked, not allowed")
         }
 
+        var increasedCount = 0
         for (uri in uris) {
             if (attachments.contains(uri))
                 continue
             attachments.add(TmpAttachment(uri, type))
+            increasedCount++
         }
-        btn.count += uris.size
+        btn.count += increasedCount
     }
 
     private fun clearAttachments() {
