@@ -408,13 +408,13 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                 continue
             attachments.add(TmpAttachment(uri, type))
         }
-        btn.setCount(attachments.size)
+        btn.count += uris.size
     }
 
     private fun clearAttachments() {
         attachments.clear()
         for (btn in btnAttachList) {
-            btn.setCount(0)
+            btn.count = 0
         }
     }
 
@@ -428,7 +428,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
         override fun onActivityResult(result: List<Uri>) {
             if (result.isEmpty()) {
-                Log.d(TAG, "No item selected")
+                Log.d(TAG, "No attachment is selected")
                 return
             }
             // only try to update UI if the list is not empty

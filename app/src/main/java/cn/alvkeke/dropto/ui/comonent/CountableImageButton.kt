@@ -20,7 +20,11 @@ class CountableImageButton @JvmOverloads constructor(
 
     private var originalImage: Drawable? = null
     private var bitmap: Bitmap? = null
-    private var countNumber: Int = 0
+    var count: Int = 0
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     init {
         Log.e(TAG, "init: $attrs")
@@ -62,16 +66,16 @@ class CountableImageButton @JvmOverloads constructor(
             val numLeft = width / 2f
             val numTop = height / 2f
             val numSize = (width / 2f).coerceAtMost(height / 2f)
-            Log.e(this.toString(), "onDraw: draw count $countNumber at $numLeft, $numTop, size $numSize")
+            Log.e(this.toString(), "onDraw: draw count $count at $numLeft, $numTop, size $numSize")
             drawCountNumber(canvas, numLeft, numTop, numSize)
         }
     }
 
     private fun drawCountNumber(canvas: Canvas, startX: Float, startY: Float, size: Float) {
-        if (countNumber < 1) return
+        if (count < 1) return
 
-        val text = if (countNumber < 10) {
-            countNumber.toString()
+        val text = if (count < 10) {
+            count.toString()
         } else {
             "9+"
         }
@@ -152,11 +156,6 @@ class CountableImageButton @JvmOverloads constructor(
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         return bitmap
-    }
-
-    fun setCount(number: Int) {
-        countNumber = number
-        invalidate()
     }
 
 }
