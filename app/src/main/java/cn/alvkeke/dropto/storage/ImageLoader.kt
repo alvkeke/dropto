@@ -1,12 +1,17 @@
 package cn.alvkeke.dropto.storage
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
+import cn.alvkeke.dropto.DroptoApplication
+import cn.alvkeke.dropto.R
 import java.io.File
 import java.util.Timer
 import java.util.TimerTask
@@ -46,6 +51,21 @@ object ImageLoader {
             imageTimeOut / 2, imageTimeOut / 2
         )
     }
+
+    lateinit var errorBitmap: Bitmap
+        private set
+
+    fun initImageLoader(context: Context) {
+        // Load vector drawable and convert to bitmap
+        val drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_load_error, null)!!
+        val bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        val canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+
+        errorBitmap = bitmap
+    }
+
 
     private fun imagePoolGet(key: String): WrappedBitmap? {
         poolLock.readLock().lock()

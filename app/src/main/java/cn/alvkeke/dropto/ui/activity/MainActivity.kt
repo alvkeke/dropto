@@ -38,6 +38,7 @@ import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.DataLoader.findCategory
 import cn.alvkeke.dropto.storage.DataLoader.loadCategories
 import cn.alvkeke.dropto.storage.DataLoader.loadCategoryNotes
+import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
@@ -87,6 +88,8 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         Log.d(this.toString(), "MainActivity onCreate")
         this.enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        ImageLoader.initImageLoader(this)
 
         window.setFlags(
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,

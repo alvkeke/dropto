@@ -43,7 +43,7 @@ import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
-import cn.alvkeke.dropto.ui.adapter.NoteListAdapter.Companion.checkImageClicked
+//import cn.alvkeke.dropto.ui.adapter.NoteListAdapter.Companion.checkImageClicked
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu
@@ -137,12 +137,6 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
-        rlNoteList.addItemDecoration(
-            DividerItemDecoration(
-                context,
-                DividerItemDecoration.VERTICAL
-            )
-        )
 
         btnAddNote.setOnClickListener(OnItemAddClick())
         btnAttachList.add(btnAttachFile)
@@ -252,13 +246,14 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             } else {
                 val x = event.rawX.toInt()
                 val y = event.rawY.toInt()
-                val imgIdx = checkImageClicked(v, x, y)
+                // FIXME: replace with the new method
+//                val imgIdx = checkImageClicked(v, x, y)
 
-                if (imgIdx >= 0) {
-                    showImageView(index, imgIdx)
-                } else {
-                    showItemPopMenu(index, v, x, y)
-                }
+//                if (imgIdx >= 0) {
+//                    showImageView(index, imgIdx)
+//                } else {
+//                    showItemPopMenu(index, v, x, y)
+//                }
             }
             return true
         }
