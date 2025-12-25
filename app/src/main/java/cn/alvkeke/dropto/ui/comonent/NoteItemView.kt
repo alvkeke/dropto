@@ -167,6 +167,85 @@ class NoteItemView @JvmOverloads constructor(
 
                 desiredHeight += height + MARGIN_IMAGE
             }
+            5 -> {
+                val widthTop = (contentWidth - MARGIN_IMAGE) / 2
+                val widthBottom = (contentWidth - MARGIN_IMAGE * 2) / 3
+                val heightTop = widthTop * 4 / 5
+                val heightBottom = widthBottom * 4 / 5
+
+                imageSizeMap[0] = Size(widthTop, heightTop)
+                imageSizeMap[1] = Size(widthTop, heightTop)
+                imageSizeMap[2] = Size(widthBottom, heightBottom)
+                imageSizeMap[3] = Size(widthBottom, heightBottom)
+                imageSizeMap[4] = Size(widthBottom, heightBottom)
+
+                desiredHeight += heightTop + MARGIN_IMAGE + heightBottom + MARGIN_IMAGE
+            }
+            6 -> {
+                val width = (contentWidth - MARGIN_IMAGE * 2) / 3
+                val height = width * 4 / 5
+
+                for (i in 0 until 6) {
+                    imageSizeMap[i] = Size(width, height)
+                }
+
+                desiredHeight += height * 2 + MARGIN_IMAGE
+            }
+            7 -> {
+                val width2 = (contentWidth - MARGIN_IMAGE) / 2
+                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
+
+                val height2 = width2 * 4 / 5
+                val height3 = width3 * 4 / 5
+
+                imageSizeMap[0] = Size(width2, height2)
+                imageSizeMap[1] = Size(width2, height2)
+                for (i in 2..4) {
+                    imageSizeMap[i] = Size(width3, height3)
+                }
+                imageSizeMap[5] = Size(width3, height3)
+                imageSizeMap[6] = Size(width3, height3)
+
+                desiredHeight += height2 * 2 + height3 + MARGIN_IMAGE * 2
+            }
+            8 -> {
+                val width2 = (contentWidth - MARGIN_IMAGE) / 2
+                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
+
+                val height2 = width2 * 4 / 5
+                val height3 = width3 * 4 / 5
+
+                imageSizeMap[0] = Size(width2, height2)
+                imageSizeMap[1] = Size(width2, height2)
+                for (i in 2..7) {
+                    imageSizeMap[i] = Size(width3, height3)
+                }
+
+                desiredHeight += height2 + height3 * 2 + MARGIN_IMAGE * 2
+            }
+            9 -> {
+                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
+                val height3 = width3 * 4 / 5
+
+                for (i in 0..8) {
+                    imageSizeMap[i] = Size(width3, height3)
+                }
+
+                desiredHeight += height3 * 3 + MARGIN_IMAGE * 2
+            }
+            10 -> {
+                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
+                val height3 = width3 * 4 / 5
+                val width4 = (contentWidth - MARGIN_IMAGE * 3) / 4
+                val height4 = width4 * 4 / 5
+                for (i in 0..2) {
+                    imageSizeMap[i] = Size(width3, height3)
+                }
+                for (i in 4..9) {
+                    imageSizeMap[i] = Size(width4, height4)
+                }
+                desiredHeight += height3 + height4 + MARGIN_IMAGE * 2
+            }
             else -> {
                 Log.e(TAG, "measureImageHeight: not implement yet for ${images.size} images")
             }
