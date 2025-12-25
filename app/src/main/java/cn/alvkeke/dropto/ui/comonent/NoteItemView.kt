@@ -129,18 +129,44 @@ class NoteItemView @JvmOverloads constructor(
 
                 desiredHeight += alignHeight + MARGIN_IMAGE
             }
-//            3 -> {
-//                val e1 = images[0]
-//                val e2 = images[1]
-//                val e3 = images[2]
-//
-//
-//                val heightRight = e2.height + e3.height
-//                val alignHeight = maxOf(e1.height, heightRight)
-//
-//
-//                desiredHeight += alignHeight + MARGIN_IMAGE
-//            }
+            3 -> {
+                var height = images[0].height
+                var width = images[0].width
+
+                if (height > maxHeight) {
+                    width = width * maxHeight / height
+                    height = maxHeight
+                }
+                val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
+                width = minOf(width, halfWidth)
+
+                imageSizeMap[0] = Size(width, height)
+                val heightRight = (height - MARGIN_IMAGE) / 2
+                imageSizeMap[1] = Size(width, heightRight)
+                imageSizeMap[2] = Size(width, heightRight)
+
+
+                desiredHeight += height + MARGIN_IMAGE
+            }
+            4 -> {
+                var height = images[0].height
+                var width = images[0].width
+
+                if (height > maxHeight) {
+                    width = width * maxHeight / height
+                    height = maxHeight
+                }
+                val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
+                width = minOf(width, halfWidth)
+
+                imageSizeMap[0] = Size(width, height)
+                val heightRight = (height - MARGIN_IMAGE * 2) / 3
+                imageSizeMap[1] = Size(width, heightRight)
+                imageSizeMap[2] = Size(width, heightRight)
+                imageSizeMap[3] = Size(width, heightRight)
+
+                desiredHeight += height + MARGIN_IMAGE
+            }
             else -> {
                 Log.e(TAG, "measureImageHeight: not implement yet for ${images.size} images")
             }
