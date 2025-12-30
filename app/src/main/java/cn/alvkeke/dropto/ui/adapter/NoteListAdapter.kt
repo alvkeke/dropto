@@ -1,8 +1,5 @@
 package cn.alvkeke.dropto.ui.adapter
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -33,6 +30,7 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.index = position
         view.text = note.text
         view.createTime = note.createTime
+        view.images.clear()
         note.attachments.iterator().forEach { e ->
             when(e.type) {
                 AttachmentFile.Type.IMAGE -> {

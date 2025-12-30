@@ -11,7 +11,6 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.util.Log
-import android.util.Size
 import android.view.View
 import androidx.core.graphics.withTranslation
 import java.text.SimpleDateFormat
@@ -88,7 +87,26 @@ class NoteItemView @JvmOverloads constructor(
         D E F G
          H I J/+
      */
-    private val imageSizeMap = HashMap<Int, Size>()
+    private enum class InfoStatus{
+        NONE,
+        SET,
+    }
+    private class ImageInfo(var rect: RectF = RectF(), var status: InfoStatus = InfoStatus.NONE) {
+        fun set() {
+            this.status = InfoStatus.SET
+        }
+    }
+    private val imageInfoMap = HashMap<Int, ImageInfo>()
+
+    private fun getImageInfo(key: Int): ImageInfo {
+        var info = imageInfoMap[key]
+        if (info == null) {
+            info = ImageInfo()
+            imageInfoMap[key] = info
+        }
+
+        return info
+    }
 
     private fun measureImageHeight(contentWidth: Int): Int {
         val maxHeight = contentWidth * 3 / 4
@@ -100,7 +118,14 @@ class NoteItemView @JvmOverloads constructor(
                 val e = images[0]
                 val imageHeight = (e.height * contentWidth / e.width).coerceAtMost(maxHeight)
                 val imageWidth = (e.width * imageHeight / e.height)
-                imageSizeMap[1] = Size(imageWidth, imageHeight)
+                val info = getImageInfo(0)
+                info.rect.set(
+                    0F,
+                    0F,
+                    imageWidth.toFloat(),
+                    imageHeight.toFloat()
+                )
+                info.status = InfoStatus.SET
                 desiredHeight += imageHeight + MARGIN_IMAGE
             }
             2 -> {
@@ -124,8 +149,24 @@ class NoteItemView @JvmOverloads constructor(
                     width2 = e2.width * alignHeight / e2.height
                 }
 
-                imageSizeMap[1] = Size(width1, alignHeight)
-                imageSizeMap[2] = Size(width2, alignHeight)
+                var info = getImageInfo(0)
+                info.rect.set(
+                    0F,
+                    0F,
+                    width1.toFloat(),
+                    alignHeight.toFloat()
+                )
+                info.status = InfoStatus.SET
+
+                val offsetX = (width1 + MARGIN_IMAGE)
+                info = getImageInfo(1)
+                info.rect.set(
+                    offsetX.toFloat(),
+                    0F,
+                    (offsetX + width2).toFloat(),
+                    alignHeight.toFloat()
+                )
+                info.status = InfoStatus.SET
 
                 desiredHeight += alignHeight + MARGIN_IMAGE
             }
@@ -140,11 +181,35 @@ class NoteItemView @JvmOverloads constructor(
                 val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
                 width = minOf(width, halfWidth)
 
-                imageSizeMap[0] = Size(width, height)
-                val heightRight = (height - MARGIN_IMAGE) / 2
-                imageSizeMap[1] = Size(width, heightRight)
-                imageSizeMap[2] = Size(width, heightRight)
+                var info = getImageInfo(0)
+                info.rect.set(
+                    0F,
+                    0F,
+                    width.toFloat(),
+                    height.toFloat(),
+                )
+                info.status = InfoStatus.SET
 
+                val heightRight = (height - MARGIN_IMAGE) / 2
+                info = getImageInfo(1)
+                val offsetX = width + MARGIN_IMAGE
+                info.rect.set(
+                    offsetX.toFloat(),
+                    0f,
+                    (offsetX + width).toFloat(),
+                    heightRight.toFloat()
+                )
+                info.status = InfoStatus.SET
+
+                val offsetY = heightRight + MARGIN_IMAGE
+                info = getImageInfo(2)
+                info.rect.set(
+                    offsetX.toFloat(),
+                    offsetY.toFloat(),
+                    (offsetX + width).toFloat(),
+                    (offsetY + heightRight).toFloat()
+                )
+                info.status = InfoStatus.SET
 
                 desiredHeight += height + MARGIN_IMAGE
             }
@@ -159,11 +224,45 @@ class NoteItemView @JvmOverloads constructor(
                 val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
                 width = minOf(width, halfWidth)
 
-                imageSizeMap[0] = Size(width, height)
+                var info = getImageInfo(0)
+                info.rect.set(
+                    0f,
+                    0f,
+                    width.toFloat(),
+                    height.toFloat()
+                )
+                info.set()
+
                 val heightRight = (height - MARGIN_IMAGE * 2) / 3
-                imageSizeMap[1] = Size(width, heightRight)
-                imageSizeMap[2] = Size(width, heightRight)
-                imageSizeMap[3] = Size(width, heightRight)
+                val offsetX = width + MARGIN_IMAGE
+                info = getImageInfo(1)
+                info.rect.set(
+                    offsetX.toFloat(),
+                    0f,
+                    (offsetX + width).toFloat(),
+                    heightRight.toFloat()
+                )
+                info.set()
+
+                var offsetY = heightRight + MARGIN_IMAGE
+                info = getImageInfo(2)
+                info.rect.set(
+                    offsetX.toFloat(),
+                    offsetY.toFloat(),
+                    (offsetX + width).toFloat(),
+                    (offsetY + heightRight).toFloat(),
+                )
+                info.set()
+
+                offsetY += heightRight + MARGIN_IMAGE
+                info = getImageInfo(3)
+                info.rect.set(
+                    offsetX.toFloat(),
+                    offsetY.toFloat(),
+                    (offsetX + width).toFloat(),
+                    (offsetY + heightRight).toFloat(),
+                )
+                info.set()
 
                 desiredHeight += height + MARGIN_IMAGE
             }
@@ -173,11 +272,30 @@ class NoteItemView @JvmOverloads constructor(
                 val heightTop = widthTop * 4 / 5
                 val heightBottom = widthBottom * 4 / 5
 
-                imageSizeMap[0] = Size(widthTop, heightTop)
-                imageSizeMap[1] = Size(widthTop, heightTop)
-                imageSizeMap[2] = Size(widthBottom, heightBottom)
-                imageSizeMap[3] = Size(widthBottom, heightBottom)
-                imageSizeMap[4] = Size(widthBottom, heightBottom)
+                for (i in 0..1) {
+                    val offsetX = i * (widthTop + MARGIN_IMAGE)
+                    val info = getImageInfo(i)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        0f,
+                        (offsetX + widthTop).toFloat(),
+                        heightTop.toFloat()
+                    )
+                    info.set()
+                }
+
+                val offsetY = heightTop + MARGIN_IMAGE
+                for (i in 2..4) {
+                    val offsetX = (i-2) * (widthBottom + MARGIN_IMAGE)
+                    val info = getImageInfo(i)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + widthBottom).toFloat(),
+                        (offsetY + heightBottom).toFloat()
+                    )
+                    info.set()
+                }
 
                 desiredHeight += heightTop + MARGIN_IMAGE + heightBottom + MARGIN_IMAGE
             }
@@ -185,11 +303,25 @@ class NoteItemView @JvmOverloads constructor(
                 val width = (contentWidth - MARGIN_IMAGE * 2) / 3
                 val height = width * 4 / 5
 
+                var offsetX: Int
+                var offsetY: Int
                 for (i in 0 until 6) {
-                    imageSizeMap[i] = Size(width, height)
+                    val info = getImageInfo(i)
+                    offsetX = (i % 3) * (width + MARGIN_IMAGE)
+                    offsetY = when(i) {
+                        2, 5 -> height + MARGIN_IMAGE
+                        else -> 0
+                    }
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + width).toFloat(),
+                        (offsetY + height).toFloat(),
+                    )
+                    info.set()
                 }
 
-                desiredHeight += height * 2 + MARGIN_IMAGE
+                desiredHeight += (height + MARGIN_IMAGE) * 2
             }
             7 -> {
                 val width2 = (contentWidth - MARGIN_IMAGE) / 2
@@ -198,15 +330,44 @@ class NoteItemView @JvmOverloads constructor(
                 val height2 = width2 * 4 / 5
                 val height3 = width3 * 4 / 5
 
-                imageSizeMap[0] = Size(width2, height2)
-                imageSizeMap[1] = Size(width2, height2)
-                for (i in 2..4) {
-                    imageSizeMap[i] = Size(width3, height3)
+                var offsetX: Int
+                for (i in 0..1) {
+                    val info = getImageInfo(i)
+                    offsetX = i * (width2 + MARGIN_IMAGE)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        0f,
+                        (offsetX + width2).toFloat(),
+                        height2.toFloat()
+                    )
+                    info.set()
                 }
-                imageSizeMap[5] = Size(width3, height3)
-                imageSizeMap[6] = Size(width3, height3)
+                var offsetY: Int = height2 + MARGIN_IMAGE
+                for (i in 2..4) {
+                    val info = getImageInfo(i)
+                    offsetX = (i - 2) * (width3 + MARGIN_IMAGE)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + width3).toFloat(),
+                        (offsetY + height3).toFloat(),
+                    )
+                    info.set()
+                }
+                offsetY += height3 + MARGIN_IMAGE
+                for (i in 5..6) {
+                    val info = getImageInfo(i)
+                    offsetX = (i - 5) * (width2 + MARGIN_IMAGE)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + width3).toFloat(),
+                        (offsetY + height3).toFloat(),
+                    )
+                    info.set()
+                }
 
-                desiredHeight += height2 * 2 + height3 + MARGIN_IMAGE * 2
+                desiredHeight += height2 * 2 + height3 + MARGIN_IMAGE * 3
             }
             8 -> {
                 val width2 = (contentWidth - MARGIN_IMAGE) / 2
@@ -215,23 +376,58 @@ class NoteItemView @JvmOverloads constructor(
                 val height2 = width2 * 4 / 5
                 val height3 = width3 * 4 / 5
 
-                imageSizeMap[0] = Size(width2, height2)
-                imageSizeMap[1] = Size(width2, height2)
+                for (i in 0..1) {
+                    val info = getImageInfo(i)
+                    val offsetX = i * (width2 + MARGIN_IMAGE)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        0f,
+                        (offsetX + width2).toFloat(),
+                        height2.toFloat()
+                    )
+                    info.set()
+                }
+                var offsetY = height2 + MARGIN_IMAGE
                 for (i in 2..7) {
-                    imageSizeMap[i] = Size(width3, height3)
+                    val info = getImageInfo(i)
+                    val idx = i - 2
+                    val offsetX = (idx % 3) * (width3 + MARGIN_IMAGE)
+                    if (i == 5) {
+                        offsetY += height3 + MARGIN_IMAGE
+                    }
+
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + width3).toFloat(),
+                        (offsetY + height3).toFloat()
+                    )
+                    info.set()
                 }
 
-                desiredHeight += height2 + height3 * 2 + MARGIN_IMAGE * 2
+                desiredHeight += height2 + height3 * 2 + MARGIN_IMAGE * 3
             }
             9 -> {
                 val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
                 val height3 = width3 * 4 / 5
 
+                var offsetY = 0
                 for (i in 0..8) {
-                    imageSizeMap[i] = Size(width3, height3)
+                    val offsetX = (i % 3) * (width3 + MARGIN_IMAGE)
+                    if ((i % 3) == 0) {
+                        offsetY += height3 + MARGIN_IMAGE
+                    }
+                    val info = getImageInfo(i)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + width3).toFloat(),
+                        (offsetY + height3).toFloat()
+                    )
+                    info.set()
                 }
 
-                desiredHeight += height3 * 3 + MARGIN_IMAGE * 2
+                desiredHeight += height3 * 3 + MARGIN_IMAGE * 3
             }
             10 -> {
                 val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
@@ -239,12 +435,43 @@ class NoteItemView @JvmOverloads constructor(
                 val width4 = (contentWidth - MARGIN_IMAGE * 3) / 4
                 val height4 = width4 * 4 / 5
                 for (i in 0..2) {
-                    imageSizeMap[i] = Size(width3, height3)
+                    val info = getImageInfo(i)
+                    val offsetX = i * (width3 + MARGIN_IMAGE)
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        0f,
+                        (offsetX + width3).toFloat(),
+                        height3.toFloat()
+                    )
+                    info.set()
                 }
-                for (i in 4..9) {
-                    imageSizeMap[i] = Size(width4, height4)
+                var offsetY = height3 + MARGIN_IMAGE
+                for (i in 3..6) {
+                    val info = getImageInfo(i)
+                    val offsetX = (i-3) * (width4 + MARGIN_IMAGE)
+
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + width3).toFloat(),
+                        (offsetY + height3).toFloat()
+                    )
+                    info.set()
                 }
-                desiredHeight += height3 + height4 + MARGIN_IMAGE * 2
+                offsetY += height4 + MARGIN_IMAGE
+                for (i in 6..9) {
+                    val offsetX = (i - 6) * (width3 + MARGIN_IMAGE)
+                    val info = getImageInfo(i)
+
+                    info.rect.set(
+                        offsetX.toFloat(),
+                        offsetY.toFloat(),
+                        (offsetX + width3).toFloat(),
+                        (offsetY + height3).toFloat()
+                    )
+                    info.set()
+                }
+                desiredHeight += height3 * 2 + height4 + MARGIN_IMAGE * 3
             }
             else -> {
                 Log.e(TAG, "measureImageHeight: not implement yet for ${images.size} images")
@@ -289,32 +516,35 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        Log.e(TAG, "onMeasure: $index")
+        Log.v(TAG, "onMeasure: $index")
         val widthMode = MeasureSpec.getMode(widthMeasureSpec)
         val widthSize = MeasureSpec.getSize(widthMeasureSpec)
-        Log.e(TAG, "onMeasure: widthMode=$widthMode, widthSize=$widthSize")
+        Log.v(TAG, "onMeasure: widthMode=$widthMode, widthSize=$widthSize")
         val desiredWidth = 200
         val width: Int = when (widthMode) {
             MeasureSpec.AT_MOST -> desiredWidth.coerceAtMost(widthSize)
             MeasureSpec.UNSPECIFIED -> desiredWidth
             MeasureSpec.EXACTLY -> widthSize
             else -> {
-                Log.e(TAG, "onMeasure: widthMode is UNSPECIFIED")
+                Log.e(TAG, "onMeasure: no widthMode got, return 0")
                 0
             }
         }
 
         val heightMode = MeasureSpec.getMode(heightMeasureSpec)
         val heightSize = MeasureSpec.getSize(heightMeasureSpec)
-        Log.e(TAG, "onMeasure: heightMode=$heightMode, heightSize=$heightSize")
+        Log.v(TAG, "onMeasure: heightMode=$heightMode, heightSize=$heightSize")
         val height: Int = when (heightMode) {
             MeasureSpec.AT_MOST -> measureHeight(width).coerceAtMost(heightSize)
             MeasureSpec.UNSPECIFIED -> measureHeight(width)
             MeasureSpec.EXACTLY -> heightSize
-            else -> 0
+            else -> {
+                Log.e(TAG, "onMeasure: no heightMode got, return 0")
+                0
+            }
         }
 
-        Log.e(TAG, "onMeasure: width=$width, height=$height")
+        Log.v(TAG, "onMeasure: width=$width, height=$height")
         setMeasuredDimension(width, height)
 
         backgroundRect.set(
@@ -326,9 +556,25 @@ class NoteItemView @JvmOverloads constructor(
 
     }
 
+    private fun drawImages(canvas: Canvas): Float {
+        Log.v(TAG, "drawImages: total size: ${images.size}")
+        for (i in 0 until images.size) {
+            Log.v(TAG, "drawImages.for $i")
+            val info = getImageInfo(i)
+            if (info.status == InfoStatus.NONE) {
+                Log.e(TAG, "Trying to draw image without setting the image rect")
+                continue
+            }
+            imageRect.set(info.rect)
+            canvas.drawBitmap(images[i], null, imageRect, null)
+        }
+
+        return getImageInfo(images.lastIndex).rect.bottom
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        Log.e(TAG, "onDraw: $index")
+        Log.v(TAG, "onDraw: $index")
 
         backgroundPaint.color = if (selected) Color.LTGRAY else BACKGROUND_COLOR
         canvas.drawRoundRect(
@@ -339,19 +585,8 @@ class NoteItemView @JvmOverloads constructor(
         )
         canvas.translate(MARGIN_BACKGROUND_START.toFloat(), MARGIN_BACKGROUND_Y.toFloat())
         canvas.translate(MARGIN_BORDER.toFloat(), MARGIN_BORDER.toFloat())
-
-//        for (e in images) {
-//            val imageWidth = width - MARGIN_BACKGROUND_START - MARGIN_BACKGROUND_END - MARGIN_BORDER * 2
-//            val imageHeight = e.height * imageWidth / e.width
-//            imageRect.set(
-//                0F,
-//                0F,
-//                imageWidth.toFloat(),
-//                imageHeight.toFloat()
-//            )
-//            canvas.drawBitmap(e, null, imageRect, null)
-//            canvas.translate(0F, (imageHeight + MARGIN_IMAGE).toFloat())
-//        }
+        // draw images with the info got from measure
+        canvas.translate(0F, drawImages(canvas))
 
         if (!text.isEmpty()) {
             canvas.translate(0F, MARGIN_TEXT.toFloat())
