@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
-import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import java.io.File
 import java.util.Timer
@@ -54,16 +53,24 @@ object ImageLoader {
 
     lateinit var errorBitmap: Bitmap
         private set
+    lateinit var loadingBitmap: Bitmap
+        private set
 
     fun initImageLoader(context: Context) {
         // Load vector drawable and convert to bitmap
-        val drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_load_error, null)!!
-        val bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        val canvas = android.graphics.Canvas(bitmap)
+        var drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_load_error, null)!!
+        var bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        var canvas = android.graphics.Canvas(bitmap)
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
-
         errorBitmap = bitmap
+
+        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_loading, null)!!
+        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        loadingBitmap = bitmap
     }
 
 
@@ -212,18 +219,27 @@ object ImageLoader {
         return wrappedBitmap.bitmap
     }
 
+    /**
+     * load image asynchronously, if the image is already in pool, return it directly
+     * @param file image file
+     * @param alwaysCallback whether always call the callback listener, even the image is already in pool
+     * @param listener callback listener
+     * @return the bitmap if it is already in pool, null otherwise
+     */
     @JvmStatic
     @Suppress("unused")
-    fun loadImageAsync(file: File, listener: ImageLoadListener) {
+    fun loadImageAsync(file: File, alwaysCallback: Boolean = true, listener: ImageLoadListener?): Bitmap? {
         val wrappedBitmap = getWrappedBitmapInPool(file.absolutePath)
         if (wrappedBitmap != null) {
-            listener.onImageLoaded(wrappedBitmap.bitmap)
-            return
+            if (alwaysCallback)
+                listener?.onImageLoaded(wrappedBitmap.bitmap)
+            return wrappedBitmap.bitmap
         }
         Thread {
             val bitmap = loadImage(file)
-            handler.post { listener.onImageLoaded(bitmap) }
+            handler.post { listener?.onImageLoaded(bitmap) }
         }.start()
+        return null
     }
 
     @JvmStatic

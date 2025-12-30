@@ -2,12 +2,14 @@ package cn.alvkeke.dropto.ui.comonent
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
+import android.graphics.Rect
 import android.graphics.RectF
 import android.text.Layout
 import android.text.StaticLayout
@@ -16,6 +18,8 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import androidx.core.graphics.withTranslation
+import cn.alvkeke.dropto.storage.ImageLoader
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -30,9 +34,11 @@ class NoteItemView @JvmOverloads constructor(
     var createTime: Long = 0L
     @JvmField
     var selected: Boolean = false
+    @JvmField
+    var asyncImageLoad: Boolean = true
 
-    val images: ArrayList<Bitmap> = ArrayList()
-
+    val images: ArrayList<File> = ArrayList()
+    val imageLoadedMap: HashMap<File, Boolean> = HashMap()
 
     private var backgroundRect: RectF = RectF()
     private var backgroundPaint: Paint = Paint().apply {
@@ -116,13 +122,26 @@ class NoteItemView @JvmOverloads constructor(
     private fun measureImageHeight(contentWidth: Int): Int {
         val maxHeight = contentWidth * 3 / 2
 
+        val options:ArrayList<BitmapFactory.Options> = ArrayList()
+        for (f in images) {
+            if (!f.exists()) {
+                Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
+                continue
+            }
+            val option = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(f.absolutePath, option)
+            options.add(option)
+        }
+
         var desiredHeight = 0
-        when (images.size) {
+        when (options.size) {
             0 -> return 0
             1 -> {
-                val e = images[0]
-                val imageHeight = (e.height * contentWidth / e.width).coerceAtMost(maxHeight)
-                val imageWidth = (e.width * imageHeight / e.height)
+                val e = options[0]
+                val imageHeight = (e.outHeight * contentWidth / e.outWidth).coerceAtMost(maxHeight)
+                val imageWidth = (e.outWidth * imageHeight / e.outHeight)
                 val info = getImageInfo(0)
                 info.rect.set(
                     0F,
@@ -134,24 +153,24 @@ class NoteItemView @JvmOverloads constructor(
                 desiredHeight += imageHeight + MARGIN_IMAGE
             }
             2 -> {
-                val e1 = images[0]
-                val e2 = images[1]
+                val e1 = options[0]
+                val e2 = options[1]
 
-                var alignHeight = maxOf(e1.height, e2.height)
-                var width1 = e1.width * alignHeight / e1.height
-                var width2 = e2.width * alignHeight / e2.height
+                var alignHeight = maxOf(e1.outHeight, e2.outHeight)
+                var width1 = e1.outWidth * alignHeight / e1.outHeight
+                var width2 = e2.outWidth * alignHeight / e2.outHeight
                 val combineWidth = width1 + width2 + MARGIN_IMAGE
 
                 if (combineWidth > contentWidth) {
                     alignHeight = alignHeight * contentWidth / combineWidth
-                    width1 = e1.width * alignHeight / e1.height
-                    width2 = e2.width * alignHeight / e2.height
+                    width1 = e1.outWidth * alignHeight / e1.outHeight
+                    width2 = e2.outWidth * alignHeight / e2.outHeight
                 }
 
                 if (alignHeight > maxHeight) {
                     alignHeight = maxHeight
-                    width1 = e1.width * alignHeight / e1.height
-                    width2 = e2.width * alignHeight / e2.height
+                    width1 = e1.outWidth * alignHeight / e1.outHeight
+                    width2 = e2.outWidth * alignHeight / e2.outHeight
                 }
 
                 var info = getImageInfo(0)
@@ -176,8 +195,8 @@ class NoteItemView @JvmOverloads constructor(
                 desiredHeight += alignHeight + MARGIN_IMAGE
             }
             3 -> {
-                var height = images[0].height
-                var width = images[0].width
+                var height = options[0].outHeight
+                var width = options[0].outWidth
 
                 if (height > maxHeight) {
                     width = width * maxHeight / height
@@ -219,8 +238,8 @@ class NoteItemView @JvmOverloads constructor(
                 desiredHeight += height + MARGIN_IMAGE
             }
             4 -> {
-                var height = images[0].height
-                var width = images[0].width
+                var height = options[0].outHeight
+                var width = options[0].outWidth
 
                 if (height > maxHeight) {
                     width = width * maxHeight / height
@@ -479,7 +498,7 @@ class NoteItemView @JvmOverloads constructor(
                 desiredHeight += height3 * 2 + height4 + MARGIN_IMAGE * 3
             }
             else -> {
-                Log.e(TAG, "measureImageHeight: not implement yet for ${images.size} images")
+                Log.e(TAG, "measureImageHeight: not implement yet for ${options.size} options")
             }
         }
         return desiredHeight
@@ -561,6 +580,50 @@ class NoteItemView @JvmOverloads constructor(
 
     }
 
+    private fun Canvas.drawBitmapNullable(
+        bitmap: Bitmap?,
+        src: Rect?,
+        dst: RectF,
+        paint: Paint
+    ) {
+        if (bitmap == null) {
+            Log.v(TAG, "drawBitmapNullable: bitmap is null, draw error bitmap")
+            this.drawBitmap(ImageLoader.errorBitmap, src, dst, paint)
+        } else {
+            Log.v(TAG, "drawBitmapNullable: bitmap is valid, draw it: $bitmap")
+            this.drawBitmap(bitmap, src, dst, paint)
+        }
+    }
+
+    private fun Canvas.drawImageFile(
+        file: File,
+        src: Rect?,
+        dst: RectF,
+        paint: Paint
+    ) {
+        Log.v(TAG, "drawImageFile: async=$asyncImageLoad, file=${file.absolutePath}")
+        val bitmap = if (asyncImageLoad) {
+            val bitmap = ImageLoader.loadImageAsync(file, false) { bitmap ->
+                Log.d(TAG, "drawImageFile.loadImageAsync callback: file=${file.absolutePath}, bitmap=$bitmap")
+                imageLoadedMap[file] = true
+                if (imageLoadedMap.values.all { it }) {
+                    this@NoteItemView.invalidate()  // have cache now, just invalidate to redraw
+                }
+            }
+            if (bitmap == null) {
+                imageLoadedMap[file] = false
+                drawBitmapNullable(ImageLoader.loadingBitmap, src, dst, paint)
+                return
+            } else {
+                imageLoadedMap[file] = true
+            }
+            bitmap
+        } else {
+            ImageLoader.loadImage(file)
+        }
+        drawBitmapNullable(bitmap, src, dst, paint)
+    }
+
     private fun drawImages(canvas: Canvas): Float {
         Log.v(TAG, "drawImages: total size: ${images.size}")
         for (i in 0 until images.size) {
@@ -587,7 +650,7 @@ class NoteItemView @JvmOverloads constructor(
 
             // Set xfermode to only draw bitmap where the rounded rect was drawn
             imagePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            canvas.drawBitmap(images[i], null, imageRect, imagePaint)
+            canvas.drawImageFile(images[i], null, imageRect, imagePaint)
 
             // Reset xfermode
             imagePaint.xfermode = null

@@ -8,7 +8,6 @@ import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.ui.comonent.NoteItemView
 
 const val TAG = "NoteListAdapter"
@@ -31,13 +30,11 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.text = note.text
         view.createTime = note.createTime
         view.images.clear()
+        // set the attachment Files only, to avoid async issue
         note.attachments.iterator().forEach { e ->
             when(e.type) {
                 AttachmentFile.Type.IMAGE -> {
-                    Log.e(TAG, "load image: ${e.md5file} : ${e.name}")
-                    ImageLoader.loadImageAsync(e.md5file) { bitmap ->
-                        view.images.add(bitmap ?: ImageLoader.errorBitmap)
-                    }
+                    view.images.add(e.md5file)
                 }
                 else -> {
                     Log.e(TAG, "not implement yet")
