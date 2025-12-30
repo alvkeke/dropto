@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.text.Layout
 import android.text.StaticLayout
@@ -38,6 +41,8 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     private var imageRect: RectF = RectF()
+    private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val imagePath = Path()
 
     private lateinit var textLayout: StaticLayout
     private val textPaint = TextPaint().apply {
@@ -109,7 +114,7 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     private fun measureImageHeight(contentWidth: Int): Int {
-        val maxHeight = contentWidth * 3 / 4
+        val maxHeight = contentWidth * 3 / 2
 
         var desiredHeight = 0
         when (images.size) {
@@ -566,7 +571,27 @@ class NoteItemView @JvmOverloads constructor(
                 continue
             }
             imageRect.set(info.rect)
-            canvas.drawBitmap(images[i], null, imageRect, null)
+
+            // Draw bitmap with rounded corners
+            val saveCount = canvas.saveLayer(imageRect, null)
+
+            // Draw rounded rect as mask
+            imagePath.reset()
+            imagePath.addRoundRect(
+                imageRect,
+                IMAGE_RADIUS.toFloat(),
+                IMAGE_RADIUS.toFloat(),
+                Path.Direction.CW
+            )
+            canvas.drawPath(imagePath, imagePaint)
+
+            // Set xfermode to only draw bitmap where the rounded rect was drawn
+            imagePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+            canvas.drawBitmap(images[i], null, imageRect, imagePaint)
+
+            // Reset xfermode
+            imagePaint.xfermode = null
+            canvas.restoreToCount(saveCount)
         }
 
         return getImageInfo(images.lastIndex).rect.bottom
@@ -613,8 +638,9 @@ class NoteItemView @JvmOverloads constructor(
         const val BACKGROUND_RADIUS = 16
         const val BACKGROUND_COLOR = 0x33FFFFFF
 
-        const val MARGIN_BORDER = 4
-        const val MARGIN_IMAGE = 4
+        const val MARGIN_BORDER = 8
+        const val MARGIN_IMAGE = 8
+        const val IMAGE_RADIUS = 14
 
         const val MARGIN_TEXT = 16
         const val MARGIN_TIME = 8
