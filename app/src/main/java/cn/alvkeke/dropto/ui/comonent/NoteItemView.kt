@@ -74,10 +74,12 @@ class NoteItemView @JvmOverloads constructor(
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val imagePath = Path()
 
-    private val filePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fileIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.DKGRAY
+    }
     private val fileNamePaint = TextPaint().apply {
         color = Color.LTGRAY
-        textSize = TEXT_SIZE_CONTENT
+        textSize = TEXT_SIZE_FILENAME
         isAntiAlias = true
     }
 
@@ -704,37 +706,50 @@ class NoteItemView @JvmOverloads constructor(
         return getImageInfo(images.lastIndex).rect.bottom + MARGIN_IMAGE
     }
 
-    private fun drawFiles(canvas: Canvas): Float {
+    private fun drawFiles(canvas: Canvas, contentWidth: Int): Float {
         var offsetY: Float = MARGIN_FILE.toFloat()
         for (file in files) {
             Log.v(TAG, "drawFiles: file=${file.name}, md5=${file.md5}")
 
+            val rect = RectF(
+                MARGIN_FILE.toFloat(),
+                offsetY,
+                (MARGIN_FILE + FILE_ICON_SIZE.dp()).toFloat(),
+                offsetY + FILE_ICON_SIZE.dp()
+            )
+            canvas.drawRoundRect(
+                rect,
+                FILE_ICON_RADIUS.toFloat(),
+                FILE_ICON_RADIUS.toFloat(),
+                fileIconPaint
+            )
+
             canvas.drawBitmap(
                 ImageLoader.iconFile,
                 null,
-                RectF(
-                    MARGIN_FILE.toFloat(),
-                    offsetY,
-                    (MARGIN_FILE + FILE_ICON_SIZE.dp()).toFloat(),
-                    offsetY + FILE_ICON_SIZE.dp()
-                ),
-                filePaint
+                rect,
+                fileIconPaint
             )
 
             // draw filename
+            // Calculate max lines based on icon height and text size
+            val maxLines = ((FILE_ICON_SIZE.dp() - MARGIN_FILENAME * 2) / TEXT_SIZE_FILENAME)
+                .toInt().coerceAtLeast(1)
             val fileNameLayout = StaticLayout.Builder
                 .obtain(
                     file.name, 0, file.name.length, fileNamePaint,
-                    width - MARGIN_BACKGROUND_START - MARGIN_BACKGROUND_END - MARGIN_BORDER * 2
-                        - MARGIN_FILE * 3 - FILE_ICON_SIZE.dp()
+                    contentWidth - MARGIN_FILE * 2 - MARGIN_FILENAME - FILE_ICON_SIZE.dp()
                 )
                 .setAlignment(Layout.Alignment.ALIGN_NORMAL)
                 .setLineSpacing(0f, 1f)
                 .setIncludePad(false)
+                .setMaxLines(maxLines)
+                .setEllipsize(android.text.TextUtils.TruncateAt.END)
                 .build()
+
             canvas.withTranslation(
-                (MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()).toFloat(),
-                offsetY
+                (MARGIN_FILE + MARGIN_FILENAME + FILE_ICON_SIZE.dp()).toFloat(),
+                offsetY + MARGIN_FILENAME
             ) {
                 fileNameLayout.draw(this)
             }
@@ -749,6 +764,7 @@ class NoteItemView @JvmOverloads constructor(
         super.onDraw(canvas)
         Log.v(TAG, "onDraw: $index")
 
+        var contentWidth = width
         backgroundPaint.color = if (selected) Color.LTGRAY else BACKGROUND_COLOR
         canvas.drawRoundRect(
             backgroundRect,
@@ -757,10 +773,12 @@ class NoteItemView @JvmOverloads constructor(
             backgroundPaint
         )
         canvas.translate(MARGIN_BACKGROUND_START.toFloat(), MARGIN_BACKGROUND_Y.toFloat())
+        contentWidth -= (MARGIN_BACKGROUND_START + MARGIN_BACKGROUND_END)
         canvas.translate(MARGIN_BORDER.toFloat(), MARGIN_BORDER.toFloat())
+        contentWidth -= MARGIN_BORDER * 2
         // draw images with the info got from measure
         canvas.translate(0F, drawImages(canvas))
-        canvas.translate(0F, drawFiles(canvas))
+        canvas.translate(0F, drawFiles(canvas, contentWidth))
 
         if (!text.isEmpty()) {
             canvas.translate(0F, MARGIN_TEXT.toFloat())
@@ -792,7 +810,10 @@ class NoteItemView @JvmOverloads constructor(
         const val IMAGE_RADIUS = 14
 
         const val MARGIN_FILE = 8
-        const val FILE_ICON_SIZE = 64  // in dp
+        const val FILE_ICON_SIZE = 48  // in dp
+        const val FILE_ICON_RADIUS = 36
+        const val MARGIN_FILENAME = 16
+        const val TEXT_SIZE_FILENAME = 40f
 
         const val MARGIN_TEXT = 16
         const val MARGIN_TIME = 8
