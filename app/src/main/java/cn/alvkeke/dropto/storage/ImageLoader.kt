@@ -55,6 +55,8 @@ object ImageLoader {
         private set
     lateinit var loadingBitmap: Bitmap
         private set
+    lateinit var iconFile: Bitmap
+        private set
 
     fun initImageLoader(context: Context) {
         // Load vector drawable and convert to bitmap
@@ -71,6 +73,13 @@ object ImageLoader {
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         loadingBitmap = bitmap
+
+        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_file, null)!!
+        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        iconFile = bitmap
     }
 
 

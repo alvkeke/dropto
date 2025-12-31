@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.ui.adapter
 
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,8 +8,6 @@ import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.ui.comonent.NoteItemView
-
-const val TAG = "NoteListAdapter"
 
 class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHolder>() {
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -30,15 +27,12 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.text = note.text
         view.createTime = note.createTime
         view.images.clear()
+        view.files.clear()
         // set the attachment Files only, to avoid async issue
         note.attachments.iterator().forEach { e ->
             when(e.type) {
-                AttachmentFile.Type.IMAGE -> {
-                    view.images.add(e.md5file)
-                }
-                else -> {
-                    Log.e(TAG, "not implement yet")
-                }
+                AttachmentFile.Type.IMAGE -> view.images.add(e.md5file)
+                AttachmentFile.Type.FILE -> view.files.add(e)
             }
         }
         view.selected = isSelected(note)

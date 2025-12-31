@@ -18,6 +18,7 @@ import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import androidx.core.graphics.withTranslation
+import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
 import java.io.File
 import java.text.SimpleDateFormat
@@ -28,6 +29,9 @@ import java.util.Locale
 class NoteItemView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : View(context, attrs) {
+
+    private val density = context.resources.displayMetrics.density
+    private fun Int.dp(): Int = (this * density).toInt()
 
     var index: Int = -1
     var text: String = ""
@@ -58,6 +62,7 @@ class NoteItemView @JvmOverloads constructor(
             return _images.add(element)
         }
     }
+    val files: MutableList<AttachmentFile> = mutableListOf()
 
     private var backgroundRect: RectF = RectF()
     private var backgroundPaint: Paint = Paint().apply {
@@ -68,6 +73,13 @@ class NoteItemView @JvmOverloads constructor(
     private var imageRect: RectF = RectF()
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val imagePath = Path()
+
+    private val filePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fileNamePaint = TextPaint().apply {
+        color = Color.LTGRAY
+        textSize = TEXT_SIZE_CONTENT
+        isAntiAlias = true
+    }
 
     private lateinit var textLayout: StaticLayout
     private val textPaint = TextPaint().apply {
@@ -523,12 +535,17 @@ class NoteItemView @JvmOverloads constructor(
         return desiredHeight
     }
 
+    private fun measureFilesHeight(): Int {
+        return MARGIN_FILE + files.size * (FILE_ICON_SIZE.dp() + MARGIN_FILE)
+    }
+
     private fun measureHeight(width: Int) : Int {
         val contentWidth =
             width - MARGIN_BACKGROUND_START - MARGIN_BACKGROUND_END - MARGIN_BORDER * 2
         var desiredHeight = MARGIN_BORDER * 2
 
         desiredHeight += measureImageHeight(contentWidth)
+        desiredHeight += measureFilesHeight()
 
         if (!text.isEmpty()) {
             textLayout = StaticLayout.Builder
@@ -599,12 +616,7 @@ class NoteItemView @JvmOverloads constructor(
 
     }
 
-    private fun Canvas.drawBitmapNullable(
-        bitmap: Bitmap?,
-        src: Rect?,
-        dst: RectF,
-        paint: Paint
-    ) {
+    private fun Canvas.drawBitmapNullable(bitmap: Bitmap?, src: Rect?, dst: RectF, paint: Paint) {
         if (bitmap == null) {
             Log.v(TAG, "drawBitmapNullable: bitmap is null, draw error bitmap")
             this.drawBitmap(ImageLoader.errorBitmap, src, dst, paint)
@@ -614,11 +626,7 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun Canvas.drawImageFile(
-        file: File,
-        dst: RectF,
-        paint: Paint
-    ) {
+    private fun Canvas.drawImageFile(file: File, dst: RectF, paint: Paint) {
         Log.v(TAG, "drawImageFile: async=$asyncImageLoad, file=${file.absolutePath}")
         val bitmap:Bitmap = if (asyncImageLoad) {
             val bitmapAsync = ImageLoader.loadImageAsync(file, false) { b ->
@@ -696,6 +704,47 @@ class NoteItemView @JvmOverloads constructor(
         return getImageInfo(images.lastIndex).rect.bottom + MARGIN_IMAGE
     }
 
+    private fun drawFiles(canvas: Canvas): Float {
+        var offsetY: Float = MARGIN_FILE.toFloat()
+        for (file in files) {
+            Log.v(TAG, "drawFiles: file=${file.name}, md5=${file.md5}")
+
+            canvas.drawBitmap(
+                ImageLoader.iconFile,
+                null,
+                RectF(
+                    MARGIN_FILE.toFloat(),
+                    offsetY,
+                    (MARGIN_FILE + FILE_ICON_SIZE.dp()).toFloat(),
+                    offsetY + FILE_ICON_SIZE.dp()
+                ),
+                filePaint
+            )
+
+            // draw filename
+            val fileNameLayout = StaticLayout.Builder
+                .obtain(
+                    file.name, 0, file.name.length, fileNamePaint,
+                    width - MARGIN_BACKGROUND_START - MARGIN_BACKGROUND_END - MARGIN_BORDER * 2
+                        - MARGIN_FILE * 3 - FILE_ICON_SIZE.dp()
+                )
+                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                .setLineSpacing(0f, 1f)
+                .setIncludePad(false)
+                .build()
+            canvas.withTranslation(
+                (MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()).toFloat(),
+                offsetY
+            ) {
+                fileNameLayout.draw(this)
+            }
+
+            offsetY += FILE_ICON_SIZE.dp() + MARGIN_FILE
+        }
+
+        return offsetY
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         Log.v(TAG, "onDraw: $index")
@@ -711,6 +760,7 @@ class NoteItemView @JvmOverloads constructor(
         canvas.translate(MARGIN_BORDER.toFloat(), MARGIN_BORDER.toFloat())
         // draw images with the info got from measure
         canvas.translate(0F, drawImages(canvas))
+        canvas.translate(0F, drawFiles(canvas))
 
         if (!text.isEmpty()) {
             canvas.translate(0F, MARGIN_TEXT.toFloat())
@@ -740,6 +790,9 @@ class NoteItemView @JvmOverloads constructor(
         const val MARGIN_BORDER = 8
         const val MARGIN_IMAGE = 8
         const val IMAGE_RADIUS = 14
+
+        const val MARGIN_FILE = 8
+        const val FILE_ICON_SIZE = 64  // in dp
 
         const val MARGIN_TEXT = 16
         const val MARGIN_TIME = 8
