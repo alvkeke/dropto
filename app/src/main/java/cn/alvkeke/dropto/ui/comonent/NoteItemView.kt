@@ -616,30 +616,47 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun Canvas.drawImageFile(
         file: File,
-        src: Rect?,
         dst: RectF,
         paint: Paint
     ) {
         Log.v(TAG, "drawImageFile: async=$asyncImageLoad, file=${file.absolutePath}")
-        val bitmap = if (asyncImageLoad) {
-            val bitmap = ImageLoader.loadImageAsync(file, false) { bitmap ->
-                Log.d(TAG, "drawImageFile.loadImageAsync callback: file=${file.absolutePath}, bitmap=$bitmap")
+        val bitmap:Bitmap = if (asyncImageLoad) {
+            val bitmapAsync = ImageLoader.loadImageAsync(file, false) { b ->
+                Log.d(TAG, "drawImageFile.loadImageAsync callback: file=${file.absolutePath}, bitmap=$b")
                 imageLoadedMap[file] = true
                 if (imageLoadedMap.values.all { it }) {
                     this@NoteItemView.invalidate()  // have cache now, just invalidate to redraw
                 }
             }
-            if (bitmap == null) {
+            if (bitmapAsync == null) {
                 imageLoadedMap[file] = false
-                drawBitmapNullable(ImageLoader.loadingBitmap, src, dst, paint)
+                drawBitmapNullable(ImageLoader.loadingBitmap, null, dst, paint)
                 return
             } else {
                 imageLoadedMap[file] = true
             }
-            bitmap
+            bitmapAsync
         } else {
-            ImageLoader.loadImage(file)
+            ImageLoader.loadImage(file) ?: ImageLoader.errorBitmap
         }
+
+        val ratioBitmap = bitmap.width.toFloat() / bitmap.height.toFloat()
+        val ratioDst = dst.width() / dst.height()
+
+        // Calculate src rect with same ratio as dst, matching bitmap's width or height
+        val src = Rect()
+        if (ratioBitmap > ratioDst) {
+            // Bitmap is wider - use full height, crop width
+            val srcWidth = (bitmap.height * ratioDst).toInt()
+            val srcLeft = (bitmap.width - srcWidth) / 2
+            src.set(srcLeft, 0, srcLeft + srcWidth, bitmap.height)
+        } else {
+            // Bitmap is taller - use full width, crop height
+            val srcHeight = (bitmap.width / ratioDst).toInt()
+            val srcTop = (bitmap.height - srcHeight) / 2
+            src.set(0, srcTop, bitmap.width, srcTop + srcHeight)
+        }
+
         drawBitmapNullable(bitmap, src, dst, paint)
     }
 
@@ -669,7 +686,7 @@ class NoteItemView @JvmOverloads constructor(
 
             // Set xfermode to only draw bitmap where the rounded rect was drawn
             imagePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            canvas.drawImageFile(images[i], null, imageRect, imagePaint)
+            canvas.drawImageFile(images[i], imageRect, imagePaint)
 
             // Reset xfermode
             imagePaint.xfermode = null
