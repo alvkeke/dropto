@@ -676,7 +676,7 @@ class NoteItemView @JvmOverloads constructor(
             canvas.restoreToCount(saveCount)
         }
 
-        return getImageInfo(images.lastIndex).rect.bottom
+        return getImageInfo(images.lastIndex).rect.bottom + MARGIN_IMAGE
     }
 
     override fun onDraw(canvas: Canvas) {
