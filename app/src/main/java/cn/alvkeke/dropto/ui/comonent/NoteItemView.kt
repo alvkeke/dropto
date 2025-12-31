@@ -37,8 +37,27 @@ class NoteItemView @JvmOverloads constructor(
     @JvmField
     var asyncImageLoad: Boolean = true
 
-    val images: ArrayList<File> = ArrayList()
-    val imageLoadedMap: HashMap<File, Boolean> = HashMap()
+    private val _images: MutableList<File> = mutableListOf()
+    private val imageLoadedMap: HashMap<File, Boolean> = HashMap()
+    val images: MutableList<File> = object : MutableList<File> by _images {
+        override fun clear() {
+            _images.clear()
+            imageLoadedMap.clear()
+        }
+
+        override fun remove(element: File): Boolean {
+            val result = _images.remove(element)
+            if (result) {
+                imageLoadedMap.remove(element)
+            }
+            return result
+        }
+
+        override fun add(element: File): Boolean {
+            imageLoadedMap[element] = false
+            return _images.add(element)
+        }
+    }
 
     private var backgroundRect: RectF = RectF()
     private var backgroundPaint: Paint = Paint().apply {
