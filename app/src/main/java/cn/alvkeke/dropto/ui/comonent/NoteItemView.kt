@@ -40,27 +40,107 @@ class NoteItemView @JvmOverloads constructor(
     @JvmField
     var asyncImageLoad: Boolean = true
 
-    private val _images: MutableList<AttachmentFile> = mutableListOf()
-    private val imageLoadedMap: HashMap<AttachmentFile, Boolean> = HashMap()
-    val images: MutableList<AttachmentFile> = object : MutableList<AttachmentFile> by _images {
-        override fun clear() {
-            _images.clear()
-            imageLoadedMap.clear()
+    private class ImageInfo(
+        var file: AttachmentFile,
+        var rect: RectF = RectF(),
+        var loaded: Boolean = false,
+    )
+    private val _images: MutableList<ImageInfo> = mutableListOf()
+    val images: MutableList<AttachmentFile> = object : MutableList<AttachmentFile> {
+        override val size: Int get() = _images.size
+
+        override fun contains(element: AttachmentFile): Boolean {
+            return _images.any { it.file == element }
         }
 
-        override fun remove(element: AttachmentFile): Boolean {
-            val result = _images.remove(element)
-            if (result) {
-                imageLoadedMap.remove(element)
-            }
-            return result
+        override fun containsAll(elements: Collection<AttachmentFile>): Boolean {
+            return elements.all { contains(it) }
+        }
+
+        override fun get(index: Int): AttachmentFile {
+            return _images[index].file
+        }
+
+        override fun indexOf(element: AttachmentFile): Int {
+            return _images.indexOfFirst { it.file == element }
+        }
+
+        override fun isEmpty(): Boolean = _images.isEmpty()
+
+        override fun iterator(): MutableIterator<AttachmentFile> {
+            return _images.map { it.file }.toMutableList().iterator()
+        }
+
+        override fun lastIndexOf(element: AttachmentFile): Int {
+            return _images.indexOfLast { it.file == element }
         }
 
         override fun add(element: AttachmentFile): Boolean {
-            imageLoadedMap[element] = false
-            return _images.add(element)
+            return _images.add(ImageInfo(element))
+        }
+
+        override fun add(index: Int, element: AttachmentFile) {
+            _images.add(index, ImageInfo(element))
+        }
+
+        override fun addAll(index: Int, elements: Collection<AttachmentFile>): Boolean {
+            return _images.addAll(index, elements.map { ImageInfo(it) })
+        }
+
+        override fun addAll(elements: Collection<AttachmentFile>): Boolean {
+            return _images.addAll(elements.map { ImageInfo(it) })
+        }
+
+        override fun clear() {
+            _images.clear()
+        }
+
+        override fun listIterator(): MutableListIterator<AttachmentFile> {
+            return _images.map { it.file }.toMutableList().listIterator()
+        }
+
+        override fun listIterator(index: Int): MutableListIterator<AttachmentFile> {
+            return _images.map { it.file }.toMutableList().listIterator(index)
+        }
+
+        override fun remove(element: AttachmentFile): Boolean {
+            val index = indexOf(element)
+            if (index != -1) {
+                _images.removeAt(index)
+                return true
+            }
+            return false
+        }
+
+        override fun removeAll(elements: Collection<AttachmentFile>): Boolean {
+            var modified = false
+            elements.forEach {
+                if (remove(it)) modified = true
+            }
+            return modified
+        }
+
+        override fun removeAt(index: Int): AttachmentFile {
+            val info = _images.removeAt(index)
+            return info.file
+        }
+
+        override fun retainAll(elements: Collection<AttachmentFile>): Boolean {
+            val toRemove = _images.filter { it.file !in elements }
+            return _images.retainAll(toRemove.map { it })
+        }
+
+        override fun set(index: Int, element: AttachmentFile): AttachmentFile {
+            val old = _images[index].file
+            _images[index] = ImageInfo(element)
+            return old
+        }
+
+        override fun subList(fromIndex: Int, toIndex: Int): MutableList<AttachmentFile> {
+            return _images.subList(fromIndex, toIndex).map { it.file }.toMutableList()
         }
     }
+
     val files: MutableList<AttachmentFile> = mutableListOf()
 
     private var backgroundRect: RectF = RectF()
@@ -130,33 +210,13 @@ class NoteItemView @JvmOverloads constructor(
         D E F G
          H I J/+
      */
-    private enum class InfoStatus{
-        NONE,
-        SET,
-    }
-    private class ImageInfo(var rect: RectF = RectF(), var status: InfoStatus = InfoStatus.NONE) {
-        fun set() {
-            this.status = InfoStatus.SET
-        }
-    }
-    private val imageInfoMap = HashMap<Int, ImageInfo>()
-
-    private fun getImageInfo(key: Int): ImageInfo {
-        var info = imageInfoMap[key]
-        if (info == null) {
-            info = ImageInfo()
-            imageInfoMap[key] = info
-        }
-
-        return info
-    }
 
     private fun measureImageHeight(contentWidth: Int): Int {
         val maxHeight = contentWidth * 3 / 2
 
         val options:ArrayList<BitmapFactory.Options> = ArrayList()
-        for (a in images) {
-            val f = a.md5file
+        for (a in _images) {
+            val f = a.file.md5file
             if (!f.exists()) {
                 Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
                 continue
@@ -175,14 +235,13 @@ class NoteItemView @JvmOverloads constructor(
                 val e = options[0]
                 val imageHeight = (e.outHeight * contentWidth / e.outWidth).coerceAtMost(maxHeight)
                 val imageWidth = (e.outWidth * imageHeight / e.outHeight)
-                val info = getImageInfo(0)
+                val info = _images[0]
                 info.rect.set(
                     0F,
                     0F,
                     imageWidth.toFloat(),
                     imageHeight.toFloat()
                 )
-                info.status = InfoStatus.SET
                 desiredHeight += imageHeight + MARGIN_IMAGE
             }
             2 -> {
@@ -206,24 +265,22 @@ class NoteItemView @JvmOverloads constructor(
                     width2 = e2.outWidth * alignHeight / e2.outHeight
                 }
 
-                var info = getImageInfo(0)
+                var info = _images[0]
                 info.rect.set(
                     0F,
                     0F,
                     width1.toFloat(),
                     alignHeight.toFloat()
                 )
-                info.status = InfoStatus.SET
 
                 val offsetX = (width1 + MARGIN_IMAGE)
-                info = getImageInfo(1)
+                info = _images[1]
                 info.rect.set(
                     offsetX.toFloat(),
                     0F,
                     (offsetX + width2).toFloat(),
                     alignHeight.toFloat()
                 )
-                info.status = InfoStatus.SET
 
                 desiredHeight += alignHeight + MARGIN_IMAGE
             }
@@ -238,17 +295,16 @@ class NoteItemView @JvmOverloads constructor(
                 val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
                 width = minOf(width, halfWidth)
 
-                var info = getImageInfo(0)
+                var info = _images[0]
                 info.rect.set(
                     0F,
                     0F,
                     width.toFloat(),
                     height.toFloat(),
                 )
-                info.status = InfoStatus.SET
 
                 val heightRight = (height - MARGIN_IMAGE) / 2
-                info = getImageInfo(1)
+                info = _images[1]
                 val offsetX = width + MARGIN_IMAGE
                 info.rect.set(
                     offsetX.toFloat(),
@@ -256,17 +312,15 @@ class NoteItemView @JvmOverloads constructor(
                     (offsetX + width).toFloat(),
                     heightRight.toFloat()
                 )
-                info.status = InfoStatus.SET
 
                 val offsetY = heightRight + MARGIN_IMAGE
-                info = getImageInfo(2)
+                info = _images[2]
                 info.rect.set(
                     offsetX.toFloat(),
                     offsetY.toFloat(),
                     (offsetX + width).toFloat(),
                     (offsetY + heightRight).toFloat()
                 )
-                info.status = InfoStatus.SET
 
                 desiredHeight += height + MARGIN_IMAGE
             }
@@ -281,45 +335,41 @@ class NoteItemView @JvmOverloads constructor(
                 val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
                 width = minOf(width, halfWidth)
 
-                var info = getImageInfo(0)
+                var info = _images[0]
                 info.rect.set(
                     0f,
                     0f,
                     width.toFloat(),
                     height.toFloat()
                 )
-                info.set()
 
                 val heightRight = (height - MARGIN_IMAGE * 2) / 3
                 val offsetX = width + MARGIN_IMAGE
-                info = getImageInfo(1)
+                info = _images[1]
                 info.rect.set(
                     offsetX.toFloat(),
                     0f,
                     (offsetX + width).toFloat(),
                     heightRight.toFloat()
                 )
-                info.set()
 
                 var offsetY = heightRight + MARGIN_IMAGE
-                info = getImageInfo(2)
+                info = _images[2]
                 info.rect.set(
                     offsetX.toFloat(),
                     offsetY.toFloat(),
                     (offsetX + width).toFloat(),
                     (offsetY + heightRight).toFloat(),
                 )
-                info.set()
 
                 offsetY += heightRight + MARGIN_IMAGE
-                info = getImageInfo(3)
+                info = _images[3]
                 info.rect.set(
                     offsetX.toFloat(),
                     offsetY.toFloat(),
                     (offsetX + width).toFloat(),
                     (offsetY + heightRight).toFloat(),
                 )
-                info.set()
 
                 desiredHeight += height + MARGIN_IMAGE
             }
@@ -331,27 +381,25 @@ class NoteItemView @JvmOverloads constructor(
 
                 for (i in 0..1) {
                     val offsetX = i * (widthTop + MARGIN_IMAGE)
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     info.rect.set(
                         offsetX.toFloat(),
                         0f,
                         (offsetX + widthTop).toFloat(),
                         heightTop.toFloat()
                     )
-                    info.set()
                 }
 
                 val offsetY = heightTop + MARGIN_IMAGE
                 for (i in 2..4) {
                     val offsetX = (i-2) * (widthBottom + MARGIN_IMAGE)
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     info.rect.set(
                         offsetX.toFloat(),
                         offsetY.toFloat(),
                         (offsetX + widthBottom).toFloat(),
                         (offsetY + heightBottom).toFloat()
                     )
-                    info.set()
                 }
 
                 desiredHeight += heightTop + MARGIN_IMAGE + heightBottom + MARGIN_IMAGE
@@ -363,7 +411,7 @@ class NoteItemView @JvmOverloads constructor(
                 var offsetX: Int
                 var offsetY: Int
                 for (i in 0 until 6) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     offsetX = (i % 3) * (width + MARGIN_IMAGE)
                     offsetY = when(i) {
                         2, 5 -> height + MARGIN_IMAGE
@@ -375,7 +423,6 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width).toFloat(),
                         (offsetY + height).toFloat(),
                     )
-                    info.set()
                 }
 
                 desiredHeight += (height + MARGIN_IMAGE) * 2
@@ -389,7 +436,7 @@ class NoteItemView @JvmOverloads constructor(
 
                 var offsetX: Int
                 for (i in 0..1) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     offsetX = i * (width2 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -397,11 +444,10 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width2).toFloat(),
                         height2.toFloat()
                     )
-                    info.set()
                 }
                 var offsetY: Int = height2 + MARGIN_IMAGE
                 for (i in 2..4) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     offsetX = (i - 2) * (width3 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -409,11 +455,10 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width3).toFloat(),
                         (offsetY + height3).toFloat(),
                     )
-                    info.set()
                 }
                 offsetY += height3 + MARGIN_IMAGE
                 for (i in 5..6) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     offsetX = (i - 5) * (width2 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -421,7 +466,6 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width3).toFloat(),
                         (offsetY + height3).toFloat(),
                     )
-                    info.set()
                 }
 
                 desiredHeight += height2 * 2 + height3 + MARGIN_IMAGE * 3
@@ -434,7 +478,7 @@ class NoteItemView @JvmOverloads constructor(
                 val height3 = width3 * 4 / 5
 
                 for (i in 0..1) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     val offsetX = i * (width2 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -442,11 +486,10 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width2).toFloat(),
                         height2.toFloat()
                     )
-                    info.set()
                 }
                 var offsetY = height2 + MARGIN_IMAGE
                 for (i in 2..7) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     val idx = i - 2
                     val offsetX = (idx % 3) * (width3 + MARGIN_IMAGE)
                     if (i == 5) {
@@ -459,7 +502,6 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width3).toFloat(),
                         (offsetY + height3).toFloat()
                     )
-                    info.set()
                 }
 
                 desiredHeight += height2 + height3 * 2 + MARGIN_IMAGE * 3
@@ -474,14 +516,13 @@ class NoteItemView @JvmOverloads constructor(
                     if ((i % 3) == 0) {
                         offsetY += height3 + MARGIN_IMAGE
                     }
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     info.rect.set(
                         offsetX.toFloat(),
                         offsetY.toFloat(),
                         (offsetX + width3).toFloat(),
                         (offsetY + height3).toFloat()
                     )
-                    info.set()
                 }
 
                 desiredHeight += height3 * 3 + MARGIN_IMAGE * 3
@@ -492,7 +533,7 @@ class NoteItemView @JvmOverloads constructor(
                 val width4 = (contentWidth - MARGIN_IMAGE * 3) / 4
                 val height4 = width4 * 4 / 5
                 for (i in 0..2) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     val offsetX = i * (width3 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -500,11 +541,10 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width3).toFloat(),
                         height3.toFloat()
                     )
-                    info.set()
                 }
                 var offsetY = height3 + MARGIN_IMAGE
                 for (i in 3..6) {
-                    val info = getImageInfo(i)
+                    val info = _images[i]
                     val offsetX = (i-3) * (width4 + MARGIN_IMAGE)
 
                     info.rect.set(
@@ -513,12 +553,11 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width3).toFloat(),
                         (offsetY + height3).toFloat()
                     )
-                    info.set()
                 }
                 offsetY += height4 + MARGIN_IMAGE
                 for (i in 6..9) {
                     val offsetX = (i - 6) * (width3 + MARGIN_IMAGE)
-                    val info = getImageInfo(i)
+                    val info = _images[i]
 
                     info.rect.set(
                         offsetX.toFloat(),
@@ -526,7 +565,6 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width3).toFloat(),
                         (offsetY + height3).toFloat()
                     )
-                    info.set()
                 }
                 desiredHeight += height3 * 2 + height4 + MARGIN_IMAGE * 3
             }
@@ -628,23 +666,24 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun Canvas.drawImageFile(attachment: AttachmentFile, dst: RectF, paint: Paint) {
-        val file = attachment.md5file
+    private fun Canvas.drawImageFile(image: ImageInfo, dst: RectF, paint: Paint) {
+        val file = image.file.md5file
         Log.v(TAG, "drawImageFile: async=$asyncImageLoad, file=${file.absolutePath}")
         val bitmap:Bitmap = if (asyncImageLoad) {
             val bitmapAsync = ImageLoader.loadImageAsync(file, false) { b ->
                 Log.d(TAG, "drawImageFile.loadImageAsync callback: file=${file.absolutePath}, bitmap=$b")
-                imageLoadedMap[attachment] = true
-                if (imageLoadedMap.values.all { it }) {
-                    this@NoteItemView.invalidate()  // have cache now, just invalidate to redraw
+                image.loaded = true
+                // Only invalidate when all images are loaded
+                if (_images.all { info -> info.loaded }) {
+                    this@NoteItemView.invalidate()
                 }
             }
             if (bitmapAsync == null) {
-                imageLoadedMap[attachment] = false
+                image.loaded = false
                 drawBitmapNullable(ImageLoader.loadingBitmap, null, dst, paint)
                 return
             } else {
-                imageLoadedMap[attachment] = true
+                image.loaded = true
             }
             bitmapAsync
         } else {
@@ -672,11 +711,14 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     private fun drawImages(canvas: Canvas): Float {
-        Log.v(TAG, "drawImages: total size: ${images.size}")
-        for (i in 0 until images.size) {
+        Log.v(TAG, "drawImages: total size: ${_images.size}")
+
+        if (_images.isEmpty()) return 0f
+
+        for (i in 0 until _images.size) {
             Log.v(TAG, "drawImages.for $i")
-            val info = getImageInfo(i)
-            if (info.status == InfoStatus.NONE) {
+            val info = _images[i]
+            if (info.rect.isEmpty) {
                 Log.e(TAG, "Trying to draw image without setting the image rect")
                 continue
             }
@@ -697,14 +739,14 @@ class NoteItemView @JvmOverloads constructor(
 
             // Set xfermode to only draw bitmap where the rounded rect was drawn
             imagePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            canvas.drawImageFile(images[i], imageRect, imagePaint)
+            canvas.drawImageFile(info, imageRect, imagePaint)
 
             // Reset xfermode
             imagePaint.xfermode = null
             canvas.restoreToCount(saveCount)
         }
 
-        return getImageInfo(images.lastIndex).rect.bottom + MARGIN_IMAGE
+        return _images.last().rect.bottom + MARGIN_IMAGE
     }
 
     private fun drawFiles(canvas: Canvas, contentWidth: Int): Float {
@@ -803,24 +845,21 @@ class NoteItemView @JvmOverloads constructor(
 
     fun checkClickedContent(x: Float, y: Float): ClickedContent {
         Log.v(TAG, "index-$index, checkClickedItem: x=$x, y=$y")
-        imageInfoMap.iterator().forEach { entry ->
-            val info = entry.value
-            if (info.status == InfoStatus.SET) {
-                val rect = RectF(
-                    info.rect.left + MARGIN_BACKGROUND_START + MARGIN_BORDER,
-                    info.rect.top + MARGIN_BACKGROUND_Y + MARGIN_BORDER,
-                    info.rect.right + MARGIN_BACKGROUND_START + MARGIN_BORDER,
-                    info.rect.bottom + MARGIN_BACKGROUND_Y + MARGIN_BORDER
+        _images.iterator().forEach { info ->
+            val rect = RectF(
+                info.rect.left + MARGIN_BACKGROUND_START + MARGIN_BORDER,
+                info.rect.top + MARGIN_BACKGROUND_Y + MARGIN_BORDER,
+                info.rect.right + MARGIN_BACKGROUND_START + MARGIN_BORDER,
+                info.rect.bottom + MARGIN_BACKGROUND_Y + MARGIN_BORDER
+            )
+            if (rect.contains(x, y)) {
+                Log.v(TAG, "checkClickedItem: image $info clicked")
+                val attachment = info.file
+                return ClickedContent(
+                    ClickedContent.Type.IMAGE,
+                    attachment,
+                    _images.indexOf(info)
                 )
-                if (rect.contains(x, y)) {
-                    Log.v(TAG, "checkClickedItem: image $entry clicked")
-                    val attachment = images[entry.key]
-                    return ClickedContent(
-                        ClickedContent.Type.IMAGE,
-                        attachment,
-                        images.indexOf(attachment)
-                    )
-                }
             }
         }
 
