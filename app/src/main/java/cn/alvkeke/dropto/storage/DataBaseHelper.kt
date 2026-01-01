@@ -194,11 +194,11 @@ class DataBaseHelper(private val context: Context) :
     }
 
     private fun NoteItem.generateAttachmentString(): String? {
-        if (this.noAttachment) return null
+        if (this.attachments.isEmpty()) return null
 
         val sb = StringBuilder()
 
-        this.iterateImages().forEach { f ->
+        this.attachments.iterator().forEach { f ->
             sb.append(when(f.type) {
                 AttachmentFile.Type.IMAGE -> NOTE_ATTACHMENT_PREFIX_IMAGE
                 AttachmentFile.Type.FILE -> NOTE_ATTACHMENT_PREFIX_FILE
@@ -391,7 +391,7 @@ class DataBaseHelper(private val context: Context) :
             for (info in imgInfoAllS) {
                 if (info.isEmpty()) continue
                 val imageFile = parseAttachmentFile(info) ?: continue
-                if (!e.addAttachment(imageFile)) {
+                if (!e.attachments.add(imageFile)) {
                     Log.e(TAG, "Failed to set image file: $attachInfoAll")
                 }
             }

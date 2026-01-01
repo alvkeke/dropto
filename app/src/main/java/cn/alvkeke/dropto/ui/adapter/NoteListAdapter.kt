@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.ui.comonent.NoteItemView
 
@@ -27,14 +26,9 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.text = note.text
         view.createTime = note.createTime
         view.images.clear()
+        view.images.addAll(note.images)
         view.files.clear()
-        // set the attachment Files only, to avoid async issue
-        note.attachments.iterator().forEach { e ->
-            when(e.type) {
-                AttachmentFile.Type.IMAGE -> view.images.add(e.md5file)
-                AttachmentFile.Type.FILE -> view.files.add(e)
-            }
-        }
+        view.files.addAll(note.files)
         view.selected = isSelected(note)
         view.invalidate()
     }

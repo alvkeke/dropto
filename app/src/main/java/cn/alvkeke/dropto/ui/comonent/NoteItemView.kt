@@ -20,7 +20,6 @@ import android.view.View
 import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,15 +40,15 @@ class NoteItemView @JvmOverloads constructor(
     @JvmField
     var asyncImageLoad: Boolean = true
 
-    private val _images: MutableList<File> = mutableListOf()
-    private val imageLoadedMap: HashMap<File, Boolean> = HashMap()
-    val images: MutableList<File> = object : MutableList<File> by _images {
+    private val _images: MutableList<AttachmentFile> = mutableListOf()
+    private val imageLoadedMap: HashMap<AttachmentFile, Boolean> = HashMap()
+    val images: MutableList<AttachmentFile> = object : MutableList<AttachmentFile> by _images {
         override fun clear() {
             _images.clear()
             imageLoadedMap.clear()
         }
 
-        override fun remove(element: File): Boolean {
+        override fun remove(element: AttachmentFile): Boolean {
             val result = _images.remove(element)
             if (result) {
                 imageLoadedMap.remove(element)
@@ -57,7 +56,7 @@ class NoteItemView @JvmOverloads constructor(
             return result
         }
 
-        override fun add(element: File): Boolean {
+        override fun add(element: AttachmentFile): Boolean {
             imageLoadedMap[element] = false
             return _images.add(element)
         }
@@ -156,7 +155,8 @@ class NoteItemView @JvmOverloads constructor(
         val maxHeight = contentWidth * 3 / 2
 
         val options:ArrayList<BitmapFactory.Options> = ArrayList()
-        for (f in images) {
+        for (a in images) {
+            val f = a.md5file
             if (!f.exists()) {
                 Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
                 continue
@@ -628,22 +628,23 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun Canvas.drawImageFile(file: File, dst: RectF, paint: Paint) {
+    private fun Canvas.drawImageFile(attachment: AttachmentFile, dst: RectF, paint: Paint) {
+        val file = attachment.md5file
         Log.v(TAG, "drawImageFile: async=$asyncImageLoad, file=${file.absolutePath}")
         val bitmap:Bitmap = if (asyncImageLoad) {
             val bitmapAsync = ImageLoader.loadImageAsync(file, false) { b ->
                 Log.d(TAG, "drawImageFile.loadImageAsync callback: file=${file.absolutePath}, bitmap=$b")
-                imageLoadedMap[file] = true
+                imageLoadedMap[attachment] = true
                 if (imageLoadedMap.values.all { it }) {
                     this@NoteItemView.invalidate()  // have cache now, just invalidate to redraw
                 }
             }
             if (bitmapAsync == null) {
-                imageLoadedMap[file] = false
+                imageLoadedMap[attachment] = false
                 drawBitmapNullable(ImageLoader.loadingBitmap, null, dst, paint)
                 return
             } else {
-                imageLoadedMap[file] = true
+                imageLoadedMap[attachment] = true
             }
             bitmapAsync
         } else {
@@ -790,6 +791,40 @@ class NoteItemView @JvmOverloads constructor(
         canvas.withTranslation(MARGIN_TIME.toFloat(), 0F) {
             timeLayout.draw(this)
         }
+    }
+
+    class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
+        enum class Type {
+            BACKGROUND,
+            IMAGE,
+            FILE,
+        }
+    }
+
+    fun checkClickedContent(x: Float, y: Float): ClickedContent {
+        Log.v(TAG, "index-$index, checkClickedItem: x=$x, y=$y")
+        imageInfoMap.iterator().forEach { entry ->
+            val info = entry.value
+            if (info.status == InfoStatus.SET) {
+                val rect = RectF(
+                    info.rect.left + MARGIN_BACKGROUND_START + MARGIN_BORDER,
+                    info.rect.top + MARGIN_BACKGROUND_Y + MARGIN_BORDER,
+                    info.rect.right + MARGIN_BACKGROUND_START + MARGIN_BORDER,
+                    info.rect.bottom + MARGIN_BACKGROUND_Y + MARGIN_BORDER
+                )
+                if (rect.contains(x, y)) {
+                    Log.v(TAG, "checkClickedItem: image $entry clicked")
+                    val attachment = images[entry.key]
+                    return ClickedContent(
+                        ClickedContent.Type.IMAGE,
+                        attachment,
+                        images.indexOf(attachment)
+                    )
+                }
+            }
+        }
+
+        return ClickedContent(ClickedContent.Type.BACKGROUND)
     }
 
     private fun Long.format(): String {

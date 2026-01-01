@@ -304,7 +304,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                     idx++
                     if (imgFile.exists()) {
                         val imageFile = from(imgFile, imgFile.name, Type.IMAGE)
-                        e.addAttachment(imageFile)
+                        e.attachments.add(imageFile)
                     }
                 }
                 app.service?.queueTask(createNote(e))
@@ -385,7 +385,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun generateShareFileAndUriForNote(note: NoteItem, uris: ArrayList<Uri>) {
-        note.iterateImages().forEachRemaining(Consumer { f: AttachmentFile ->
+        note.attachments.iterator().forEachRemaining(Consumer { f: AttachmentFile ->
             val ff = generateShareFile(f)
             val uri = getUriForFile(ff!!)
             uris.add(uri)
@@ -466,7 +466,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
         }
-        val imageFile = item.attachments[imageIndex]
+        val imageFile = item.images[imageIndex]
         savedImageViewFile = imageFile.md5file.absolutePath
         imageViewerFragment!!.setImgFile(imageFile.md5file)
         imageViewerFragment!!.show(supportFragmentManager, null)

@@ -103,7 +103,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         if (pendingUris != null) {
             for (uri in pendingUris) {
                 val imageFile = extraImageFileFromUri(uri)
-                if (imageFile != null) recvNote.addAttachment(imageFile)
+                if (imageFile != null) recvNote.attachments.add(imageFile)
             }
         }
         app.service?.queueTask(createNote(recvNote))

@@ -33,7 +33,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
@@ -56,6 +55,7 @@ import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import androidx.core.view.get
 import androidx.core.view.size
+import cn.alvkeke.dropto.ui.comonent.NoteItemView
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 
 
@@ -246,14 +246,30 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             } else {
                 val x = event.rawX.toInt()
                 val y = event.rawY.toInt()
-                // FIXME: replace with the new method
-//                val imgIdx = checkImageClicked(v, x, y)
 
-//                if (imgIdx >= 0) {
-//                    showImageView(index, imgIdx)
-//                } else {
-//                    showItemPopMenu(index, v, x, y)
-//                }
+                val itemView = v as NoteItemView
+                Log.v(TAG, "clicked item-$index, view index: ${itemView.index}")
+
+                // Translate RecyclerView coordinates to itemView coordinates
+                val localX = event.x - itemView.left
+                val localY = event.y - itemView.top
+                Log.v(TAG, "localX: $localX, localY: $localY")
+
+                val content = itemView.checkClickedContent(localX, localY)
+
+                when (content.type) {
+                    NoteItemView.ClickedContent.Type.BACKGROUND -> {
+                        showItemPopMenu(index, v, x, y)
+                    }
+
+                    NoteItemView.ClickedContent.Type.IMAGE -> {
+                        showImageView(index, content.index)
+                    }
+
+                    NoteItemView.ClickedContent.Type.FILE -> {
+                        // do nothing for NONE type
+                    }
+                }
             }
             return true
         }
@@ -461,7 +477,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
                     val imgName = FileHelper.getFileNameFromUri(context, a.uri)
                     val imageFile = AttachmentFile.from(md5file!!, imgName!!, a.type)
-                    item.addAttachment(imageFile)
+                    item.attachments.add(imageFile)
                 }
             }
             setPendingItem(item)
@@ -471,11 +487,11 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private fun showImageView(index: Int, imageIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
-        if (noteItem.attachmentsCount > 4 && imageIndex == 3) {
-            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, noteItem)
-        } else {
-            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_IMAGE, noteItem, imageIndex)
-        }
+        uiListener.onAttempt(
+            NoteUIAttemptListener.Attempt.SHOW_IMAGE,
+            noteItem,
+            imageIndex
+        )
     }
 
     private fun throwErrorMessage(msg: String) {

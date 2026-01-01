@@ -138,7 +138,8 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         }
         item!!.setText(text, true)
         if (isImageChanged) {
-            item!!.useImageFiles(attachments)
+            item!!.attachments.clear()
+            item!!.attachments.addAll(attachments)
         }
         dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, item!!)
     }
@@ -167,10 +168,10 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
     private fun loadItemDataToUI(item: NoteItem) {
         etNoteItemText.setText(item.text)
 
-        if (item.noAttachment) return
+        if (item.attachments.isEmpty()) return
 
         val context = requireContext()
-        item.iterateImages().forEachRemaining(Consumer { attachment: AttachmentFile ->
+        item.attachments.iterator().forEachRemaining(Consumer { attachment: AttachmentFile ->
             attachments.add(attachment)
             val card = ImageCard(context)
             card.setImageMd5(attachment.md5)
@@ -204,7 +205,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
                 })
                 animator.start()
             }
-            val imageIndex = item.indexOf(attachment)
+            val imageIndex = item.attachments.indexOf(attachment)
             card.setImageClickListener { _: View ->
                 uiListener.onAttempt(
                     NoteUIAttemptListener.Attempt.SHOW_IMAGE,
