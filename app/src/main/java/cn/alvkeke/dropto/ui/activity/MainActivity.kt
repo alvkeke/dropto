@@ -472,7 +472,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         val file = item.files[fileIndex]
         val uri = getUriForFile(file.md5file)
         val mimeType = mimeTypeFromFileName(file.name)
-        Log.e(TAG, "open file with mime type: $mimeType")
+        Log.v(TAG, "open file with mime type: $mimeType")
 
         // Special handling for APK files
         if (mimeType == "application/vnd.android.package-archive") {
