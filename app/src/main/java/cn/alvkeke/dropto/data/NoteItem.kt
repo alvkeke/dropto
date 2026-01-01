@@ -189,7 +189,7 @@ class NoteItem : Serializable, Cloneable {
         if (this === target) return  // prevent update in place
 
         setText(target.text, edited)
-        if (!target.attachments.isNotEmpty()) {
+        if (target.attachments.isNotEmpty()) {
             target.attachments.clear()
             target.attachments.addAll(target.attachments)
         }
