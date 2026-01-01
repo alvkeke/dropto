@@ -383,7 +383,7 @@ class NoteItemView @JvmOverloads constructor(
                 val widthTop = (contentWidth - MARGIN_IMAGE) / 2
                 val widthBottom = (contentWidth - MARGIN_IMAGE * 2) / 3
                 val heightTop = widthTop * 4 / 5
-                val heightBottom = widthBottom * 4 / 5
+                val heightBottom = widthBottom * 5 / 4
 
                 for (i in 0..1) {
                     val offsetX = i * (widthTop + MARGIN_IMAGE)
@@ -412,17 +412,14 @@ class NoteItemView @JvmOverloads constructor(
             }
             6 -> {
                 val width = (contentWidth - MARGIN_IMAGE * 2) / 3
-                val height = width * 4 / 5
+                val height = width * 5 / 4
 
                 var offsetX: Int
                 var offsetY: Int
                 for (i in 0 until 6) {
                     val info = _images[i]
                     offsetX = (i % 3) * (width + MARGIN_IMAGE)
-                    offsetY = when(i) {
-                        2, 5 -> height + MARGIN_IMAGE
-                        else -> 0
-                    }
+                    offsetY = if (i >= 3) height + MARGIN_IMAGE else 0
                     info.rect.set(
                         offsetX.toFloat(),
                         offsetY.toFloat(),
@@ -438,7 +435,7 @@ class NoteItemView @JvmOverloads constructor(
                 val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
 
                 val height2 = width2 * 4 / 5
-                val height3 = width3 * 4 / 5
+                val height3 = width3 * 5 / 4
 
                 var offsetX: Int
                 for (i in 0..1) {
@@ -469,8 +466,8 @@ class NoteItemView @JvmOverloads constructor(
                     info.rect.set(
                         offsetX.toFloat(),
                         offsetY.toFloat(),
-                        (offsetX + width3).toFloat(),
-                        (offsetY + height3).toFloat(),
+                        (offsetX + width2).toFloat(),
+                        (offsetY + height2).toFloat(),
                     )
                 }
 
@@ -514,14 +511,11 @@ class NoteItemView @JvmOverloads constructor(
             }
             9 -> {
                 val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
-                val height3 = width3 * 4 / 5
+                val height3 = width3 * 5 / 4
 
                 var offsetY = 0
                 for (i in 0..8) {
                     val offsetX = (i % 3) * (width3 + MARGIN_IMAGE)
-                    if ((i % 3) == 0) {
-                        offsetY += height3 + MARGIN_IMAGE
-                    }
                     val info = _images[i]
                     info.rect.set(
                         offsetX.toFloat(),
@@ -529,15 +523,18 @@ class NoteItemView @JvmOverloads constructor(
                         (offsetX + width3).toFloat(),
                         (offsetY + height3).toFloat()
                     )
+                    if (((i + 1) % 3) == 0) {
+                        offsetY += height3 + MARGIN_IMAGE
+                    }
                 }
 
                 desiredHeight += height3 * 3 + MARGIN_IMAGE * 3
             }
             10 -> {
                 val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
-                val height3 = width3 * 4 / 5
+                val height3 = width3 * 5 / 4
                 val width4 = (contentWidth - MARGIN_IMAGE * 3) / 4
-                val height4 = width4 * 4 / 5
+                val height4 = width4 * 5 / 4
                 for (i in 0..2) {
                     val info = _images[i]
                     val offsetX = i * (width3 + MARGIN_IMAGE)
@@ -556,13 +553,13 @@ class NoteItemView @JvmOverloads constructor(
                     info.rect.set(
                         offsetX.toFloat(),
                         offsetY.toFloat(),
-                        (offsetX + width3).toFloat(),
-                        (offsetY + height3).toFloat()
+                        (offsetX + width4).toFloat(),
+                        (offsetY + height4).toFloat()
                     )
                 }
                 offsetY += height4 + MARGIN_IMAGE
-                for (i in 6..9) {
-                    val offsetX = (i - 6) * (width3 + MARGIN_IMAGE)
+                for (i in 7..9) {
+                    val offsetX = (i - 7) * (width3 + MARGIN_IMAGE)
                     val info = _images[i]
 
                     info.rect.set(
