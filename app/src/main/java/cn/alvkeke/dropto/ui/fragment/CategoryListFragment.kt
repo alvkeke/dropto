@@ -110,33 +110,45 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
 
     private inner class CategoryMenuListener : Toolbar.OnMenuItemClickListener {
         override fun onMenuItemClick(item: MenuItem): Boolean {
-            val menuId = item.itemId
-            if (menuId == R.id.category_menu_item_add) {
-                uiListener.onAttempt(CategoryUIAttemptListener.Attempt.SHOW_CREATE)
-            } else if (menuId == R.id.category_menu_item_edit) {
-                val category = categoryListAdapter.selectedItems[0]
-                uiListener.onAttempt(CategoryUIAttemptListener.Attempt.SHOW_DETAIL, category)
-                categoryListAdapter.clearSelectItems()
-            } else if (R.id.category_menu_item_remove == menuId) {
-                AlertDialog.Builder(context)
-                    .setTitle(R.string.dialog_category_delete_selected_title)
-                    .setMessage(R.string.dialog_category_delete_selected_message)
-                    .setNegativeButton(R.string.string_cancel, null)
-                    .setPositiveButton(
-                        R.string.string_ok
-                    ) { _: DialogInterface, _: Int ->
-                        val selected: ArrayList<Category> = categoryListAdapter.selectedItems
-                        categoryListAdapter.clearSelectItems()
-                        for (c in selected) {
-                            dbListener.onAttempt(CategoryDBAttemptListener.Attempt.REMOVE, c)
-                        }
-                    }.create().show()
-            } else if (R.id.category_menu_item_debug == menuId) {
-                uiListener.onAttempt(CategoryUIAttemptListener.Attempt.DEBUG_ADD_DATA)
-            } else {
-                throwErrorMessage("Unknown menu id: $menuId")
-                return false
+            when (val menuId = item.itemId) {
+                R.id.category_menu_item_add -> {
+                    uiListener.onAttempt(CategoryUIAttemptListener.Attempt.SHOW_CREATE)
+                }
+                R.id.category_menu_item_edit -> {
+                    val category = categoryListAdapter.selectedItems[0]
+                    uiListener.onAttempt(
+                        CategoryUIAttemptListener.Attempt.SHOW_DETAIL,
+                        category
+                    )
+                    categoryListAdapter.clearSelectItems()
+                }
+                R.id.category_menu_item_remove -> {
+                    val selected: ArrayList<Category> = categoryListAdapter.selectedItems
+                    categoryListAdapter.clearSelectItems()
+                    AlertDialog.Builder(context)
+                        .setTitle(R.string.dialog_category_delete_selected_title)
+                        .setMessage(R.string.dialog_category_delete_selected_message)
+                        .setNegativeButton(R.string.string_cancel, null)
+                        .setPositiveButton(R.string.string_ok
+                        ) { _: DialogInterface, _: Int ->
+                            for (c in selected) {
+                                dbListener.onAttempt(
+                                    CategoryDBAttemptListener.Attempt.REMOVE,
+                                    c
+                                )
+                            }
+                        }.create().show()
+                }
+                R.id.category_menu_item_debug -> {
+                    uiListener.onAttempt(CategoryUIAttemptListener.Attempt.DEBUG_ADD_DATA)
+                }
+                else -> {
+                    throwErrorMessage("Unknown menu id: $menuId")
+                    return false
+                }
             }
+
+            setMenuBySelectedCount()
             return true
         }
     }
