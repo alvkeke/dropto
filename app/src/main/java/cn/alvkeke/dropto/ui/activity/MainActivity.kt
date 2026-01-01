@@ -462,6 +462,53 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             .commit()
     }
 
+    private fun mimeTypeFromFileName(name: String): String {
+        val extension = name.substringAfterLast('.', "")
+        return android.webkit.MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(extension.lowercase()) ?: "*/*"
+    }
+
+    private fun handleNoteFileOpen(item: NoteItem, fileIndex: Int) {
+        val file = item.files[fileIndex]
+        val uri = getUriForFile(file.md5file)
+        val mimeType = mimeTypeFromFileName(file.name)
+        Log.e(TAG, "open file with mime type: $mimeType")
+
+        // Special handling for APK files
+        if (mimeType == "application/vnd.android.package-archive") {
+            val installIntent = Intent(Intent.ACTION_VIEW)
+            installIntent.setDataAndType(uri, mimeType)
+            installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            try {
+                this.startActivity(installIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to open APK installer: $e")
+                Toast.makeText(
+                    this,
+                    "Failed to open APK installer. Please check if installation from unknown sources is enabled.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            return
+        }
+
+        // Normal file opening
+        val openIntent = Intent(Intent.ACTION_VIEW)
+        openIntent.setDataAndType(uri, mimeType)
+        openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            this.startActivity(openIntent)
+        } catch (e: Exception) {
+            Log.e(this.toString(), "Failed to open file intent: $e")
+            Toast.makeText(
+                this,
+                "No application found to open this file type: $mimeType",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     private fun handleNoteImageShow(item: NoteItem, imageIndex: Int) {
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
@@ -516,6 +563,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             NoteUIAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
             NoteUIAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
             NoteUIAttemptListener.Attempt.SHOW_IMAGE -> handleNoteImageShow(e, index)
+            NoteUIAttemptListener.Attempt.OPEN_FILE -> handleNoteFileOpen(e, index)
         }
     }
 
@@ -588,6 +636,9 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     companion object {
+
+        const val TAG: String = "MainActivity"
+
         private const val SAVED_NOTE_LIST_CATEGORY_ID_NONE: Long = -1
         private const val SAVED_NOTE_LIST_CATEGORY_ID = "SAVED_NOTE_LIST_CATEGORY_ID"
         private const val SAVED_NOTE_INFO_NOTE_ID_NONE: Long = -1

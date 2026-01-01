@@ -40,17 +40,20 @@ class NoteItemView @JvmOverloads constructor(
     @JvmField
     var asyncImageLoad: Boolean = true
 
-    private class ImageInfo(
-        var file: AttachmentFile,
-        var rect: RectF = RectF(),
-        var loaded: Boolean = false,
-    )
-    private val _images: MutableList<ImageInfo> = mutableListOf()
-    val images: MutableList<AttachmentFile> = object : MutableList<AttachmentFile> {
-        override val size: Int get() = _images.size
+    private class AttachmentList(
+        private val backingList: MutableList<AttachmentInfo>
+    ) : MutableList<AttachmentFile> {
+
+        class AttachmentInfo(
+            var file: AttachmentFile,
+            var rect: RectF = RectF(),
+            var loaded: Boolean = false,
+        )
+
+        override val size: Int get() = backingList.size
 
         override fun contains(element: AttachmentFile): Boolean {
-            return _images.any { it.file == element }
+            return backingList.any { it.file == element }
         }
 
         override fun containsAll(elements: Collection<AttachmentFile>): Boolean {
@@ -58,55 +61,55 @@ class NoteItemView @JvmOverloads constructor(
         }
 
         override fun get(index: Int): AttachmentFile {
-            return _images[index].file
+            return backingList[index].file
         }
 
         override fun indexOf(element: AttachmentFile): Int {
-            return _images.indexOfFirst { it.file == element }
+            return backingList.indexOfFirst { it.file == element }
         }
 
-        override fun isEmpty(): Boolean = _images.isEmpty()
+        override fun isEmpty(): Boolean = backingList.isEmpty()
 
         override fun iterator(): MutableIterator<AttachmentFile> {
-            return _images.map { it.file }.toMutableList().iterator()
+            return backingList.map { it.file }.toMutableList().iterator()
         }
 
         override fun lastIndexOf(element: AttachmentFile): Int {
-            return _images.indexOfLast { it.file == element }
+            return backingList.indexOfLast { it.file == element }
         }
 
         override fun add(element: AttachmentFile): Boolean {
-            return _images.add(ImageInfo(element))
+            return backingList.add(AttachmentInfo(element))
         }
 
         override fun add(index: Int, element: AttachmentFile) {
-            _images.add(index, ImageInfo(element))
+            backingList.add(index, AttachmentInfo(element))
         }
 
         override fun addAll(index: Int, elements: Collection<AttachmentFile>): Boolean {
-            return _images.addAll(index, elements.map { ImageInfo(it) })
+            return backingList.addAll(index, elements.map { AttachmentInfo(it) })
         }
 
         override fun addAll(elements: Collection<AttachmentFile>): Boolean {
-            return _images.addAll(elements.map { ImageInfo(it) })
+            return backingList.addAll(elements.map { AttachmentInfo(it) })
         }
 
         override fun clear() {
-            _images.clear()
+            backingList.clear()
         }
 
         override fun listIterator(): MutableListIterator<AttachmentFile> {
-            return _images.map { it.file }.toMutableList().listIterator()
+            return backingList.map { it.file }.toMutableList().listIterator()
         }
 
         override fun listIterator(index: Int): MutableListIterator<AttachmentFile> {
-            return _images.map { it.file }.toMutableList().listIterator(index)
+            return backingList.map { it.file }.toMutableList().listIterator(index)
         }
 
         override fun remove(element: AttachmentFile): Boolean {
             val index = indexOf(element)
             if (index != -1) {
-                _images.removeAt(index)
+                backingList.removeAt(index)
                 return true
             }
             return false
@@ -121,27 +124,30 @@ class NoteItemView @JvmOverloads constructor(
         }
 
         override fun removeAt(index: Int): AttachmentFile {
-            val info = _images.removeAt(index)
+            val info = backingList.removeAt(index)
             return info.file
         }
 
         override fun retainAll(elements: Collection<AttachmentFile>): Boolean {
-            val toRemove = _images.filter { it.file !in elements }
-            return _images.retainAll(toRemove.map { it })
+            val toRemove = backingList.filter { it.file !in elements }
+            return backingList.retainAll(toRemove.map { it })
         }
 
         override fun set(index: Int, element: AttachmentFile): AttachmentFile {
-            val old = _images[index].file
-            _images[index] = ImageInfo(element)
+            val old = backingList[index].file
+            backingList[index] = AttachmentInfo(element)
             return old
         }
 
         override fun subList(fromIndex: Int, toIndex: Int): MutableList<AttachmentFile> {
-            return _images.subList(fromIndex, toIndex).map { it.file }.toMutableList()
+            return backingList.subList(fromIndex, toIndex).map { it.file }.toMutableList()
         }
     }
 
-    val files: MutableList<AttachmentFile> = mutableListOf()
+    private val _images: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
+    val images: MutableList<AttachmentFile> = AttachmentList(_images)
+    private val _files: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
+    val files: MutableList<AttachmentFile> = AttachmentList(_files)
 
     private var backgroundRect: RectF = RectF()
     private var backgroundPaint: Paint = Paint().apply {
@@ -575,8 +581,20 @@ class NoteItemView @JvmOverloads constructor(
         return desiredHeight
     }
 
-    private fun measureFilesHeight(): Int {
-        return MARGIN_FILE + files.size * (FILE_ICON_SIZE.dp() + MARGIN_FILE)
+    private fun measureFilesHeight(contentWidth: Int): Int {
+        if (_files.isEmpty()) return 0
+
+        for (i in 0 until _files.size) {
+            val f = _files[i]
+            val top = (MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()) * i.toFloat()
+            f.rect.set(
+                0F,
+                top,
+                contentWidth.toFloat(),
+                top + MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()
+            )
+        }
+        return files.size * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
     }
 
     private fun measureHeight(width: Int) : Int {
@@ -585,7 +603,7 @@ class NoteItemView @JvmOverloads constructor(
         var desiredHeight = MARGIN_BORDER * 2
 
         desiredHeight += measureImageHeight(contentWidth)
-        desiredHeight += measureFilesHeight()
+        desiredHeight += measureFilesHeight(contentWidth)
 
         if (!text.isEmpty()) {
             textLayout = StaticLayout.Builder
@@ -666,7 +684,7 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun Canvas.drawImageFile(image: ImageInfo, dst: RectF, paint: Paint) {
+    private fun Canvas.drawImageFile(image: AttachmentList.AttachmentInfo, dst: RectF, paint: Paint) {
         val file = image.file.md5file
         Log.v(TAG, "drawImageFile: async=$asyncImageLoad, file=${file.absolutePath}")
         val bitmap:Bitmap = if (asyncImageLoad) {
@@ -715,11 +733,9 @@ class NoteItemView @JvmOverloads constructor(
 
         if (_images.isEmpty()) return 0f
 
-        for (i in 0 until _images.size) {
-            Log.v(TAG, "drawImages.for $i")
-            val info = _images[i]
+        for (info in _images) {
             if (info.rect.isEmpty) {
-                Log.e(TAG, "Trying to draw image without setting the image rect")
+                Log.e(TAG, "drawing image without setting the image rect is not allowed")
                 continue
             }
             imageRect.set(info.rect)
@@ -751,7 +767,9 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun drawFiles(canvas: Canvas, contentWidth: Int): Float {
         var offsetY: Float = MARGIN_FILE.toFloat()
-        for (file in files) {
+
+        for (info in _files) {
+            val file = info.file
             Log.v(TAG, "drawFiles: file=${file.name}, md5=${file.md5}")
 
             val rect = RectF(
@@ -797,7 +815,7 @@ class NoteItemView @JvmOverloads constructor(
                 fileNameLayout.draw(this)
             }
 
-            offsetY += FILE_ICON_SIZE.dp() + MARGIN_FILE
+            offsetY += FILE_ICON_SIZE.dp() + MARGIN_FILE * 2
         }
 
         return offsetY
@@ -845,7 +863,8 @@ class NoteItemView @JvmOverloads constructor(
 
     fun checkClickedContent(x: Float, y: Float): ClickedContent {
         Log.v(TAG, "index-$index, checkClickedItem: x=$x, y=$y")
-        _images.iterator().forEach { info ->
+
+        (_images + _files).iterator().forEach { info ->
             val rect = RectF(
                 info.rect.left + MARGIN_BACKGROUND_START + MARGIN_BORDER,
                 info.rect.top + MARGIN_BACKGROUND_Y + MARGIN_BORDER,
@@ -853,12 +872,20 @@ class NoteItemView @JvmOverloads constructor(
                 info.rect.bottom + MARGIN_BACKGROUND_Y + MARGIN_BORDER
             )
             if (rect.contains(x, y)) {
-                Log.v(TAG, "checkClickedItem: image $info clicked")
+                Log.v(TAG, "checkClickedItem: attachment $info clicked")
                 val attachment = info.file
+                val type = when (attachment.type) {
+                    AttachmentFile.Type.IMAGE -> ClickedContent.Type.IMAGE
+                    AttachmentFile.Type.FILE -> ClickedContent.Type.FILE
+                }
+                val index = when (attachment.type) {
+                    AttachmentFile.Type.IMAGE -> _images.indexOf(info)
+                    AttachmentFile.Type.FILE -> _files.indexOf(info)
+                }
                 return ClickedContent(
-                    ClickedContent.Type.IMAGE,
+                    type,
                     attachment,
-                    _images.indexOf(info)
+                    index
                 )
             }
         }
@@ -875,7 +902,7 @@ class NoteItemView @JvmOverloads constructor(
 
         const val MARGIN_BACKGROUND_Y = 4
         const val MARGIN_BACKGROUND_START = 128
-        const val MARGIN_BACKGROUND_END = 64
+        const val MARGIN_BACKGROUND_END = 256
         const val BACKGROUND_RADIUS = 16
         const val BACKGROUND_COLOR = 0x33FFFFFF
 

@@ -267,7 +267,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     }
 
                     NoteItemView.ClickedContent.Type.FILE -> {
-                        // do nothing for NONE type
+                        showFileView(index, content.index)
                     }
                 }
             }
@@ -491,6 +491,15 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             NoteUIAttemptListener.Attempt.SHOW_IMAGE,
             noteItem,
             imageIndex
+        )
+    }
+
+    private fun showFileView(index: Int, fileIndex: Int) {
+        val noteItem = category!!.getNoteItem(index)
+        uiListener.onAttempt(
+            NoteUIAttemptListener.Attempt.OPEN_FILE,
+            noteItem,
+            fileIndex
         )
     }
 
