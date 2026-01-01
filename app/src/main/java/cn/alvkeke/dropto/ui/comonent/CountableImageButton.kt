@@ -27,12 +27,12 @@ class CountableImageButton @JvmOverloads constructor(
         }
 
     init {
-        Log.e(TAG, "init: $attrs")
+        Log.v(TAG, "init: $attrs")
         attrs?.let {
             context.withStyledAttributes(it, intArrayOf(android.R.attr.src)) {
                 val drawable = getDrawable(0)
                 originalImage = drawable
-                Log.d("TAG", "drawable class: ${drawable?.javaClass?.name}")
+                Log.v("TAG", "drawable class: ${drawable?.javaClass?.name}")
                 refreshImage()
             }
         }
@@ -44,19 +44,19 @@ class CountableImageButton @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        Log.e(TAG, "onSizeChanged: $w, $h, $oldw, $oldh")
+        Log.v(TAG, "onSizeChanged: $w, $h, $oldw, $oldh")
         refreshImage()
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        Log.e(TAG, "onDetachedFromWindow: ")
+        Log.v(TAG, "onDetachedFromWindow: ")
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        Log.d(TAG, "onDraw: BTN draw $bitmap")
+        Log.v(TAG, "onDraw: BTN draw $bitmap")
         bitmap?.let {
             val left = (width - it.width) / 2f
             val top = (height - it.height) / 2f
@@ -66,7 +66,7 @@ class CountableImageButton @JvmOverloads constructor(
             val numLeft = width / 2f
             val numTop = height / 2f
             val numSize = (width / 2f).coerceAtMost(height / 2f)
-            Log.e(this.toString(), "onDraw: draw count $count at $numLeft, $numTop, size $numSize")
+            Log.v(this.toString(), "onDraw: draw count $count at $numLeft, $numTop, size $numSize")
             drawCountNumber(canvas, numLeft, numTop, numSize)
         }
     }

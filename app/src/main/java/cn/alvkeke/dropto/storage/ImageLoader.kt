@@ -300,7 +300,7 @@ object ImageLoader {
                 ExifInterface.TAG_ORIENTATION,
                 ExifInterface.ORIENTATION_UNDEFINED
             )
-            Log.e("$TAG:getBitmapOrientation", "getBitmapOrientation: $orientation")
+            Log.v("$TAG:getBitmapOrientation", "getBitmapOrientation: $orientation")
         } catch (_: Exception) {
         }
         return orientation
