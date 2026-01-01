@@ -89,8 +89,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         this.enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        ImageLoader.initImageLoader(this)
-
         window.setFlags(
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
