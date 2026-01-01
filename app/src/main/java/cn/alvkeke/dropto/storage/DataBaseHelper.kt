@@ -233,7 +233,7 @@ class DataBaseHelper(private val context: Context) :
         }
 
         val sMd5 = infoS[idxMd5]
-        val sName = if (infoS.size == idxName) "" else String(
+        val sName = if (infoS.size <= idxName) "" else String(
             Base64.decode(
                 infoS[idxName],
                 Base64.DEFAULT
