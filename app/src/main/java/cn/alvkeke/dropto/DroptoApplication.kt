@@ -3,13 +3,11 @@ package cn.alvkeke.dropto
 import android.app.Application
 import android.content.ComponentName
 import android.content.Intent
-import android.graphics.Bitmap
 import android.util.Log
 import cn.alvkeke.dropto.service.CoreService
 import cn.alvkeke.dropto.service.CoreServiceConnection
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.ResultListener
-import androidx.core.graphics.createBitmap
 import cn.alvkeke.dropto.storage.ImageLoader
 
 class DroptoApplication : Application(), ResultListener{

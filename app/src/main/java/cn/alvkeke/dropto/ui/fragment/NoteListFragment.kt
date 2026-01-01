@@ -42,7 +42,6 @@ import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
-//import cn.alvkeke.dropto.ui.adapter.NoteListAdapter.Companion.checkImageClicked
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu
