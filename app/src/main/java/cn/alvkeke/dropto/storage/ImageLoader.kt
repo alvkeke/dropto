@@ -1,20 +1,22 @@
 package cn.alvkeke.dropto.storage
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
+import cn.alvkeke.dropto.R
 import java.io.File
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.locks.ReadWriteLock
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.math.ceil
-
 
 
 object ImageLoader {
@@ -48,6 +50,38 @@ object ImageLoader {
             imageTimeOut / 2, imageTimeOut / 2
         )
     }
+
+    lateinit var errorBitmap: Bitmap
+        private set
+    lateinit var loadingBitmap: Bitmap
+        private set
+    lateinit var iconFile: Bitmap
+        private set
+
+    fun initImageLoader(context: Context) {
+        // Load vector drawable and convert to bitmap
+        var drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_load_error, null)!!
+        var bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        var canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        errorBitmap = bitmap
+
+        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_loading, null)!!
+        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        loadingBitmap = bitmap
+
+        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_file, null)!!
+        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        iconFile = bitmap
+    }
+
 
     private fun imagePoolGet(key: String): WrappedBitmap? {
         poolLock.readLock().lock()
@@ -93,7 +127,6 @@ object ImageLoader {
     }
 
     private fun setSampleSize(options: BitmapFactory.Options) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
         val byteCount: Int = options.outWidth * options.outHeight * getPixelDeep(options.outConfig)
         if (byteCount <= imageMaxBytes) return
@@ -195,18 +228,27 @@ object ImageLoader {
         return wrappedBitmap.bitmap
     }
 
+    /**
+     * load image asynchronously, if the image is already in pool, return it directly
+     * @param file image file
+     * @param alwaysCallback whether always call the callback listener, even the image is already in pool
+     * @param listener callback listener
+     * @return the bitmap if it is already in pool, null otherwise
+     */
     @JvmStatic
     @Suppress("unused")
-    fun loadImageAsync(file: File, listener: ImageLoadListener) {
+    fun loadImageAsync(file: File, alwaysCallback: Boolean = true, listener: ImageLoadListener?): Bitmap? {
         val wrappedBitmap = getWrappedBitmapInPool(file.absolutePath)
         if (wrappedBitmap != null) {
-            listener.onImageLoaded(wrappedBitmap.bitmap)
-            return
+            if (alwaysCallback)
+                listener?.onImageLoaded(wrappedBitmap.bitmap)
+            return wrappedBitmap.bitmap
         }
         Thread {
             val bitmap = loadImage(file)
-            handler.post { listener.onImageLoaded(bitmap) }
+            handler.post { listener?.onImageLoaded(bitmap) }
         }.start()
+        return null
     }
 
     @JvmStatic
@@ -236,28 +278,16 @@ object ImageLoader {
     }
 
     private fun getPixelDeep(config: Bitmap.Config): Int {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when (config) {
-                Bitmap.Config.HARDWARE -> {
-                    Log.i("$TAG:$config", "Got HARDWARE, treat it as 1 byte deep")
-                    return 1
-                }
+        when (config) {
+            Bitmap.Config.HARDWARE -> {
+                Log.i("$TAG:$config", "Got HARDWARE, treat it as 1 byte deep")
+                return 1
+            }
 
-                Bitmap.Config.ALPHA_8 -> return 1
-                Bitmap.Config.RGB_565, Bitmap.Config.ARGB_4444 -> return 2
-                Bitmap.Config.RGBA_F16 -> return 8
-                Bitmap.Config.RGBA_1010102, Bitmap.Config.ARGB_8888 -> return 4
-            }
-        } else {
-            when (config) {
-                Bitmap.Config.ALPHA_8 -> return 1
-                Bitmap.Config.RGB_565, Bitmap.Config.ARGB_4444 -> return 2
-                Bitmap.Config.ARGB_8888 -> return 4
-                else -> {
-                    Log.i("$TAG:$config", "Unknown config, treat it as ARGB_8888")
-                    return 4
-                }
-            }
+            Bitmap.Config.ALPHA_8 -> return 1
+            Bitmap.Config.RGB_565, Bitmap.Config.ARGB_4444 -> return 2
+            Bitmap.Config.RGBA_F16 -> return 8
+            Bitmap.Config.RGBA_1010102, Bitmap.Config.ARGB_8888 -> return 4
         }
     }
 

@@ -18,7 +18,7 @@ import android.widget.ScrollView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.ImageFile
+import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
 import cn.alvkeke.dropto.ui.comonent.ImageCard
@@ -38,7 +38,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
 
     private var item: NoteItem? = null
     private var isImageChanged = false
-    private val imageList = ArrayList<ImageFile>()
+    private val attachments = ArrayList<AttachmentFile>()
 
     fun setNoteItem(item: NoteItem) {
         this.item = item
@@ -128,7 +128,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
             dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, item!!)
             return
         }
-        if (text.isEmpty() && isImageChanged && imageList.isEmpty()) {
+        if (text.isEmpty() && isImageChanged && attachments.isEmpty()) {
             Toast.makeText(
                 requireContext(),
                 "Got empty item after modifying, remove it", Toast.LENGTH_SHORT
@@ -138,7 +138,8 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         }
         item!!.setText(text, true)
         if (isImageChanged) {
-            item!!.useImageFiles(imageList)
+            item!!.attachments.clear()
+            item!!.attachments.addAll(attachments)
         }
         dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, item!!)
     }
@@ -167,16 +168,17 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
     private fun loadItemDataToUI(item: NoteItem) {
         etNoteItemText.setText(item.text)
 
-        if (item.isNoImage) return
+        if (item.attachments.isEmpty()) return
 
         val context = requireContext()
-        item.iterateImages().forEachRemaining(Consumer { imageFile: ImageFile ->
-            imageList.add(imageFile)
+        item.attachments.iterator().forEachRemaining(Consumer { attachment: AttachmentFile ->
+            attachments.add(attachment)
             val card = ImageCard(context)
-            card.setImageMd5(imageFile.md5)
-            card.setImageName(imageFile.getName())
+            card.setImageMd5(attachment.md5)
+            card.setImageName(attachment.name)
 
-            loadImageAsync(imageFile.md5file) { bitmap: Bitmap? ->
+            if (attachment.type == AttachmentFile.Type.IMAGE)
+                loadImageAsync(attachment.md5file) { bitmap: Bitmap? ->
                 if (bitmap == null) {
                     val errMsg = "Failed to get image file, skip this item"
                     Log.e(this.toString(), errMsg)
@@ -196,14 +198,14 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
                 }
                 animator.addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
-                        imageList.remove(imageFile)
+                        attachments.remove(attachment)
                         isImageChanged = true
                         scrollContainer.removeView(card)
                     }
                 })
                 animator.start()
             }
-            val imageIndex = item.indexOf(imageFile)
+            val imageIndex = item.attachments.indexOf(attachment)
             card.setImageClickListener { _: View ->
                 uiListener.onAttempt(
                     NoteUIAttemptListener.Attempt.SHOW_IMAGE,

@@ -18,8 +18,9 @@ import androidx.fragment.app.Fragment
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.ImageFile
-import cn.alvkeke.dropto.data.ImageFile.Companion.from
+import cn.alvkeke.dropto.data.AttachmentFile
+import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
+import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
@@ -37,6 +38,7 @@ import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.DataLoader.findCategory
 import cn.alvkeke.dropto.storage.DataLoader.loadCategories
 import cn.alvkeke.dropto.storage.DataLoader.loadCategoryNotes
+import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
@@ -299,8 +301,8 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                     val imgFile = imgFiles[idx]
                     idx++
                     if (imgFile.exists()) {
-                        val imageFile = from(imgFile, imgFile.name)
-                        e.addImageFile(imageFile)
+                        val imageFile = from(imgFile, imgFile.name, Type.IMAGE)
+                        e.attachments.add(imageFile)
                     }
                 }
                 app.service?.queueTask(createNote(e))
@@ -361,11 +363,11 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         }
     }
 
-    private fun generateShareFile(imageFile: ImageFile): File? {
+    private fun generateShareFile(imageFile: AttachmentFile): File? {
         shareFolder = getFolderImageShare(this)
 
         try {
-            val imageName = imageFile.getName()
+            val imageName = imageFile.name
             val fileToShare: File?
             if (imageName.isEmpty()) {
                 fileToShare = imageFile.md5file
@@ -381,7 +383,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun generateShareFileAndUriForNote(note: NoteItem, uris: ArrayList<Uri>) {
-        note.iterateImages().forEachRemaining(Consumer { f: ImageFile ->
+        note.attachments.iterator().forEachRemaining(Consumer { f: AttachmentFile ->
             val ff = generateShareFile(f)
             val uri = getUriForFile(ff!!)
             uris.add(uri)
@@ -458,11 +460,58 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             .commit()
     }
 
+    private fun mimeTypeFromFileName(name: String): String {
+        val extension = name.substringAfterLast('.', "")
+        return android.webkit.MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(extension.lowercase()) ?: "*/*"
+    }
+
+    private fun handleNoteFileOpen(item: NoteItem, fileIndex: Int) {
+        val file = item.files[fileIndex]
+        val uri = getUriForFile(file.md5file)
+        val mimeType = mimeTypeFromFileName(file.name)
+        Log.v(TAG, "open file with mime type: $mimeType")
+
+        // Special handling for APK files
+        if (mimeType == "application/vnd.android.package-archive") {
+            val installIntent = Intent(Intent.ACTION_VIEW)
+            installIntent.setDataAndType(uri, mimeType)
+            installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            try {
+                this.startActivity(installIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to open APK installer: $e")
+                Toast.makeText(
+                    this,
+                    "Failed to open APK installer. Please check if installation from unknown sources is enabled.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            return
+        }
+
+        // Normal file opening
+        val openIntent = Intent(Intent.ACTION_VIEW)
+        openIntent.setDataAndType(uri, mimeType)
+        openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            this.startActivity(openIntent)
+        } catch (e: Exception) {
+            Log.e(this.toString(), "Failed to open file intent: $e")
+            Toast.makeText(
+                this,
+                "No application found to open this file type: $mimeType",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
     private fun handleNoteImageShow(item: NoteItem, imageIndex: Int) {
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
         }
-        val imageFile = item.getImageAt(imageIndex)
+        val imageFile = item.images[imageIndex]
         savedImageViewFile = imageFile.md5file.absolutePath
         imageViewerFragment!!.setImgFile(imageFile.md5file)
         imageViewerFragment!!.show(supportFragmentManager, null)
@@ -512,6 +561,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             NoteUIAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
             NoteUIAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
             NoteUIAttemptListener.Attempt.SHOW_IMAGE -> handleNoteImageShow(e, index)
+            NoteUIAttemptListener.Attempt.OPEN_FILE -> handleNoteFileOpen(e, index)
         }
     }
 
@@ -584,6 +634,9 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     companion object {
+
+        const val TAG: String = "MainActivity"
+
         private const val SAVED_NOTE_LIST_CATEGORY_ID_NONE: Long = -1
         private const val SAVED_NOTE_LIST_CATEGORY_ID = "SAVED_NOTE_LIST_CATEGORY_ID"
         private const val SAVED_NOTE_INFO_NOTE_ID_NONE: Long = -1

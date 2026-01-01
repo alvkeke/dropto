@@ -2,13 +2,15 @@ package cn.alvkeke.dropto.storage
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Base64
 import android.util.Log
+import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.ImageFile.Companion.from
+import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 
@@ -50,7 +52,7 @@ class DataBaseHelper(private val context: Context) :
                 NOTE_COLUMN_CATE_ID, NOTE_COLUMN_CATE_ID_TYPE,
                 NOTE_COLUMN_TEXT, NOTE_COLUMN_TEXT_TYPE,
                 NOTE_COLUMN_C_TIME, NOTE_COLUMN_C_TIME_TYPE,
-                NOTE_COLUMN_IMG_INFO, NOTE_COLUMN_IMG_INFO_TYPE
+                NOTE_COLUMN_ATTACHMENT_INFO, NOTE_COLUMN_IMG_INFO_TYPE
             )
         )
     }
@@ -191,30 +193,82 @@ class DataBaseHelper(private val context: Context) :
         cursor.close()
     }
 
+    private fun NoteItem.generateAttachmentString(): String? {
+        if (this.attachments.isEmpty()) return null
+
+        val sb = StringBuilder()
+
+        this.attachments.iterator().forEach { f ->
+            sb.append(when(f.type) {
+                AttachmentFile.Type.IMAGE -> NOTE_ATTACHMENT_PREFIX_IMAGE
+                AttachmentFile.Type.FILE -> NOTE_ATTACHMENT_PREFIX_FILE
+            })
+            sb.append(':')
+            sb.append(f.md5)
+            sb.append(':')
+            sb.append(Base64.encodeToString(f.name.toByteArray(), Base64.DEFAULT))
+            sb.append(',')
+        }
+
+        Log.e(TAG, "generateAttachmentString: $sb")
+        return sb.toString()
+    }
+
+    // don't consider the backward compatibility of attachment info format here
+    // TODO: implement database upgrade methods
+    private fun parseAttachmentFile(info: String): AttachmentFile? {
+        val infoS = info.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+
+        val idxType = 0
+        val idxMd5 = 1
+        val idxName = 2
+
+        val sType = when(infoS[idxType]) {
+            NOTE_ATTACHMENT_PREFIX_IMAGE -> AttachmentFile.Type.IMAGE
+            NOTE_ATTACHMENT_PREFIX_FILE -> AttachmentFile.Type.FILE
+            else -> {
+                Log.e(TAG, "Got unknown attachment type: ${infoS[0]}, return null")
+                return null
+            }
+        }
+
+        val sMd5 = infoS[idxMd5]
+        val sName = if (infoS.size <= idxName) "" else String(
+            Base64.decode(
+                infoS[idxName],
+                Base64.DEFAULT
+            )
+        )
+        return from(
+            getFolderImage(context),
+            sMd5, sName, sType
+        )
+    }
+
     @Throws(SQLiteException::class)
     fun insertNote(
         id: Long, categoryId: Long, text: String?, ctime: Long,
-        imgInfo: String?
+        attachmentInfo: String?
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_ID, id)
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
-        values.put(NOTE_COLUMN_IMG_INFO, imgInfo)
+        values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
     @Throws(SQLiteException::class)
     fun insertNote(
         categoryId: Long, text: String?, ctime: Long,
-        imgInfo: String?
+        attachmentInfo: String?
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
-        values.put(NOTE_COLUMN_IMG_INFO, imgInfo)
+        values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
@@ -226,20 +280,13 @@ class DataBaseHelper(private val context: Context) :
      */
     @Throws(SQLiteException::class)
     fun insertNote(n: NoteItem): Long {
-        val id: Long
-        val sb = StringBuilder()
-        n.iterateImages().forEach { f ->
-            sb.append(f.md5)
-            sb.append(':')
-            sb.append(Base64.encodeToString(f.getName().toByteArray(), Base64.DEFAULT))
-            sb.append(',')
-        }
-        id = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
-            insertNote(n.categoryId, n.text, n.createTime, sb.toString())
+        val id: Long = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
+            insertNote(n.categoryId, n.text, n.createTime,
+                n.generateAttachmentString())
         } else {
             insertNote(
                 n.id, n.categoryId, n.text, n.createTime,
-                sb.toString()
+                n.generateAttachmentString()
             )
         }
         if (id < 0) {
@@ -271,18 +318,18 @@ class DataBaseHelper(private val context: Context) :
      * @param categoryId the ID of the new category
      * @param text new note text
      * @param ctime new create time
-     * @param imgInfo new image file
+     * @param attachmentInfo new image file
      * @return count of affected rows
      */
     fun updateNote(
         id: Long, categoryId: Long, text: String?, ctime: Long,
-        imgInfo: String?
+        attachmentInfo: String?
     ): Int {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
-        values.put(NOTE_COLUMN_IMG_INFO, imgInfo)
+        values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         val args = arrayOf(id.toString())
         return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args)
     }
@@ -293,18 +340,65 @@ class DataBaseHelper(private val context: Context) :
      * @return count of affected rows
      */
     fun updateNote(note: NoteItem): Int {
-        val sb = StringBuilder()
-        note.iterateImages().forEach { f ->
-            sb.append(f.md5)
-            sb.append(':')
-            sb.append(Base64.encodeToString(f.getName().toByteArray(), Base64.DEFAULT))
-            sb.append(',')
-        }
-
         return updateNote(
             note.id, note.categoryId, note.text,
-            note.createTime, sb.toString()
+            note.createTime, note.generateAttachmentString()
         )
+    }
+
+    private fun Cursor.parseCurrentNoteItem(): NoteItem? {
+        var idx: Int = getColumnIndex(NOTE_COLUMN_ID)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for id")
+            return null
+        }
+        val id = getLong(idx)
+        idx = getColumnIndex(NOTE_COLUMN_CATE_ID)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for category id")
+            return null
+        }
+        val categoryId = getLong(idx)
+        idx = getColumnIndex(NOTE_COLUMN_TEXT)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for text")
+            return null
+        }
+        val text = getString(idx)
+        idx = getColumnIndex(NOTE_COLUMN_C_TIME)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for ctime")
+            return null
+        }
+        val ctime = getLong(idx)
+        idx = getColumnIndex(NOTE_COLUMN_ATTACHMENT_INFO)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for attachment_info")
+            return null
+        }
+        val attachInfoAll: String? = getString(idx)
+
+        val e = NoteItem(text, ctime)
+        e.id = id
+        e.categoryId = categoryId
+        if (attachInfoAll != null && !attachInfoAll.isEmpty()) {
+            Log.d(TAG, "imgInfoAll: $attachInfoAll")
+
+            val imgInfoAllS =
+                attachInfoAll.split(",".toRegex())
+                    .dropLastWhile { it.isEmpty() }
+                    .toTypedArray()
+            for (info in imgInfoAllS) {
+                if (info.isEmpty()) continue
+                val imageFile = parseAttachmentFile(info) ?: continue
+                if (!e.attachments.add(imageFile)) {
+                    Log.e(TAG, "Failed to set image file: $attachInfoAll")
+                }
+            }
+        } else {
+            Log.d(TAG, "no attachment info")
+        }
+        return e
     }
 
     /**
@@ -336,67 +430,8 @@ class DataBaseHelper(private val context: Context) :
         var nNotes = 0
         while (cursor.moveToNext()) {
             if (maxNum in 1..nNotes) break
-            var idx: Int = cursor.getColumnIndex(NOTE_COLUMN_ID)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx")
-                continue
-            }
-            val id = cursor.getLong(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_CATE_ID)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx")
-                continue
-            }
-            val categoryId = cursor.getLong(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_TEXT)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx")
-                continue
-            }
-            val text = cursor.getString(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_C_TIME)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx")
-                continue
-            }
-            val ctime = cursor.getLong(idx)
-            idx = cursor.getColumnIndex(NOTE_COLUMN_IMG_INFO)
-            if (idx == -1) {
-                Log.e(TAG, "invalid idx")
-                continue
-            }
-            val imgInfoAll = cursor.getString(idx)
 
-            val e = NoteItem(text, ctime)
-            e.id = id
-            e.categoryId = categoryId
-            if (!imgInfoAll.isEmpty()) {
-                val imgInfoAllS =
-                    imgInfoAll.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                for (info in imgInfoAllS) {
-                    val infoS =
-                        info.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                    if (infoS.isEmpty()) {
-                        Log.e(TAG, "Got Wrong Image Info: $info")
-                        continue
-                    }
-                    val sMd5 = infoS[0]
-                    val sName = if (infoS.size == 1) "" else String(
-                        Base64.decode(
-                            infoS[1],
-                            Base64.DEFAULT
-                        )
-                    )
-                    val imageFile = from(
-                        getFolderImage(context),
-                        sMd5, sName
-                    )
-
-                    if (!e.addImageFile(imageFile)) {
-                        Log.e(TAG, "Failed to set image file: $imgInfoAll")
-                    }
-                }
-            }
+            val e = cursor.parseCurrentNoteItem() ?: continue
             noteItems.add(e)
             nNotes++
             cb?.onIterate(e)
@@ -428,8 +463,11 @@ class DataBaseHelper(private val context: Context) :
         private const val NOTE_COLUMN_TEXT_TYPE = "TEXT"
         private const val NOTE_COLUMN_C_TIME = "ctime"
         private const val NOTE_COLUMN_C_TIME_TYPE = "INTEGER"
-        private const val NOTE_COLUMN_IMG_INFO = "img_info"
+        private const val NOTE_COLUMN_ATTACHMENT_INFO = "img_info"  // TODO: rename to attachment_info
         private const val NOTE_COLUMN_IMG_INFO_TYPE = "TEXT"
+
+        private const val NOTE_ATTACHMENT_PREFIX_IMAGE = "img"
+        private const val NOTE_ATTACHMENT_PREFIX_FILE = "file"
 
         private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
         private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"

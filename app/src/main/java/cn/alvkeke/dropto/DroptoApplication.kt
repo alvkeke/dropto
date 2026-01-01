@@ -8,6 +8,7 @@ import cn.alvkeke.dropto.service.CoreService
 import cn.alvkeke.dropto.service.CoreServiceConnection
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.ResultListener
+import cn.alvkeke.dropto.storage.ImageLoader
 
 class DroptoApplication : Application(), ResultListener{
 
@@ -47,6 +48,7 @@ class DroptoApplication : Application(), ResultListener{
         super.onCreate()
         Log.d(TAG, "DroptoApplication onCreate")
         setupCoreService()
+        ImageLoader.initImageLoader(this)
     }
 
     private fun setupCoreService() {

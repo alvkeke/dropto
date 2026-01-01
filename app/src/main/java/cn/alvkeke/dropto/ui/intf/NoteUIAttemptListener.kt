@@ -8,6 +8,7 @@ interface NoteUIAttemptListener {
         SHOW_DETAIL,
         SHOW_SHARE,
         SHOW_IMAGE,
+        OPEN_FILE,
         SHOW_FORWARD,
     }
 

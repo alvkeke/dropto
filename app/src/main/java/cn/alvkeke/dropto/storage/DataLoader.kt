@@ -46,7 +46,9 @@ object DataLoader {
                 category.isInitialized = true
                 helper.finish()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load notes for category, $e")
+            e.printStackTrace()
             return false
         }
         return true

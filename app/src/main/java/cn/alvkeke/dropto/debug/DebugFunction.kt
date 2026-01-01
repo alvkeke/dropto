@@ -4,7 +4,8 @@ import android.content.Context
 import cn.alvkeke.dropto.BuildConfig
 import cn.alvkeke.dropto.R.raw
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.ImageFile.Companion.from
+import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
+import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import java.io.File
@@ -122,8 +123,8 @@ object DebugFunction {
                         idx++
                         if (imgFile.exists()) {
                             dbgLog("add image file: $imgFile")
-                            val imageFile = from(imgFile, "")
-                            e.addImageFile(imageFile)
+                            val imageFile = from(imgFile, "", Type.IMAGE)
+                            e.attachments.add(imageFile)
                         } else {
                             dbgLog("add image file failed, not exist: $imgFile")
                         }
