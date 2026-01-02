@@ -3,6 +3,7 @@ package cn.alvkeke.dropto.ui.listener
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnTouchListener
@@ -22,6 +23,9 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
     private lateinit var longPressView: View
     private var longPressItemView: View? = null
 
+    private var lastHoldItemIndex: Int = -1
+    private var lastSlideOnStatus: Boolean = false
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
         val recyclerView = view as RecyclerView
@@ -36,6 +40,8 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                 longPressView = view
                 longPressItemView =
                     recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
+                lastHoldItemIndex = recyclerView.getChildLayoutPosition(longPressItemView!!)
+                Log.e(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
                 handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK)
                 isShortClick = true
                 isSlidable = true
@@ -49,7 +55,18 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                     isShortClick = false
                 }
                 if (isLongClickHold) {
-                    return true // block all event
+                    itemView =
+                        recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)!!
+                    val index = recyclerView.getChildLayoutPosition(itemView)
+                    if (index == lastHoldItemIndex) {
+                        return lastSlideOnStatus
+                    }
+                    lastHoldItemIndex = index
+                    Log.e(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
+                    lastSlideOnStatus = onItemLongClickSlideOn(itemView, index)
+                    if (lastSlideOnStatus) {
+                        return true
+                    }
                 }
 
                 if (isSliding) {
@@ -67,14 +84,16 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
 
             MotionEvent.ACTION_UP -> {
                 handler.removeCallbacks(longPressRunnable)
+                itemView =
+                    recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                 if (isLongClickHold) {
+                    val index = recyclerView.getChildLayoutPosition(itemView!!)
+                    val ret = onItemLongClickRelease(itemView, index)
                     isLongClickHold = false
-                    return true
+                    if (ret) return true
                 }
                 if (isShortClick && System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK) {
                     isShortClick = false
-                    itemView =
-                        recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                     if (itemView != null) {
                         if (handleItemClick(recyclerView, itemView, motionEvent)) {
                             return true
@@ -82,7 +101,6 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                         if (handleItemClick(recyclerView, itemView, null)) {
                             return true
                         }
-//                        if (handleListItemClick(recyclerView, itemView, false)) return true;
                     }
                     if (onClick(view, motionEvent)) {
                         return true
@@ -117,6 +135,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
         override fun run() {
             if (longPressItemView != null) {
                 if (handleItemLongClick(longPressView, longPressItemView!!)) {
+                    lastSlideOnStatus = true
                     isLongClickHold = true
                     return
                 }
@@ -158,6 +177,14 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
     }
 
     open fun onItemLongClick(v: View, index: Int): Boolean {
+        return false
+    }
+
+    open fun onItemLongClickSlideOn(v: View, index: Int): Boolean {
+        return false
+    }
+
+    open fun onItemLongClickRelease(itemView: View, index: Int): Boolean {
         return false
     }
 

@@ -91,18 +91,37 @@ abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         val item = elements[index]
         if (selectedItems.contains(item)) {
             selectedItems.remove(item)
-            if (selectListener != null) {
-                selectListener!!.onUnSelect(index)
-                if (selectedItems.isEmpty()) selectListener!!.onSelectExit()
-            }
+            selectListener?.onUnSelect(index)
+            if (selectedItems.isEmpty()) selectListener?.onSelectExit()
         } else {
             val empty = selectedItems.isEmpty()
             selectedItems.add(item)
-            if (selectListener != null) {
-                if (empty) selectListener!!.onSelectEnter()
-                selectListener!!.onSelect(index)
-            }
+            if (empty) selectListener?.onSelectEnter()
+            selectListener?.onSelect(index)
         }
+        notifyItemChanged(index)
+    }
+
+    fun selectItem(index: Int) {
+        val item = elements[index]
+        if (selectedItems.contains(item)) {
+            return
+        }
+        val empty = selectedItems.isEmpty()
+        selectedItems.add(item)
+        if (empty) selectListener?.onSelectEnter()
+        selectListener?.onSelect(index)
+        notifyItemChanged(index)
+    }
+
+    fun unselectItem(index: Int) {
+        val item = elements[index]
+        if (!selectedItems.contains(item)) {
+            return
+        }
+        selectedItems.remove(item)
+        selectListener?.onUnSelect(index)
+        if (selectedItems.isEmpty()) selectListener?.onSelectExit()
         notifyItemChanged(index)
     }
 
@@ -111,9 +130,7 @@ abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
             return
         }
         selectedItems = ArrayList()
-        if (selectListener != null) {
-            selectListener!!.onSelectExit()
-        }
+        selectListener?.onSelectExit()
         notifyItemRangeChanged(0, elements.size)
     }
 

@@ -75,13 +75,11 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private lateinit var rlNoteList: RecyclerView
 
     private var category: Category? = null
-    private var noteItemAdapter: NoteListAdapter? = null
+    private var noteItemAdapter: NoteListAdapter = NoteListAdapter()
 
     fun setCategory(category: Category) {
         this.category = category
-        if (noteItemAdapter != null) {
-            noteItemAdapter!!.setList(category.noteItems)
-        }
+        noteItemAdapter.setList(category.noteItems)
     }
 
     @Suppress("unused")
@@ -127,11 +125,10 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar)
         setToolbarMenuVisible(false)
 
-        noteItemAdapter = NoteListAdapter()
         val layoutManager = LinearLayoutManager(context)
         layoutManager.setReverseLayout(true)
-        noteItemAdapter!!.setSelectListener(NoteListSelectListener())
-        noteItemAdapter!!.setList(category!!.noteItems)
+        noteItemAdapter.setSelectListener(NoteListSelectListener())
+        noteItemAdapter.setList(category!!.noteItems)
 
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
@@ -149,8 +146,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     override fun onBackPressed(): Boolean {
-        if (noteItemAdapter!!.isSelectMode) {
-            noteItemAdapter!!.clearSelectItems()
+        if (noteItemAdapter.isSelectMode) {
+            noteItemAdapter.clearSelectItems()
         } else {
             finish()
         }
@@ -164,8 +161,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun removeSelectedNotes() {
-        val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
-        noteItemAdapter!!.clearSelectItems()
+        val items: ArrayList<NoteItem> = noteItemAdapter.selectedItems
+        noteItemAdapter.clearSelectItems()
         dbListener.onAttemptBatch(NoteDBAttemptListener.Attempt.REMOVE, items)
     }
 
@@ -181,20 +178,20 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun handleMenuCopy() {
-        val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
-        noteItemAdapter!!.clearSelectItems()
+        val items: ArrayList<NoteItem> = noteItemAdapter.selectedItems
+        noteItemAdapter.clearSelectItems()
         uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.COPY, items)
     }
 
     private fun handleMenuShare() {
-        val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
-        noteItemAdapter!!.clearSelectItems()
+        val items: ArrayList<NoteItem> = noteItemAdapter.selectedItems
+        noteItemAdapter.clearSelectItems()
         uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.SHOW_SHARE, items)
     }
 
     private fun handleMenuForward() {
-        val items: ArrayList<NoteItem> = noteItemAdapter!!.selectedItems
-        noteItemAdapter!!.clearSelectItems()
+        val items: ArrayList<NoteItem> = noteItemAdapter.selectedItems
+        noteItemAdapter.clearSelectItems()
         uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.SHOW_FORWARD, items)
     }
 
@@ -231,16 +228,21 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         override fun onSelectExit() {
             setToolbarMenuVisible(false)
             toolbar.setNavigationIcon(R.drawable.icon_common_back)
+            toolbar.title = category!!.title
         }
 
-        override fun onSelect(index: Int) {}
-        override fun onUnSelect(index: Int) {}
+        override fun onSelect(index: Int) {
+            toolbar.title = "${noteItemAdapter.selectedCount}"
+        }
+        override fun onUnSelect(index: Int) {
+            toolbar.title = "${noteItemAdapter.selectedCount}"
+        }
     }
 
     private inner class NoteListTouchListener : OnRecyclerViewTouchListener() {
         override fun onItemClickAt(v: View, index: Int, event: MotionEvent): Boolean {
-            if (noteItemAdapter!!.isSelectMode) {
-                noteItemAdapter!!.toggleSelectItems(index)
+            if (noteItemAdapter.isSelectMode) {
+                noteItemAdapter.toggleSelectItems(index)
             } else {
                 val x = event.rawX.toInt()
                 val y = event.rawY.toInt()
@@ -272,9 +274,24 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             return true
         }
 
+        private var firstHoldItem = -1
+        private var lastHoldItem = -1
         override fun onItemLongClick(v: View, index: Int): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            noteItemAdapter!!.toggleSelectItems(index)
+            firstHoldItem = index
+            lastHoldItem = -1
+            noteItemAdapter.toggleSelectItems(index)
+            return true
+        }
+
+        override fun onItemLongClickSlideOn(v: View, index: Int): Boolean {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            if (lastHoldItem != -1 && lastHoldItem !in firstHoldItem..index) {
+                noteItemAdapter.unselectItem(lastHoldItem)
+            } else {
+                noteItemAdapter.selectItem(index)
+            }
+            lastHoldItem = index
             return true
         }
 
@@ -331,7 +348,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         animator.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
                 super.onAnimationEnd(animation)
-                noteItemAdapter!!.clearSelectItems()
+                noteItemAdapter.clearSelectItems()
                 attachments.clear()
                 getParentFragmentManager().beginTransaction()
                     .remove(this@NoteListFragment).commit()
@@ -581,7 +598,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         }
         when (notify) {
             Notify.INSERTED -> {
-                if (!noteItemAdapter!!.add(index, itemObj)) return
+                if (!noteItemAdapter.add(index, itemObj)) return
                 rlNoteList.smoothScrollToPosition(index)
                 if (itemObj == pendingNoteItem) {
                     clearPendingItem()
@@ -591,9 +608,9 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                 }
             }
 
-            Notify.UPDATED -> noteItemAdapter!!.update(index)
-            Notify.REMOVED -> noteItemAdapter!!.remove(itemObj)
-            Notify.CLEARED -> noteItemAdapter!!.clear()
+            Notify.UPDATED -> noteItemAdapter.update(index)
+            Notify.REMOVED -> noteItemAdapter.remove(itemObj)
+            Notify.CLEARED -> noteItemAdapter.clear()
         }
     }
 
