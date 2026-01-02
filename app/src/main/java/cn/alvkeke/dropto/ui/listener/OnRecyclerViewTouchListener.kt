@@ -56,7 +56,8 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                 }
                 if (isLongClickHold) {
                     itemView =
-                        recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)!!
+                        recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y) ?:
+                        return lastSlideOnStatus
                     val index = recyclerView.getChildLayoutPosition(itemView)
                     if (index == lastHoldItemIndex) {
                         return lastSlideOnStatus
@@ -87,7 +88,11 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                 itemView =
                     recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                 if (isLongClickHold) {
-                    val index = recyclerView.getChildLayoutPosition(itemView!!)
+                    if (itemView == null) {
+                        isLongClickHold = false
+                        return true
+                    }
+                    val index = recyclerView.getChildLayoutPosition(itemView)
                     val ret = onItemLongClickRelease(itemView, index)
                     isLongClickHold = false
                     if (ret) return true
