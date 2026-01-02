@@ -58,7 +58,6 @@ import cn.alvkeke.dropto.ui.comonent.NoteItemView
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 
 
-const val TAG: String = "NoteListFragment"
 
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
     private lateinit var context: Context
@@ -599,6 +598,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     companion object {
+        const val TAG: String = "NoteListFragment"
         private const val PROP_NAME = "translationX"
     }
 }

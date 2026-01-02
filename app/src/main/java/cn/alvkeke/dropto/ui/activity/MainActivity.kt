@@ -521,9 +521,15 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         imageViewerFragment!!.show(supportFragmentManager, null)
     }
 
-    private var pendingForwardNote: NoteItem? = null
+    private val pendingForwardNotes: ArrayList<NoteItem> = ArrayList()
     private fun handleNoteForward(note: NoteItem) {
-        pendingForwardNote = note
+        pendingForwardNotes.add(note)
+        val forwardFragment = CategorySelectorFragment()
+        forwardFragment.setCategories(categories)
+        forwardFragment.show(supportFragmentManager, null)
+    }
+    private fun handleMultipleNoteForward(notes: ArrayList<NoteItem>) {
+        pendingForwardNotes.addAll(notes)
         val forwardFragment = CategorySelectorFragment()
         forwardFragment.setCategories(categories)
         forwardFragment.show(supportFragmentManager, null)
@@ -592,15 +598,23 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                     handleNoteShareMultiple(noteItems)
             }
 
-            else -> Log.e(this.toString(), "unsupported batch UI attempt: $attempt")
+            NoteUIAttemptListener.Attempt.SHOW_FORWARD -> {
+                handleMultipleNoteForward(noteItems)
+            }
+
+            else -> Log.e(TAG, "unsupported batch UI attempt: $attempt")
         }
     }
 
     override fun onSelected(index: Int, category: Category) {
-        if (pendingForwardNote == null) return
-        val item = pendingForwardNote!!.clone()
-        item.categoryId = category.id
-        app.service?.queueTask(createNote(item))
+        Log.d(TAG, "Category-$index selected for forwarding: ${category.title}, pending notes: ${pendingForwardNotes.size}")
+        if (pendingForwardNotes.isEmpty()) return
+        for (note in pendingForwardNotes) {
+            val item = note.clone()
+            item.categoryId = category.id
+            app.service?.queueTask(createNote(item))
+        }
+        pendingForwardNotes.clear()
     }
 
     override fun onError(error: String) {
@@ -619,11 +633,10 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
     private fun onNoteTaskFinish(task: Task) {
         val n = task.taskObj as NoteItem
+        Log.d(TAG, "Note task finished: ${task.job} for note id ${n.id}")
         val index = task.result
-        if (n == pendingForwardNote) pendingForwardNote = null
         if (index < 0) return
-        if (noteListFragment == null) return
-        noteListFragment!!.notifyItemListChanged(jobToNotify(task.job), index, n)
+        noteListFragment?.notifyItemListChanged(jobToNotify(task.job), index, n)
     }
 
     override fun onTaskFinish(task: Task) {

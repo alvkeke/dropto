@@ -72,6 +72,7 @@ class DroptoApplication : Application(), ResultListener{
     private val listeners = ArrayList<ResultListener>()
 
     override fun onTaskFinish(task: Task) {
+        Log.d(TAG, "notifying listeners(${listeners.size}) for task finish: ${task.type}, ${task.job}")
         listeners.iterator().forEach { listener ->
             listener.onTaskFinish(task)
         }

@@ -6,6 +6,8 @@ import cn.alvkeke.dropto.data.Category
 
 object DataLoader {
 
+    const val TAG: String = "DataLoader"
+
     @JvmStatic
     var categories: ArrayList<Category> = ArrayList()
         private set

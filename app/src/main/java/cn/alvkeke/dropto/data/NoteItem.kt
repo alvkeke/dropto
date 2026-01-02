@@ -253,7 +253,8 @@ class NoteItem : Serializable, Cloneable {
 
     public override fun clone(): NoteItem {
         val noteItem = NoteItem(text)
-        noteItem.update(this, false)
+        noteItem.attachments.addAll(this.attachments)
+        noteItem.categoryId = this.categoryId
         return noteItem
     }
 

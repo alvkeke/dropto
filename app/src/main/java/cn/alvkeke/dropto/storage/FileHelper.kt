@@ -12,6 +12,9 @@ import java.io.IOException
 import java.security.MessageDigest
 
 object FileHelper {
+
+    private const val TAG = "FileHelper"
+
     private const val BUFFER_SIZE = 1024
 
     fun bytesToHex(bytes: ByteArray): String {

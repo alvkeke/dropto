@@ -14,7 +14,6 @@ import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 
-const val TAG = "DataBaseHelper"
 
 class DataBaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
@@ -210,7 +209,7 @@ class DataBaseHelper(private val context: Context) :
             sb.append(',')
         }
 
-        Log.e(TAG, "generateAttachmentString: $sb")
+        Log.v(TAG, "generateAttachmentString: $sb")
         return sb.toString()
     }
 
@@ -441,6 +440,8 @@ class DataBaseHelper(private val context: Context) :
     }
 
     companion object {
+        const val TAG = "DataBaseHelper"
+
         private const val DATABASE_NAME = "note.db"
         private const val DATABASE_VERSION = 1
 

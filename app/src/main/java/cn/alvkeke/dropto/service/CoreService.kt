@@ -85,6 +85,7 @@ class CoreService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private fun notifyListener(task: Task) {
         handler.post {
+            Log.d(TAG, "notifyListener for task: ${task.type}, ${task.job}, result: ${task.result}")
             resultListener?.onTaskFinish(task)
         }
     }
@@ -183,8 +184,8 @@ class CoreService : Service() {
                 newItem.id = dbHelper.insertNote(newItem)
                 dbHelper.finish()
             }
-        } catch (_: Exception) {
-            Log.e(this.toString(), "Failed to add new item to database!")
+        } catch (e: Exception) {
+            Log.e(this.toString(), "Failed to add new item to database!", e)
             task.result = -1
             notifyListener(task)
             return
@@ -309,12 +310,14 @@ class CoreService : Service() {
     }
 
     fun queueTask(task: Task) {
+        Log.d(TAG, "task queued: $task")
         Thread { distributeTask(task) }.start()
 //        tasks.offer(task);
 //        taskSemaphore.release();
     }
 
     companion object {
+        private const val TAG = "CoreService"
         private const val CHANNEL_ID = 100
         private const val CHANNEL_STR_ID = "CHANNEL_ID_CORE_DROP_TO"
         private const val CHANNEL_NAME = "CoreService"
