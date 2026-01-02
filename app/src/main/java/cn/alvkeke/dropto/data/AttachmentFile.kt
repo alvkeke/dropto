@@ -1,34 +1,26 @@
 package cn.alvkeke.dropto.data
 
+import cn.alvkeke.dropto.mgmt.Global
 import java.io.File
 
-class AttachmentFile {
+class AttachmentFile(val md5file: File, var name: String, val type: Type) {
 
     enum class Type {
         IMAGE,
         FILE
     }
 
-    val type: Type
+    constructor(folder: File, md5: String, name: String, type: Type) :
+            this(File(folder, md5), name, type)
 
-    @JvmField
-    val md5file: File
-    @JvmField
-    var name: String
     val md5: String
         get() = md5file.name
 
-    constructor(folder: File, md5: String, name: String, type: Type) {
-        this.md5file = File(folder, md5)
-        this.name = name
-        this.type = type
-    }
-
-    constructor(md5File: File, imgName: String, type: Type) {
-        this.md5file = md5File
-        this.name = imgName
-        this.type = type
-    }
+    val isVideo: Boolean
+        get() {
+            val mimeType = Global.mimeTypeFromFileName(name)
+            return mimeType.startsWith("video/")
+        }
 
     companion object {
         @JvmStatic

@@ -17,12 +17,13 @@ import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.AttachmentFile.Type
+import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
+import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
 import cn.alvkeke.dropto.service.Task
@@ -38,7 +39,6 @@ import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.DataLoader.findCategory
 import cn.alvkeke.dropto.storage.DataLoader.loadCategories
 import cn.alvkeke.dropto.storage.DataLoader.loadCategoryNotes
-import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
@@ -460,16 +460,10 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             .commit()
     }
 
-    private fun mimeTypeFromFileName(name: String): String {
-        val extension = name.substringAfterLast('.', "")
-        return android.webkit.MimeTypeMap.getSingleton()
-            .getMimeTypeFromExtension(extension.lowercase()) ?: "*/*"
-    }
-
     private fun handleNoteFileOpen(item: NoteItem, fileIndex: Int) {
         val file = item.files[fileIndex]
         val uri = getUriForFile(file.md5file)
-        val mimeType = mimeTypeFromFileName(file.name)
+        val mimeType = Global.mimeTypeFromFileName(file.name)
         Log.v(TAG, "open file with mime type: $mimeType")
 
         // Special handling for APK files

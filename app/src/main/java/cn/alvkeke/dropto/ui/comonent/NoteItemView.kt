@@ -47,8 +47,18 @@ class NoteItemView @JvmOverloads constructor(
         class AttachmentInfo(
             var file: AttachmentFile,
             var rect: RectF = RectF(),
-            var loaded: Boolean = false,
-        )
+        ) {
+            var cachedBitmap: Bitmap? = null
+                get() {
+                    if (field == null) {
+                        return null
+                    }
+                    if (field!!.isRecycled) {
+                        field = null
+                    }
+                    return field
+                }
+        }
 
         override val size: Int get() = backingList.size
 
@@ -157,6 +167,12 @@ class NoteItemView @JvmOverloads constructor(
 
     private var imageRect: RectF = RectF()
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val videoIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        alpha = 200
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
+    }
     private val imagePath = Path()
 
     private val fileIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -681,29 +697,45 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun Canvas.drawImageFile(image: AttachmentList.AttachmentInfo, dst: RectF, paint: Paint) {
-        val file = image.file.md5file
-        Log.v(TAG, "drawImageFile: async=$asyncImageLoad, file=${file.absolutePath}")
-        val bitmap:Bitmap = if (asyncImageLoad) {
-            val bitmapAsync = ImageLoader.loadImageAsync(file, false) { b ->
-                Log.d(TAG, "drawImageFile.loadImageAsync callback: file=${file.absolutePath}, bitmap=$b")
-                image.loaded = true
-                // Only invalidate when all images are loaded
-                if (_images.all { info -> info.loaded }) {
+    private fun getVideoBitmap(info: AttachmentList.AttachmentInfo): Bitmap {
+        val file = info.file.md5file
+        return if (asyncImageLoad) {
+            if (info.cachedBitmap != null) {
+                info.cachedBitmap!!
+            } else {
+                ImageLoader.loadVideoThumbnailAsync(file) { b->
+                    Log.v(TAG, "getVideoBitmap: async thumb loaded callback: $b for file=${file.absolutePath}")
+                    info.cachedBitmap = b ?: ImageLoader.errorBitmap
                     this@NoteItemView.invalidate()
                 }
+                ImageLoader.loadingBitmap
             }
-            if (bitmapAsync == null) {
-                image.loaded = false
-                drawBitmapNullable(ImageLoader.loadingBitmap, null, dst, paint)
-                return
-            } else {
-                image.loaded = true
-            }
-            bitmapAsync
         } else {
             ImageLoader.loadImage(file) ?: ImageLoader.errorBitmap
         }
+    }
+
+    private fun getImageBitmap(info: AttachmentList.AttachmentInfo): Bitmap {
+        val file = info.file.md5file
+        return if (asyncImageLoad) {
+            if (info.cachedBitmap != null) {
+                info.cachedBitmap!!
+            } else {
+                ImageLoader.loadImageAsync(file) { b->
+                    Log.v(TAG, "getFileBitmap: async image loaded callback: $b for file=${file.absolutePath}")
+                    info.cachedBitmap = b ?: ImageLoader.errorBitmap
+                    this@NoteItemView.invalidate()
+                }
+                ImageLoader.loadingBitmap
+            }
+        } else {
+            ImageLoader.loadImage(file) ?: ImageLoader.errorBitmap
+        }
+    }
+
+    private fun Canvas.drawMediaFile(info: AttachmentList.AttachmentInfo, dst: RectF, paint: Paint) {
+        val isVideo = info.file.isVideo
+        val bitmap = if (isVideo) getVideoBitmap(info) else getImageBitmap(info)
 
         val ratioBitmap = bitmap.width.toFloat() / bitmap.height.toFloat()
         val ratioDst = dst.width() / dst.height()
@@ -723,9 +755,28 @@ class NoteItemView @JvmOverloads constructor(
         }
 
         drawBitmapNullable(bitmap, src, dst, paint)
+
+        if (isVideo && bitmap != ImageLoader.errorBitmap && bitmap != ImageLoader.loadingBitmap) {
+            // draw play icon at center
+            val iconSize = (dst.height() / 3).toInt()
+            val iconLeft = dst.left + (dst.width() - iconSize) / 2
+            val iconTop = dst.top + (dst.height() - iconSize) / 2
+            val iconRect = RectF(
+                iconLeft,
+                iconTop,
+                iconLeft + iconSize,
+                iconTop + iconSize
+            )
+            drawBitmapNullable(
+                ImageLoader.iconVideoPlay,
+                null,
+                iconRect,
+                videoIconPaint
+            )
+        }
     }
 
-    private fun drawImages(canvas: Canvas): Float {
+    private fun drawMedias(canvas: Canvas): Float {
         Log.v(TAG, "drawImages: total size: ${_images.size}")
 
         if (_images.isEmpty()) return 0f
@@ -752,7 +803,7 @@ class NoteItemView @JvmOverloads constructor(
 
             // Set xfermode to only draw bitmap where the rounded rect was drawn
             imagePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            canvas.drawImageFile(info, imageRect, imagePaint)
+            canvas.drawMediaFile(info, imageRect, imagePaint)
 
             // Reset xfermode
             imagePaint.xfermode = null
@@ -835,7 +886,7 @@ class NoteItemView @JvmOverloads constructor(
         canvas.translate(MARGIN_BORDER.toFloat(), MARGIN_BORDER.toFloat())
         contentWidth -= MARGIN_BORDER * 2
         // draw images with the info got from measure
-        canvas.translate(0F, drawImages(canvas))
+        canvas.translate(0F, drawMedias(canvas))
         canvas.translate(0F, drawFiles(canvas, contentWidth))
 
         if (!text.isEmpty()) {

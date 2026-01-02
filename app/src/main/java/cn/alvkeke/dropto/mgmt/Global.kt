@@ -35,4 +35,10 @@ object Global {
         return imageCacheShare
     }
 
+    fun mimeTypeFromFileName(name: String): String {
+        val extension = name.substringAfterLast('.', "")
+        return android.webkit.MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(extension.lowercase()) ?: "*/*"
+    }
+
 }

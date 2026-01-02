@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.media.MediaMetadataRetriever
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -11,11 +12,10 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
 import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.data.LockedHashMap
 import java.io.File
 import java.util.Timer
 import java.util.TimerTask
-import java.util.concurrent.locks.ReadWriteLock
-import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.math.ceil
 
 
@@ -33,16 +33,21 @@ object ImageLoader {
         var lastAccessTime: Long = System.currentTimeMillis()
     }
 
-    private val imagePool: HashMap<String, WrappedBitmap> = HashMap<String, WrappedBitmap>()
-    private val poolLock: ReadWriteLock = ReentrantReadWriteLock()
-    private var imageTimeOut: Long = 60 * 1000 // 60 seconds
+    private val imagePool: LockedHashMap<String, WrappedBitmap> = LockedHashMap()
+    private val videoPool: LockedHashMap<String, WrappedBitmap> = LockedHashMap()
+
+    private var imageTimeOut: Long = 5 * 60 * 1000 // 60 seconds
     private var imageMaxBytes:Int = 1048576 // 1*1024*1024;
 
     init {
         val imageTimeoutTimer = Timer(true)
         val imageTimeoutTask: TimerTask = object : TimerTask() {
             override fun run() {
-                removeTimeoutImage()
+                if  (
+                    imagePool.removeTimeoutCache() || videoPool.removeTimeoutCache()
+                    ) {
+                    Runtime.getRuntime().gc()
+                }
             }
         }
         imageTimeoutTimer.schedule(
@@ -56,6 +61,8 @@ object ImageLoader {
     lateinit var loadingBitmap: Bitmap
         private set
     lateinit var iconFile: Bitmap
+        private set
+    lateinit var iconVideoPlay: Bitmap
         private set
 
     fun initImageLoader(context: Context) {
@@ -80,50 +87,24 @@ object ImageLoader {
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         iconFile = bitmap
+
+        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_video_play, null)!!
+        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        iconVideoPlay = bitmap
     }
 
+    private fun LockedHashMap<String, WrappedBitmap>.removeTimeoutCache(): Boolean {
+        if (this.isEmpty) return false
 
-    private fun imagePoolGet(key: String): WrappedBitmap? {
-        poolLock.readLock().lock()
-        val wrappedBitmap: WrappedBitmap? = imagePool[key]
-        poolLock.readLock().unlock()
-        return wrappedBitmap
-    }
-
-    private fun imagePoolRemove(key: String) {
-        poolLock.writeLock().lock()
-        imagePool.remove(key)
-        poolLock.writeLock().unlock()
-    }
-
-    private fun imagePoolPut(key: String, wrappedBitmap: WrappedBitmap): WrappedBitmap? {
-        poolLock.writeLock().lock()
-        val ret = imagePool.putIfAbsent(key, wrappedBitmap)
-        poolLock.writeLock().unlock()
-        return ret
-    }
-
-    private fun removeTimeoutImage() {
-        val keys = ArrayList<String>()
-        poolLock.readLock().lock()
-        for (current in imagePool.entries) {
-            val wrappedBitmap: WrappedBitmap = current.value
-            val deltaTime = System.currentTimeMillis() - wrappedBitmap.lastAccessTime
-            if (deltaTime < imageTimeOut) continue
-            keys.add(current.key)
+        return this.filter { (_, value) ->
+            val deltaTime = System.currentTimeMillis() - value.lastAccessTime
+            deltaTime >= imageTimeOut
+        }.map { it.key }.let { entries ->
+            this.removeAll(entries)
         }
-        poolLock.readLock().unlock()
-
-        var needGc = false
-        poolLock.writeLock().lock()
-        for (key in keys) {
-            val wrappedBitmap = imagePool.get(key) ?: continue
-            needGc = true
-            imagePool.remove(key)
-            Log.d( TAG, "[$key] expired, remove, last access: ${wrappedBitmap.lastAccessTime}")
-        }
-        poolLock.writeLock().unlock()
-        if (needGc) Thread { Runtime.getRuntime().gc() }.start()
     }
 
     private fun setSampleSize(options: BitmapFactory.Options) {
@@ -177,55 +158,62 @@ object ImageLoader {
      * @param wrappedBitmap generated wrappedBitmap
      * @return the real wrappedBitmap in the pool
      */
-    private fun putWrappedBitmapInPool(
+    private fun LockedHashMap<String, WrappedBitmap>.putWrappedBitmapInPool(
         filePath: String,
         wrappedBitmap: WrappedBitmap
     ): WrappedBitmap {
-        val ret = imagePoolPut(filePath, wrappedBitmap)
+        val ret = this.putIfAbsent(filePath, wrappedBitmap)
         if (ret != null && ret !== wrappedBitmap) {
             return ret
         }
         return wrappedBitmap
     }
 
-    private fun getWrappedBitmapInPool(filePath: String): WrappedBitmap? {
-        val wrappedBitmap = imagePoolGet(filePath) ?: return null
+    private fun LockedHashMap<String, WrappedBitmap>.getWrappedBitmapInPool(
+        filePath: String
+    ): WrappedBitmap? {
+        val wrappedBitmap = this[filePath] ?: return null
         if (wrappedBitmap.bitmap.isRecycled) {
-            imagePoolRemove(filePath)
+            this.remove(filePath)
             return null
         }
         wrappedBitmap.lastAccessTime = System.currentTimeMillis()
         return wrappedBitmap
     }
 
-    private fun loadWrappedBitmap(file: File): WrappedBitmap? {
+    private fun LockedHashMap<String, WrappedBitmap>.loadWrappedBitmap(
+        file: File,
+        missCallback: (() -> WrappedBitmap?)
+    ): WrappedBitmap? {
         val filePath = file.absolutePath
-        var wrappedBitmap = getWrappedBitmapInPool(filePath)
+        val wrappedBitmap = this.getWrappedBitmapInPool(filePath)
         if (wrappedBitmap != null) {
             Log.d(TAG, "[$filePath] loaded, update access time and return")
             return wrappedBitmap
         }
-        Log.d(TAG, "[$filePath] not loaded, create new one")
+        Log.d(TAG, "[$filePath] not loaded, call missCallback to load it")
 
-        val options = BitmapFactory.Options()
-        val bitmap = loadBitmapSample(file, options)
-        if (bitmap == null) {
-            Log.e(TAG, "Cannot load [$filePath] from disk!!!")
-            return null
-        }
-        wrappedBitmap = WrappedBitmap(bitmap, options.inSampleSize > 1)
-        val ret = putWrappedBitmapInPool(filePath, wrappedBitmap)
-        // FIXME: NOT a good solution, need prevent one image be loaded multiple times
-        if (ret !== wrappedBitmap) {
-            wrappedBitmap.bitmap.recycle()
-        }
-        return ret
+        return missCallback()
     }
 
     @JvmStatic
     fun loadImage(file: File): Bitmap? {
-        val wrappedBitmap = loadWrappedBitmap(file) ?: return null
-        return wrappedBitmap.bitmap
+        return imagePool.loadWrappedBitmap(file) {
+            val filePath = file.absolutePath
+            val options = BitmapFactory.Options()
+            val bitmap = loadBitmapSample(file, options)
+            if (bitmap == null) {
+                Log.e(TAG, "Cannot load [$filePath] from disk!!!")
+                return@loadWrappedBitmap null
+            }
+            val wbm = WrappedBitmap(bitmap, options.inSampleSize > 1)
+            val ret = imagePool.putWrappedBitmapInPool(filePath, wbm)
+            // FIXME: NOT a good solution, need prevent one image be loaded multiple times
+            if (ret !== wbm) {
+                wbm.bitmap.recycle()
+            }
+            ret
+        }?.bitmap
     }
 
     /**
@@ -237,8 +225,12 @@ object ImageLoader {
      */
     @JvmStatic
     @Suppress("unused")
-    fun loadImageAsync(file: File, alwaysCallback: Boolean = true, listener: ImageLoadListener?): Bitmap? {
-        val wrappedBitmap = getWrappedBitmapInPool(file.absolutePath)
+    fun loadImageAsync(
+        file: File,
+        alwaysCallback: Boolean = true,
+        listener: ImageLoadListener?
+    ): Bitmap? {
+        val wrappedBitmap = imagePool.getWrappedBitmapInPool(file.absolutePath)
         if (wrappedBitmap != null) {
             if (alwaysCallback)
                 listener?.onImageLoaded(wrappedBitmap.bitmap)
@@ -254,7 +246,7 @@ object ImageLoader {
     @JvmStatic
     @Suppress("unused")
     fun loadOriginalImageAsync(file: File, listener: ImageLoadListener) {
-        val wrappedBitmap = getWrappedBitmapInPool(file.absolutePath)
+        val wrappedBitmap = imagePool.getWrappedBitmapInPool(file.absolutePath)
         if (wrappedBitmap != null && !wrappedBitmap.isCut) {
             listener.onImageLoaded(wrappedBitmap.bitmap)
             return
@@ -263,6 +255,55 @@ object ImageLoader {
             val bitmap = loadBitmapOriginal(file)
             handler.post { listener.onImageLoaded(bitmap) }
         }.start()
+    }
+
+    @JvmStatic
+    fun loadVideoThumbnail(file: File): Bitmap? {
+        return videoPool.loadWrappedBitmap(file) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(file.absolutePath)
+                val bitmap = retriever.frameAtTime
+                if (bitmap == null) {
+                    Log.e(TAG, "Cannot load video thumb from disk!!!")
+                    return@loadWrappedBitmap null
+                }
+                val wbm = WrappedBitmap(bitmap, false)
+                val ret = videoPool.putWrappedBitmapInPool(
+                    file.absolutePath,
+                    wbm
+                )
+                // FIXME: NOT a good solution, need prevent one image be loaded multiple times
+                if (ret !== wbm) {
+                    wbm.bitmap.recycle()
+                }
+                ret
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get video thumbnail: ${e.message}")
+                null
+            } finally {
+                retriever.release()
+            }
+        }?.bitmap
+    }
+
+    @JvmStatic
+    fun loadVideoThumbnailAsync(
+        file: File,
+        alwaysCallback: Boolean = true,
+        listener: ImageLoadListener?
+    ): Bitmap? {
+        val wrappedBitmap = videoPool.getWrappedBitmapInPool(file.absolutePath)
+        if (wrappedBitmap != null) {
+            if (alwaysCallback)
+                listener?.onImageLoaded(wrappedBitmap.bitmap)
+            return wrappedBitmap.bitmap
+        }
+        Thread {
+            val bitmap = loadVideoThumbnail(file)
+            handler.post { listener?.onImageLoaded(bitmap) }
+        }.start()
+        return null
     }
 
     @JvmStatic
