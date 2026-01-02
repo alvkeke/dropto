@@ -147,6 +147,10 @@ object ImageLoader {
         val filePath = file.absolutePath
         options.inJustDecodeBounds = true // just check metadata of the image
         BitmapFactory.decodeFile(filePath, options)
+        if (options.outConfig == null) {
+            Log.d(TAG, "Cannot decode image config of [$filePath]")
+            return null
+        }
         setSampleSize(options)
         options.inJustDecodeBounds = false // really retrieve image from disk
         return loadBitmapWithOption(filePath, options)
