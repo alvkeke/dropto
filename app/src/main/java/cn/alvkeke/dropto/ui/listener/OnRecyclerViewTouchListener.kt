@@ -40,9 +40,11 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                 longPressView = view
                 longPressItemView =
                     recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
-                lastHoldItemIndex = recyclerView.getChildLayoutPosition(longPressItemView!!)
-                Log.e(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
-                handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK)
+                if (longPressItemView != null) {
+                    lastHoldItemIndex = recyclerView.getChildLayoutPosition(longPressItemView!!)
+                    Log.v(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
+                    handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK)
+                }
                 isShortClick = true
                 isSlidable = true
             }
@@ -63,7 +65,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                         return lastSlideOnStatus
                     }
                     lastHoldItemIndex = index
-                    Log.e(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
+                    Log.v(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
                     lastSlideOnStatus = onItemLongClickSlideOn(itemView, index)
                     if (lastSlideOnStatus) {
                         return true
