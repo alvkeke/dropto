@@ -3,6 +3,7 @@ package cn.alvkeke.dropto.storage
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import java.io.File
 import java.io.FileDescriptor
 import java.io.FileInputStream
@@ -77,6 +78,7 @@ object FileHelper {
         try {
             context.contentResolver.openFileDescriptor(uri, "r").use { inputPFD ->
                 if (inputPFD == null) {
+                    Log.e(TAG, "saveUriToFile: failed to open uri: $uri")
                     return null
                 }
                 val fd = inputPFD.fileDescriptor
@@ -87,7 +89,8 @@ object FileHelper {
                 }
                 return retFile
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "saveUriToFile: failed to save uri to file: $uri", e)
             return null
         }
     }

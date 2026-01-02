@@ -12,6 +12,7 @@ import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createNote
@@ -65,11 +66,9 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
 
         pendingText = handleTextInfo(intent)
         val type = intent.type
-        if (type != null) {
-            if (type.startsWith("image/")) {
-                pendingUris = handleImageUris(intent)
-            }
-        }
+        pendingType = intent.type ?: "*/*"
+        Log.e(TAG, "received type: $type")
+        pendingUris = handleReceivedUris(intent)
 
         categorySelectorFragment = CategorySelectorFragment()
         categorySelectorFragment.setCategories(categories)
@@ -85,28 +84,41 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         return false
     }
 
-    private var pendingText: String? = null
-    private var pendingUris: ArrayList<Uri>? = null
-    private fun noPendingUris(): Boolean {
-        return pendingUris == null || pendingUris!!.isEmpty()
-    }
+    private lateinit var pendingText: String
+    private lateinit var pendingUris: ArrayList<Uri>
+    private lateinit var pendingType: String
 
     override fun onSelected(index: Int, category: Category) {
-        if (pendingText!!.isEmpty() && noPendingUris()) {
+        if (pendingText.isEmpty() && pendingUris.isEmpty()) {
             Toast.makeText(this, "Empty item, abort", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
-        val recvNote = NoteItem(pendingText!!)
+        Log.v(TAG, "selected category: ${category.title}")
+
+        val recvNote = NoteItem(pendingText)
         recvNote.categoryId = category.id
-        if (pendingUris != null) {
-            for (uri in pendingUris) {
-                val imageFile = extraImageFileFromUri(uri)
-                if (imageFile != null) recvNote.attachments.add(imageFile)
+        for (uri in pendingUris) {
+            val imageFile = extractAttachmentFromUri(uri)
+            if (imageFile == null) {
+                Log.e(this.toString(), "Failed to extract attachment from uri: $uri")
+                continue
             }
+            recvNote.attachments.add(imageFile)
         }
-        app.service?.queueTask(createNote(recvNote))
+
+        if (recvNote.attachments.size != pendingUris.size) {
+            val message = "Failed to create note, Some or all shared files cannot be saved"
+            Log.e(TAG, message + ", ${recvNote.attachments.size} / ${pendingUris.size}")
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        } else if (recvNote.attachments.isEmpty() && recvNote.text.isEmpty()) {
+            val message = "Failed to create note, no available content"
+            Log.e(TAG, message)
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        } else {
+            app.service?.queueTask(createNote(recvNote))
+        }
         finish()
     }
 
@@ -124,34 +136,46 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         return text.trim { it <= ' ' }
     }
 
-    private fun handleImageUris(intent: Intent): ArrayList<Uri>? {
-        val uris = ArrayList<Uri>()
-        val action = intent.action ?: return null
+    private fun handleReceivedUris(intent: Intent): ArrayList<Uri> {
+        return when (intent.action) {
+            Intent.ACTION_SEND -> {
+                val uris = ArrayList<Uri>()
+                val uri = intent.getParcelableExtra(
+                    Intent.EXTRA_STREAM,
+                    Uri::class.java)
+                if (uri != null) uris.add(uri)
+                uris
+            }
+            Intent.ACTION_SEND_MULTIPLE -> {
+                intent.getParcelableArrayListExtra(
+                    Intent.EXTRA_STREAM,
+                    Uri::class.java)?: ArrayList()
+            }
+            else -> error("action not allowed: ${intent.action}, should not reach here")
+        }
+    }
 
-        when (action) {
-            Intent.ACTION_SEND -> uris.add(handleSingleImageUri(intent)!!)
-            Intent.ACTION_SEND_MULTIPLE -> handleMultipleImageUris(intent, uris)
+    private fun extractAttachmentFromUri(uri: Uri): AttachmentFile? {
+        val folder = getFolderImage(this)
+        val md5file = saveUriToFile(this, uri, folder)
+        if (md5file == null) {
+            Log.e(this.toString(), "Failed to save uri to file: $uri")
+            return null
+        }
+        val fileName = getFileNameFromUri(this, uri)
+        if (fileName == null) {
+            Log.e(this.toString(), "Failed to get file name from uri: $uri")
+            return null
+        }
+        val mimeType = Global.mimeTypeFromFileName(fileName)
+        val attachmentType = if (mimeType.startsWith("image/") ||
+            mimeType.startsWith("video/")) {
+            Type.IMAGE
+        } else {
+            Type.FILE
         }
 
-        return uris
-    }
-
-    private fun handleSingleImageUri(intent: Intent): Uri? {
-        return intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-    }
-
-    private fun handleMultipleImageUris(intent: Intent, uris: ArrayList<Uri>) {
-        val imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
-        if (imageUris == null || imageUris.isEmpty()) return
-        uris.addAll(imageUris)
-    }
-
-    private fun extraImageFileFromUri(uri: Uri): AttachmentFile? {
-        val folder = getFolderImage(this)
-        val md5file = saveUriToFile(this, uri, folder) ?: return null
-        val imgName = getFileNameFromUri(this, uri)
-        // FIXME: need to fix this with correct type
-        return AttachmentFile(md5file, imgName!!, Type.IMAGE)
+        return AttachmentFile(md5file, fileName, attachmentType)
     }
 
     private fun onCategoryTaskFinish(task: Task) {
@@ -166,4 +190,9 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
     override fun onTaskFinish(task: Task) {
         if (task.type == Task.Type.Category) onCategoryTaskFinish(task)
     }
+
+    companion object {
+        private const val TAG = "ShareRecvActivity"
+    }
+
 }
