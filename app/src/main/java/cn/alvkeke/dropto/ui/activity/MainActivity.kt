@@ -390,17 +390,15 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         })
     }
 
-    private fun triggerShare(text: String, uris: ArrayList<Uri>) {
+    private fun triggerShare(text: String, type: String, uris: ArrayList<Uri>) {
         val sendIntent = Intent(Intent.ACTION_SEND)
-        val count = uris.size
-        if (count == 0) {
-            sendIntent.type = "text/plain"
-        } else {
-            sendIntent.type = "image/*"
+
+        sendIntent.type = type
+        if (uris.isNotEmpty()) {
             sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        if (count == 1) {
+        if (uris.size == 1) {
             sendIntent.putExtra(Intent.EXTRA_STREAM, uris[0])
         } else {
             sendIntent.action = Intent.ACTION_SEND_MULTIPLE
@@ -422,22 +420,34 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         emptyShareFolder()
         val uris = ArrayList<Uri>()
         val sb = StringBuilder()
+        var typeMain: String? = null
         for (e in items) {
             generateShareFileAndUriForNote(e, uris)
-            val text = e.text
-            if (!text.isEmpty()) {
-                sb.append(text)
+            if (e.text.isNotEmpty()) {
+                sb.append(e.text)
                 sb.append('\n')
             }
+            val type = e.getAttachmentMimeType().substringBefore('/')
+            if (typeMain == null) {
+                typeMain = type
+                continue
+            }
+
+            if (typeMain != type) {
+                typeMain = "*"
+            }
         }
-        triggerShare(sb.toString(), uris)
+        typeMain += "/*"
+        triggerShare(sb.toString(), typeMain, uris)
     }
 
     private fun handleNoteShare(item: NoteItem) {
         emptyShareFolder()
         val uris = ArrayList<Uri>()
         generateShareFileAndUriForNote(item, uris)
-        triggerShare(item.text, uris)
+        val text = item.text
+        val mimeType = item.getAttachmentMimeType()
+        triggerShare(text, mimeType, uris)
     }
 
     private fun handleTextCopy(text: String) {

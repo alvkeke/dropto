@@ -1,5 +1,7 @@
 package cn.alvkeke.dropto.data
 
+import android.util.Log
+import cn.alvkeke.dropto.mgmt.Global
 import java.io.Serializable
 
 class NoteItem : Serializable, Cloneable {
@@ -163,6 +165,59 @@ class NoteItem : Serializable, Cloneable {
         }
     }
 
+    fun getAttachmentMimeType(): String {
+        return if (attachments.isEmpty()) {
+            "text/plain"
+        } else if (files.isEmpty()) {
+            var firstTypeMain: String? = null
+            var firstTypeSub: String? = null
+            for (file in attachments) {
+                val fileMimeType = Global.mimeTypeFromFileName(file.name)
+                Log.v(TAG, "attachment mime type: $fileMimeType")
+                val main = fileMimeType.substringBefore('/')
+                val sub = fileMimeType.substringAfter('/')
+                if (firstTypeMain == null) {
+                    firstTypeMain = main
+                    firstTypeSub = sub
+                    continue
+                }
+
+                if (firstTypeMain != main) {
+                    Log.d(TAG, "different main type: $firstTypeMain vs $main")
+                    return "*/*"
+                }
+                if (firstTypeSub != sub) { firstTypeSub = "*" }
+            }
+            val ret = "$firstTypeMain/$firstTypeSub"
+            Log.e(TAG, "final attachment mime type: $ret")
+            ret
+        } else {
+            var firstTypeMain: String? = null
+            var firstTypeSub: String? = null
+
+            for (file in attachments) {
+                val fileMimeType = Global.mimeTypeFromFileName(file.name)
+                Log.e(TAG, "attachment mime type: $fileMimeType")
+                val mainType = fileMimeType.substringBefore('/')
+                val subType = fileMimeType.substringAfter('/')
+                if (firstTypeMain == null) {
+                    firstTypeMain = mainType
+                    firstTypeSub = subType
+                    continue
+                }
+
+                if (firstTypeMain != mainType) { return "*/*" }
+                if (firstTypeSub != subType) { firstTypeSub = "*" }
+            }
+
+            if (firstTypeMain != "image" && images.isNotEmpty()) {
+                "*/*"
+            } else {
+                "$firstTypeMain/$firstTypeSub"
+            }
+        }
+    }
+
     /**
      * construct a new NoteItem instance, with auto generated create_time
      * @param text the content of the item
@@ -210,6 +265,7 @@ class NoteItem : Serializable, Cloneable {
     }
 
     companion object {
+        const val TAG: String = "NoteItem"
         const val ID_NOT_ASSIGNED: Long = -1
     }
 }
