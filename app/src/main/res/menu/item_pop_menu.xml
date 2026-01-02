@@ -4,18 +4,18 @@
         android:id="@+id/item_pop_m_copy_text"
         android:title="@string/title_item_pop_menu_copy_text"/>
     <item
+        android:id="@+id/item_pop_m_share"
+        android:title="@string/title_item_pop_menu_share"/>
+    <item
+        android:id="@+id/item_pop_m_forward"
+        android:title="@string/title_item_pop_menu_forward"/>
+    <item
+        android:id="@+id/item_pop_m_pin"
+        android:title="@string/title_item_pop_menu_pin" />
+    <item
         android:id="@+id/item_pop_m_edit"
         android:title="@string/title_item_pop_menu_edit" />
     <item
         android:id="@+id/item_pop_m_delete"
         android:title="@string/title_item_pop_menu_delete" />
-    <item
-        android:id="@+id/item_pop_m_pin"
-        android:title="@string/title_item_pop_menu_pin" />
-    <item
-        android:id="@+id/item_pop_m_forward"
-        android:title="@string/title_item_pop_menu_forward"/>
-    <item
-        android:id="@+id/item_pop_m_share"
-        android:title="@string/title_item_pop_menu_share"/>
 </menu>
