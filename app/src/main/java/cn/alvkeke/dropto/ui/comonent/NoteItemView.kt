@@ -168,11 +168,9 @@ class NoteItemView @JvmOverloads constructor(
     private var imageRect: RectF = RectF()
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val videoIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        style = Paint.Style.FILL
-        alpha = 200
         xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
     }
+    private val videoIconPath = Path()
     private val imagePath = Path()
 
     private val fileIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -758,7 +756,8 @@ class NoteItemView @JvmOverloads constructor(
 
         if (isVideo && bitmap != ImageLoader.errorBitmap && bitmap != ImageLoader.loadingBitmap) {
             // draw play icon at center
-            val iconSize = (dst.height() / 3).toInt()
+            val iconSize = (dst.height() / 3).toInt().coerceAtMost(40.dp())
+
             val iconLeft = dst.left + (dst.width() - iconSize) / 2
             val iconTop = dst.top + (dst.height() - iconSize) / 2
             val iconRect = RectF(
@@ -767,12 +766,28 @@ class NoteItemView @JvmOverloads constructor(
                 iconLeft + iconSize,
                 iconTop + iconSize
             )
-            drawBitmapNullable(
-                ImageLoader.iconVideoPlay,
-                null,
-                iconRect,
-                videoIconPaint
-            )
+            val radius = iconSize / 2f
+            val cx = iconRect.centerX()
+            val cy = iconRect.centerY()
+            videoIconPaint.style = Paint.Style.FILL
+            videoIconPaint.color = Color.BLACK
+            videoIconPaint.alpha = 100
+            this.drawCircle(cx, cy, radius, videoIconPaint)
+
+            videoIconPaint.style = Paint.Style.STROKE
+            videoIconPaint.alpha = 255
+            videoIconPaint.color = Color.WHITE
+            videoIconPaint.strokeWidth = (iconSize / 6f).coerceAtMost(6f)
+            this.drawCircle(cx, cy, radius, videoIconPaint)
+            videoIconPaint.style = Paint.Style.FILL
+
+            val side = radius
+            videoIconPath.reset()
+            videoIconPath.moveTo(cx - side / 3f, cy - side / 2f)
+            videoIconPath.lineTo(cx - side / 3f, cy + side / 2f)
+            videoIconPath.lineTo(cx + side * 2f / 3f, cy)
+            videoIconPath.close()
+            this.drawPath(videoIconPath, videoIconPaint)
         }
     }
 
