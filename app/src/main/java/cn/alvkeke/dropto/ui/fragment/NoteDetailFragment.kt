@@ -4,7 +4,6 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.DialogInterface
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -20,10 +19,7 @@ import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.mgmt.Global
-import cn.alvkeke.dropto.storage.ImageLoader
-import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
-import cn.alvkeke.dropto.ui.comonent.ImageCard
+import cn.alvkeke.dropto.ui.comonent.AttachmentCard
 import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import com.google.android.material.appbar.MaterialToolbar
@@ -172,44 +168,9 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         if (item.attachments.isEmpty()) return
 
         val context = requireContext()
-        item.images.iterator().forEach { attachment: AttachmentFile ->
-            val card = ImageCard(context)
-            card.setImageMd5(attachment.md5)
-            card.setImageName(attachment.name)
+        item.attachments.iterator().forEach { attachment ->
+            val card = AttachmentCard(context, attachment)
 
-            // all attachments in images should have correct type, not checking here
-            val type = Global.mimeTypeFromFileName(attachment.name)
-
-            if (type.startsWith("image/")) {
-                loadImageAsync(attachment.md5file) { bitmap: Bitmap? ->
-                    if (bitmap == null) {
-                        val errMsg = "Failed to get image file, skip this item"
-                        Log.e(this.toString(), errMsg)
-                        Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
-                        card.setImageResource(R.drawable.img_load_error)
-                    } else {
-                        card.setImage(bitmap)
-                    }
-                }
-            } else if (type.startsWith("video/")) {
-                ImageLoader.loadVideoThumbnailAsync(attachment.md5file) { bitmap: Bitmap? ->
-                    if (bitmap == null) {
-                        val errMsg = "Failed to get video file, skip this item"
-                        Log.e(this.toString(), errMsg)
-                        Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
-                        card.setImageResource(R.drawable.img_load_error)
-                    } else {
-                        card.setImage(bitmap)
-                        // TODO: add a play icon overlay
-                    }
-                }
-            } else {
-                Log.e(TAG, "Unsupported attachment type in images: $type")
-            }
-
-            card.setRemoveButtonClickListener(OnRemoveClickListener(item, attachment))
-            val imageIndex = item.attachments.indexOf(attachment)
-            card.setImageClickListener(OnImageClickListener( item, imageIndex ))
             scrollContainer.addView(card)
         }
     }

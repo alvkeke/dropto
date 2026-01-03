@@ -22,6 +22,9 @@ class AttachmentFile(val md5file: File, var name: String, val type: Type) {
             return mimeType.startsWith("video/")
         }
 
+    val mimeType: String
+        get() = Global.mimeTypeFromFileName(name)
+
     companion object {
         @JvmStatic
         fun from(md5file: File, name: String, type: Type): AttachmentFile {
