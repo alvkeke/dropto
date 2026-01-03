@@ -20,6 +20,8 @@ import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.mgmt.Global
+import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
 import cn.alvkeke.dropto.ui.comonent.ImageCard
 import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
@@ -28,7 +30,6 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import java.util.function.Consumer
 
 class NoteDetailFragment : BottomSheetDialogFragment() {
     private lateinit var dbListener: NoteDBAttemptListener
@@ -171,49 +172,85 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         if (item.attachments.isEmpty()) return
 
         val context = requireContext()
-        item.attachments.iterator().forEachRemaining(Consumer { attachment: AttachmentFile ->
-            attachments.add(attachment)
+        item.images.iterator().forEach { attachment: AttachmentFile ->
             val card = ImageCard(context)
             card.setImageMd5(attachment.md5)
             card.setImageName(attachment.name)
 
-            if (attachment.type == AttachmentFile.Type.IMAGE)
+            // all attachments in images should have correct type, not checking here
+            val type = Global.mimeTypeFromFileName(attachment.name)
+
+            if (type.startsWith("image/")) {
                 loadImageAsync(attachment.md5file) { bitmap: Bitmap? ->
-                if (bitmap == null) {
-                    val errMsg = "Failed to get image file, skip this item"
-                    Log.e(this.toString(), errMsg)
-                    Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
-                    card.setImageResource(R.drawable.img_load_error)
-                } else {
-                    card.setImage(bitmap)
-                }
-            }
-            card.setRemoveButtonClickListener { _: View ->
-                val hei = card.height
-                val animator = ValueAnimator.ofInt(hei, 0)
-                animator.addUpdateListener { valueAnimator: ValueAnimator ->
-                    val params = card.layoutParams
-                    params.height = valueAnimator.animatedValue as Int
-                    card.layoutParams = params
-                }
-                animator.addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        attachments.remove(attachment)
-                        isImageChanged = true
-                        scrollContainer.removeView(card)
+                    if (bitmap == null) {
+                        val errMsg = "Failed to get image file, skip this item"
+                        Log.e(this.toString(), errMsg)
+                        Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
+                        card.setImageResource(R.drawable.img_load_error)
+                    } else {
+                        card.setImage(bitmap)
                     }
-                })
-                animator.start()
+                }
+            } else if (type.startsWith("video/")) {
+                ImageLoader.loadVideoThumbnailAsync(attachment.md5file) { bitmap: Bitmap? ->
+                    if (bitmap == null) {
+                        val errMsg = "Failed to get video file, skip this item"
+                        Log.e(this.toString(), errMsg)
+                        Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
+                        card.setImageResource(R.drawable.img_load_error)
+                    } else {
+                        card.setImage(bitmap)
+                        // TODO: add a play icon overlay
+                    }
+                }
+            } else {
+                Log.e(TAG, "Unsupported attachment type in images: $type")
             }
+
+            card.setRemoveButtonClickListener(OnRemoveClickListener(item, attachment))
             val imageIndex = item.attachments.indexOf(attachment)
-            card.setImageClickListener { _: View ->
-                uiListener.onAttempt(
-                    NoteUIAttemptListener.Attempt.SHOW_IMAGE,
-                    item,
-                    imageIndex
-                )
-            }
+            card.setImageClickListener(OnImageClickListener( item, imageIndex ))
             scrollContainer.addView(card)
-        })
+        }
     }
+
+    private inner class OnRemoveClickListener(
+        val note: NoteItem,
+        val attachment: AttachmentFile) : View.OnClickListener {
+        override fun onClick(card: View) {
+            val hei = card.height
+            val animator = ValueAnimator.ofInt(hei, 0)
+            animator.addUpdateListener { valueAnimator: ValueAnimator ->
+                val params = card.layoutParams
+                params.height = valueAnimator.animatedValue as Int
+                card.layoutParams = params
+            }
+            animator.addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    note.attachments.remove(attachment)
+                    isImageChanged = true
+                    scrollContainer.removeView(card)
+                }
+            })
+            animator.start()
+        }
+    }
+
+    private inner class OnImageClickListener(
+        val note: NoteItem,
+        val imageIndex: Int
+    ) : View.OnClickListener {
+        override fun onClick(card: View) {
+            uiListener.onAttempt(
+                NoteUIAttemptListener.Attempt.SHOW_IMAGE,
+                note,
+                imageIndex
+            )
+        }
+    }
+
+    companion object {
+        private const val TAG = "NoteDetailFragment"
+    }
+
 }
