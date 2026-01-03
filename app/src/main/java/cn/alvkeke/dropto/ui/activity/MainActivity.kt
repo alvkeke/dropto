@@ -512,6 +512,11 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun handleNoteImageShow(item: NoteItem, imageIndex: Int) {
+        if (item.attachments.size > 10 && imageIndex >= 9) {
+            handleNoteDetailShow(item)
+            return
+        }
+
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
         }

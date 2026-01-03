@@ -172,6 +172,15 @@ class NoteItemView @JvmOverloads constructor(
     }
     private val videoIconPath = Path()
     private val imagePath = Path()
+    private val mediaOverlayRect = RectF()
+    private val mediaOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.BLACK
+        alpha = 180
+        style = Paint.Style.FILL
+    }
+    private val mediaOverlayFontPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+    }
 
     private val fileIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.DKGRAY
@@ -544,7 +553,8 @@ class NoteItemView @JvmOverloads constructor(
 
                 desiredHeight += height3 * 3 + MARGIN_IMAGE * 3
             }
-            10 -> {
+            // if images have 10 or 10+, then display 10 images only, but show +n indicator on the last image
+            else -> {
                 val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
                 val height3 = width3 * 5 / 4
                 val width4 = (contentWidth - MARGIN_IMAGE * 3) / 4
@@ -584,9 +594,6 @@ class NoteItemView @JvmOverloads constructor(
                     )
                 }
                 desiredHeight += height3 * 2 + height4 + MARGIN_IMAGE * 3
-            }
-            else -> {
-                Log.e(TAG, "measureImageHeight: not implement yet for ${options.size} options")
             }
         }
         return desiredHeight
@@ -796,7 +803,7 @@ class NoteItemView @JvmOverloads constructor(
 
         if (_images.isEmpty()) return 0f
 
-        for (info in _images) {
+        for (info in _images.take(10)) {
             if (info.rect.isEmpty) {
                 Log.e(TAG, "drawing image without setting the image rect is not allowed")
                 continue
@@ -825,7 +832,27 @@ class NoteItemView @JvmOverloads constructor(
             canvas.restoreToCount(saveCount)
         }
 
-        return _images.last().rect.bottom + MARGIN_IMAGE
+        Log.e(TAG, "image count: ${_images.size}")
+        if (_images.size > 10) {
+            val restCount = _images.size - 9
+            val info = _images[9]
+            mediaOverlayRect.set(info.rect)
+            // draw the overlay background
+            canvas.drawRect(mediaOverlayRect, mediaOverlayPaint)
+
+            val overlayText = "+$restCount"
+            mediaOverlayFontPaint.textSize = (mediaOverlayRect.height() / 4)
+
+            val textWidth = mediaOverlayFontPaint.measureText(overlayText)
+            val textX = mediaOverlayRect.left + (mediaOverlayRect.width() - textWidth) / 2
+            val textY = mediaOverlayRect.top + (mediaOverlayRect.height() + mediaOverlayFontPaint.textSize) / 2 - mediaOverlayFontPaint.descent()
+
+            canvas.drawText(overlayText, textX, textY, mediaOverlayFontPaint)
+
+            return _images[9].rect.bottom + MARGIN_IMAGE
+        } else {
+            return _images.last().rect.bottom + MARGIN_IMAGE
+        }
     }
 
     private fun drawFiles(canvas: Canvas, contentWidth: Int): Float {
