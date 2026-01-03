@@ -274,23 +274,36 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             return true
         }
 
+        private var moveToSelect = false
         private var firstHoldItem = -1
         private var lastHoldItem = -1
         override fun onItemLongClick(v: View, index: Int): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             firstHoldItem = index
-            lastHoldItem = -1
-            noteItemAdapter.toggleSelectItems(index)
+            lastHoldItem = index
+            if (noteItemAdapter.isSelected(index)) {
+                moveToSelect = false
+                noteItemAdapter.unselectItem(index)
+            } else {
+                moveToSelect = true
+                noteItemAdapter.selectItem(index)
+            }
             return true
         }
 
         override fun onItemLongClickSlideOn(v: View, index: Int): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            if (lastHoldItem != -1 && lastHoldItem !in firstHoldItem..index) {
-                noteItemAdapter.unselectItem(lastHoldItem)
-            } else {
-                noteItemAdapter.selectItem(index)
+
+            if (lastHoldItem != firstHoldItem) {
+                if (moveToSelect)
+                    noteItemAdapter.unselectItem(lastHoldItem)
+                else
+                    noteItemAdapter.selectItem(lastHoldItem)
             }
+
+            noteItemAdapter
+                .setRangeSelection(firstHoldItem, index, moveToSelect)
+
             lastHoldItem = index
             return true
         }

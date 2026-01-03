@@ -125,6 +125,31 @@ abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         notifyItemChanged(index)
     }
 
+    fun setRangeSelection(start: Int, end: Int, selected: Boolean) {
+
+        val s = minOf(start, end)
+        val e = maxOf(start, end)
+
+        for (i in s..e) {
+            val item = elements[i]
+            val contains = selectedItems.contains(item)
+            if (selected && !contains) {
+                selectedItems.add(item)
+                selectListener?.onSelect(i)
+                notifyItemChanged(i)
+            } else if (!selected && contains) {
+                selectedItems.remove(item)
+                selectListener?.onUnSelect(i)
+                notifyItemChanged(i)
+            }
+        }
+        if (selected && selectedItems.isNotEmpty()) {
+            selectListener?.onSelectEnter()
+        } else if (!selected && selectedItems.isEmpty()) {
+            selectListener?.onSelectExit()
+        }
+    }
+
     fun clearSelectItems() {
         if (selectedItems.isEmpty()) {
             return
