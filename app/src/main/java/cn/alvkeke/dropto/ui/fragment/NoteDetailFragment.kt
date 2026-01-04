@@ -36,7 +36,6 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
 
     private var note: NoteItem? = null
     private val removedAttachments = ArrayList<AttachmentFile>()
-    private var isImageChanged = false
 
     fun setNoteItem(item: NoteItem) {
         this.note = item
@@ -126,7 +125,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
             dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, note!!)
             return
         }
-        if (text.isEmpty() && isImageChanged && note!!.attachments.isEmpty()) {
+        if (text.isEmpty() && removedAttachments.containsAll(note!!.attachments)) {
             Toast.makeText(
                 requireContext(),
                 "Got empty item after modifying, remove it", Toast.LENGTH_SHORT
@@ -136,8 +135,9 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
             return
         }
         note!!.setText(text, true)
-        if (isImageChanged) {
+        if (removedAttachments.isNotEmpty()) {
             note!!.attachments.removeAll(removedAttachments)
+            removedAttachments.clear()
         }
         dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, note!!)
     }
@@ -187,7 +187,6 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
             override fun onAnimationEnd(animation: Animator) {
                 // not really remove here, we can cancel the operation before saving
                 removedAttachments.add(attachment)
-                isImageChanged = true
                 scrollContainer.removeView(card)
             }
         })
