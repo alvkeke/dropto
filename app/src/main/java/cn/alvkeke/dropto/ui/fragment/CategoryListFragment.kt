@@ -195,7 +195,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
         }
     }
 
-    private inner class OnListItemClickListener : OnRecyclerViewTouchListener() {
+    private inner class OnListItemClickListener : OnRecyclerViewTouchListener(context) {
         override fun onItemClick(v: View, index: Int): Boolean {
             if (categoryListAdapter.isSelectMode) {
                 categoryListAdapter.toggleSelectItems(index)

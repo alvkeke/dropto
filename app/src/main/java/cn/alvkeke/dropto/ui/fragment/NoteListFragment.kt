@@ -239,7 +239,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         }
     }
 
-    private inner class NoteListTouchListener : OnRecyclerViewTouchListener() {
+    private inner class NoteListTouchListener : OnRecyclerViewTouchListener(context) {
         override fun onItemClickAt(v: View, index: Int, event: MotionEvent): Boolean {
             if (noteItemAdapter.isSelectMode) {
                 noteItemAdapter.toggleSelectItems(index)

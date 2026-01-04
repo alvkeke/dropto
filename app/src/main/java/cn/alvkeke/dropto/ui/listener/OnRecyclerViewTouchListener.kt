@@ -1,16 +1,18 @@
 package cn.alvkeke.dropto.ui.listener
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnTouchListener
+import android.view.ViewConfiguration
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 
-open class OnRecyclerViewTouchListener : OnTouchListener {
+open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
     private var timeDown: Long = 0
     private var downRawX = 0f
     private var downRawY = 0f
@@ -25,6 +27,9 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
 
     private var lastHoldItemIndex: Int = -1
     private var lastSlideOnStatus: Boolean = false
+
+    private val longClickTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
@@ -43,17 +48,16 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                 if (longPressItemView != null) {
                     lastHoldItemIndex = recyclerView.getChildLayoutPosition(longPressItemView!!)
                     Log.v(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
-                    handler.postDelayed(longPressRunnable, TIME_THRESHOLD_LONG_CLICK)
+                    handler.postDelayed(longPressRunnable, longClickTimeout)
                 }
                 isShortClick = true
                 isSlidable = true
             }
 
-            // FIXME: use the global config like AttachmentCard
             MotionEvent.ACTION_MOVE -> {
                 deltaRawX = motionEvent.rawX - downRawX
                 deltaRawY = motionEvent.rawY - downRawY
-                if (abs(deltaRawX) > THRESHOLD_NO_MOVED || abs(deltaRawY) > THRESHOLD_NO_MOVED) {
+                if (deltaRawX * deltaRawX + deltaRawY * deltaRawY > touchSlop * touchSlop) {
                     handler.removeCallbacks(longPressRunnable)
                     isShortClick = false
                 }
@@ -78,7 +82,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                         return true
                     }
                 }
-                if (abs(deltaRawY) > THRESHOLD_NO_MOVED) {
+                if (abs(deltaRawY) > touchSlop) {
                     isSlidable = false
                 }
                 if (isSlidable && deltaRawX > THRESHOLD_SLIDE) {
@@ -137,7 +141,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
         return false
     }
 
-    fun onClick(v: View, e: MotionEvent): Boolean {
+    open fun onClick(v: View, e: MotionEvent): Boolean {
         return false
     }
 
@@ -156,7 +160,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
         }
     }
 
-    fun onLongClick(v: View): Boolean {
+    open fun onLongClick(v: View): Boolean {
         return false
     }
 
@@ -200,8 +204,8 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
 
     companion object {
         private const val TIME_THRESHOLD_CLICK: Long = 200
-        private const val TIME_THRESHOLD_LONG_CLICK: Long = 500
+//        private const val TIME_THRESHOLD_LONG_CLICK: Long = 500
         private const val THRESHOLD_SLIDE = 45
-        private const val THRESHOLD_NO_MOVED = 20
+//        private const val THRESHOLD_NO_MOVED = 20
     }
 }

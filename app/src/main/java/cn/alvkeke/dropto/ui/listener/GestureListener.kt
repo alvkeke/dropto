@@ -1,6 +1,7 @@
 package cn.alvkeke.dropto.ui.listener
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -8,10 +9,11 @@ import android.view.MotionEvent
 import android.view.MotionEvent.PointerCoords
 import android.view.View
 import android.view.View.OnTouchListener
+import android.view.ViewConfiguration
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-open class GestureListener : OnTouchListener {
+open class GestureListener(val context: Context) : OnTouchListener {
     private class Point {
         var x: Float = 0f
         var y: Float = 0f
@@ -43,12 +45,15 @@ open class GestureListener : OnTouchListener {
         INVALID,
     }
 
+    private val longClickTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+
     private fun getMode(deltaX: Float, deltaY: Float): GestureMode {
-        if (deltaX <= DISTANCE_NO_MOVE && deltaY >= DISTANCE_SCROLL) {
+        if (deltaX <= touchSlop && deltaY > touchSlop) {
             return GestureMode.SCROLL_V
-        } else if (deltaX >= DISTANCE_SCROLL && deltaY <= DISTANCE_NO_MOVE) {
+        } else if (deltaX > touchSlop && deltaY <= touchSlop) {
             return GestureMode.SCROLL_H
-        } else if (deltaX >= DISTANCE_NO_MOVE && deltaY >= DISTANCE_NO_MOVE) {
+        } else if (deltaX > touchSlop && deltaY > touchSlop) {
             return GestureMode.DRAG
         }
         return GestureMode.NONE
@@ -116,10 +121,10 @@ open class GestureListener : OnTouchListener {
     private var downCount = 0
     private fun handleClick(view: View, e: MotionEvent) {
         if (downCount > 1) return
-        if (System.currentTimeMillis() - downTime < CLICK_TIME_THRESHOLD) {
+        if (System.currentTimeMillis() - downTime < longClickTimeout) {
             clickView = view
             clickEvent = e
-            handler.postDelayed(singleTapRunnable, CLICK_TIME_THRESHOLD)
+            handler.postDelayed(singleTapRunnable, longClickTimeout)
         } else {
             downCount = 0
         }
@@ -256,9 +261,6 @@ open class GestureListener : OnTouchListener {
     }
 
     companion object {
-        private const val DISTANCE_NO_MOVE = 25
-        private const val DISTANCE_SCROLL = 45
-        private const val CLICK_TIME_THRESHOLD: Long = 200
     }
 }
 

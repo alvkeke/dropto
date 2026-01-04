@@ -59,7 +59,7 @@ class CategorySelectorFragment : BottomSheetDialogFragment(), ListNotification<C
         rlCategory.setLayoutManager(layoutManager)
         rlCategory.addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
 
-        rlCategory.setOnTouchListener(object : OnRecyclerViewTouchListener() {
+        rlCategory.setOnTouchListener(object : OnRecyclerViewTouchListener(context) {
             override fun onItemClick(v: View, index: Int): Boolean {
                 val category = categoryListAdapter.get(index)
 

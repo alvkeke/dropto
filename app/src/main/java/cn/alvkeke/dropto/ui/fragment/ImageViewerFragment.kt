@@ -4,6 +4,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PointF
@@ -64,7 +65,7 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
             loadedBitmap = bitmap
             imageView.setImageBitmap(bitmap)
         }
-        view.setOnTouchListener(ImageGestureListener())
+        view.setOnTouchListener(ImageGestureListener(requireContext()))
     }
 
     private var window: Window? = null
@@ -99,7 +100,7 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
         return true
     }
 
-    private inner class ImageGestureListener : GestureListener() {
+    private inner class ImageGestureListener(context: Context) : GestureListener(context) {
         override fun onClick(v: View, e: MotionEvent) {
             toggleFullScreen()
         }
