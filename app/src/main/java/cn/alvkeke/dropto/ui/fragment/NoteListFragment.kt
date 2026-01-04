@@ -23,8 +23,8 @@ import android.widget.EditText
 import android.widget.ImageButton
 import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.Toolbar
@@ -32,12 +32,14 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.get
+import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile
+import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.storage.FileHelper
@@ -45,18 +47,15 @@ import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
 import cn.alvkeke.dropto.ui.comonent.MyPopupMenu
+import cn.alvkeke.dropto.ui.comonent.NoteItemView
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.ListNotification
 import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
 import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
+import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
-import androidx.core.view.get
-import androidx.core.view.size
-import cn.alvkeke.dropto.ui.comonent.NoteItemView
-import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
-
 
 
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
@@ -278,7 +277,6 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                         ) {
                             showNoteDetail(index)
                         } else {
-                            // FIXME: here might have issue, need to check
                             tryOpenFile(index, content.index)
                         }
                     }
