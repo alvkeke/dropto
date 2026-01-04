@@ -11,7 +11,6 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
-import android.media.MediaMetadataRetriever
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -242,47 +241,36 @@ class NoteItemView @JvmOverloads constructor(
          H I J/+
      */
 
+    private fun getFirstMediaSize(contentWidth: Int) : Size {
+        val a = _medias[0]
+        val f = a.file.md5file
+        if (!f.exists()) {
+            Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
+            return Size(contentWidth, contentWidth)
+        }
+
+        if (a.file.isVideo) {
+            // decode video size is time consuming,
+            // set to 3:4 ratio directly to improve performance
+            return Size(contentWidth, contentWidth * 3 / 4)
+        } else {
+            val option = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(f.absolutePath, option)
+            return Size(option.outWidth, option.outHeight)
+        }
+    }
+
     private fun measureMediasHeight(contentWidth: Int): Int {
         val maxHeight = contentWidth * 3 / 2
 
-        val options:ArrayList<Size> = ArrayList()
-        for (a in _medias.take(MAX_IMAGE_COUNT)) {
-            val f = a.file.md5file
-            if (!f.exists()) {
-                Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
-                continue
-            }
-
-            if (a.file.isVideo) {
-                val retriever = MediaMetadataRetriever()
-                try {
-                    retriever.setDataSource(f.absolutePath)
-                    val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
-                    val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
-                    if (width != null && height != null) {
-                        val p = Size(width, height)
-                        options.add(p)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "measureMediasHeight: failed to get video size for file=${f.absolutePath}", e)
-                    options.add(Size(1, 1))
-                } finally {
-                    retriever.release()
-                }
-            } else {
-                val option = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-                BitmapFactory.decodeFile(f.absolutePath, option)
-                options.add(Size(option.outWidth, option.outHeight))
-            }
-        }
-
         var desiredHeight = 0
-        when (options.size) {
+        when (_medias.size) {
             0 -> return 0
             1 -> {
-                val e = options[0]
+                val e = getFirstMediaSize(contentWidth)
+
                 val imageHeight = (e.height * contentWidth / e.width).coerceAtMost(maxHeight)
                 val imageWidth = (e.width * imageHeight / e.height)
                 val info = _medias[0]
@@ -295,133 +283,61 @@ class NoteItemView @JvmOverloads constructor(
                 desiredHeight += imageHeight + MARGIN_IMAGE
             }
             2 -> {
-                val e1 = options[0]
-                val e2 = options[1]
-
-                var alignHeight = maxOf(e1.height, e2.height)
-                var width1 = e1.width * alignHeight / e1.height
-                var width2 = e2.width * alignHeight / e2.height
-                val combineWidth = width1 + width2 + MARGIN_IMAGE
-
-                if (combineWidth > contentWidth) {
-                    alignHeight = alignHeight * contentWidth / combineWidth
-                    width1 = e1.width * alignHeight / e1.height
-                    width2 = e2.width * alignHeight / e2.height
-                }
-
-                if (alignHeight > maxHeight) {
-                    alignHeight = maxHeight
-                    width1 = e1.width * alignHeight / e1.height
-                    width2 = e2.width * alignHeight / e2.height
-                }
+                val height = contentWidth * 3 / 4f
+                val width = (contentWidth - MARGIN_IMAGE) / 2f
 
                 var info = _medias[0]
-                info.rect.set(
-                    0F,
-                    0F,
-                    width1.toFloat(),
-                    alignHeight.toFloat()
-                )
+                info.rect.set(0F, 0F, width, height)
 
-                val offsetX = (width1 + MARGIN_IMAGE)
+                val offsetX = (width + MARGIN_IMAGE)
                 info = _medias[1]
-                info.rect.set(
-                    offsetX.toFloat(),
-                    0F,
-                    (offsetX + width2).toFloat(),
-                    alignHeight.toFloat()
-                )
+                info.rect.set(offsetX, 0F, (offsetX + width), height)
 
-                desiredHeight += alignHeight + MARGIN_IMAGE
+                desiredHeight += (height + MARGIN_IMAGE).toInt()
             }
             3 -> {
-                var height = options[0].height
-                var width = options[0].width
-
-                if (height > maxHeight) {
-                    width = width * maxHeight / height
-                    height = maxHeight
-                }
-                val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
-                width = minOf(width, halfWidth)
+                val width = (contentWidth - MARGIN_IMAGE) / 2f
+                val heightRight = width * 4 / 3
+                val heightLeft = heightRight * 2 + MARGIN_IMAGE
 
                 var info = _medias[0]
-                info.rect.set(
-                    0F,
-                    0F,
-                    width.toFloat(),
-                    height.toFloat(),
-                )
+                info.rect.set(0F, 0F, width, heightLeft)
 
-                val heightRight = (height - MARGIN_IMAGE) / 2
                 info = _medias[1]
                 val offsetX = width + MARGIN_IMAGE
-                info.rect.set(
-                    offsetX.toFloat(),
-                    0f,
-                    (offsetX + width).toFloat(),
-                    heightRight.toFloat()
-                )
+                info.rect.set(offsetX, 0f, (offsetX + width), heightRight)
 
                 val offsetY = heightRight + MARGIN_IMAGE
                 info = _medias[2]
                 info.rect.set(
-                    offsetX.toFloat(),
-                    offsetY.toFloat(),
-                    (offsetX + width).toFloat(),
-                    (offsetY + heightRight).toFloat()
+                    offsetX,
+                    offsetY,
+                    (offsetX + width),
+                    (offsetY + heightRight)
                 )
 
-                desiredHeight += height + MARGIN_IMAGE
+                desiredHeight += (heightLeft + MARGIN_IMAGE).toInt()
             }
             4 -> {
-                var height = options[0].height
-                var width = options[0].width
-
-                if (height > maxHeight) {
-                    width = width * maxHeight / height
-                    height = maxHeight
-                }
-                val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
-                width = minOf(width, halfWidth)
+                val side = (contentWidth - MARGIN_IMAGE) / 2f
+                val heightLeft = side * 3 + MARGIN_IMAGE * 2
 
                 var info = _medias[0]
-                info.rect.set(
-                    0f,
-                    0f,
-                    width.toFloat(),
-                    height.toFloat()
-                )
+                info.rect.set(0f, 0f, side, heightLeft)
 
-                val heightRight = (height - MARGIN_IMAGE * 2) / 3
-                val offsetX = width + MARGIN_IMAGE
+                val offsetX = side + MARGIN_IMAGE
                 info = _medias[1]
-                info.rect.set(
-                    offsetX.toFloat(),
-                    0f,
-                    (offsetX + width).toFloat(),
-                    heightRight.toFloat()
-                )
+                info.rect.set(offsetX, 0f, (offsetX + side), side)
 
-                var offsetY = heightRight + MARGIN_IMAGE
+                var offsetY = side + MARGIN_IMAGE
                 info = _medias[2]
-                info.rect.set(
-                    offsetX.toFloat(),
-                    offsetY.toFloat(),
-                    (offsetX + width).toFloat(),
-                    (offsetY + heightRight).toFloat(),
-                )
+                info.rect.set(offsetX, offsetY, (offsetX + side), (offsetY + side))
 
-                offsetY += heightRight + MARGIN_IMAGE
+                offsetY += side + MARGIN_IMAGE
                 info = _medias[3]
-                info.rect.set(
-                    offsetX.toFloat(),
-                    offsetY.toFloat(),
-                    (offsetX + width).toFloat(),
-                    (offsetY + heightRight).toFloat(),
-                )
+                info.rect.set(offsetX, offsetY, (offsetX + side), (offsetY + side))
 
-                desiredHeight += height + MARGIN_IMAGE
+                desiredHeight += (heightLeft + MARGIN_IMAGE).toInt()
             }
             5 -> {
                 val widthTop = (contentWidth - MARGIN_IMAGE) / 2
