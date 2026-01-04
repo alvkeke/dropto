@@ -64,6 +64,8 @@ object ImageLoader {
         private set
     lateinit var iconVideoPlay: Bitmap
         private set
+    lateinit var iconMore: Bitmap
+        private set
 
     fun initImageLoader(context: Context) {
         // Load vector drawable and convert to bitmap
@@ -94,6 +96,13 @@ object ImageLoader {
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         iconVideoPlay = bitmap
+
+        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_more, null)!!
+        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        iconMore = bitmap
     }
 
     private fun LockedHashMap<String, WrappedBitmap>.removeTimeoutCache(): Boolean {

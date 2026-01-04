@@ -244,7 +244,7 @@ class NoteItemView @JvmOverloads constructor(
         val maxHeight = contentWidth * 3 / 2
 
         val options:ArrayList<BitmapFactory.Options> = ArrayList()
-        for (a in _images) {
+        for (a in _images.take(MAX_IMAGE_COUNT)) {
             val f = a.file.md5file
             if (!f.exists()) {
                 Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
@@ -602,7 +602,9 @@ class NoteItemView @JvmOverloads constructor(
     private fun measureFilesHeight(contentWidth: Int): Int {
         if (_files.isEmpty()) return 0
 
-        for (i in 0 until _files.size) {
+        // display max 4 files, if more then 4, then the item 4 for showing the detail fragment
+        val fileCount = _files.size.coerceAtMost(MAX_FILE_COUNT)
+        for (i in 0 until fileCount) {
             val f = _files[i]
             val top = (MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()) * i.toFloat()
             f.rect.set(
@@ -612,7 +614,7 @@ class NoteItemView @JvmOverloads constructor(
                 top + MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()
             )
         }
-        return files.size * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
+        return fileCount * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
     }
 
     private fun measureHeight(width: Int) : Int {
@@ -803,7 +805,7 @@ class NoteItemView @JvmOverloads constructor(
 
         if (_images.isEmpty()) return 0f
 
-        for (info in _images.take(10)) {
+        for (info in _images.take(MAX_IMAGE_COUNT)) {
             if (info.rect.isEmpty) {
                 Log.e(TAG, "drawing image without setting the image rect is not allowed")
                 continue
@@ -832,8 +834,7 @@ class NoteItemView @JvmOverloads constructor(
             canvas.restoreToCount(saveCount)
         }
 
-        Log.e(TAG, "image count: ${_images.size}")
-        if (_images.size > 10) {
+        if (_images.size > MAX_IMAGE_COUNT) {
             val restCount = _images.size - 9
             val info = _images[9]
             mediaOverlayRect.set(info.rect)
@@ -858,9 +859,10 @@ class NoteItemView @JvmOverloads constructor(
     private fun drawFiles(canvas: Canvas, contentWidth: Int): Float {
         var offsetY: Float = MARGIN_FILE.toFloat()
 
-        for (info in _files) {
+        for (info in _files.take(MAX_FILE_COUNT)) {
             val file = info.file
             Log.v(TAG, "drawFiles: file=${file.name}, md5=${file.md5}")
+            val moreFiles = _files.size > MAX_FILE_COUNT && _files.indexOf(info) == MAX_FILE_COUNT - 1
 
             val rect = RectF(
                 MARGIN_FILE.toFloat(),
@@ -876,22 +878,30 @@ class NoteItemView @JvmOverloads constructor(
             )
 
             canvas.drawBitmap(
-                ImageLoader.iconFile,
+                if (moreFiles) ImageLoader.iconMore else ImageLoader.iconFile,
                 null,
                 rect,
                 fileIconPaint
             )
 
-            // draw filename
             // Calculate max lines based on icon height and text size
             val maxLines = ((FILE_ICON_SIZE.dp() - MARGIN_FILENAME * 2) / TEXT_SIZE_FILENAME)
                 .toInt().coerceAtLeast(1)
+
+            // draw filename
+            val alignment: Layout.Alignment = Layout.Alignment.ALIGN_NORMAL
+            val sourceText: String = if (moreFiles) {
+                "+${_files.size - MAX_FILE_COUNT + 1} files"
+            } else {
+                file.name
+            }
+
             val fileNameLayout = StaticLayout.Builder
                 .obtain(
-                    file.name, 0, file.name.length, fileNamePaint,
+                    sourceText, 0, sourceText.length, fileNamePaint,
                     contentWidth - MARGIN_FILE * 2 - MARGIN_FILENAME - FILE_ICON_SIZE.dp()
                 )
-                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                .setAlignment(alignment)
                 .setLineSpacing(0f, 1f)
                 .setIncludePad(false)
                 .setMaxLines(maxLines)
@@ -999,12 +1009,14 @@ class NoteItemView @JvmOverloads constructor(
         const val MARGIN_BORDER = 8
         const val MARGIN_IMAGE = 8
         const val IMAGE_RADIUS = 14
+        const val MAX_IMAGE_COUNT = 10
 
         const val MARGIN_FILE = 8
         const val FILE_ICON_SIZE = 48  // in dp
         const val FILE_ICON_RADIUS = 36
         const val MARGIN_FILENAME = 16
         const val TEXT_SIZE_FILENAME = 40f
+        const val MAX_FILE_COUNT = 4
 
         const val MARGIN_TEXT = 16
         const val MARGIN_TIME = 8

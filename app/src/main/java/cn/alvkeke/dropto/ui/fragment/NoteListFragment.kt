@@ -263,7 +263,9 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     }
 
                     NoteItemView.ClickedContent.Type.IMAGE -> {
-                        if (itemView.images.size > 10 && content.index >= 9) {
+                        if (itemView.images.size > NoteItemView.MAX_IMAGE_COUNT &&
+                            content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
+                        ) {
                             showNoteDetail(index)
                         } else {
                             showImageView(index, content.index)
@@ -271,7 +273,13 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     }
 
                     NoteItemView.ClickedContent.Type.FILE -> {
-                        tryOpenFile(index, content.index)
+                        if (itemView.files.size > NoteItemView.MAX_FILE_COUNT &&
+                            content.index >= NoteItemView.MAX_FILE_COUNT - 1
+                        ) {
+                            showNoteDetail(index)
+                        } else {
+                            tryOpenFile(index, content.index)
+                        }
                     }
                 }
             }
