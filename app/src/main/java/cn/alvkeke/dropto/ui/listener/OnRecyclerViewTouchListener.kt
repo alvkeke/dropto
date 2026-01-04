@@ -49,6 +49,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                 isSlidable = true
             }
 
+            // FIXME: use the global config like AttachmentCard
             MotionEvent.ACTION_MOVE -> {
                 deltaRawX = motionEvent.rawX - downRawX
                 deltaRawY = motionEvent.rawY - downRawY

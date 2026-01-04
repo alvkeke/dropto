@@ -11,18 +11,22 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
+import android.os.Handler
+import android.os.Looper
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
 
 @SuppressLint("ViewConstructor")
 class AttachmentCard @JvmOverloads constructor(
-    context: Context, val attachment: AttachmentFile, attrs: AttributeSet? = null
+    context: Context, val attachment: AttachmentFile, var listener: CardListener, attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
     private val density = context.resources.displayMetrics.density
@@ -290,6 +294,77 @@ class AttachmentCard @JvmOverloads constructor(
         }
 
         setMeasuredDimension(width, height)
+    }
+
+    interface CardListener {
+        fun onRemove(card: AttachmentCard, attachment: AttachmentFile)
+        fun onClick(card: AttachmentCard, attachment: AttachmentFile)
+        fun onLongClick(card: AttachmentCard, attachment: AttachmentFile)
+    }
+
+    private var downX = 0f
+    private var downY = 0f
+    private var longClickFired = false
+    private val longClickTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val longClickHandler = Handler(Looper.getMainLooper())
+    private val longClickRunnable = Runnable {
+        longClickFired = true
+        longClickAt()
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                longClickFired = false
+                longClickHandler.postDelayed(longClickRunnable, longClickTimeout)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = event.x - downX
+                val dy = event.y - downY
+                if (dx * dx + dy * dy > touchSlop * touchSlop) {
+                    longClickHandler.removeCallbacks(longClickRunnable)
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                longClickHandler.removeCallbacks(longClickRunnable)
+                if (!longClickFired) {
+                    clickAt(event.x.toInt(), event.y.toInt())
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                longClickHandler.removeCallbacks(longClickRunnable)
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
+    private fun isPointInRemoveButton(x: Int, y: Int): Boolean {
+        val dx = x - removeButtonCx
+        val dy = y - removeButtonCy
+        return dx * dx + dy * dy <= removeButtonRadius * removeButtonRadius
+    }
+
+    private fun clickAt(x: Int, y: Int) {
+        performClick()
+        if (isPointInRemoveButton(x, y)) {
+            listener.onRemove(this, attachment)
+            return
+        }
+        listener.onClick(this, attachment)
+    }
+
+    private fun longClickAt() {
+        listener.onLongClick(this, attachment)
     }
 
     companion object {
