@@ -268,7 +268,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                         ) {
                             showNoteDetail(index)
                         } else {
-                            showImageView(index, content.index)
+                            showMediaView(index, content.index)
                         }
                     }
 
@@ -535,10 +535,10 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         )
     }
 
-    private fun showImageView(index: Int, imageIndex: Int) {
+    private fun showMediaView(index: Int, imageIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
         uiListener.onAttempt(
-            NoteUIAttemptListener.Attempt.SHOW_IMAGE,
+            NoteUIAttemptListener.Attempt.SHOW_MEDIA,
             noteItem,
             imageIndex
         )

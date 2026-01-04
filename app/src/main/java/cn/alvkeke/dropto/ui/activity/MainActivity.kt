@@ -470,8 +470,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             .commit()
     }
 
-    private fun handleNoteFileOpen(item: NoteItem, fileIndex: Int) {
-        val file = item.files[fileIndex]
+    private fun handleNoteFileOpen(file: AttachmentFile) {
         val uri = getUriForFile(file.md5file)
         val mimeType = Global.mimeTypeFromFileName(file.name)
         Log.v(TAG, "open file with mime type: $mimeType")
@@ -511,14 +510,19 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         }
     }
 
-    private fun handleNoteImageShow(item: NoteItem, imageIndex: Int) {
+    private fun handleNoteImageShow(mediaFile: AttachmentFile) {
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
         }
-        val imageFile = item.medias[imageIndex]
-        savedImageViewFile = imageFile.md5file.absolutePath
-        imageViewerFragment!!.setImgFile(imageFile.md5file)
-        imageViewerFragment!!.show(supportFragmentManager, null)
+        if (mediaFile.isVideo) {
+            // FIXME: here is a workaround for video playback, open it with external player now
+            // need to implement a unified media viewer later
+            handleNoteFileOpen(mediaFile)
+        } else {
+            savedImageViewFile = mediaFile.md5file.absolutePath
+            imageViewerFragment!!.setImgFile(mediaFile.md5file)
+            imageViewerFragment!!.show(supportFragmentManager, null)
+        }
     }
 
     private val pendingForwardNotes: ArrayList<NoteItem> = ArrayList()
@@ -570,8 +574,10 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             NoteUIAttemptListener.Attempt.SHOW_DETAIL -> handleNoteDetailShow(e)
             NoteUIAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
             NoteUIAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
-            NoteUIAttemptListener.Attempt.SHOW_IMAGE -> handleNoteImageShow(e, index)
-            NoteUIAttemptListener.Attempt.OPEN_FILE -> handleNoteFileOpen(e, index)
+            NoteUIAttemptListener.Attempt.SHOW_MEDIA ->
+                handleNoteImageShow(e.medias[index])
+            NoteUIAttemptListener.Attempt.OPEN_FILE ->
+                handleNoteFileOpen(e.files[index])
         }
     }
 

@@ -7,7 +7,7 @@ interface NoteUIAttemptListener {
         COPY,
         SHOW_DETAIL,
         SHOW_SHARE,
-        SHOW_IMAGE,
+        SHOW_MEDIA,
         OPEN_FILE,
         SHOW_FORWARD,
     }

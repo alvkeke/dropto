@@ -196,7 +196,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
     override fun onClick(card: AttachmentCard, attachment: AttachmentFile) {
         val attempt = when (attachment.type) {
             AttachmentFile.Type.MEDIA -> {
-                NoteUIAttemptListener.Attempt.SHOW_IMAGE
+                NoteUIAttemptListener.Attempt.SHOW_MEDIA
             }
             AttachmentFile.Type.FILE -> {
                 NoteUIAttemptListener.Attempt.OPEN_FILE
