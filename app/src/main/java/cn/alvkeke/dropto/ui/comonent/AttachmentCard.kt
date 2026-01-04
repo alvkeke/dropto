@@ -143,6 +143,8 @@ class AttachmentCard @JvmOverloads constructor(
         color = Color.BLACK
         alpha = 180
     }
+    private val videoIconPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val videoIconPath = Path()
     private val infoBackRect = RectF()
     private fun drawAttachmentInfo(canvas: Canvas) {
         val info = attachment.name
@@ -186,6 +188,42 @@ class AttachmentCard @JvmOverloads constructor(
                     RADIUS_CARD_CONTENT.toFloat(),
                     infoBackPaint
                 )
+
+                if (contentType == ContentType.VIDEO) {
+                    // draw play icon at center
+                    val dst = contentRect
+                    val iconSize = (dst.height() / 3).toInt().coerceAtMost(40.dp())
+
+                    val iconLeft = dst.left + (dst.width() - iconSize) / 2
+                    val iconTop = dst.top + (dst.height() - infoBackRect.height() - iconSize) / 2
+                    val iconRect = RectF(
+                        iconLeft,
+                        iconTop,
+                        iconLeft + iconSize,
+                        iconTop + iconSize
+                    )
+                    val radius = iconSize / 2f
+                    val cx = iconRect.centerX()
+                    val cy = iconRect.centerY()
+                    videoIconPaint.style = Paint.Style.FILL
+                    videoIconPaint.color = Color.BLACK
+                    videoIconPaint.alpha = 100
+                    canvas.drawCircle(cx, cy, radius, videoIconPaint)
+
+                    videoIconPaint.style = Paint.Style.STROKE
+                    videoIconPaint.alpha = 255
+                    videoIconPaint.color = Color.WHITE
+                    videoIconPaint.strokeWidth = (iconSize / 6f).coerceAtMost(6f)
+                    canvas.drawCircle(cx, cy, radius, videoIconPaint)
+                    videoIconPaint.style = Paint.Style.FILL
+
+                    videoIconPath.reset()
+                    videoIconPath.moveTo(cx - radius / 3f, cy - radius / 2f)
+                    videoIconPath.lineTo(cx - radius / 3f, cy + radius / 2f)
+                    videoIconPath.lineTo(cx + radius * 2f / 3f, cy)
+                    videoIconPath.close()
+                    canvas.drawPath(videoIconPath, videoIconPaint)
+                }
 
                 canvas.withTranslation(
                     infoBackRect.left + MARGIN_CARD_INFO,
