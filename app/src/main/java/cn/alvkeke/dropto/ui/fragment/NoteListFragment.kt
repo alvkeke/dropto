@@ -476,7 +476,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         ActivityResultCallback<List<Uri>>, OnClickListener, OnLongClickListener {
 
         private var imagePicker = registerForActivityResult(
-        PickMultipleVisualMedia(9), this )
+            // not going to limit the number of selected images/videos
+        PickMultipleVisualMedia(99), this )
         private var filePicker = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(), this)
 
