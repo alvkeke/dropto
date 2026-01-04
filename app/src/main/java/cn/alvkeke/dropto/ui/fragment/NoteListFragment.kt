@@ -263,11 +263,15 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     }
 
                     NoteItemView.ClickedContent.Type.IMAGE -> {
-                        showImageView(index, content.index)
+                        if (itemView.images.size > 10 && content.index >= 9) {
+                            showNoteDetail(index)
+                        } else {
+                            showImageView(index, content.index)
+                        }
                     }
 
                     NoteItemView.ClickedContent.Type.FILE -> {
-                        showFileView(index, content.index)
+                        tryOpenFile(index, content.index)
                     }
                 }
             }
@@ -513,6 +517,14 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         }
     }
 
+    private fun showNoteDetail(index: Int) {
+        val noteItem = category!!.getNoteItem(index)
+        uiListener.onAttempt(
+            NoteUIAttemptListener.Attempt.SHOW_DETAIL,
+            noteItem,
+        )
+    }
+
     private fun showImageView(index: Int, imageIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
         uiListener.onAttempt(
@@ -522,7 +534,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         )
     }
 
-    private fun showFileView(index: Int, fileIndex: Int) {
+    private fun tryOpenFile(index: Int, fileIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.OPEN_FILE,

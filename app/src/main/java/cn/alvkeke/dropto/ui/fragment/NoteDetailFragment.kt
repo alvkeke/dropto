@@ -4,9 +4,9 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.DialogInterface
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -20,10 +20,7 @@ import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.mgmt.Global
-import cn.alvkeke.dropto.storage.ImageLoader
-import cn.alvkeke.dropto.storage.ImageLoader.loadImageAsync
-import cn.alvkeke.dropto.ui.comonent.ImageCard
+import cn.alvkeke.dropto.ui.comonent.AttachmentCard
 import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import com.google.android.material.appbar.MaterialToolbar
@@ -31,18 +28,17 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
-class NoteDetailFragment : BottomSheetDialogFragment() {
+class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListener{
     private lateinit var dbListener: NoteDBAttemptListener
     private lateinit var uiListener: NoteUIAttemptListener
     private lateinit var etNoteItemText: EditText
     private lateinit var scrollContainer: LinearLayout
 
-    private var item: NoteItem? = null
-    private var isImageChanged = false
-    private val attachments = ArrayList<AttachmentFile>()
+    private var note: NoteItem? = null
+    private val removedAttachments = ArrayList<AttachmentFile>()
 
     fun setNoteItem(item: NoteItem) {
-        this.item = item
+        this.note = item
     }
 
     override fun onCreateView(
@@ -66,8 +62,8 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         initEssentialVars()
         setPeekHeight(view)
 
-        if (item != null)
-            loadItemDataToUI(item!!)
+        if (note != null)
+            loadItemDataToUI(note!!)
 
         toolbar.inflateMenu(R.menu.note_detail_toolbar)
         toolbar.setOnMenuItemClickListener(NoteDetailMenuListener())
@@ -124,25 +120,26 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
 
     private fun handleOk() {
         val text = etNoteItemText.text.toString()
-        if (item == null) {
-            item = NoteItem(text)
-            dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, item!!)
+        if (note == null) {
+            note = NoteItem(text)
+            dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, note!!)
             return
         }
-        if (text.isEmpty() && isImageChanged && attachments.isEmpty()) {
+        if (text.isEmpty() && removedAttachments.containsAll(note!!.attachments)) {
             Toast.makeText(
                 requireContext(),
                 "Got empty item after modifying, remove it", Toast.LENGTH_SHORT
             ).show()
-            dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, item!!)
+            Log.i(TAG, "Got empty item after modifying, remove it, note-${note!!.id}")
+            dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, note!!)
             return
         }
-        item!!.setText(text, true)
-        if (isImageChanged) {
-            item!!.attachments.clear()
-            item!!.attachments.addAll(attachments)
+        note!!.setText(text, true)
+        if (removedAttachments.isNotEmpty()) {
+            note!!.attachments.removeAll(removedAttachments)
+            removedAttachments.clear()
         }
-        dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, item!!)
+        dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, note!!)
     }
 
     private inner class NoteDetailMenuListener : Toolbar.OnMenuItemClickListener {
@@ -152,7 +149,7 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
                 handleOk()
             } else if (R.id.note_detail_menu_item_delete == menuId) {
                 Log.d(this.toString(), "remove item")
-                dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, item!!)
+                dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, note!!)
             } else {
                 Log.e(this.toString(), "got unknown menu id: $menuId")
                 return false
@@ -172,81 +169,53 @@ class NoteDetailFragment : BottomSheetDialogFragment() {
         if (item.attachments.isEmpty()) return
 
         val context = requireContext()
-        item.images.iterator().forEach { attachment: AttachmentFile ->
-            val card = ImageCard(context)
-            card.setImageMd5(attachment.md5)
-            card.setImageName(attachment.name)
-
-            // all attachments in images should have correct type, not checking here
-            val type = Global.mimeTypeFromFileName(attachment.name)
-
-            if (type.startsWith("image/")) {
-                loadImageAsync(attachment.md5file) { bitmap: Bitmap? ->
-                    if (bitmap == null) {
-                        val errMsg = "Failed to get image file, skip this item"
-                        Log.e(this.toString(), errMsg)
-                        Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
-                        card.setImageResource(R.drawable.img_load_error)
-                    } else {
-                        card.setImage(bitmap)
-                    }
-                }
-            } else if (type.startsWith("video/")) {
-                ImageLoader.loadVideoThumbnailAsync(attachment.md5file) { bitmap: Bitmap? ->
-                    if (bitmap == null) {
-                        val errMsg = "Failed to get video file, skip this item"
-                        Log.e(this.toString(), errMsg)
-                        Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
-                        card.setImageResource(R.drawable.img_load_error)
-                    } else {
-                        card.setImage(bitmap)
-                        // TODO: add a play icon overlay
-                    }
-                }
-            } else {
-                Log.e(TAG, "Unsupported attachment type in images: $type")
-            }
-
-            card.setRemoveButtonClickListener(OnRemoveClickListener(item, attachment))
-            val imageIndex = item.attachments.indexOf(attachment)
-            card.setImageClickListener(OnImageClickListener( item, imageIndex ))
+        item.attachments.iterator().forEach { attachment ->
+            val card = AttachmentCard(context, attachment, this)
             scrollContainer.addView(card)
         }
     }
 
-    private inner class OnRemoveClickListener(
-        val note: NoteItem,
-        val attachment: AttachmentFile) : View.OnClickListener {
-        override fun onClick(card: View) {
-            val hei = card.height
-            val animator = ValueAnimator.ofInt(hei, 0)
-            animator.addUpdateListener { valueAnimator: ValueAnimator ->
-                val params = card.layoutParams
-                params.height = valueAnimator.animatedValue as Int
-                card.layoutParams = params
-            }
-            animator.addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    note.attachments.remove(attachment)
-                    isImageChanged = true
-                    scrollContainer.removeView(card)
-                }
-            })
-            animator.start()
+    override fun onRemove(card: AttachmentCard, attachment: AttachmentFile) {
+        val hei = card.height
+        val animator = ValueAnimator.ofInt(hei, 0)
+        animator.addUpdateListener { valueAnimator: ValueAnimator ->
+            val params = card.layoutParams
+            params.height = valueAnimator.animatedValue as Int
+            card.layoutParams = params
         }
+        animator.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                // not really remove here, we can cancel the operation before saving
+                removedAttachments.add(attachment)
+                scrollContainer.removeView(card)
+            }
+        })
+        animator.start()
     }
 
-    private inner class OnImageClickListener(
-        val note: NoteItem,
-        val imageIndex: Int
-    ) : View.OnClickListener {
-        override fun onClick(card: View) {
-            uiListener.onAttempt(
-                NoteUIAttemptListener.Attempt.SHOW_IMAGE,
-                note,
-                imageIndex
-            )
+    override fun onClick(card: AttachmentCard, attachment: AttachmentFile) {
+        val attempt = when (attachment.type) {
+            AttachmentFile.Type.IMAGE -> {
+                NoteUIAttemptListener.Attempt.SHOW_IMAGE
+            }
+            AttachmentFile.Type.FILE -> {
+                NoteUIAttemptListener.Attempt.OPEN_FILE
+            }
         }
+        val index = when (attachment.type) {
+            AttachmentFile.Type.IMAGE -> {
+                note!!.images.indexOf(attachment)
+            }
+            AttachmentFile.Type.FILE -> {
+                note!!.files.indexOf(attachment)
+            }
+        }
+
+        uiListener.onAttempt(attempt, note!!, index)
+    }
+
+    override fun onLongClick(card: AttachmentCard, attachment: AttachmentFile) {
+        card.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
     }
 
     companion object {
