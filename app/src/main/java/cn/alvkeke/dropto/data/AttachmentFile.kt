@@ -18,7 +18,6 @@ class AttachmentFile(val md5file: File, var name: String, val type: Type) {
 
     val isVideo: Boolean
         get() {
-            val mimeType = Global.mimeTypeFromFileName(name)
             return mimeType.startsWith("video/")
         }
 

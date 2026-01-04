@@ -104,7 +104,7 @@ class AttachmentCard @JvmOverloads constructor(
         invalidate()
     }
 
-    val contentPath = Path()
+    private val contentPath = Path()
     private fun drawCachedBitmap(canvas: Canvas) {
         if (cachedBitmap == null) return
 
