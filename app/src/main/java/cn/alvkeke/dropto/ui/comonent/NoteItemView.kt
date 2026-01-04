@@ -977,7 +977,7 @@ class NoteItemView @JvmOverloads constructor(
     class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
         enum class Type {
             BACKGROUND,
-            IMAGE,
+            MEDIA,
             FILE,
         }
     }
@@ -985,28 +985,25 @@ class NoteItemView @JvmOverloads constructor(
     fun checkClickedContent(x: Float, y: Float): ClickedContent {
         Log.v(TAG, "index-$index, checkClickedItem: x=$x, y=$y")
 
-        (_medias + _files).iterator().forEach { info ->
-            val rect = RectF(
+        val attachments = (_medias + _files)
+        attachments.iterator().forEach { info ->
+            val checkRect = RectF(
                 info.rect.left + MARGIN_BACKGROUND_START + MARGIN_BORDER,
                 info.rect.top + MARGIN_BACKGROUND_Y + MARGIN_BORDER,
                 info.rect.right + MARGIN_BACKGROUND_START + MARGIN_BORDER,
                 info.rect.bottom + MARGIN_BACKGROUND_Y + MARGIN_BORDER
             )
-            if (rect.contains(x, y)) {
+            if (checkRect.contains(x, y)) {
                 Log.v(TAG, "checkClickedItem: attachment $info clicked")
                 val attachment = info.file
                 val type = when (attachment.type) {
-                    AttachmentFile.Type.MEDIA -> ClickedContent.Type.IMAGE
+                    AttachmentFile.Type.MEDIA -> ClickedContent.Type.MEDIA
                     AttachmentFile.Type.FILE -> ClickedContent.Type.FILE
-                }
-                val index = when (attachment.type) {
-                    AttachmentFile.Type.MEDIA -> _medias.indexOf(info)
-                    AttachmentFile.Type.FILE -> _files.indexOf(info)
                 }
                 return ClickedContent(
                     type,
                     attachment,
-                    index
+                    attachments.indexOf(info)
                 )
             }
         }

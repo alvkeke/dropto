@@ -510,7 +510,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         }
     }
 
-    private fun handleNoteImageShow(mediaFile: AttachmentFile) {
+    private fun handleNoteMediaShow(mediaFile: AttachmentFile) {
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
         }
@@ -574,10 +574,19 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             NoteUIAttemptListener.Attempt.SHOW_DETAIL -> handleNoteDetailShow(e)
             NoteUIAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
             NoteUIAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
-            NoteUIAttemptListener.Attempt.SHOW_MEDIA ->
-                handleNoteImageShow(e.medias[index])
+            NoteUIAttemptListener.Attempt.SHOW_MEDIA -> {
+                val attachment = e.attachments[index]
+                if (attachment.type != Type.MEDIA) {
+                    Log.e(TAG, "Try SHOW_MEDIA on a non-media attachment")
+                    Toast.makeText(this,
+                        "Failed to open media, wrong type",
+                        Toast.LENGTH_SHORT).show()
+                    return
+                }
+                handleNoteMediaShow(attachment)
+            }
             NoteUIAttemptListener.Attempt.OPEN_FILE ->
-                handleNoteFileOpen(e.files[index])
+                handleNoteFileOpen(e.attachments[index])
         }
     }
 

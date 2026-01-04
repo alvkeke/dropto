@@ -262,7 +262,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                         showItemPopMenu(index, v, x, y)
                     }
 
-                    NoteItemView.ClickedContent.Type.IMAGE -> {
+                    NoteItemView.ClickedContent.Type.MEDIA -> {
                         if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
                             content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
                         ) {
@@ -274,10 +274,11 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
                     NoteItemView.ClickedContent.Type.FILE -> {
                         if (itemView.files.size > NoteItemView.MAX_FILE_COUNT &&
-                            content.index >= NoteItemView.MAX_FILE_COUNT - 1
+                            content.index >= itemView.medias.size + NoteItemView.MAX_FILE_COUNT - 1
                         ) {
                             showNoteDetail(index)
                         } else {
+                            // FIXME: here might have issue, need to check
                             tryOpenFile(index, content.index)
                         }
                     }
@@ -535,12 +536,12 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         )
     }
 
-    private fun showMediaView(index: Int, imageIndex: Int) {
+    private fun showMediaView(index: Int, attachmentIndex: Int) {
         val noteItem = category!!.getNoteItem(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.SHOW_MEDIA,
             noteItem,
-            imageIndex
+            attachmentIndex
         )
     }
 

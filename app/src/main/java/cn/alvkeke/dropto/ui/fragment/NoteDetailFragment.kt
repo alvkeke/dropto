@@ -202,20 +202,17 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
                 NoteUIAttemptListener.Attempt.OPEN_FILE
             }
         }
-        val index = when (attachment.type) {
-            AttachmentFile.Type.MEDIA -> {
-                note!!.medias.indexOf(attachment)
-            }
-            AttachmentFile.Type.FILE -> {
-                note!!.files.indexOf(attachment)
-            }
-        }
-
+        val index = note!!.attachments.indexOf(attachment)
         uiListener.onAttempt(attempt, note!!, index)
     }
 
     override fun onLongClick(card: AttachmentCard, attachment: AttachmentFile) {
         card.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        uiListener.onAttempt(
+            // long click to force open file with external app
+            NoteUIAttemptListener.Attempt.OPEN_FILE,
+            note!!, note!!.attachments.indexOf(attachment)
+        )
     }
 
     companion object {
