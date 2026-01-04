@@ -117,8 +117,10 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
                 if (isSliding) {
                     deltaRawX = motionEvent.rawX - downRawX
                     deltaRawY = motionEvent.rawY - downRawY
+                    val currentTime = System.currentTimeMillis()
+                    val speed = deltaRawX / (currentTime - timeDown)
                     isSliding = false
-                    if (onSlideEnd(view, motionEvent, deltaRawX, deltaRawY)) {
+                    if (onSlideEnd(view, motionEvent, deltaRawX, deltaRawY, speed)) {
                         return true
                     }
                 }
@@ -127,7 +129,7 @@ open class OnRecyclerViewTouchListener : OnTouchListener {
         return false
     }
 
-    open fun onSlideEnd(v: View, e: MotionEvent, deltaX: Float, deltaY: Float): Boolean {
+    open fun onSlideEnd(v: View, e: MotionEvent, deltaX: Float, deltaY: Float, speed: Float): Boolean {
         return false
     }
 

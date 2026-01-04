@@ -316,11 +316,12 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             v: View,
             e: MotionEvent,
             deltaX: Float,
-            deltaY: Float
+            deltaY: Float,
+            speed: Float,
         ): Boolean {
             val width = fragmentView.width
             val thresholdExit = width / 3
-            if (deltaX > thresholdExit) {
+            if (speed > 2 || deltaX > thresholdExit) {
                 finish()
             } else {
                 resetPosition()
