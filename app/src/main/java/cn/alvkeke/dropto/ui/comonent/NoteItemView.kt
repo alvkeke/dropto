@@ -620,14 +620,14 @@ class NoteItemView @JvmOverloads constructor(
         return desiredHeight
     }
 
-    private fun measureFilesHeight(contentWidth: Int): Int {
+    private fun measureFilesHeight(contentWidth: Int, baseHeight: Int): Int {
         if (_files.isEmpty()) return 0
 
         // display max 4 files, if more then 4, then the item 4 for showing the detail fragment
         val fileCount = _files.size.coerceAtMost(MAX_FILE_COUNT)
         for (i in 0 until fileCount) {
             val f = _files[i]
-            val top = (MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()) * i.toFloat()
+            val top = (MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()) * i.toFloat() + baseHeight
             f.rect.set(
                 0F,
                 top,
@@ -644,7 +644,7 @@ class NoteItemView @JvmOverloads constructor(
         var desiredHeight = MARGIN_BORDER * 2
 
         desiredHeight += measureMediasHeight(contentWidth)
-        desiredHeight += measureFilesHeight(contentWidth)
+        desiredHeight += measureFilesHeight(contentWidth, desiredHeight)
 
         if (!text.isEmpty()) {
             textLayout = StaticLayout.Builder
