@@ -52,8 +52,10 @@
 
                 <category android:name="android.intent.category.DEFAULT" />
 
+                <data android:mimeType="video/*" />
                 <data android:mimeType="image/*" />
                 <data android:mimeType="text/plain" />
+                <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
 
