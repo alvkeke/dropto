@@ -15,20 +15,20 @@ class NoteItem : Serializable, Cloneable {
     var isEdited: Boolean = false
         private set
 
-    val images: ArrayList<AttachmentFile> = ArrayList()
+    val medias: ArrayList<AttachmentFile> = ArrayList()
     val files: ArrayList<AttachmentFile> = ArrayList()
 
     val attachments: MutableList<AttachmentFile> = object : MutableList<AttachmentFile> {
         override fun add(element: AttachmentFile): Boolean {
             return when (element.type) {
-                AttachmentFile.Type.IMAGE -> images.add(element)
+                AttachmentFile.Type.MEDIA -> medias.add(element)
                 AttachmentFile.Type.FILE -> files.add(element)
             }
         }
 
         override fun remove(element: AttachmentFile): Boolean {
             return when (element.type) {
-                AttachmentFile.Type.IMAGE -> images.remove(element)
+                AttachmentFile.Type.MEDIA -> medias.remove(element)
                 AttachmentFile.Type.FILE -> files.remove(element)
             }
         }
@@ -37,7 +37,7 @@ class NoteItem : Serializable, Cloneable {
             var changed = false
             for (element in elements) {
                 val result = when (element.type) {
-                    AttachmentFile.Type.IMAGE -> images.add(element)
+                    AttachmentFile.Type.MEDIA -> medias.add(element)
                     AttachmentFile.Type.FILE -> files.add(element)
                 }
                 if (result) {
@@ -48,13 +48,13 @@ class NoteItem : Serializable, Cloneable {
         }
 
         override fun addAll(index: Int, elements: Collection<AttachmentFile>): Boolean {
-            val retImages = images.addAll(index, elements.filter { it.type == AttachmentFile.Type.IMAGE })
+            val retImages = medias.addAll(index, elements.filter { it.type == AttachmentFile.Type.MEDIA })
             val retFiles = files.addAll(index, elements.filter { it.type == AttachmentFile.Type.FILE })
             return retImages || retFiles
         }
 
         override fun removeAll(elements: Collection<AttachmentFile>): Boolean {
-            val retImages = images.removeAll(elements.filter { it.type == AttachmentFile.Type.IMAGE }
+            val retImages = medias.removeAll(elements.filter { it.type == AttachmentFile.Type.MEDIA }
                 .toSet())
             val retFiles = files.removeAll(elements.filter { it.type == AttachmentFile.Type.FILE }
                 .toSet())
@@ -62,7 +62,7 @@ class NoteItem : Serializable, Cloneable {
         }
 
         override fun retainAll(elements: Collection<AttachmentFile>): Boolean {
-            var imagesRetained = images.retainAll(elements.filter { it.type == AttachmentFile.Type.IMAGE }
+            var imagesRetained = medias.retainAll(elements.filter { it.type == AttachmentFile.Type.MEDIA }
                 .toSet())
             var filesRetained = files.retainAll(elements.filter { it.type == AttachmentFile.Type.FILE }
                 .toSet())
@@ -70,7 +70,7 @@ class NoteItem : Serializable, Cloneable {
         }
 
         override fun clear() {
-            images.clear()
+            medias.clear()
             files.clear()
         }
 
@@ -83,7 +83,7 @@ class NoteItem : Serializable, Cloneable {
 
         override fun add(index: Int, element: AttachmentFile) {
             when (element.type) {
-                AttachmentFile.Type.IMAGE -> images.add(index, element)
+                AttachmentFile.Type.MEDIA -> medias.add(index, element)
                 AttachmentFile.Type.FILE -> files.add(index, element)
             }
         }
@@ -95,27 +95,27 @@ class NoteItem : Serializable, Cloneable {
         }
 
         override fun listIterator(): MutableListIterator<AttachmentFile> {
-            return (images + files).toMutableList().listIterator()
+            return (medias + files).toMutableList().listIterator()
         }
 
         override fun listIterator(index: Int): MutableListIterator<AttachmentFile> {
-            return (images + files).toMutableList().listIterator(index)
+            return (medias + files).toMutableList().listIterator(index)
         }
 
         override fun subList(fromIndex: Int, toIndex: Int): MutableList<AttachmentFile> {
-            return (images + files).subList(fromIndex, toIndex).toMutableList()
+            return (medias + files).subList(fromIndex, toIndex).toMutableList()
         }
 
         override val size: Int
-            get() = images.size + files.size
+            get() = medias.size + files.size
 
         override fun isEmpty(): Boolean {
-            return images.isEmpty() && files.isEmpty()
+            return medias.isEmpty() && files.isEmpty()
         }
 
         override fun contains(element: AttachmentFile): Boolean {
             return when (element.type) {
-                AttachmentFile.Type.IMAGE -> images.contains(element)
+                AttachmentFile.Type.MEDIA -> medias.contains(element)
                 AttachmentFile.Type.FILE -> files.contains(element)
             }
         }
@@ -127,41 +127,41 @@ class NoteItem : Serializable, Cloneable {
         override fun get(index: Int): AttachmentFile {
             if (index !in 0..<size) throw IndexOutOfBoundsException()
 
-            return if (index < images.size) {
-                images[index]
+            return if (index < medias.size) {
+                medias[index]
             } else {
-                files[index - images.size]
+                files[index - medias.size]
             }
         }
 
         override fun indexOf(element: AttachmentFile): Int {
             return when (element.type) {
-                AttachmentFile.Type.IMAGE -> {
-                    val idx = images.indexOf(element)
+                AttachmentFile.Type.MEDIA -> {
+                    val idx = medias.indexOf(element)
                     if (idx == -1) -1 else idx
                 }
                 AttachmentFile.Type.FILE -> {
                     val idx = files.indexOf(element)
-                    if (idx == -1) -1 else images.size + idx
+                    if (idx == -1) -1 else medias.size + idx
                 }
             }
         }
 
         override fun lastIndexOf(element: AttachmentFile): Int {
             return when (element.type) {
-                AttachmentFile.Type.IMAGE -> {
-                    val idx = images.lastIndexOf(element)
+                AttachmentFile.Type.MEDIA -> {
+                    val idx = medias.lastIndexOf(element)
                     if (idx == -1) -1 else idx
                 }
                 AttachmentFile.Type.FILE -> {
                     val idx = files.lastIndexOf(element)
-                    if (idx == -1) -1 else images.size + idx
+                    if (idx == -1) -1 else medias.size + idx
                 }
             }
         }
 
         override fun iterator(): MutableIterator<AttachmentFile> {
-            return (images + files).toMutableList().iterator()
+            return (medias + files).toMutableList().iterator()
         }
     }
 
@@ -210,7 +210,7 @@ class NoteItem : Serializable, Cloneable {
                 if (firstTypeSub != subType) { firstTypeSub = "*" }
             }
 
-            if (firstTypeMain != "image" && images.isNotEmpty()) {
+            if (firstTypeMain != "image" && medias.isNotEmpty()) {
                 "*/*"
             } else {
                 "$firstTypeMain/$firstTypeSub"

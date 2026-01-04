@@ -301,7 +301,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                     val imgFile = imgFiles[idx]
                     idx++
                     if (imgFile.exists()) {
-                        val imageFile = from(imgFile, imgFile.name, Type.IMAGE)
+                        val imageFile = from(imgFile, imgFile.name, Type.MEDIA)
                         e.attachments.add(imageFile)
                     }
                 }
@@ -515,7 +515,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         if (imageViewerFragment == null) {
             imageViewerFragment = ImageViewerFragment()
         }
-        val imageFile = item.images[imageIndex]
+        val imageFile = item.medias[imageIndex]
         savedImageViewFile = imageFile.md5file.absolutePath
         imageViewerFragment!!.setImgFile(imageFile.md5file)
         imageViewerFragment!!.show(supportFragmentManager, null)

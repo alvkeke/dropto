@@ -11,11 +11,13 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
+import android.media.MediaMetadataRetriever
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.util.AttributeSet
 import android.util.Log
+import android.util.Size
 import android.view.View
 import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -154,8 +156,8 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private val _images: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
-    val images: MutableList<AttachmentFile> = AttachmentList(_images)
+    private val _medias: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
+    val medias: MutableList<AttachmentFile> = AttachmentList(_medias)
     private val _files: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
     val files: MutableList<AttachmentFile> = AttachmentList(_files)
 
@@ -240,21 +242,40 @@ class NoteItemView @JvmOverloads constructor(
          H I J/+
      */
 
-    private fun measureImageHeight(contentWidth: Int): Int {
+    private fun measureMediasHeight(contentWidth: Int): Int {
         val maxHeight = contentWidth * 3 / 2
 
-        val options:ArrayList<BitmapFactory.Options> = ArrayList()
-        for (a in _images.take(MAX_IMAGE_COUNT)) {
+        val options:ArrayList<Size> = ArrayList()
+        for (a in _medias.take(MAX_IMAGE_COUNT)) {
             val f = a.file.md5file
             if (!f.exists()) {
                 Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
                 continue
             }
-            val option = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
+
+            if (a.file.isVideo) {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(f.absolutePath)
+                    val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
+                    val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+                    if (width != null && height != null) {
+                        val p = Size(width, height)
+                        options.add(p)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "measureMediasHeight: failed to get video size for file=${f.absolutePath}", e)
+                    options.add(Size(1, 1))
+                } finally {
+                    retriever.release()
+                }
+            } else {
+                val option = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeFile(f.absolutePath, option)
+                options.add(Size(option.outWidth, option.outHeight))
             }
-            BitmapFactory.decodeFile(f.absolutePath, option)
-            options.add(option)
         }
 
         var desiredHeight = 0
@@ -262,9 +283,9 @@ class NoteItemView @JvmOverloads constructor(
             0 -> return 0
             1 -> {
                 val e = options[0]
-                val imageHeight = (e.outHeight * contentWidth / e.outWidth).coerceAtMost(maxHeight)
-                val imageWidth = (e.outWidth * imageHeight / e.outHeight)
-                val info = _images[0]
+                val imageHeight = (e.height * contentWidth / e.width).coerceAtMost(maxHeight)
+                val imageWidth = (e.width * imageHeight / e.height)
+                val info = _medias[0]
                 info.rect.set(
                     0F,
                     0F,
@@ -277,24 +298,24 @@ class NoteItemView @JvmOverloads constructor(
                 val e1 = options[0]
                 val e2 = options[1]
 
-                var alignHeight = maxOf(e1.outHeight, e2.outHeight)
-                var width1 = e1.outWidth * alignHeight / e1.outHeight
-                var width2 = e2.outWidth * alignHeight / e2.outHeight
+                var alignHeight = maxOf(e1.height, e2.height)
+                var width1 = e1.width * alignHeight / e1.height
+                var width2 = e2.width * alignHeight / e2.height
                 val combineWidth = width1 + width2 + MARGIN_IMAGE
 
                 if (combineWidth > contentWidth) {
                     alignHeight = alignHeight * contentWidth / combineWidth
-                    width1 = e1.outWidth * alignHeight / e1.outHeight
-                    width2 = e2.outWidth * alignHeight / e2.outHeight
+                    width1 = e1.width * alignHeight / e1.height
+                    width2 = e2.width * alignHeight / e2.height
                 }
 
                 if (alignHeight > maxHeight) {
                     alignHeight = maxHeight
-                    width1 = e1.outWidth * alignHeight / e1.outHeight
-                    width2 = e2.outWidth * alignHeight / e2.outHeight
+                    width1 = e1.width * alignHeight / e1.height
+                    width2 = e2.width * alignHeight / e2.height
                 }
 
-                var info = _images[0]
+                var info = _medias[0]
                 info.rect.set(
                     0F,
                     0F,
@@ -303,7 +324,7 @@ class NoteItemView @JvmOverloads constructor(
                 )
 
                 val offsetX = (width1 + MARGIN_IMAGE)
-                info = _images[1]
+                info = _medias[1]
                 info.rect.set(
                     offsetX.toFloat(),
                     0F,
@@ -314,8 +335,8 @@ class NoteItemView @JvmOverloads constructor(
                 desiredHeight += alignHeight + MARGIN_IMAGE
             }
             3 -> {
-                var height = options[0].outHeight
-                var width = options[0].outWidth
+                var height = options[0].height
+                var width = options[0].width
 
                 if (height > maxHeight) {
                     width = width * maxHeight / height
@@ -324,7 +345,7 @@ class NoteItemView @JvmOverloads constructor(
                 val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
                 width = minOf(width, halfWidth)
 
-                var info = _images[0]
+                var info = _medias[0]
                 info.rect.set(
                     0F,
                     0F,
@@ -333,7 +354,7 @@ class NoteItemView @JvmOverloads constructor(
                 )
 
                 val heightRight = (height - MARGIN_IMAGE) / 2
-                info = _images[1]
+                info = _medias[1]
                 val offsetX = width + MARGIN_IMAGE
                 info.rect.set(
                     offsetX.toFloat(),
@@ -343,7 +364,7 @@ class NoteItemView @JvmOverloads constructor(
                 )
 
                 val offsetY = heightRight + MARGIN_IMAGE
-                info = _images[2]
+                info = _medias[2]
                 info.rect.set(
                     offsetX.toFloat(),
                     offsetY.toFloat(),
@@ -354,8 +375,8 @@ class NoteItemView @JvmOverloads constructor(
                 desiredHeight += height + MARGIN_IMAGE
             }
             4 -> {
-                var height = options[0].outHeight
-                var width = options[0].outWidth
+                var height = options[0].height
+                var width = options[0].width
 
                 if (height > maxHeight) {
                     width = width * maxHeight / height
@@ -364,7 +385,7 @@ class NoteItemView @JvmOverloads constructor(
                 val halfWidth = (contentWidth - MARGIN_IMAGE) / 2
                 width = minOf(width, halfWidth)
 
-                var info = _images[0]
+                var info = _medias[0]
                 info.rect.set(
                     0f,
                     0f,
@@ -374,7 +395,7 @@ class NoteItemView @JvmOverloads constructor(
 
                 val heightRight = (height - MARGIN_IMAGE * 2) / 3
                 val offsetX = width + MARGIN_IMAGE
-                info = _images[1]
+                info = _medias[1]
                 info.rect.set(
                     offsetX.toFloat(),
                     0f,
@@ -383,7 +404,7 @@ class NoteItemView @JvmOverloads constructor(
                 )
 
                 var offsetY = heightRight + MARGIN_IMAGE
-                info = _images[2]
+                info = _medias[2]
                 info.rect.set(
                     offsetX.toFloat(),
                     offsetY.toFloat(),
@@ -392,7 +413,7 @@ class NoteItemView @JvmOverloads constructor(
                 )
 
                 offsetY += heightRight + MARGIN_IMAGE
-                info = _images[3]
+                info = _medias[3]
                 info.rect.set(
                     offsetX.toFloat(),
                     offsetY.toFloat(),
@@ -410,7 +431,7 @@ class NoteItemView @JvmOverloads constructor(
 
                 for (i in 0..1) {
                     val offsetX = i * (widthTop + MARGIN_IMAGE)
-                    val info = _images[i]
+                    val info = _medias[i]
                     info.rect.set(
                         offsetX.toFloat(),
                         0f,
@@ -422,7 +443,7 @@ class NoteItemView @JvmOverloads constructor(
                 val offsetY = heightTop + MARGIN_IMAGE
                 for (i in 2..4) {
                     val offsetX = (i-2) * (widthBottom + MARGIN_IMAGE)
-                    val info = _images[i]
+                    val info = _medias[i]
                     info.rect.set(
                         offsetX.toFloat(),
                         offsetY.toFloat(),
@@ -440,7 +461,7 @@ class NoteItemView @JvmOverloads constructor(
                 var offsetX: Int
                 var offsetY: Int
                 for (i in 0 until 6) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     offsetX = (i % 3) * (width + MARGIN_IMAGE)
                     offsetY = if (i >= 3) height + MARGIN_IMAGE else 0
                     info.rect.set(
@@ -462,7 +483,7 @@ class NoteItemView @JvmOverloads constructor(
 
                 var offsetX: Int
                 for (i in 0..1) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     offsetX = i * (width2 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -473,7 +494,7 @@ class NoteItemView @JvmOverloads constructor(
                 }
                 var offsetY: Int = height2 + MARGIN_IMAGE
                 for (i in 2..4) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     offsetX = (i - 2) * (width3 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -484,7 +505,7 @@ class NoteItemView @JvmOverloads constructor(
                 }
                 offsetY += height3 + MARGIN_IMAGE
                 for (i in 5..6) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     offsetX = (i - 5) * (width2 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -504,7 +525,7 @@ class NoteItemView @JvmOverloads constructor(
                 val height3 = width3 * 4 / 5
 
                 for (i in 0..1) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     val offsetX = i * (width2 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -515,7 +536,7 @@ class NoteItemView @JvmOverloads constructor(
                 }
                 var offsetY = height2 + MARGIN_IMAGE
                 for (i in 2..7) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     val idx = i - 2
                     val offsetX = (idx % 3) * (width3 + MARGIN_IMAGE)
                     if (i == 5) {
@@ -539,7 +560,7 @@ class NoteItemView @JvmOverloads constructor(
                 var offsetY = 0
                 for (i in 0..8) {
                     val offsetX = (i % 3) * (width3 + MARGIN_IMAGE)
-                    val info = _images[i]
+                    val info = _medias[i]
                     info.rect.set(
                         offsetX.toFloat(),
                         offsetY.toFloat(),
@@ -560,7 +581,7 @@ class NoteItemView @JvmOverloads constructor(
                 val width4 = (contentWidth - MARGIN_IMAGE * 3) / 4
                 val height4 = width4 * 5 / 4
                 for (i in 0..2) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     val offsetX = i * (width3 + MARGIN_IMAGE)
                     info.rect.set(
                         offsetX.toFloat(),
@@ -571,7 +592,7 @@ class NoteItemView @JvmOverloads constructor(
                 }
                 var offsetY = height3 + MARGIN_IMAGE
                 for (i in 3..6) {
-                    val info = _images[i]
+                    val info = _medias[i]
                     val offsetX = (i-3) * (width4 + MARGIN_IMAGE)
 
                     info.rect.set(
@@ -584,7 +605,7 @@ class NoteItemView @JvmOverloads constructor(
                 offsetY += height4 + MARGIN_IMAGE
                 for (i in 7..9) {
                     val offsetX = (i - 7) * (width3 + MARGIN_IMAGE)
-                    val info = _images[i]
+                    val info = _medias[i]
 
                     info.rect.set(
                         offsetX.toFloat(),
@@ -622,7 +643,7 @@ class NoteItemView @JvmOverloads constructor(
             width - MARGIN_BACKGROUND_START - MARGIN_BACKGROUND_END - MARGIN_BORDER * 2
         var desiredHeight = MARGIN_BORDER * 2
 
-        desiredHeight += measureImageHeight(contentWidth)
+        desiredHeight += measureMediasHeight(contentWidth)
         desiredHeight += measureFilesHeight(contentWidth)
 
         if (!text.isEmpty()) {
@@ -801,11 +822,11 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     private fun drawMedias(canvas: Canvas): Float {
-        Log.v(TAG, "drawImages: total size: ${_images.size}")
+        Log.v(TAG, "drawMedias: total size: ${_medias.size}")
 
-        if (_images.isEmpty()) return 0f
+        if (_medias.isEmpty()) return 0f
 
-        for (info in _images.take(MAX_IMAGE_COUNT)) {
+        for (info in _medias.take(MAX_IMAGE_COUNT)) {
             if (info.rect.isEmpty) {
                 Log.e(TAG, "drawing image without setting the image rect is not allowed")
                 continue
@@ -834,9 +855,9 @@ class NoteItemView @JvmOverloads constructor(
             canvas.restoreToCount(saveCount)
         }
 
-        if (_images.size > MAX_IMAGE_COUNT) {
-            val restCount = _images.size - 9
-            val info = _images[9]
+        if (_medias.size > MAX_IMAGE_COUNT) {
+            val restCount = _medias.size - 9
+            val info = _medias[9]
             mediaOverlayRect.set(info.rect)
             // draw the overlay background
             canvas.drawRect(mediaOverlayRect, mediaOverlayPaint)
@@ -850,9 +871,9 @@ class NoteItemView @JvmOverloads constructor(
 
             canvas.drawText(overlayText, textX, textY, mediaOverlayFontPaint)
 
-            return _images[9].rect.bottom + MARGIN_IMAGE
+            return _medias[9].rect.bottom + MARGIN_IMAGE
         } else {
-            return _images.last().rect.bottom + MARGIN_IMAGE
+            return _medias.last().rect.bottom + MARGIN_IMAGE
         }
     }
 
@@ -964,7 +985,7 @@ class NoteItemView @JvmOverloads constructor(
     fun checkClickedContent(x: Float, y: Float): ClickedContent {
         Log.v(TAG, "index-$index, checkClickedItem: x=$x, y=$y")
 
-        (_images + _files).iterator().forEach { info ->
+        (_medias + _files).iterator().forEach { info ->
             val rect = RectF(
                 info.rect.left + MARGIN_BACKGROUND_START + MARGIN_BORDER,
                 info.rect.top + MARGIN_BACKGROUND_Y + MARGIN_BORDER,
@@ -975,11 +996,11 @@ class NoteItemView @JvmOverloads constructor(
                 Log.v(TAG, "checkClickedItem: attachment $info clicked")
                 val attachment = info.file
                 val type = when (attachment.type) {
-                    AttachmentFile.Type.IMAGE -> ClickedContent.Type.IMAGE
+                    AttachmentFile.Type.MEDIA -> ClickedContent.Type.IMAGE
                     AttachmentFile.Type.FILE -> ClickedContent.Type.FILE
                 }
                 val index = when (attachment.type) {
-                    AttachmentFile.Type.IMAGE -> _images.indexOf(info)
+                    AttachmentFile.Type.MEDIA -> _medias.indexOf(info)
                     AttachmentFile.Type.FILE -> _files.indexOf(info)
                 }
                 return ClickedContent(

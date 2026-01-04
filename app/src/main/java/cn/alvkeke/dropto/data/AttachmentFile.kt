@@ -6,7 +6,7 @@ import java.io.File
 class AttachmentFile(val md5file: File, var name: String, val type: Type) {
 
     enum class Type {
-        IMAGE,
+        MEDIA,
         FILE
     }
 

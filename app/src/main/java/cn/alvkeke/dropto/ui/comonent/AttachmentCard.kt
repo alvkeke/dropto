@@ -38,7 +38,7 @@ class AttachmentCard @JvmOverloads constructor(
         FILE,
     }
     private var contentType = when (attachment.type) {
-        AttachmentFile.Type.IMAGE -> when (attachment.mimeType.substringBefore('/')) {
+        AttachmentFile.Type.MEDIA -> when (attachment.mimeType.substringBefore('/')) {
             "image" -> ContentType.IMAGE
             "video" -> ContentType.VIDEO
             else -> ContentType.FILE

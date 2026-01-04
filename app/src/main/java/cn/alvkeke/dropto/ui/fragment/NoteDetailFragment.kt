@@ -195,7 +195,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
 
     override fun onClick(card: AttachmentCard, attachment: AttachmentFile) {
         val attempt = when (attachment.type) {
-            AttachmentFile.Type.IMAGE -> {
+            AttachmentFile.Type.MEDIA -> {
                 NoteUIAttemptListener.Attempt.SHOW_IMAGE
             }
             AttachmentFile.Type.FILE -> {
@@ -203,8 +203,8 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
             }
         }
         val index = when (attachment.type) {
-            AttachmentFile.Type.IMAGE -> {
-                note!!.images.indexOf(attachment)
+            AttachmentFile.Type.MEDIA -> {
+                note!!.medias.indexOf(attachment)
             }
             AttachmentFile.Type.FILE -> {
                 note!!.files.indexOf(attachment)

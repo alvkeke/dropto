@@ -199,7 +199,7 @@ class DataBaseHelper(private val context: Context) :
 
         this.attachments.iterator().forEach { f ->
             sb.append(when(f.type) {
-                AttachmentFile.Type.IMAGE -> NOTE_ATTACHMENT_PREFIX_IMAGE
+                AttachmentFile.Type.MEDIA -> NOTE_ATTACHMENT_PREFIX_IMAGE
                 AttachmentFile.Type.FILE -> NOTE_ATTACHMENT_PREFIX_FILE
             })
             sb.append(':')
@@ -223,7 +223,7 @@ class DataBaseHelper(private val context: Context) :
         val idxName = 2
 
         val sType = when(infoS[idxType]) {
-            NOTE_ATTACHMENT_PREFIX_IMAGE -> AttachmentFile.Type.IMAGE
+            NOTE_ATTACHMENT_PREFIX_IMAGE -> AttachmentFile.Type.MEDIA
             NOTE_ATTACHMENT_PREFIX_FILE -> AttachmentFile.Type.FILE
             else -> {
                 Log.e(TAG, "Got unknown attachment type: ${infoS[0]}, return null")

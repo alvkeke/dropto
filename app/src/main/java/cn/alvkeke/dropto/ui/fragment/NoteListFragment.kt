@@ -263,7 +263,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     }
 
                     NoteItemView.ClickedContent.Type.IMAGE -> {
-                        if (itemView.images.size > NoteItemView.MAX_IMAGE_COUNT &&
+                        if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
                             content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
                         ) {
                             showNoteDetail(index)
@@ -450,7 +450,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private fun addAttachments(btn: CountableImageButton, uris: List<Uri>) {
         val type = when(btn) {
-            btnAttachImage -> AttachmentFile.Type.IMAGE
+            btnAttachImage -> AttachmentFile.Type.MEDIA
             btnAttachFile -> AttachmentFile.Type.FILE
             else -> error("Unknown attachment button clicked, not allowed")
         }

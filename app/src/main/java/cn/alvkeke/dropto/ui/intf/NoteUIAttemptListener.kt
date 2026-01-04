@@ -14,7 +14,7 @@ interface NoteUIAttemptListener {
 
     fun onAttempt(attempt: Attempt, e: NoteItem)
     /**
-     * index: the index of the image in the NoteItem's image list,
+     * index: the index of the attachment in the NoteItem's image list,
      *        currently is used for UI_SHOW_IMAGE only
      */
     fun onAttempt(attempt: Attempt, e: NoteItem, index: Int)

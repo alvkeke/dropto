@@ -170,7 +170,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         val mimeType = Global.mimeTypeFromFileName(fileName)
         val attachmentType = if (mimeType.startsWith("image/") ||
             mimeType.startsWith("video/")) {
-            Type.IMAGE
+            Type.MEDIA
         } else {
             Type.FILE
         }

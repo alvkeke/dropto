@@ -123,7 +123,7 @@ object DebugFunction {
                         idx++
                         if (imgFile.exists()) {
                             dbgLog("add image file: $imgFile")
-                            val imageFile = from(imgFile, "", Type.IMAGE)
+                            val imageFile = from(imgFile, "", Type.MEDIA)
                             e.attachments.add(imageFile)
                         } else {
                             dbgLog("add image file failed, not exist: $imgFile")

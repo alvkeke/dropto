@@ -25,8 +25,8 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.index = position
         view.text = note.text
         view.createTime = note.createTime
-        view.images.clear()
-        view.images.addAll(note.images)
+        view.medias.clear()
+        view.medias.addAll(note.medias)
         view.files.clear()
         view.files.addAll(note.files)
         view.selected = isSelected(note)
