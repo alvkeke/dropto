@@ -118,14 +118,14 @@ class AttachmentCard @JvmOverloads constructor(
 
         val saveCount = canvas.saveLayer(dstRect, null)
         // Draw rounded rect as mask
-        val path = contentPath
-        path.addRoundRect(
+        contentPath.reset()
+        contentPath.addRoundRect(
             contentRect,
             RADIUS_CARD_CONTENT.toFloat(),
             RADIUS_CARD_CONTENT.toFloat(),
             Path.Direction.CW
         )
-        canvas.drawPath(path, bitmapPaint)
+        canvas.drawPath(contentPath, bitmapPaint)
 
         // Set xfermode to only draw bitmap where the rounded rect was drawn
         val oldMode = bitmapPaint.xfermode
