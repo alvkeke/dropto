@@ -22,8 +22,10 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.DialogFragment
+import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.GestureListener
 import java.io.File
@@ -32,14 +34,12 @@ import kotlin.math.max
 import kotlin.math.min
 
 class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
+
+    private lateinit var viewModel: MainViewModel
     private lateinit var parentView: View
     private lateinit var imageView: ImageView
-    private var imgFile: File? = null
+    private lateinit var imgFile: File
     private var loadedBitmap: Bitmap? = null
-
-    fun setImgFile(imgFile: File) {
-        this.imgFile = imgFile
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -52,20 +52,26 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        if (imgFile == null || !imgFile!!.exists() || !imgFile!!.isFile) {
-            Toast.makeText(requireContext(), "no Image view, exit", Toast.LENGTH_SHORT).show()
-            finish()
-            return
-        }
+        viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
 
         view.setBackgroundColor(Color.BLACK)
         imageView = view.findViewById(R.id.img_viewer_image)
-        ImageLoader.loadOriginalImageAsync(imgFile!!) { bitmap ->
-            loadedBitmap = bitmap
-            imageView.setImageBitmap(bitmap)
-        }
         view.setOnTouchListener(ImageGestureListener(requireContext()))
+
+        viewModel.imageFile.observe(this) { file ->
+            this.imgFile = file
+
+            if (!imgFile.exists() || !imgFile.isFile) {
+                Toast.makeText(requireContext(), "no Image view, exit", Toast.LENGTH_SHORT).show()
+                finish()
+                return@observe
+            }
+
+            ImageLoader.loadOriginalImageAsync(imgFile) { bitmap ->
+                loadedBitmap = bitmap
+                imageView.setImageBitmap(bitmap)
+            }
+        }
     }
 
     private var window: Window? = null

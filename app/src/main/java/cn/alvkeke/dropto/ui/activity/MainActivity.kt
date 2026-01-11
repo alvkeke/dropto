@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -35,10 +36,9 @@ import cn.alvkeke.dropto.service.Task.Companion.removeNote
 import cn.alvkeke.dropto.service.Task.Companion.updateCategory
 import cn.alvkeke.dropto.service.Task.Companion.updateNote
 import cn.alvkeke.dropto.service.Task.ResultListener
+import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.DataLoader.categories
-import cn.alvkeke.dropto.storage.DataLoader.findCategory
 import cn.alvkeke.dropto.storage.DataLoader.loadCategories
-import cn.alvkeke.dropto.storage.DataLoader.loadCategoryNotes
 import cn.alvkeke.dropto.ui.fragment.CategoryDetailFragment
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
@@ -67,25 +67,31 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     private val app: DroptoApplication
         get() = application as DroptoApplication
 
-    private var categoryListFragment: CategoryListFragment? = null
-    private var noteListFragment: NoteListFragment? = null
-    private var imageViewerFragment: ImageViewerFragment? = null
+    private var categoryListFragment: CategoryListFragment = CategoryListFragment()
+    private var noteListFragment: NoteListFragment = NoteListFragment()
+    private var noteDetailFragment: NoteDetailFragment = NoteDetailFragment()
+    private var imageViewerFragment: ImageViewerFragment = ImageViewerFragment()
+
+    // 修正 ViewModel 获取方式，保证与 Fragment 共享同一个 ViewModel
+    private val viewModel: MainViewModel by lazy {
+        ViewModelProvider(this)[MainViewModel::class.java]
+    }
 
     override fun onStart() {
         super.onStart()
-        Log.d(this.toString(), "MainActivity onStart")
+        Log.e(this.toString(), "MainActivity onStart")
         app.addTaskListener(this)
     }
 
     override fun onStop() {
         super.onStop()
-        Log.d(this.toString(), "MainActivity onStop")
+        Log.e(this.toString(), "MainActivity onStop")
         app.delTaskListener(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(this.toString(), "MainActivity onCreate")
+        Log.e(this.toString(), "MainActivity onCreate")
         this.enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
@@ -96,102 +102,21 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
         onBackPressedDispatcher.addCallback(this, OnFragmentBackPressed(true))
 
-
         val categories: ArrayList<Category> = loadCategories(this)
-        if (savedInstanceState != null) {
-            val fragments = supportFragmentManager.fragments
-            for (f in fragments) {
-                when (f) {
-                    is CategoryListFragment -> {
-                        categoryListFragment = f
-                    }
+        viewModel.setCategoriesList(categories)
 
-                    is NoteListFragment -> {
-                        noteListFragment = f
-                        recoverNoteListFragment(savedInstanceState)
-                    }
-
-                    is ImageViewerFragment -> {
-                        imageViewerFragment = f
-                        recoverImageViewFragment(savedInstanceState)
-                    }
-
-                    is CategorySelectorFragment -> {
-                        f.setCategories(categories)
-                    }
-
-                    is NoteDetailFragment -> {
-                        recoverNoteDetailFragment(f, savedInstanceState)
-                    }
-
-                    is CategoryDetailFragment -> {
-                        recoverCategoryDetailFragment(f, savedInstanceState)
-                    }
-
-                    else -> {
-                        Log.e(this.toString(), "unknown fragment: $f")
-                    }
-                }
-            }
-        }
-
-        if (categoryListFragment == null) {
-            categoryListFragment = CategoryListFragment()
-        }
-        categoryListFragment!!.setCategories(categories)
-        if (!categoryListFragment!!.isAdded) {
-            startFragment(categoryListFragment!!)
+        if (!categoryListFragment.isAdded) {
+            startFragment(categoryListFragment)
         }
     }
 
-    private var savedNoteListCategoryId: Long = SAVED_NOTE_LIST_CATEGORY_ID_NONE
-    private fun recoverNoteListFragment(state: Bundle) {
-        savedNoteListCategoryId =
-            state.getLong(SAVED_NOTE_LIST_CATEGORY_ID, SAVED_NOTE_LIST_CATEGORY_ID_NONE)
-        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return
-        val category = findCategory(savedNoteListCategoryId)
-        noteListFragment!!.setCategory(category!!)
-    }
-
-    private var savedNoteInfoNoteId: Long = SAVED_NOTE_INFO_NOTE_ID_NONE
-    private fun recoverNoteDetailFragment(fragment: NoteDetailFragment, state: Bundle) {
-        if (savedNoteListCategoryId == SAVED_NOTE_LIST_CATEGORY_ID_NONE) return
-        savedNoteInfoNoteId = state.getLong(SAVED_NOTE_INFO_NOTE_ID, SAVED_NOTE_INFO_NOTE_ID_NONE)
-        val category = findCategory(savedNoteListCategoryId)
-        if (category == null) {
-            fragment.dismiss()
-            return
-        }
-        val item = category.findNoteItem(savedNoteInfoNoteId)
-        if (item == null) {
-            fragment.dismiss()
-            return
-        }
-        fragment.setNoteItem(item)
-    }
-
-    private var savedCategoryDetailId: Long = SAVED_CATEGORY_DETAIL_ID_NONE
-    private fun recoverCategoryDetailFragment(fragment: CategoryDetailFragment, state: Bundle) {
-        savedCategoryDetailId =
-            state.getLong(SAVED_CATEGORY_DETAIL_ID, SAVED_CATEGORY_DETAIL_ID_NONE)
-        if (savedCategoryDetailId == SAVED_CATEGORY_DETAIL_ID_NONE) return
-        val category = findCategory(savedCategoryDetailId)
-        fragment.setCategory(category!!)
-    }
-
-    private var savedImageViewFile: String? = null
-    private fun recoverImageViewFragment(state: Bundle) {
-        savedImageViewFile = state.getString(SAVED_IMAGE_VIEW_FILE)
-        if (savedImageViewFile == null) return
-        imageViewerFragment!!.setImgFile(File(savedImageViewFile!!))
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.e(TAG, "MainActivity onDestroy")
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putLong(SAVED_NOTE_LIST_CATEGORY_ID, savedNoteListCategoryId)
-        outState.putLong(SAVED_NOTE_INFO_NOTE_ID, savedNoteInfoNoteId)
-        outState.putLong(SAVED_CATEGORY_DETAIL_ID, savedCategoryDetailId)
-        outState.putString(SAVED_IMAGE_VIEW_FILE, savedImageViewFile)
     }
 
     private val currentFragments = LinkedList<Fragment>()
@@ -224,9 +149,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     internal inner class OnFragmentBackPressed(enabled: Boolean) : OnBackPressedCallback(enabled) {
         override fun handleOnBackPressed() {
             val fragment = popFragment()
-            if (fragment is NoteListFragment) {
-                savedNoteListCategoryId = SAVED_NOTE_LIST_CATEGORY_ID_NONE
-            }
             var ret = false
             if (fragment is FragmentOnBackListener) {
                 ret = (fragment as FragmentOnBackListener).onBackPressed()
@@ -238,27 +160,21 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     fun handleCategoryExpand(category: Category) {
-        if (noteListFragment == null) {
-            noteListFragment = NoteListFragment()
-        }
-        val ret = loadCategoryNotes(this, category)
+        val ret = DataLoader.loadCategoryNotes(this, category)
         if (!ret) {
             Log.e(this.toString(), "Failed to get noteList from database")
         }
-        noteListFragment!!.setCategory(category)
-        savedNoteListCategoryId = category.id
-        startFragmentAnime(noteListFragment!!)
+        viewModel.setCategory(category)
+        startFragmentAnime(noteListFragment)
     }
 
     fun showCategoryCreatingDialog() {
-        savedCategoryDetailId = SAVED_CATEGORY_DETAIL_ID_NONE
         supportFragmentManager.beginTransaction()
             .add(CategoryDetailFragment(null), null)
             .commit()
     }
 
     private fun handleCategoryDetailShow(c: Category) {
-        savedCategoryDetailId = c.id
         val fragment = CategoryDetailFragment(c)
         supportFragmentManager.beginTransaction()
             .add(fragment, null)
@@ -462,11 +378,9 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun handleNoteDetailShow(item: NoteItem) {
-        savedNoteInfoNoteId = item.id
-        val fragment = NoteDetailFragment()
-        fragment.setNoteItem(item)
+        viewModel.setNoteItem(item)
         supportFragmentManager.beginTransaction()
-            .add(fragment, null)
+            .add(noteDetailFragment, null)
             .commit()
     }
 
@@ -511,17 +425,13 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun handleNoteMediaShow(mediaFile: AttachmentFile) {
-        if (imageViewerFragment == null) {
-            imageViewerFragment = ImageViewerFragment()
-        }
         if (mediaFile.isVideo) {
             // FIXME: here is a workaround for video playback, open it with external player now
             // need to implement a unified media viewer later
             handleNoteFileOpen(mediaFile)
         } else {
-            savedImageViewFile = mediaFile.md5file.absolutePath
-            imageViewerFragment!!.setImgFile(mediaFile.md5file)
-            imageViewerFragment!!.show(supportFragmentManager, null)
+            viewModel.setImageFile(mediaFile.md5file)
+            imageViewerFragment.show(supportFragmentManager, null)
         }
     }
 
@@ -638,11 +548,14 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
     private fun onCategoryTaskFinish(task: Task) {
         if (task.result < 0) return
-        if (categoryListFragment == null) return
         when (task.job) {
-            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE -> categoryListFragment!!.notifyItemListChanged(
-                jobToNotify(task.job), task.result, task.taskObj as Category
-            )
+            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE -> {
+                categoryListFragment.notifyItemListChanged(
+                    jobToNotify(task.job),
+                    task.result,
+                    task.taskObj as Category
+                )
+            }
         }
     }
 
@@ -651,7 +564,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         Log.d(TAG, "Note task finished: ${task.job} for note id ${n.id}")
         val index = task.result
         if (index < 0) return
-        noteListFragment?.notifyItemListChanged(jobToNotify(task.job), index, n)
+        noteListFragment.notifyItemListChanged(jobToNotify(task.job), index, n)
     }
 
     override fun onTaskFinish(task: Task) {
@@ -668,14 +581,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     companion object {
 
         const val TAG: String = "MainActivity"
-
-        private const val SAVED_NOTE_LIST_CATEGORY_ID_NONE: Long = -1
-        private const val SAVED_NOTE_LIST_CATEGORY_ID = "SAVED_NOTE_LIST_CATEGORY_ID"
-        private const val SAVED_NOTE_INFO_NOTE_ID_NONE: Long = -1
-        private const val SAVED_NOTE_INFO_NOTE_ID = "SAVED_NOTE_INFO_NOTE_ID"
-        private const val SAVED_CATEGORY_DETAIL_ID_NONE: Long = -1
-        private const val SAVED_CATEGORY_DETAIL_ID = "SAVED_CATEGORY_DETAIL_ID"
-        private const val SAVED_IMAGE_VIEW_FILE = "SAVED_IMAGE_VIEW_FILE"
 
         @Throws(IOException::class)
         private fun copyFile(src: File, dst: File) {

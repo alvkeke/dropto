@@ -15,11 +15,13 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.activity.MgmtActivity
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
@@ -33,15 +35,11 @@ import com.google.android.material.appbar.MaterialToolbar
 
 class CategoryListFragment : Fragment(), ListNotification<Category> {
     private lateinit var context: Context
+    private lateinit var viewModel: MainViewModel
     private lateinit var dbListener: CategoryDBAttemptListener
     private lateinit var uiListener: CategoryUIAttemptListener
     private lateinit var categoryListAdapter: CategoryListAdapter
     private lateinit var toolbar: MaterialToolbar
-
-    private var categories: ArrayList<Category>? = null
-    fun setCategories(categories: ArrayList<Category>) {
-        this.categories = categories
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -55,6 +53,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
+        viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
         dbListener = context as CategoryDBAttemptListener
         uiListener = context as CategoryUIAttemptListener
 
@@ -70,9 +69,18 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
         toolbar.setOnMenuItemClickListener(CategoryMenuListener())
 
         categoryListAdapter = CategoryListAdapter()
-        if (categories != null) {
-            categoryListAdapter.setList(categories!!)
+        viewModel.categories.observe(viewLifecycleOwner) { newCategories ->
+            categoryListAdapter.setList(newCategories)
         }
+
+//        viewModel.categoryTaskNotifier.observe(viewLifecycleOwner) { task ->
+//            notifyItemListChanged(
+//                jobToNotify(task.job),
+//                task.result,
+//                task.taskObj as Category
+//            )
+//        }
+
         categoryListAdapter.setSelectListener(CategorySelectListener())
         setMenuBySelectedCount()
 

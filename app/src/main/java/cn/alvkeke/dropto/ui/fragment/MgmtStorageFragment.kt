@@ -11,17 +11,21 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
+import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.ImageListAdapter
 import java.io.File
 import java.util.LinkedList
 
 class MgmtStorageFragment : Fragment() {
+
+    private lateinit var viewModel: MainViewModel
     private lateinit var cbImage: CheckBox
     private lateinit var cbCache: CheckBox
     private lateinit var buttonClear: Button
@@ -37,6 +41,8 @@ class MgmtStorageFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
 
         cbImage = view.findViewById(R.id.mgmt_storage_image)
         cbCache = view.findViewById(R.id.mgmt_storage_cache)
@@ -145,7 +151,8 @@ class MgmtStorageFragment : Fragment() {
 
             val imageFile = File(folderImage, name)
             val fragment = ImageViewerFragment()
-            fragment.setImgFile(imageFile)
+            viewModel.setImageFile(imageFile)
+
             fragment.show(getParentFragmentManager(), null)
         }
 

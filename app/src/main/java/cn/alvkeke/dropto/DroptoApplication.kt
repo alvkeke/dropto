@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.Intent
 import android.util.Log
-import androidx.appcompat.app.AppCompatDelegate
 import cn.alvkeke.dropto.service.CoreService
 import cn.alvkeke.dropto.service.CoreServiceConnection
 import cn.alvkeke.dropto.service.Task
@@ -50,7 +49,7 @@ class DroptoApplication : Application(), ResultListener{
         Log.d(TAG, "DroptoApplication onCreate")
         setupCoreService()
         // FIXME: workaround: set to dark mode always now, need to support light mode later
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+//        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         ImageLoader.initImageLoader(this)
     }
 
