@@ -57,7 +57,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.LinkedList
 import java.util.Random
 import java.util.function.Consumer
 
@@ -183,9 +182,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         recreate()
     }
 
-    private val currentFragments = LinkedList<Fragment>()
     private fun startFragment(fragment: Fragment) {
-        currentFragments.push(fragment)
         supportFragmentManager.beginTransaction()
             .add(R.id.main_container, fragment, null)
             .addToBackStack(fragment.javaClass.simpleName)
@@ -193,7 +190,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun startFragmentAnime(fragment: Fragment) {
-        currentFragments.push(fragment)
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
             .add(R.id.main_container, fragment, null)
@@ -201,18 +197,9 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             .commit()
     }
 
-    private fun popFragment(): Fragment? {
-        var fragment: Fragment?
-        while ((currentFragments.pop().also { fragment = it }) != null) {
-            if (!fragment!!.isVisible) continue
-            return fragment
-        }
-        return null
-    }
-
     internal inner class OnFragmentBackPressed(enabled: Boolean) : OnBackPressedCallback(enabled) {
         override fun handleOnBackPressed() {
-            val fragment = popFragment()
+            val fragment = supportFragmentManager.findFragmentById(R.id.main_container)
             var ret = false
             if (fragment is FragmentOnBackListener) {
                 ret = (fragment as FragmentOnBackListener).onBackPressed()
