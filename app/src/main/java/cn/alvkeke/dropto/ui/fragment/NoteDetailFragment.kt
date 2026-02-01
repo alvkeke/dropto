@@ -17,9 +17,11 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.comonent.AttachmentCard
 import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
@@ -29,6 +31,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListener{
+
+    private lateinit var viewModel: MainViewModel
     private lateinit var dbListener: NoteDBAttemptListener
     private lateinit var uiListener: NoteUIAttemptListener
     private lateinit var etNoteItemText: EditText
@@ -36,10 +40,6 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
 
     private var note: NoteItem? = null
     private val removedAttachments = ArrayList<AttachmentFile>()
-
-    fun setNoteItem(item: NoteItem) {
-        this.note = item
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,6 +51,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
         dbListener = requireContext() as NoteDBAttemptListener
         uiListener = requireContext() as NoteUIAttemptListener
 
@@ -62,8 +63,10 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         initEssentialVars()
         setPeekHeight(view)
 
-        if (note != null)
-            loadItemDataToUI(note!!)
+        viewModel.noteItem.observe(this) { item ->
+            note = item
+            loadItemDataToUI(note ?: return@observe)
+        }
 
         toolbar.inflateMenu(R.menu.note_detail_toolbar)
         toolbar.setOnMenuItemClickListener(NoteDetailMenuListener())

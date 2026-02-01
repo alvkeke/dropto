@@ -35,6 +35,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
 import androidx.core.view.size
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
@@ -43,6 +44,7 @@ import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
@@ -60,6 +62,7 @@ import com.google.android.material.appbar.MaterialToolbar
 
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
     private lateinit var context: Context
+    private lateinit var viewModel: MainViewModel
     private lateinit var dbListener: NoteDBAttemptListener
     private lateinit var uiListener: NoteUIAttemptListener
     private lateinit var fragmentParent: View
@@ -73,18 +76,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private lateinit var toolbar: MaterialToolbar
     private lateinit var rlNoteList: RecyclerView
 
-    private var category: Category? = null
+    private lateinit var category: Category
     private var noteItemAdapter: NoteListAdapter = NoteListAdapter()
-
-    fun setCategory(category: Category) {
-        this.category = category
-        noteItemAdapter.setList(category.noteItems)
-    }
-
-    @Suppress("unused")
-    fun getCategory(): Category? {
-        return this.category
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -99,9 +92,9 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
+        viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
         dbListener = context as NoteDBAttemptListener
         uiListener = context as NoteUIAttemptListener
-        checkNotNull(category)
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
@@ -117,7 +110,6 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         setSystemBarHeight(view, statusBar, naviBar)
         setIMEViewChange(view)
 
-        toolbar.setTitle(category!!.title)
         toolbar.setNavigationIcon(R.drawable.icon_common_back)
         toolbar.setNavigationOnClickListener(OnNavigationIconClick())
         toolbar.setOnMenuItemClickListener(NoteListMenuListener())
@@ -127,7 +119,20 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         val layoutManager = LinearLayoutManager(context)
         layoutManager.setReverseLayout(true)
         noteItemAdapter.setSelectListener(NoteListSelectListener())
-        noteItemAdapter.setList(category!!.noteItems)
+
+        viewModel.category.observe(viewLifecycleOwner) { category ->
+            this.category = category
+            toolbar.setTitle(category.title)
+            noteItemAdapter.setList(category.noteItems)
+        }
+
+//        viewModel.noteTaskNotifier.observe(viewLifecycleOwner) { task ->
+//            val n = task.taskObj as NoteItem
+//            Log.d(TAG, "Note task finished: ${task.job} for note id ${n.id}")
+//            val index = task.result
+//            if (index < 0) return@observe
+//            notifyItemListChanged(jobToNotify(task.job), index, n)
+//        }
 
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
@@ -156,6 +161,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private inner class OnNavigationIconClick : OnClickListener {
         override fun onClick(view: View) {
             onBackPressed()
+            // TODO: pop the fragment from stack instead of finish directly
         }
     }
 
@@ -227,7 +233,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         override fun onSelectExit() {
             setToolbarMenuVisible(false)
             toolbar.setNavigationIcon(R.drawable.icon_common_back)
-            toolbar.title = category!!.title
+            toolbar.title = category?.title
         }
 
         override fun onSelect(index: Int) {
