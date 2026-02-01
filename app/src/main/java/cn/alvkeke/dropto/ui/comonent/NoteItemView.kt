@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -18,7 +17,9 @@ import android.util.AttributeSet
 import android.util.Log
 import android.util.Size
 import android.view.View
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.withTranslation
+import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
 import java.text.SimpleDateFormat
@@ -162,45 +163,41 @@ class NoteItemView @JvmOverloads constructor(
 
     private var backgroundRect: RectF = RectF()
     private var backgroundPaint: Paint = Paint().apply {
-        color = BACKGROUND_COLOR
         style = Paint.Style.FILL
     }
 
-    private var imageRect: RectF = RectF()
-    private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val videoIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private var mediaRect: RectF = RectF()
+    private val mediaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val mediaPath = Path()
+    private val videoPlayIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
     }
-    private val videoIconPath = Path()
-    private val imagePath = Path()
-    private val mediaOverlayRect = RectF()
-    private val mediaOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.BLACK
+    private val videoPlayIconPath = Path()
+    private val moreMediaOverlayRect = RectF()
+    private val moreMediaOverlayBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ContextCompat.getColor(context, R.color.more_media_overlay_background)
         alpha = 180
         style = Paint.Style.FILL
     }
-    private val mediaOverlayFontPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+    private val moreMediaOverlayTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ContextCompat.getColor(context, R.color.more_media_overlay_text)
     }
 
     private val fileIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.DKGRAY
+        color = ContextCompat.getColor(context, R.color.file_icon_background)
     }
     private val fileNamePaint = TextPaint().apply {
-        color = Color.LTGRAY
         textSize = TEXT_SIZE_FILENAME
         isAntiAlias = true
     }
 
     private lateinit var textLayout: StaticLayout
     private val textPaint = TextPaint().apply {
-        color = Color.WHITE
         textSize = TEXT_SIZE_CONTENT
         isAntiAlias = true
     }
     private lateinit var timeLayout: StaticLayout
     private val timePaint: TextPaint = TextPaint().apply {
-        color = Color.LTGRAY
         textSize = TEXT_SIZE_TIME
         isAntiAlias = true
     }
@@ -715,25 +712,25 @@ class NoteItemView @JvmOverloads constructor(
             val radius = iconSize / 2f
             val cx = iconRect.centerX()
             val cy = iconRect.centerY()
-            videoIconPaint.style = Paint.Style.FILL
-            videoIconPaint.color = Color.BLACK
-            videoIconPaint.alpha = 100
-            this.drawCircle(cx, cy, radius, videoIconPaint)
+            videoPlayIconPaint.style = Paint.Style.FILL
+            videoPlayIconPaint.color = ContextCompat.getColor(context, R.color.video_play_icon_background)
+            videoPlayIconPaint.alpha = 100
+            this.drawCircle(cx, cy, radius, videoPlayIconPaint)
 
-            videoIconPaint.style = Paint.Style.STROKE
-            videoIconPaint.alpha = 255
-            videoIconPaint.color = Color.WHITE
-            videoIconPaint.strokeWidth = (iconSize / 6f).coerceAtMost(6f)
-            this.drawCircle(cx, cy, radius, videoIconPaint)
-            videoIconPaint.style = Paint.Style.FILL
+            videoPlayIconPaint.style = Paint.Style.STROKE
+            videoPlayIconPaint.alpha = 255
+            videoPlayIconPaint.color = ContextCompat.getColor(context, R.color.video_play_icon_foreground)
+            videoPlayIconPaint.strokeWidth = (iconSize / 6f).coerceAtMost(6f)
+            this.drawCircle(cx, cy, radius, videoPlayIconPaint)
+            videoPlayIconPaint.style = Paint.Style.FILL
 
             val side = radius
-            videoIconPath.reset()
-            videoIconPath.moveTo(cx - side / 3f, cy - side / 2f)
-            videoIconPath.lineTo(cx - side / 3f, cy + side / 2f)
-            videoIconPath.lineTo(cx + side * 2f / 3f, cy)
-            videoIconPath.close()
-            this.drawPath(videoIconPath, videoIconPaint)
+            videoPlayIconPath.reset()
+            videoPlayIconPath.moveTo(cx - side / 3f, cy - side / 2f)
+            videoPlayIconPath.lineTo(cx - side / 3f, cy + side / 2f)
+            videoPlayIconPath.lineTo(cx + side * 2f / 3f, cy)
+            videoPlayIconPath.close()
+            this.drawPath(videoPlayIconPath, videoPlayIconPaint)
         }
     }
 
@@ -747,45 +744,45 @@ class NoteItemView @JvmOverloads constructor(
                 Log.e(TAG, "drawing image without setting the image rect is not allowed")
                 continue
             }
-            imageRect.set(info.rect)
+            mediaRect.set(info.rect)
 
             // Draw bitmap with rounded corners
-            val saveCount = canvas.saveLayer(imageRect, null)
+            val saveCount = canvas.saveLayer(mediaRect, null)
 
             // Draw rounded rect as mask
-            imagePath.reset()
-            imagePath.addRoundRect(
-                imageRect,
+            mediaPath.reset()
+            mediaPath.addRoundRect(
+                mediaRect,
                 IMAGE_RADIUS.toFloat(),
                 IMAGE_RADIUS.toFloat(),
                 Path.Direction.CW
             )
-            canvas.drawPath(imagePath, imagePaint)
+            canvas.drawPath(mediaPath, mediaPaint)
 
             // Set xfermode to only draw bitmap where the rounded rect was drawn
-            imagePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            canvas.drawMediaFile(info, imageRect, imagePaint)
+            mediaPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+            canvas.drawMediaFile(info, mediaRect, mediaPaint)
 
             // Reset xfermode
-            imagePaint.xfermode = null
+            mediaPaint.xfermode = null
             canvas.restoreToCount(saveCount)
         }
 
         if (_medias.size > MAX_IMAGE_COUNT) {
             val restCount = _medias.size - 9
             val info = _medias[9]
-            mediaOverlayRect.set(info.rect)
+            moreMediaOverlayRect.set(info.rect)
             // draw the overlay background
-            canvas.drawRect(mediaOverlayRect, mediaOverlayPaint)
+            canvas.drawRect(moreMediaOverlayRect, moreMediaOverlayBackgroundPaint)
 
             val overlayText = "+$restCount"
-            mediaOverlayFontPaint.textSize = (mediaOverlayRect.height() / 4)
+            moreMediaOverlayTextPaint.textSize = (moreMediaOverlayRect.height() / 4)
 
-            val textWidth = mediaOverlayFontPaint.measureText(overlayText)
-            val textX = mediaOverlayRect.left + (mediaOverlayRect.width() - textWidth) / 2
-            val textY = mediaOverlayRect.top + (mediaOverlayRect.height() + mediaOverlayFontPaint.textSize) / 2 - mediaOverlayFontPaint.descent()
+            val textWidth = moreMediaOverlayTextPaint.measureText(overlayText)
+            val textX = moreMediaOverlayRect.left + (moreMediaOverlayRect.width() - textWidth) / 2
+            val textY = moreMediaOverlayRect.top + (moreMediaOverlayRect.height() + moreMediaOverlayTextPaint.textSize) / 2 - moreMediaOverlayTextPaint.descent()
 
-            canvas.drawText(overlayText, textX, textY, mediaOverlayFontPaint)
+            canvas.drawText(overlayText, textX, textY, moreMediaOverlayTextPaint)
 
             return _medias[9].rect.bottom + MARGIN_IMAGE
         } else {
@@ -796,6 +793,10 @@ class NoteItemView @JvmOverloads constructor(
     private fun drawFiles(canvas: Canvas, contentWidth: Int): Float {
         var offsetY: Float = MARGIN_FILE.toFloat()
 
+        fileNamePaint.color = when (selected) {
+            true -> ContextCompat.getColor(context, R.color.color_text_main_selected)
+            false -> ContextCompat.getColor(context, R.color.color_text_main)
+        }
         for (info in _files.take(MAX_FILE_COUNT)) {
             val file = info.file
             Log.v(TAG, "drawFiles: file=${file.name}, md5=${file.md5}")
@@ -863,7 +864,10 @@ class NoteItemView @JvmOverloads constructor(
         Log.v(TAG, "onDraw: $index")
 
         var contentWidth = width
-        backgroundPaint.color = if (selected) Color.LTGRAY else BACKGROUND_COLOR
+        backgroundPaint.color = when (selected) {
+            true -> ContextCompat.getColor(context, R.color.note_background_selected)
+            false -> ContextCompat.getColor(context, R.color.note_background)
+        }
         canvas.drawRoundRect(
             backgroundRect,
             BACKGROUND_RADIUS.toFloat(),
@@ -881,11 +885,19 @@ class NoteItemView @JvmOverloads constructor(
         if (!text.isEmpty()) {
             canvas.translate(0F, MARGIN_TEXT.toFloat())
             canvas.withTranslation(MARGIN_TEXT.toFloat(), 0F) {
+                textPaint.color = when (selected) {
+                    true -> ContextCompat.getColor(context, R.color.color_text_main_selected)
+                    false -> ContextCompat.getColor(context, R.color.color_text_main)
+                }
                 textLayout.draw(this)
             }
             canvas.translate(0F, (textLayout.height + MARGIN_TEXT).toFloat())
         }
         canvas.withTranslation(MARGIN_TIME.toFloat(), 0F) {
+            timePaint.color = when (selected) {
+                true -> ContextCompat.getColor(context, R.color.color_text_sub_selected)
+                false -> ContextCompat.getColor(context, R.color.color_text_sub)
+            }
             timeLayout.draw(this)
         }
     }
@@ -938,7 +950,6 @@ class NoteItemView @JvmOverloads constructor(
         const val MARGIN_BACKGROUND_START = 128
         const val MARGIN_BACKGROUND_END = 256
         const val BACKGROUND_RADIUS = 16
-        const val BACKGROUND_COLOR = 0x33FFFFFF
 
         const val MARGIN_BORDER = 8
         const val MARGIN_IMAGE = 8

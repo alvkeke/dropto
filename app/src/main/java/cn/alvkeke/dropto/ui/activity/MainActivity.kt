@@ -153,7 +153,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             startFragment(categoryListFragment)
         }
 
-        // FIXME: categoryListFragment doesn't display correctly after changing the dark/light mode
         if (savedInstanceState == null) {
             Log.v(TAG, "onCreate: fresh start")
             val categories: ArrayList<Category> = loadCategories(this)
