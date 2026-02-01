@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.DropTo.Invisible" parent="Theme.DropTo.NoActionBar">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
-
-    <style name="Theme.DropTo" parent="Theme.MaterialComponents.Light">
+    <style name="Theme.DropTo" parent="Theme.MaterialComponents.DayNight">
+<!--        <item name="android:forceDarkAllowed">true</item>-->
+<!--        <item name="colorPrimary">?attr/colorPrimary</item>-->
+<!--        <item name="colorPrimaryDark">?attr/colorPrimaryDark</item>-->
+<!--        <item name="colorAccent">?attr/colorAccent</item>-->
+<!--        <item name="android:windowBackground">?android:attr/colorBackground</item>-->
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/color_action_bar</item>
         <item name="colorPrimaryVariant">@color/color_navigation_bar</item>
@@ -26,5 +25,4 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
-
 </resources>
