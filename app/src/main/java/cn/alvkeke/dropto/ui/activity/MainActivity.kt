@@ -73,7 +73,6 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     private var categoryListFragment: CategoryListFragment
         get() {
             if (_categoryListFragment == null) {
-                Log.e(TAG, "Creating new CategoryListFragment instance")
                 _categoryListFragment = CategoryListFragment()
             }
             return _categoryListFragment!!
@@ -157,11 +156,11 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
         // FIXME: categoryListFragment doesn't display correctly after changing the dark/light mode
         if (savedInstanceState == null) {
-            Log.e(TAG, "onCreate: fresh start")
+            Log.v(TAG, "onCreate: fresh start")
             val categories: ArrayList<Category> = loadCategories(this)
             viewModel.setCategoriesList(categories)
         } else {
-            Log.e(TAG, "onCreate: restore from savedInstanceState")
+            Log.v(TAG, "onCreate: restore from savedInstanceState")
         }
     }
 
