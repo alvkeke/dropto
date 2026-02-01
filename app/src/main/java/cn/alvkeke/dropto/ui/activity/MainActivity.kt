@@ -67,10 +67,51 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     private val app: DroptoApplication
         get() = application as DroptoApplication
 
-    private var categoryListFragment: CategoryListFragment = CategoryListFragment()
-    private var noteListFragment: NoteListFragment = NoteListFragment()
-    private var noteDetailFragment: NoteDetailFragment = NoteDetailFragment()
-    private var imageViewerFragment: ImageViewerFragment = ImageViewerFragment()
+    private var _categoryListFragment: CategoryListFragment? = null
+    private var categoryListFragment: CategoryListFragment
+        get() {
+            if (_categoryListFragment == null) {
+                Log.e(TAG, "Creating new CategoryListFragment instance")
+                _categoryListFragment = CategoryListFragment()
+            }
+            return _categoryListFragment!!
+        }
+        set(value) {
+            _categoryListFragment = value
+        }
+    private var _noteListFragment: NoteListFragment? = null
+    private var noteListFragment: NoteListFragment
+        get() {
+            if (_noteListFragment == null) {
+                _noteListFragment = NoteListFragment()
+            }
+            return _noteListFragment!!
+        }
+        set(value) {
+            _noteListFragment = value
+        }
+    private var _noteDetailFragment: NoteDetailFragment? = null
+    private var noteDetailFragment: NoteDetailFragment
+        get() {
+            if (_noteDetailFragment == null) {
+                _noteDetailFragment = NoteDetailFragment()
+            }
+            return _noteDetailFragment!!
+        }
+        set(value) {
+            _noteDetailFragment = value
+        }
+    private var _imageViewerFragment: ImageViewerFragment? = null
+    private var imageViewerFragment: ImageViewerFragment
+        get() {
+            if (_imageViewerFragment == null) {
+                _imageViewerFragment = ImageViewerFragment()
+            }
+            return _imageViewerFragment!!
+        }
+        set(value) {
+            _imageViewerFragment = value
+        }
 
     // 修正 ViewModel 获取方式，保证与 Fragment 共享同一个 ViewModel
     private val viewModel: MainViewModel by lazy {
@@ -79,19 +120,16 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
     override fun onStart() {
         super.onStart()
-        Log.e(this.toString(), "MainActivity onStart")
         app.addTaskListener(this)
     }
 
     override fun onStop() {
         super.onStop()
-        Log.e(this.toString(), "MainActivity onStop")
         app.delTaskListener(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.e(this.toString(), "MainActivity onCreate")
         this.enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
@@ -102,17 +140,27 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
         onBackPressedDispatcher.addCallback(this, OnFragmentBackPressed(true))
 
-        val categories: ArrayList<Category> = loadCategories(this)
-        viewModel.setCategoriesList(categories)
+        for (f in supportFragmentManager.fragments) {
+            when (f) {
+                is CategoryListFragment -> categoryListFragment = f
+                is NoteListFragment -> noteListFragment = f
+                is NoteDetailFragment -> noteDetailFragment = f
+                is ImageViewerFragment -> imageViewerFragment = f
+            }
+        }
 
         if (!categoryListFragment.isAdded) {
             startFragment(categoryListFragment)
         }
-    }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.e(TAG, "MainActivity onDestroy")
+        // FIXME: categoryListFragment doesn't display correctly after changing the dark/light mode
+        if (savedInstanceState == null) {
+            Log.e(TAG, "onCreate: fresh start")
+            val categories: ArrayList<Category> = loadCategories(this)
+            viewModel.setCategoriesList(categories)
+        } else {
+            Log.e(TAG, "onCreate: restore from savedInstanceState")
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -124,7 +172,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         currentFragments.push(fragment)
         supportFragmentManager.beginTransaction()
             .add(R.id.main_container, fragment, null)
-            .addToBackStack(null)
+            .addToBackStack(fragment.javaClass.simpleName)
             .commit()
     }
 
@@ -133,7 +181,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         supportFragmentManager.beginTransaction()
             .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
             .add(R.id.main_container, fragment, null)
-            .addToBackStack(null)
+            .addToBackStack(fragment.javaClass.simpleName)
             .commit()
     }
 
