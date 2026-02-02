@@ -14,10 +14,10 @@ import android.view.View.OnTouchListener
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
+import androidx.core.view.get
+import androidx.core.view.size
 import cn.alvkeke.dropto.R
 import kotlin.math.roundToInt
-import androidx.core.view.size
-import androidx.core.view.get
 
 
 class MyPopupMenu(private val context: Context) : PopupWindow(context) {
@@ -62,6 +62,7 @@ class MyPopupMenu(private val context: Context) : PopupWindow(context) {
         drawable.setColor(context.getColor(R.color.popup_menu_item_selected))
         textView.background = drawable
         textView.background.alpha = 0
+        textView.setTextColor(context.getColor(R.color.popup_menu_text))
         textView.setOnTouchListener(OnItemTouchListener(item))
         return textView
     }

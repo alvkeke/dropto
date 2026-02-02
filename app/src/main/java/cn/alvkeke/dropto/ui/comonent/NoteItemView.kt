@@ -161,9 +161,15 @@ class NoteItemView @JvmOverloads constructor(
     private val _files: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
     val files: MutableList<AttachmentFile> = AttachmentList(_files)
 
-    private var backgroundRect: RectF = RectF()
-    private var backgroundPaint: Paint = Paint().apply {
+    private var bubbleRect: RectF = RectF()
+    private var bubblePaint: Paint = Paint().apply {
         style = Paint.Style.FILL
+        setShadowLayer(
+            4f,
+            0f,
+            0f,
+            ContextCompat.getColor(context, R.color.note_bubble_shadow)
+        )
     }
 
     private var mediaRect: RectF = RectF()
@@ -176,7 +182,6 @@ class NoteItemView @JvmOverloads constructor(
     private val moreMediaOverlayRect = RectF()
     private val moreMediaOverlayBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(context, R.color.more_media_overlay_background)
-        alpha = 180
         style = Paint.Style.FILL
     }
     private val moreMediaOverlayTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -619,7 +624,7 @@ class NoteItemView @JvmOverloads constructor(
         Log.v(TAG, "onMeasure: width=$width, height=$height")
         setMeasuredDimension(width, height)
 
-        backgroundRect.set(
+        bubbleRect.set(
             MARGIN_BACKGROUND_START.toFloat(),
             MARGIN_BACKGROUND_Y.toFloat(),
             (width - MARGIN_BACKGROUND_END).toFloat(),
@@ -714,7 +719,6 @@ class NoteItemView @JvmOverloads constructor(
             val cy = iconRect.centerY()
             videoPlayIconPaint.style = Paint.Style.FILL
             videoPlayIconPaint.color = ContextCompat.getColor(context, R.color.video_play_icon_background)
-            videoPlayIconPaint.alpha = 100
             this.drawCircle(cx, cy, radius, videoPlayIconPaint)
 
             videoPlayIconPaint.style = Paint.Style.STROKE
@@ -864,15 +868,15 @@ class NoteItemView @JvmOverloads constructor(
         Log.v(TAG, "onDraw: $index")
 
         var contentWidth = width
-        backgroundPaint.color = when (selected) {
-            true -> ContextCompat.getColor(context, R.color.note_background_selected)
-            false -> ContextCompat.getColor(context, R.color.note_background)
+        bubblePaint.color = when (selected) {
+            true -> ContextCompat.getColor(context, R.color.note_bubble_background_selected)
+            false -> ContextCompat.getColor(context, R.color.note_bubble_background)
         }
         canvas.drawRoundRect(
-            backgroundRect,
+            bubbleRect,
             BACKGROUND_RADIUS.toFloat(),
             BACKGROUND_RADIUS.toFloat(),
-            backgroundPaint
+            bubblePaint
         )
         canvas.translate(MARGIN_BACKGROUND_START.toFloat(), MARGIN_BACKGROUND_Y.toFloat())
         contentWidth -= (MARGIN_BACKGROUND_START + MARGIN_BACKGROUND_END)
