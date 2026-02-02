@@ -126,14 +126,6 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             noteItemAdapter.setList(category.noteItems)
         }
 
-//        viewModel.noteTaskNotifier.observe(viewLifecycleOwner) { task ->
-//            val n = task.taskObj as NoteItem
-//            Log.d(TAG, "Note task finished: ${task.job} for note id ${n.id}")
-//            val index = task.result
-//            if (index < 0) return@observe
-//            notifyItemListChanged(jobToNotify(task.job), index, n)
-//        }
-
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
 
@@ -233,7 +225,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         override fun onSelectExit() {
             setToolbarMenuVisible(false)
             toolbar.setNavigationIcon(R.drawable.icon_common_back)
-            toolbar.title = category?.title
+            toolbar.title = category.title
         }
 
         override fun onSelect(index: Int) {
@@ -515,7 +507,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         override fun onClick(v: View) {
             val content = etInputText.text.toString().trim { it <= ' ' }
             val item = NoteItem(content)
-            item.categoryId = category!!.id
+            item.categoryId = category.id
             if (attachments.isEmpty()) {
                 if (content.isEmpty()) return
             } else {
@@ -533,7 +525,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun showNoteDetail(index: Int) {
-        val noteItem = category!!.getNoteItem(index)
+        val noteItem = category.getNoteItem(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.SHOW_DETAIL,
             noteItem,
@@ -541,7 +533,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun showMediaView(index: Int, attachmentIndex: Int) {
-        val noteItem = category!!.getNoteItem(index)
+        val noteItem = category.getNoteItem(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.SHOW_MEDIA,
             noteItem,
@@ -550,7 +542,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun tryOpenFile(index: Int, fileIndex: Int) {
-        val noteItem = category!!.getNoteItem(index)
+        val noteItem = category.getNoteItem(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.OPEN_FILE,
             noteItem,
@@ -566,7 +558,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private var myPopupMenu: MyPopupMenu? = null
     private fun showItemPopMenu(index: Int, v: View, x: Int, y: Int) {
-        val noteItem = category!!.getNoteItem(index)
+        val noteItem = category.getNoteItem(index)
         if (myPopupMenu == null) {
             val menu = PopupMenu(context, v).menu
             requireActivity().menuInflater.inflate(R.menu.item_pop_menu, menu)
@@ -632,7 +624,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     override fun notifyItemListChanged(notify: Notify, index: Int, itemObj: NoteItem) {
-        if (itemObj.categoryId != category!!.id) {
+        if (itemObj.categoryId != category.id) {
             Log.e(this.toString(), "target NoteItem not exist in current category")
             return
         }

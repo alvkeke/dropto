@@ -73,14 +73,6 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
             categoryListAdapter.setList(newCategories)
         }
 
-//        viewModel.categoryTaskNotifier.observe(viewLifecycleOwner) { task ->
-//            notifyItemListChanged(
-//                jobToNotify(task.job),
-//                task.result,
-//                task.taskObj as Category
-//            )
-//        }
-
         categoryListAdapter.setSelectListener(CategorySelectListener())
         setMenuBySelectedCount()
 
