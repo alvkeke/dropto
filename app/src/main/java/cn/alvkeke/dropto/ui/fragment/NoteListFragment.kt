@@ -349,14 +349,25 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         }
     }
 
-    private fun setMaskTransparent(targetX: Float) {
-        val width = fragmentView.width
-        val alpha = (width - targetX) / width
-        fragmentParent.background.alpha = (alpha * 255 / 2).toInt()
+    private fun setMaskTransparent(offsetRatio: Float) {
+        fragmentParent.background.alpha = (offsetRatio * 255 / 2).toInt()
+    }
+
+    private fun moveUpperFragmentView(offsetRatio: Float) {
+
+        val upperView = parentFragmentManager
+                .fragments[parentFragmentManager.fragments.size - 2].view ?: return
+        val parWidth = upperView.width.toFloat()
+        val totalOffset = (parWidth * 2f / 3f)
+        upperView.translationX = -totalOffset * offsetRatio
     }
 
     private fun moveFragmentView(targetX: Float) {
-        setMaskTransparent(targetX)
+        val width = fragmentView.width.toFloat()
+        val ratio = (width - targetX) / width
+
+        setMaskTransparent(ratio)
+        moveUpperFragmentView(ratio)
         fragmentView.translationX = targetX
     }
 
@@ -379,7 +390,9 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         })
         animator.addUpdateListener { valueAnimator: ValueAnimator ->
             val deltaX = valueAnimator.animatedValue as Float
-            setMaskTransparent(deltaX)
+            val ratio = (width - deltaX) / width
+            setMaskTransparent(ratio)
+            moveUpperFragmentView(ratio)
         }
         animator.start()
     }
