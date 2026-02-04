@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -155,7 +154,6 @@ class PopupMenu @JvmOverloads constructor(
         @Volatile private var animateExitJob: Job? = null
         private fun animateExitStart() {
             if (animateExitJob?.isActive == true) return
-            Log.e(TAG, "animate out start")
             animateExitJob = CoroutineScope(Dispatchers.Main).launch {
                 animateEnterJob?.join()
 
