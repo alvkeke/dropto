@@ -26,7 +26,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.widget.PopupMenu
+import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
@@ -48,8 +48,8 @@ import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
-import cn.alvkeke.dropto.ui.comonent.MyPopupMenu
 import cn.alvkeke.dropto.ui.comonent.NoteItemView
+import cn.alvkeke.dropto.ui.comonent.PopupMenu
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.ListNotification
@@ -569,62 +569,88 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         handler.onError(msg)
     }
 
-    private var myPopupMenu: MyPopupMenu? = null
-    private fun showItemPopMenu(index: Int, v: View, x: Int, y: Int) {
-        val noteItem = category.getNoteItem(index)
-        if (myPopupMenu == null) {
-            val menu = PopupMenu(context, v).menu
-            requireActivity().menuInflater.inflate(R.menu.item_pop_menu, menu)
-            myPopupMenu = MyPopupMenu(context).setMenu(menu)
-                .setListener { menuItem, extraData ->
-                    val note = extraData as NoteItem
-                    when (val itemId = menuItem.itemId) {
-                        R.id.item_pop_m_delete -> {
-                            AlertDialog.Builder(context)
-                                .setTitle(R.string.dialog_note_delete_pop_remove_title)
-                                .setMessage(R.string.dialog_note_delete_pop_remove_message)
-                                .setNegativeButton(R.string.string_cancel, null)
-                                .setPositiveButton(
-                                    R.string.string_ok
-                                ) { _: DialogInterface, _: Int ->
-                                    dbListener.onAttempt(
-                                        NoteDBAttemptListener.Attempt.REMOVE,
-                                        note
-                                    )
-                                }
-                                .create().show()
-                        }
 
-                        R.id.item_pop_m_pin -> {
-                            throwErrorMessage("try to Pin item at $index")
-                        }
-
-                        R.id.item_pop_m_edit -> {
-                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, note)
-                        }
-
-                        R.id.item_pop_m_copy_text -> {
-                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.COPY, note)
-                        }
-
-                        R.id.item_pop_m_share -> {
-                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_SHARE, note)
-                        }
-
-                        R.id.item_pop_m_forward -> {
-                            uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_FORWARD, note)
-                        }
-
-                        else -> {
-                            throwErrorMessage(
-                                "Unknown menu id: " +
-                                        resources.getResourceEntryName(itemId)
+    private lateinit var noteItemForMenu: NoteItem
+    private val menuListener: PopupMenu.MenuListener = object : PopupMenu.MenuListener {
+        override fun onMenuItemClick(menuItem: MenuItem) {
+            val note = noteItemForMenu
+            when (val itemId = menuItem.itemId) {
+                R.id.item_pop_m_delete -> {
+                    AlertDialog.Builder(context)
+                        .setTitle(R.string.dialog_note_delete_pop_remove_title)
+                        .setMessage(R.string.dialog_note_delete_pop_remove_message)
+                        .setNegativeButton(R.string.string_cancel, null)
+                        .setPositiveButton(
+                            R.string.string_ok
+                        ) { _: DialogInterface, _: Int ->
+                            dbListener.onAttempt(
+                                NoteDBAttemptListener.Attempt.REMOVE,
+                                note
                             )
                         }
-                    }
+                        .create().show()
                 }
+
+                R.id.item_pop_m_pin -> {
+                    throwErrorMessage("try to Pin item")
+                }
+
+                R.id.item_pop_m_edit -> {
+                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, note)
+                }
+
+                R.id.item_pop_m_copy_text -> {
+                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.COPY, note)
+                }
+
+                R.id.item_pop_m_share -> {
+                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_SHARE, note)
+                }
+
+                R.id.item_pop_m_forward -> {
+                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_FORWARD, note)
+                }
+
+                else -> {
+                    throwErrorMessage(
+                        "Unknown menu id: " +
+                                resources.getResourceEntryName(itemId)
+                    )
+                }
+            }
         }
-        myPopupMenu!!.setData(noteItem).show(v, x, y)
+    }
+
+    private lateinit var popupMenu: PopupMenu
+    @SuppressLint("RestrictedApi")
+    private fun showItemPopMenu(index: Int, v: View, x: Int, y: Int) {
+        val noteItem = category.getNoteItem(index)
+        if (!::popupMenu.isInitialized) {
+            popupMenu = PopupMenu(context)
+            val menu = MenuBuilder(context)
+            requireActivity().menuInflater.inflate(R.menu.item_pop_menu, menu)
+            popupMenu.setMenu(menu)
+            popupMenu.setMenuListener(menuListener)
+        }
+        Log.v(TAG, "show popup menu for item-$index at x:$x, y:$y")
+        noteItemForMenu = noteItem
+        val targetTop = y - popupMenu.height / 3
+        val targetBottom = targetTop + popupMenu.height
+        val xOffset = v.width / 5
+        var yOffset = targetTop - toolbar.bottom
+
+        val location = IntArray(2)
+        rlNoteList.getLocationOnScreen(location)
+        val topLimit = location[1]
+        val bottomLimit = topLimit + rlNoteList.bottom
+
+        if (targetTop < topLimit) {
+            yOffset = 0
+        } else if (targetBottom > bottomLimit) {
+            yOffset = bottomLimit - popupMenu.height - toolbar.bottom
+        }
+
+        popupMenu.showAsDropDown(toolbar, xOffset, yOffset)
     }
 
     private var pendingNoteItem: NoteItem? = null
