@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.util.Log
 import android.view.Menu
@@ -12,6 +14,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.withSave
 import androidx.core.view.get
 import androidx.core.view.size
 import cn.alvkeke.dropto.R
@@ -65,6 +68,11 @@ class PopupMenu @JvmOverloads constructor(
         color = ContextCompat.getColor(context, R.color.popup_menu_item_selected)
     }
 
+    private val rect: RectF by lazy {
+        RectF(0f, 0f, menuWidth, menuHeight)
+    }
+    private val path: Path = Path()
+
     private val menuView = object : View(context) {
 
         private var downIndex = -1
@@ -85,11 +93,27 @@ class PopupMenu @JvmOverloads constructor(
                 val top = downIndex * menuItemHeight
                 val bottom = top + menuItemHeight
                 highlightPaint.alpha = (animaRatio.coerceIn(0f, 1f) * 255).toInt()
-                canvas.drawRoundRect(
-                    0f, top,
-                    menuWidth, bottom,
-                    radius, radius, highlightPaint
-                )
+                path.addRoundRect(rect, radius, radius, Path.Direction.CW)
+                if (animationIn) {
+                    canvas.withSave {
+                        canvas.clipPath(path)
+                        canvas.clipRect(0f, top, menuWidth, bottom)
+                        val cx = menuWidth / 2
+                        val cy = (top + bottom) / 2
+                        val maxRadius = menuWidth * 1.1f
+                        val currentRadius = maxRadius * animaRatio.coerceIn(0f, 1f)
+                        canvas.drawCircle(cx, cy, currentRadius, highlightPaint)
+                    }
+                } else {
+                    canvas.withSave {
+                        canvas.clipPath(path)
+                        canvas.drawRect(
+                            0f, top,
+                            menuWidth, bottom,
+                            highlightPaint
+                        )
+                    }
+                }
             }
 
             for (i in 0 until menu.size) {
@@ -111,9 +135,9 @@ class PopupMenu @JvmOverloads constructor(
         private var animateEnterJob: Job? = null
         private var startTime = 0L
         private var animationIn = true
-        private val animationInterval = 200
+        private val animationInterval = 300
         private fun animateEnterStart() {
-            animateEnterJob?.cancel()
+            if (animateEnterJob?.isActive == true) return
             animationIn = true
             startTime = System.currentTimeMillis()
             animateEnterJob = CoroutineScope(Dispatchers.Main).launch {
@@ -155,6 +179,9 @@ class PopupMenu @JvmOverloads constructor(
         override fun onTouchEvent(event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    if (animateExitJob?.isActive == true || animateEnterJob?.isActive == true) {
+                        return true
+                    }
                     downIndex = getTouchedMenuItemIndex(
                         event.x - SHADOW_PADDING,
                         event.y - SHADOW_PADDING
