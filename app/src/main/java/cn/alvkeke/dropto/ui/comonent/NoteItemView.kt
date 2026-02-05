@@ -13,6 +13,7 @@ import android.graphics.RectF
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.Log
 import android.util.Size
@@ -161,8 +162,15 @@ class NoteItemView @JvmOverloads constructor(
     private val _files: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
     val files: MutableList<AttachmentFile> = AttachmentList(_files)
 
+    private val selectMaskPaint: Paint = Paint().apply {
+        style = Paint.Style.FILL
+        color = ContextCompat.getColor(context, R.color.note_item_select_mask)
+        alpha = 40
+    }
+
     private var bubbleRect: RectF = RectF()
     private var bubblePaint: Paint = Paint().apply {
+        color = ContextCompat.getColor(context, R.color.note_bubble_background)
         style = Paint.Style.FILL
         setShadowLayer(
             4f,
@@ -192,17 +200,20 @@ class NoteItemView @JvmOverloads constructor(
         color = ContextCompat.getColor(context, R.color.file_icon_background)
     }
     private val fileNamePaint = TextPaint().apply {
+        color = ContextCompat.getColor(context, R.color.color_text_main)
         textSize = TEXT_SIZE_FILENAME
         isAntiAlias = true
     }
 
     private lateinit var textLayout: StaticLayout
     private val textPaint = TextPaint().apply {
+        color = ContextCompat.getColor(context, R.color.color_text_main)
         textSize = TEXT_SIZE_CONTENT
         isAntiAlias = true
     }
     private lateinit var timeLayout: StaticLayout
     private val timePaint: TextPaint = TextPaint().apply {
+        color = ContextCompat.getColor(context, R.color.color_text_sub)
         textSize = TEXT_SIZE_TIME
         isAntiAlias = true
     }
@@ -738,11 +749,12 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun drawMedias(canvas: Canvas): Float {
+    private fun Canvas.drawMedias(): Float {
         Log.v(TAG, "drawMedias: total size: ${_medias.size}")
 
         if (_medias.isEmpty()) return 0f
 
+        var offsetY: Float
         for (info in _medias.take(MAX_IMAGE_COUNT)) {
             if (info.rect.isEmpty) {
                 Log.e(TAG, "drawing image without setting the image rect is not allowed")
@@ -751,7 +763,7 @@ class NoteItemView @JvmOverloads constructor(
             mediaRect.set(info.rect)
 
             // Draw bitmap with rounded corners
-            val saveCount = canvas.saveLayer(mediaRect, null)
+            val saveCount = saveLayer(mediaRect, null)
 
             // Draw rounded rect as mask
             mediaPath.reset()
@@ -761,15 +773,15 @@ class NoteItemView @JvmOverloads constructor(
                 IMAGE_RADIUS.toFloat(),
                 Path.Direction.CW
             )
-            canvas.drawPath(mediaPath, mediaPaint)
+            drawPath(mediaPath, mediaPaint)
 
             // Set xfermode to only draw bitmap where the rounded rect was drawn
             mediaPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            canvas.drawMediaFile(info, mediaRect, mediaPaint)
+            drawMediaFile(info, mediaRect, mediaPaint)
 
             // Reset xfermode
             mediaPaint.xfermode = null
-            canvas.restoreToCount(saveCount)
+            restoreToCount(saveCount)
         }
 
         if (_medias.size > MAX_IMAGE_COUNT) {
@@ -777,30 +789,29 @@ class NoteItemView @JvmOverloads constructor(
             val info = _medias[9]
             moreMediaOverlayRect.set(info.rect)
             // draw the overlay background
-            canvas.drawRect(moreMediaOverlayRect, moreMediaOverlayBackgroundPaint)
+            drawRect(moreMediaOverlayRect, moreMediaOverlayBackgroundPaint)
 
             val overlayText = "+$restCount"
             moreMediaOverlayTextPaint.textSize = (moreMediaOverlayRect.height() / 4)
 
             val textWidth = moreMediaOverlayTextPaint.measureText(overlayText)
-            val textX = moreMediaOverlayRect.left + (moreMediaOverlayRect.width() - textWidth) / 2
-            val textY = moreMediaOverlayRect.top + (moreMediaOverlayRect.height() + moreMediaOverlayTextPaint.textSize) / 2 - moreMediaOverlayTextPaint.descent()
+            val textX =
+                moreMediaOverlayRect.left + (moreMediaOverlayRect.width() - textWidth) / 2
+            val textY =
+                moreMediaOverlayRect.top + (moreMediaOverlayRect.height() + moreMediaOverlayTextPaint.textSize) / 2 - moreMediaOverlayTextPaint.descent()
 
-            canvas.drawText(overlayText, textX, textY, moreMediaOverlayTextPaint)
+            drawText(overlayText, textX, textY, moreMediaOverlayTextPaint)
 
-            return _medias[9].rect.bottom + MARGIN_IMAGE
+            offsetY =  _medias[9].rect.bottom + MARGIN_IMAGE
         } else {
-            return _medias.last().rect.bottom + MARGIN_IMAGE
+            offsetY = _medias.last().rect.bottom + MARGIN_IMAGE
         }
+        return offsetY
     }
 
-    private fun drawFiles(canvas: Canvas, contentWidth: Int): Float {
+    private fun Canvas.drawFiles(contentWidth: Int): Float {
         var offsetY: Float = MARGIN_FILE.toFloat()
 
-        fileNamePaint.color = when (selected) {
-            true -> ContextCompat.getColor(context, R.color.color_text_main_selected)
-            false -> ContextCompat.getColor(context, R.color.color_text_main)
-        }
         for (info in _files.take(MAX_FILE_COUNT)) {
             val file = info.file
             Log.v(TAG, "drawFiles: file=${file.name}, md5=${file.md5}")
@@ -812,14 +823,14 @@ class NoteItemView @JvmOverloads constructor(
                 (MARGIN_FILE + FILE_ICON_SIZE.dp()).toFloat(),
                 offsetY + FILE_ICON_SIZE.dp()
             )
-            canvas.drawRoundRect(
+            drawRoundRect(
                 rect,
                 FILE_ICON_RADIUS.toFloat(),
                 FILE_ICON_RADIUS.toFloat(),
                 fileIconPaint
             )
 
-            canvas.drawBitmap(
+            drawBitmap(
                 if (moreFiles) ImageLoader.iconMore else ImageLoader.iconFile,
                 null,
                 rect,
@@ -847,10 +858,10 @@ class NoteItemView @JvmOverloads constructor(
                 .setLineSpacing(0f, 1f)
                 .setIncludePad(false)
                 .setMaxLines(maxLines)
-                .setEllipsize(android.text.TextUtils.TruncateAt.END)
+                .setEllipsize(TextUtils.TruncateAt.END)
                 .build()
 
-            canvas.withTranslation(
+            withTranslation(
                 (MARGIN_FILE + MARGIN_FILENAME + FILE_ICON_SIZE.dp()).toFloat(),
                 offsetY + MARGIN_FILENAME
             ) {
@@ -866,44 +877,46 @@ class NoteItemView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         Log.v(TAG, "onDraw: $index")
+        var offX = 0F
+        var offY = 0F
 
         var contentWidth = width
-        bubblePaint.color = when (selected) {
-            true -> ContextCompat.getColor(context, R.color.note_bubble_background_selected)
-            false -> ContextCompat.getColor(context, R.color.note_bubble_background)
-        }
+
         canvas.drawRoundRect(
             bubbleRect,
             BACKGROUND_RADIUS.toFloat(),
             BACKGROUND_RADIUS.toFloat(),
             bubblePaint
         )
-        canvas.translate(MARGIN_BACKGROUND_START.toFloat(), MARGIN_BACKGROUND_Y.toFloat())
+
+        offX += MARGIN_BACKGROUND_START + MARGIN_BORDER
+        offY += MARGIN_BACKGROUND_Y + MARGIN_BORDER
+
         contentWidth -= (MARGIN_BACKGROUND_START + MARGIN_BACKGROUND_END)
-        canvas.translate(MARGIN_BORDER.toFloat(), MARGIN_BORDER.toFloat())
         contentWidth -= MARGIN_BORDER * 2
-        // draw images with the info got from measure
-        canvas.translate(0F, drawMedias(canvas))
-        canvas.translate(0F, drawFiles(canvas, contentWidth))
+        canvas.withTranslation(offX, offY) {
+            offY += drawMedias()
+        }
+        canvas.withTranslation(offX, offY) {
+            offY += drawFiles(contentWidth)
+        }
 
         if (!text.isEmpty()) {
-            canvas.translate(0F, MARGIN_TEXT.toFloat())
-            canvas.withTranslation(MARGIN_TEXT.toFloat(), 0F) {
-                textPaint.color = when (selected) {
-                    true -> ContextCompat.getColor(context, R.color.color_text_main_selected)
-                    false -> ContextCompat.getColor(context, R.color.color_text_main)
-                }
+            offY += MARGIN_TEXT
+            canvas.withTranslation(offX + MARGIN_TEXT.toFloat(), offY) {
                 textLayout.draw(this)
             }
-            canvas.translate(0F, (textLayout.height + MARGIN_TEXT).toFloat())
+            offY += textLayout.height + MARGIN_TEXT
         }
-        canvas.withTranslation(MARGIN_TIME.toFloat(), 0F) {
-            timePaint.color = when (selected) {
-                true -> ContextCompat.getColor(context, R.color.color_text_sub_selected)
-                false -> ContextCompat.getColor(context, R.color.color_text_sub)
-            }
+        canvas.withTranslation(offX + MARGIN_TIME.toFloat(), offY) {
             timeLayout.draw(this)
         }
+
+        if (selected)
+            canvas.drawRect(
+            0F, 0F, width.toFloat(), height.toFloat(),
+            selectMaskPaint
+        )
     }
 
     class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {

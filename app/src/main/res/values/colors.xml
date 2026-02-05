@@ -11,13 +11,11 @@
     <color name="popup_menu_item_selected">#D0D0D0</color>
     <color name="popup_menu_text">@color/color_text_main</color>
 
+    <color name="note_item_select_mask">#20407C</color>
     <color name="note_bubble_background">#FFFFFF</color>
     <color name="note_bubble_shadow">#55000022</color>
     <color name="color_text_main">#222222</color>
     <color name="color_text_sub">#555555</color>
-    <color name="note_bubble_background_selected">#D6D6D6</color>
-    <color name="color_text_main_selected">#000000</color>
-    <color name="color_text_sub_selected">#333333</color>
 
 
     <!--  common values without set in night  -->
