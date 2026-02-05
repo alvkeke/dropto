@@ -99,7 +99,7 @@ class PopupMenu @JvmOverloads constructor(
                         canvas.clipRect(0f, top, menuWidth, bottom)
                         val cx = menuWidth / 2
                         val cy = (top + bottom) / 2
-                        val maxRadius = menuWidth * 1.1f
+                        val maxRadius = menuWidth * 0.6f
                         val currentRadius = maxRadius * animaRatio.coerceIn(0f, 1f)
                         canvas.drawCircle(cx, cy, currentRadius, highlightPaint)
                     }
@@ -134,7 +134,7 @@ class PopupMenu @JvmOverloads constructor(
         private var animateEnterJob: Job? = null
         private var startTime = 0L
         private var animationIn = true
-        private val animationInterval = 300
+        private val animationInterval = 200
         private fun animateEnterStart() {
             if (animateEnterJob?.isActive == true) return
             animationIn = true
