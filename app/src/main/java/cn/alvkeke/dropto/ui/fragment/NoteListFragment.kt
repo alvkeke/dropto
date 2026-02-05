@@ -632,6 +632,9 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             requireActivity().menuInflater.inflate(R.menu.item_pop_menu, menu)
             popupMenu.setMenu(menu)
             popupMenu.setMenuListener(menuListener)
+            popupMenu.setOnDismissListener {
+                noteItemAdapter.clearHighLight()
+            }
         }
         Log.v(TAG, "show popup menu for item-$index at x:$x, y:$y")
         noteItemForMenu = noteItem
@@ -651,6 +654,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             yShow = bottomLimit - popupMenu.height
         }
 
+        noteItemAdapter.highLight(index)
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
     }
 

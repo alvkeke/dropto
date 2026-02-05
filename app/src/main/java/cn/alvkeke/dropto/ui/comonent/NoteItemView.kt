@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -19,6 +20,7 @@ import android.util.Log
 import android.util.Size
 import android.view.View
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.withSave
 import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -45,7 +47,8 @@ class NoteItemView @JvmOverloads constructor(
     var createTime: Long = 0L
 
     @JvmField
-    var asyncImageLoad: Boolean = true
+    var asyncImageLoad: Boolean = false
+    var asyncVideoLoad: Boolean = true
 
     private class AttachmentList(
         private val backingList: MutableList<AttachmentInfo>
@@ -171,6 +174,12 @@ class NoteItemView @JvmOverloads constructor(
         color = ContextCompat.getColor(context, R.color.note_item_select_mask)
         alpha = 40
     }
+
+    private val highlightPaint: Paint = Paint().apply {
+        color = Color.BLACK
+        alpha = 120
+    }
+    private val highlightPath: Path = Path()
 
     private var bubbleRect: RectF = RectF()
     private var bubblePaint: Paint = Paint().apply {
@@ -573,7 +582,7 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun measureHeight(width: Int) : Int {
         val contentWidth =
-            width - MARGIN_BACKGROUND_START - MARGIN_BACKGROUND_END - MARGIN_BORDER * 2
+            width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END - MARGIN_BORDER * 2
         var desiredHeight = MARGIN_BORDER * 2
 
         desiredHeight += measureMediasHeight(contentWidth)
@@ -640,10 +649,10 @@ class NoteItemView @JvmOverloads constructor(
         setMeasuredDimension(width, height)
 
         bubbleRect.set(
-            MARGIN_BACKGROUND_START.toFloat(),
-            MARGIN_BACKGROUND_Y.toFloat(),
-            (width - MARGIN_BACKGROUND_END).toFloat(),
-            (height - MARGIN_BACKGROUND_Y).toFloat()
+            MARGIN_BUBBLE_START.toFloat(),
+            MARGIN_BUBBLE_Y.toFloat(),
+            (width - MARGIN_BUBBLE_END).toFloat(),
+            (height - MARGIN_BUBBLE_Y).toFloat()
         )
 
     }
@@ -660,7 +669,7 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun getVideoBitmap(info: AttachmentList.AttachmentInfo): Bitmap {
         val file = info.file.md5file
-        return if (asyncImageLoad) {
+        return if (asyncVideoLoad) {
             if (info.cachedBitmap != null) {
                 info.cachedBitmap!!
             } else {
@@ -893,15 +902,15 @@ class NoteItemView @JvmOverloads constructor(
 
         canvas.drawRoundRect(
             bubbleRect,
-            BACKGROUND_RADIUS.toFloat(),
-            BACKGROUND_RADIUS.toFloat(),
+            BUBBLE_RADIUS.toFloat(),
+            BUBBLE_RADIUS.toFloat(),
             bubblePaint
         )
 
-        offX += MARGIN_BACKGROUND_START + MARGIN_BORDER
-        offY += MARGIN_BACKGROUND_Y + MARGIN_BORDER
+        offX += MARGIN_BUBBLE_START + MARGIN_BORDER
+        offY += MARGIN_BUBBLE_Y + MARGIN_BORDER
 
-        contentWidth -= (MARGIN_BACKGROUND_START + MARGIN_BACKGROUND_END)
+        contentWidth -= (MARGIN_BUBBLE_START + MARGIN_BUBBLE_END)
         contentWidth -= MARGIN_BORDER * 2
         canvas.withTranslation(offX, offY) {
             offY += drawMedias(contentWidth)
@@ -934,6 +943,29 @@ class NoteItemView @JvmOverloads constructor(
                 0f, 0f, width.toFloat(), height.toFloat(),
                 selectMaskPaint
             )
+        }
+
+        if (highlightStatus == HighlightStatus.Highlighted) {
+            canvas.withSave {
+                highlightPath.addRoundRect(
+                    bubbleRect,
+                    BUBBLE_RADIUS.toFloat(),
+                    BUBBLE_RADIUS.toFloat(),
+                    Path.Direction.CW
+                )
+                canvas.clipOutPath(highlightPath)
+                canvas.drawRect(
+                    0f, 0f, width.toFloat(), height.toFloat(),
+                    highlightPaint
+                )
+            }
+        } else if (highlightStatus == HighlightStatus.Dimmed) {
+            canvas.withSave {
+                canvas.drawRect(
+                    0f, 0f, width.toFloat(), height.toFloat(),
+                    highlightPaint
+                )
+            }
         }
     }
 
@@ -1003,6 +1035,13 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
+    enum class HighlightStatus {
+        None,
+        Highlighted,
+        Dimmed
+    }
+    var highlightStatus: HighlightStatus = HighlightStatus.None
+
     class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
         enum class Type {
             BACKGROUND,
@@ -1017,10 +1056,10 @@ class NoteItemView @JvmOverloads constructor(
         val attachments = (_medias + _files)
         attachments.iterator().forEach { info ->
             val checkRect = RectF(
-                info.rect.left + MARGIN_BACKGROUND_START + MARGIN_BORDER,
-                info.rect.top + MARGIN_BACKGROUND_Y + MARGIN_BORDER,
-                info.rect.right + MARGIN_BACKGROUND_START + MARGIN_BORDER,
-                info.rect.bottom + MARGIN_BACKGROUND_Y + MARGIN_BORDER
+                info.rect.left + MARGIN_BUBBLE_START + MARGIN_BORDER,
+                info.rect.top + MARGIN_BUBBLE_Y + MARGIN_BORDER,
+                info.rect.right + MARGIN_BUBBLE_START + MARGIN_BORDER,
+                info.rect.bottom + MARGIN_BUBBLE_Y + MARGIN_BORDER
             )
             if (checkRect.contains(x, y)) {
                 Log.v(TAG, "checkClickedItem: attachment $info clicked")
@@ -1047,10 +1086,10 @@ class NoteItemView @JvmOverloads constructor(
     companion object {
         const val TAG: String = "NoteItemView"
 
-        const val MARGIN_BACKGROUND_Y = 4
-        const val MARGIN_BACKGROUND_START = 128
-        const val MARGIN_BACKGROUND_END = 256
-        const val BACKGROUND_RADIUS = 16
+        const val MARGIN_BUBBLE_Y = 4
+        const val MARGIN_BUBBLE_START = 64
+        const val MARGIN_BUBBLE_END = 256
+        const val BUBBLE_RADIUS = 16
 
         const val MARGIN_BORDER = 8
         const val MARGIN_IMAGE = 8
