@@ -146,7 +146,7 @@ class PopupMenu @JvmOverloads constructor(
                     animaRatio = diff / animationInterval.toFloat()
                     invalidate()
                     if (animaRatio >= 1f) break
-                    kotlinx.coroutines.delay(15L)
+                    kotlinx.coroutines.delay(5L)
                 }
             }
         }

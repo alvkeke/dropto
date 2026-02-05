@@ -19,6 +19,8 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         return ViewHolder(view)
     }
 
+    private val lastStatusMap: HashMap<Int, Boolean> = HashMap()
+
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val note = this.get(position)
         val view = holder.content
@@ -29,7 +31,10 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.medias.addAll(note.medias)
         view.files.clear()
         view.files.addAll(note.files)
-        view.selected = isSelected(note)
+        val noteStatus = isSelected(note)
+        view.lastSelected = lastStatusMap[position] ?: false
+        view.isSelected = noteStatus
+        lastStatusMap[position] = noteStatus
         view.invalidate()
     }
 
