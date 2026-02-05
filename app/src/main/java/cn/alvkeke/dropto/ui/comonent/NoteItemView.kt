@@ -753,10 +753,15 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun Canvas.drawMedias(): Float {
+    private fun Canvas.drawMedias(contentWidth: Int): Float {
         Log.v(TAG, "drawMedias: total size: ${_medias.size}")
 
         if (_medias.isEmpty()) return 0f
+
+        if (_medias[0].rect.isEmpty) {
+            Log.w(TAG, "drawMedias: media rect is empty, need to measure again")
+            measureMediasHeight(contentWidth)
+        }
 
         var offsetY: Float
         for (info in _medias.take(MAX_IMAGE_COUNT)) {
@@ -899,7 +904,7 @@ class NoteItemView @JvmOverloads constructor(
         contentWidth -= (MARGIN_BACKGROUND_START + MARGIN_BACKGROUND_END)
         contentWidth -= MARGIN_BORDER * 2
         canvas.withTranslation(offX, offY) {
-            offY += drawMedias()
+            offY += drawMedias(contentWidth)
         }
         canvas.withTranslation(offX, offY) {
             offY += drawFiles(contentWidth)
