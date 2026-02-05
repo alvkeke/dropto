@@ -10,6 +10,7 @@ import android.content.DialogInterface
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MenuItem
@@ -636,8 +637,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         noteItemForMenu = noteItem
         val targetTop = y - popupMenu.height / 3
         val targetBottom = targetTop + popupMenu.height
-        val xOffset = v.width / 5
-        var yOffset = targetTop - toolbar.bottom
+        val xShow = v.width / 5
+        var yShow = targetTop
 
         val location = IntArray(2)
         rlNoteList.getLocationOnScreen(location)
@@ -645,12 +646,12 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         val bottomLimit = topLimit + rlNoteList.bottom
 
         if (targetTop < topLimit) {
-            yOffset = 0
+            yShow = topLimit
         } else if (targetBottom > bottomLimit) {
-            yOffset = bottomLimit - popupMenu.height - toolbar.bottom
+            yShow = bottomLimit - popupMenu.height
         }
 
-        popupMenu.showAsDropDown(toolbar, xOffset, yOffset)
+        popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
     }
 
     private var pendingNoteItem: NoteItem? = null
