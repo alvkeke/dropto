@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -132,21 +133,22 @@ class PopupMenu @JvmOverloads constructor(
         }
 
         private var animateEnterJob: Job? = null
-        private var startTime = 0L
         private var animationIn = true
-        private val animationInterval = 200
         private fun animateEnterStart() {
             if (animateEnterJob?.isActive == true) return
             animationIn = true
-            startTime = System.currentTimeMillis()
+            val totalFrames = ANIMATION_DURATION / ANIMATION_INTERVAL
+            var currentFrame = 0
+
             animateEnterJob = CoroutineScope(Dispatchers.Main).launch {
                 while(true) {
-                    val currentTime = System.currentTimeMillis()
-                    val diff = currentTime - startTime
-                    animaRatio = diff / animationInterval.toFloat()
+                    animaRatio = (currentFrame.toFloat() / totalFrames)
+                        .coerceIn(0f, 1f)
+                    Log.e(TAG, "animateEnterStart: $animaRatio")
                     invalidate()
-                    if (animaRatio >= 1f) break
-                    kotlinx.coroutines.delay(5L)
+                    currentFrame++
+                    if (currentFrame > totalFrames) break
+                    kotlinx.coroutines.delay(ANIMATION_INTERVAL)
                 }
             }
         }
@@ -158,14 +160,15 @@ class PopupMenu @JvmOverloads constructor(
                 animateEnterJob?.join()
 
                 animationIn = false
-                startTime = System.currentTimeMillis()
+                val totalFrames = ANIMATION_DURATION / ANIMATION_INTERVAL
+                var currentFrame = 0
+
                 while(true) {
-                    val currentTime = System.currentTimeMillis()
-                    val diff = currentTime - startTime
-                    animaRatio = (1f - diff / animationInterval.toFloat())
-                            .coerceAtLeast(0f)
+                    animaRatio = 1f - (currentFrame.toFloat() / totalFrames)
+                    Log.e(TAG, "animateExitStart: $animaRatio")
                     invalidate()
-                    if (diff >= animationInterval) break
+                    currentFrame++
+                    if (currentFrame > totalFrames) break
                     kotlinx.coroutines.delay(15L)
                 }
                 animateExitJob = null
@@ -239,5 +242,8 @@ class PopupMenu @JvmOverloads constructor(
     companion object {
         const val ROUND_CONNER_RADIUS = 16
         const val SHADOW_PADDING = 5
+
+        const val ANIMATION_DURATION = 100L
+        const val ANIMATION_INTERVAL = 5L
     }
 }
