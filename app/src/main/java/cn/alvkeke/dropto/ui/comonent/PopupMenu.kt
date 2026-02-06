@@ -21,6 +21,9 @@ import cn.alvkeke.dropto.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @SuppressLint("ViewConstructor")
@@ -75,8 +78,17 @@ class PopupMenu @JvmOverloads constructor(
 
     private val menuView = object : View(context) {
 
+        private var _animationScope: CoroutineScope? = null
+        private val animationScope: CoroutineScope
+            get() {
+                if (_animationScope == null || _animationScope?.isActive != true) {
+                    _animationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+                }
+                return _animationScope!!
+            }
+
         private var downIndex = -1
-        private var animaRatio = 0f
+        @Volatile private var animateRatio = 0f
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
@@ -92,7 +104,7 @@ class PopupMenu @JvmOverloads constructor(
             if (downIndex in 0 until menu.size) {
                 val top = downIndex * menuItemHeight
                 val bottom = top + menuItemHeight
-                highlightPaint.alpha = (animaRatio.coerceIn(0f, 1f) * 255).toInt()
+                highlightPaint.alpha = (animateRatio.coerceIn(0f, 1f) * 255).toInt()
                 path.addRoundRect(rect, radius, radius, Path.Direction.CW)
                 if (animationIn) {
                     canvas.withSave {
@@ -101,7 +113,7 @@ class PopupMenu @JvmOverloads constructor(
                         val cx = menuWidth / 2
                         val cy = (top + bottom) / 2
                         val maxRadius = menuWidth * 0.6f
-                        val currentRadius = maxRadius * animaRatio.coerceIn(0f, 1f)
+                        val currentRadius = maxRadius * animateRatio.coerceIn(0f, 1f)
                         canvas.drawCircle(cx, cy, currentRadius, highlightPaint)
                     }
                 } else {
@@ -133,18 +145,18 @@ class PopupMenu @JvmOverloads constructor(
         }
 
         private var animateEnterJob: Job? = null
-        private var animationIn = true
+        @Volatile private var animationIn = true
         private fun animateEnterStart() {
             if (animateEnterJob?.isActive == true) return
             animationIn = true
             val totalFrames = ANIMATION_DURATION / ANIMATION_INTERVAL
             var currentFrame = 0
 
-            animateEnterJob = CoroutineScope(Dispatchers.Main).launch {
+            animateEnterJob = animationScope.launch {
                 while(true) {
-                    animaRatio = (currentFrame.toFloat() / totalFrames)
+                    animateRatio = (currentFrame.toFloat() / totalFrames)
                         .coerceIn(0f, 1f)
-                    Log.e(TAG, "animateEnterStart: $animaRatio")
+                    Log.e(TAG, "animateEnterStart: $animateRatio")
                     invalidate()
                     currentFrame++
                     if (currentFrame > totalFrames) break
@@ -156,7 +168,7 @@ class PopupMenu @JvmOverloads constructor(
         @Volatile private var animateExitJob: Job? = null
         private fun animateExitStart() {
             if (animateExitJob?.isActive == true) return
-            animateExitJob = CoroutineScope(Dispatchers.Main).launch {
+            animateExitJob = animationScope.launch {
                 animateEnterJob?.join()
 
                 animationIn = false
@@ -164,8 +176,8 @@ class PopupMenu @JvmOverloads constructor(
                 var currentFrame = 0
 
                 while(true) {
-                    animaRatio = 1f - (currentFrame.toFloat() / totalFrames)
-                    Log.e(TAG, "animateExitStart: $animaRatio")
+                    animateRatio = 1f - (currentFrame.toFloat() / totalFrames)
+                    Log.e(TAG, "animateExitStart: $animateRatio")
                     invalidate()
                     currentFrame++
                     if (currentFrame > totalFrames) break
@@ -221,6 +233,10 @@ class PopupMenu @JvmOverloads constructor(
             return super.onTouchEvent(event)
         }
 
+        fun cancelAnimations() {
+            animationScope.cancel()
+        }
+
     }
 
     init {
@@ -239,7 +255,13 @@ class PopupMenu @JvmOverloads constructor(
         return this
     }
 
+    override fun dismiss() {
+        menuView.cancelAnimations()
+        super.dismiss()
+    }
+
     companion object {
+        private const val TAG = "PopupMenu"
         const val ROUND_CONNER_RADIUS = 16
         const val SHADOW_PADDING = 5
 

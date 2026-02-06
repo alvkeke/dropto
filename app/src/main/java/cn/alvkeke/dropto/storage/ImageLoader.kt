@@ -13,6 +13,10 @@ import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.LockedHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Timer
 import java.util.TimerTask
@@ -22,6 +26,8 @@ import kotlin.math.ceil
 object ImageLoader {
 
     const val TAG: String = "ImageLoader"
+
+    private val imageLoaderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun interface ImageLoadListener {
         fun onImageLoaded(bitmap: Bitmap?)
@@ -249,10 +255,10 @@ object ImageLoader {
                 listener?.onImageLoaded(wrappedBitmap.bitmap)
             return wrappedBitmap.bitmap
         }
-        Thread {
+        imageLoaderScope.launch {
             val bitmap = loadImage(file)
             handler.post { listener?.onImageLoaded(bitmap) }
-        }.start()
+        }
         return null
     }
 
@@ -264,10 +270,10 @@ object ImageLoader {
             listener.onImageLoaded(wrappedBitmap.bitmap)
             return
         }
-        Thread {
+        imageLoaderScope.launch {
             val bitmap = loadBitmapOriginal(file)
             handler.post { listener.onImageLoaded(bitmap) }
-        }.start()
+        }
     }
 
     @JvmStatic
@@ -312,10 +318,11 @@ object ImageLoader {
                 listener?.onImageLoaded(wrappedBitmap.bitmap)
             return wrappedBitmap.bitmap
         }
-        Thread {
+
+        imageLoaderScope.launch {
             val bitmap = loadVideoThumbnail(file)
             handler.post { listener?.onImageLoaded(bitmap) }
-        }.start()
+        }
         return null
     }
 

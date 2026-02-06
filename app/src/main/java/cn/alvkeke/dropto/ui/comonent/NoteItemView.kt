@@ -28,7 +28,10 @@ import cn.alvkeke.dropto.storage.ImageLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -47,7 +50,7 @@ class NoteItemView @JvmOverloads constructor(
     var createTime: Long = 0L
 
     @JvmField
-    var asyncImageLoad: Boolean = false
+    var asyncImageLoad: Boolean = true
     var asyncVideoLoad: Boolean = true
 
     private class AttachmentList(
@@ -969,7 +972,7 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private var animationRatio = 0f
+    @Volatile private var animationRatio = 0f
 
     // An outside state holder is needed for the RecyclerView, the child views in the RecyclerView
     // will be recycled and reused for different data, so we will not able to get the correct
@@ -991,6 +994,16 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     @Volatile private var isAnimating: Boolean = false
+
+    private var _animationScope: CoroutineScope? = null
+    private val animationScope: CoroutineScope
+        get() {
+            if (_animationScope == null || _animationScope?.isActive != true) {
+                _animationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            }
+            return _animationScope!!
+        }
+
     private var selectAnimationJob: Job? = null
     private fun selectAnimate() {
         if (selectAnimationJob?.isActive == true) return
@@ -998,7 +1011,7 @@ class NoteItemView @JvmOverloads constructor(
         val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
         var currentFrame = 0
 
-        selectAnimationJob = CoroutineScope(Dispatchers.Main).launch {
+        selectAnimationJob = animationScope.launch {
             isAnimating = true
             while (currentFrame <= totalFrames) {
                 animationRatio = currentFrame.toFloat() / totalFrames
@@ -1020,7 +1033,7 @@ class NoteItemView @JvmOverloads constructor(
         val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
         var currentFrame = 0
 
-        unselectAnimationJob = CoroutineScope(Dispatchers.Main).launch {
+        unselectAnimationJob = animationScope.launch {
             selectAnimationJob?.join()
             isAnimating = true
             while (currentFrame <= totalFrames) {
@@ -1113,6 +1126,11 @@ class NoteItemView @JvmOverloads constructor(
         const val ANIMATION_INTERVAL = 5L
 
         var sdf: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        animationScope.cancel()
     }
 
 }

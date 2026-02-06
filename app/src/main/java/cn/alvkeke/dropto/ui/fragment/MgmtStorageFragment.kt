@@ -12,6 +12,7 @@ import android.widget.CheckBox
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,6 +21,9 @@ import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.ImageListAdapter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.LinkedList
 
@@ -73,8 +77,12 @@ class MgmtStorageFragment : Fragment() {
         cbCache.isChecked = true
 
         initFolders()
-        Thread(taskCalcCache).start()
-        Thread(taskCalcImage).start()
+        viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+            taskCalcCache()
+        }
+        viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+            taskCalcImage()
+        }
     }
 
     lateinit var folderImage: File
@@ -130,17 +138,17 @@ class MgmtStorageFragment : Fragment() {
     private fun clearSelectedData(v: View) {
         buttonClear.isEnabled = false
         if (cbCache.isChecked) {
-            Thread {
+            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
                 emptyFolder(folderCache)
-                taskCalcCache.run()
-            }.start()
+                taskCalcCache()
+            }
         }
         if (cbImage.isChecked) {
-            Thread {
+            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
                 emptyFolder(folderImage)
                 handler.post { imageListAdapter.emptyList() }
-                taskCalcImage.run()
-            }.start()
+                taskCalcImage()
+            }
         }
         buttonClear.isEnabled = true
     }
@@ -179,7 +187,7 @@ class MgmtStorageFragment : Fragment() {
         view.text = string
     }
 
-    private val taskCalcCache = Runnable {
+    private fun taskCalcCache() {
         sizeCache = 0
         iterateFolder(folderCache) { file ->
             if (file.isFile) sizeCache += file.length()
@@ -192,7 +200,7 @@ class MgmtStorageFragment : Fragment() {
         }
     }
 
-    private val taskCalcImage = Runnable {
+    private fun taskCalcImage() {
         sizeImage = 0
         iterateFolder(folderImage) { file ->
             if (file.isFile) sizeImage += file.length()

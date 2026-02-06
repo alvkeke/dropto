@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -53,6 +54,9 @@ import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -243,16 +247,12 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             )
         )
 
-        Thread(Runnable {
-            try {
-                Thread.sleep(1000)
-            } catch (ex: InterruptedException) {
-                Log.e(this.toString(), "failed to sleep: $ex")
-            }
-            val imgFolder = getFolderImage(this)
-            val imgFiles = tryExtractResImages(this, imgFolder) ?: return@Runnable
+        lifecycleScope.launch(Dispatchers.IO) {
+            delay(1000)
+            val imgFolder = getFolderImage(this@MainActivity)
+            val imgFiles = tryExtractResImages(this@MainActivity, imgFolder) ?: return@launch
             val categories: ArrayList<Category> = categories
-            if (categories.isEmpty()) return@Runnable
+            if (categories.isEmpty()) return@launch
 
             val r = Random()
             val cateId = categories[r.nextInt(categories.size)].id
@@ -273,7 +273,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                 }
                 app.service?.queueTask(createNote(e))
             }
-        }).start()
+        }
     }
 
     override fun onAttempt(attempt: CategoryDBAttemptListener.Attempt, category: Category) {

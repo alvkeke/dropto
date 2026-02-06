@@ -19,8 +19,12 @@ import cn.alvkeke.dropto.service.Task.ResultListener
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.DataLoader.findCategory
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.Semaphore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class CoreService : Service() {
     override fun onBind(intent: Intent): IBinder {
@@ -69,13 +73,12 @@ class CoreService : Service() {
         super.onCreate()
         Log.d(this.toString(), "CoreService onCreate")
         startForeground()
-        startTaskRunnerThread()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(this.toString(), "CoreService onDestroy")
-        tryStopTaskRunnerThread()
+        _serviceScope?.cancel() // 取消所有协程
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
@@ -280,40 +283,20 @@ class CoreService : Service() {
         }
     }
 
-    private val tasks = ConcurrentLinkedQueue<Task>()
-    private val taskSemaphore = Semaphore(0)
-
-    private var taskRunnerThread: Thread? = null
-    private var canTaskRunnerThreadRun = false
-    private val taskRunner = Runnable {
-        while (canTaskRunnerThreadRun) {
-            try {
-                taskSemaphore.acquire()
-                val task = tasks.poll() ?: continue
-
-                distributeTask(task)
-            } catch (_: InterruptedException) {
+    private var _serviceScope : CoroutineScope? = null
+    private val serviceScope : CoroutineScope
+        get() {
+            if (_serviceScope == null || _serviceScope?.isActive != true) {
+                _serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             }
+            return _serviceScope!!
         }
-    }
-
-    private fun startTaskRunnerThread() {
-        taskRunnerThread = Thread(taskRunner)
-        canTaskRunnerThreadRun = true
-        taskRunnerThread!!.start()
-    }
-
-    private fun tryStopTaskRunnerThread() {
-        canTaskRunnerThreadRun = false
-        taskSemaphore.release() // release semaphore to exit waiting
-        taskRunnerThread = null
-    }
 
     fun queueTask(task: Task) {
         Log.d(TAG, "task queued: $task")
-        Thread { distributeTask(task) }.start()
-//        tasks.offer(task);
-//        taskSemaphore.release();
+        serviceScope.launch {
+            distributeTask(task)
+        }
     }
 
     companion object {
