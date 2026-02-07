@@ -168,6 +168,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
         }
     }
 
+    // FIXME: this might cause issue since this is not handling the insertion and removing
     private val selectedMap = HashMap<Int, Boolean>()
     val selectedCount: Int
         get() = selectedMap.filter { e -> e.value }.size
