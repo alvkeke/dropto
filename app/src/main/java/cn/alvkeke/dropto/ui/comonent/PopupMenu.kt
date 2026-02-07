@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -88,7 +87,6 @@ class PopupMenu @JvmOverloads constructor(
             }
 
         private var downIndex = -1
-        @Volatile private var animateRatio = 0f
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
@@ -106,7 +104,7 @@ class PopupMenu @JvmOverloads constructor(
                 val bottom = top + menuItemHeight
                 highlightPaint.alpha = (animateRatio.coerceIn(0f, 1f) * 255).toInt()
                 path.addRoundRect(rect, radius, radius, Path.Direction.CW)
-                if (animationIn) {
+                if (animationRunning) {
                     canvas.withSave {
                         canvas.clipPath(path)
                         canvas.clipRect(0f, top, menuWidth, bottom)
@@ -144,46 +142,45 @@ class PopupMenu @JvmOverloads constructor(
             return (y / menuItemHeight).toInt()
         }
 
-        private var animateEnterJob: Job? = null
-        @Volatile private var animationIn = true
-        private fun animateEnterStart() {
-            if (animateEnterJob?.isActive == true) return
-            animationIn = true
-            val totalFrames = ANIMATION_DURATION / ANIMATION_INTERVAL
-            var currentFrame = 0
+        private var animateJob: Job? = null
+        @Volatile private var animateRatio = 0f
+        @Volatile private var animationRunning = false
+        @Volatile private var animationIsEnter = true
+        private fun animateStart(
+            isEnter: Boolean = true
+        ) {
+            if (animationRunning && isEnter == animationIsEnter) return
 
-            animateEnterJob = animationScope.launch {
-                while(true) {
-                    animateRatio = (currentFrame.toFloat() / totalFrames)
-                        .coerceIn(0f, 1f)
-                    Log.e(TAG, "animateEnterStart: $animateRatio")
-                    invalidate()
-                    currentFrame++
-                    if (currentFrame > totalFrames) break
-                    kotlinx.coroutines.delay(ANIMATION_INTERVAL)
+            val totalFrames = ANIMATION_DURATION / ANIMATION_INTERVAL
+            val step: Float
+            val isEnd: (Float) -> Boolean
+            when (isEnter) {
+                true -> {
+                    step = 1f / totalFrames
+                    isEnd = { ratio -> ratio >= 1f }
+                }
+                false -> {
+                    step = -1f / totalFrames
+                    isEnd = { ratio -> ratio <= 0f }
                 }
             }
-        }
 
-        @Volatile private var animateExitJob: Job? = null
-        private fun animateExitStart() {
-            if (animateExitJob?.isActive == true) return
-            animateExitJob = animationScope.launch {
-                animateEnterJob?.join()
-
-                animationIn = false
-                val totalFrames = ANIMATION_DURATION / ANIMATION_INTERVAL
-                var currentFrame = 0
-
+            if (animateJob?.isActive != true) {
+                animateRatio = if (isEnter) { 0f } else { 1f }
+            } else {
+                animateJob?.cancel()
+            }
+            animationIsEnter = isEnter
+            animateJob = animationScope.launch {
+                animationRunning = true
                 while(true) {
-                    animateRatio = 1f - (currentFrame.toFloat() / totalFrames)
-                    Log.e(TAG, "animateExitStart: $animateRatio")
+                    animateRatio = (animateRatio + step)
+                        .coerceIn(0f, 1f)
                     invalidate()
-                    currentFrame++
-                    if (currentFrame > totalFrames) break
-                    kotlinx.coroutines.delay(15L)
+                    if (isEnd(animateRatio)) break
+                    kotlinx.coroutines.delay(ANIMATION_INTERVAL)
                 }
-                animateExitJob = null
+                animationRunning = false
             }
         }
 
@@ -192,15 +189,12 @@ class PopupMenu @JvmOverloads constructor(
         override fun onTouchEvent(event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    if (animateExitJob?.isActive == true || animateEnterJob?.isActive == true) {
-                        return true
-                    }
                     downIndex = getTouchedMenuItemIndex(
                         event.x - SHADOW_PADDING,
                         event.y - SHADOW_PADDING
                     )
                     outCount = 0
-                    animateEnterStart()
+                    animateStart()
                     return true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -212,7 +206,7 @@ class PopupMenu @JvmOverloads constructor(
                         outCount == 0 &&
                         index in 0 until menu.size) {
                         val menuItem = menu[index]
-                        animateExitStart()
+                        animateStart(false)
                         menuListener?.onMenuItemClick(menuItem)
                         dismiss()
                     }
@@ -225,7 +219,7 @@ class PopupMenu @JvmOverloads constructor(
                     )
                     if (index != downIndex) {
                         if (outCount < 10) outCount++           // prevent overflow
-                        if (outCount == 1) animateExitStart()    // run only once
+                        if (outCount == 1) animateStart(false)    // run only once
                     }
                     return true
                 }
@@ -233,8 +227,11 @@ class PopupMenu @JvmOverloads constructor(
             return super.onTouchEvent(event)
         }
 
-        fun cancelAnimations() {
+        fun resetAnimations() {
             animationScope.cancel()
+            animateRatio = 0f
+            animationRunning = false
+            downIndex = -1
         }
 
     }
@@ -256,12 +253,11 @@ class PopupMenu @JvmOverloads constructor(
     }
 
     override fun dismiss() {
-        menuView.cancelAnimations()
         super.dismiss()
+        menuView.resetAnimations()
     }
 
     companion object {
-        private const val TAG = "PopupMenu"
         const val ROUND_CONNER_RADIUS = 16
         const val SHADOW_PADDING = 5
 
