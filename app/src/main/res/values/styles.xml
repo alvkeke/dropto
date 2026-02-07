@@ -27,4 +27,10 @@
         <item name="windowNoTitle">true</item>
     </style>
 
+    <!-- animation for popup menu in NoteList -->
+    <style name="PopupMenuAnimation">
+        <item name="android:windowEnterAnimation">@anim/menu_popup_enter</item>
+        <item name="android:windowExitAnimation">@anim/menu_popup_exit</item>
+    </style>
+
 </resources>

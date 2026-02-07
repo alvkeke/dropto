@@ -641,6 +641,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             requireActivity().menuInflater.inflate(R.menu.item_pop_menu, menu)
             popupMenu.setMenu(menu)
             popupMenu.setMenuListener(menuListener)
+            popupMenu.animationStyle = R.style.PopupMenuAnimation
             popupMenu.setOnDismissListener {
                 rlNoteList.clearHighLight()
             }
