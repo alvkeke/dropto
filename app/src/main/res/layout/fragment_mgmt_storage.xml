@@ -5,7 +5,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <CheckBox
-        android:id="@+id/mgmt_storage_image"
+        android:id="@+id/mgmt_storage_attachment"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:text="@string/string_image_storage_usage_prompt"
@@ -17,7 +17,7 @@
     <CheckBox
         android:id="@+id/mgmt_storage_cache"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/mgmt_storage_image"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_storage_attachment"
         android:text="@string/string_cache_storage_usage_prompt"
         android:layout_margin="20dp"
         android:textSize="20sp"

@@ -7,13 +7,13 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class ImageListAdapter(context: Context) : RecyclerView.Adapter<ImageListAdapter.ViewHolder>() {
+class AttachmentListAdapter(context: Context) : RecyclerView.Adapter<AttachmentListAdapter.ViewHolder>() {
     interface OnItemClickListener {
         fun onClick(index: Int)
         fun onLongClick(index: Int): Boolean
     }
 
-    private val images = ArrayList<String>()
+    private val attachments = ArrayList<String>()
     private var listener: OnItemClickListener? = null
 
     private val inflater: LayoutInflater = LayoutInflater.from(context)
@@ -24,33 +24,33 @@ class ImageListAdapter(context: Context) : RecyclerView.Adapter<ImageListAdapter
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, i: Int) {
-        viewHolder.setText(images[i])
+        viewHolder.setText(attachments[i])
         viewHolder.setOnClickListener(i)
     }
 
     override fun getItemCount(): Int {
-        return images.size
+        return attachments.size
     }
 
     fun add(file: String) {
-        images.add(file)
-        val index = images.indexOf(file)
+        attachments.add(file)
+        val index = attachments.indexOf(file)
         if (index >= 0) this.notifyItemInserted(index)
     }
 
     fun remove(index: Int) {
-        images.removeAt(index)
+        attachments.removeAt(index)
         notifyItemRemoved(index)
-        notifyItemRangeChanged(index, images.size - index)
+        notifyItemRangeChanged(index, attachments.size - index)
     }
 
     fun get(index: Int): String {
-        return images[index]
+        return attachments[index]
     }
 
     fun emptyList() {
-        this.notifyItemRangeRemoved(0, images.size)
-        images.clear()
+        this.notifyItemRangeRemoved(0, attachments.size)
+        attachments.clear()
     }
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

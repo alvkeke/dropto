@@ -8,9 +8,9 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import cn.alvkeke.dropto.DroptoApplication
-import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Type
+import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
@@ -163,10 +163,6 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
             return null
         }
         val fileName = getFileNameFromUri(this, uri)
-        if (fileName == null) {
-            Log.e(this.toString(), "Failed to get file name from uri: $uri")
-            return null
-        }
         val mimeType = Global.mimeTypeFromFileName(fileName)
         val attachmentType = if (mimeType.startsWith("image/") ||
             mimeType.startsWith("video/")) {

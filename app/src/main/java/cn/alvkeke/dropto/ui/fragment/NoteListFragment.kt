@@ -37,6 +37,7 @@ import androidx.core.view.get
 import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -59,6 +60,9 @@ import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
 import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
@@ -531,19 +535,21 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             val content = etInputText.text.toString().trim { it <= ' ' }
             val item = NoteItem(content)
             item.categoryId = category.id
-            if (attachments.isEmpty()) {
-                if (content.isEmpty()) return
-            } else {
-                for (a in attachments) {
-                    val folder = Global.getFolderImage(context)
-                    val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
-                    val imgName = FileHelper.getFileNameFromUri(context, a.uri)
-                    val imageFile = AttachmentFile.from(md5file!!, imgName!!, a.type)
-                    item.attachments.add(imageFile)
+            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+                if (attachments.isEmpty()) {
+                    if (content.isEmpty()) return@launch
+                } else {
+                    for (a in attachments) {
+                        val folder = Global.getFolderImage(context)
+                        val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
+                        val imgName = FileHelper.getFileNameFromUri(context, a.uri)
+                        val imageFile = AttachmentFile.from(md5file!!, imgName, a.type)
+                        item.attachments.add(imageFile)
+                    }
                 }
+                setPendingItem(item)
+                dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, item)
             }
-            setPendingItem(item)
-            dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, item)
         }
     }
 

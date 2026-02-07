@@ -45,21 +45,58 @@ object FileHelper {
     }
 
     @Throws(IOException::class)
-    fun copyFileTo(fd: FileDescriptor, dest: File) {
-        val fis = FileInputStream(fd)
-        val srcChannel = fis.channel.position(0)
-        val fos = FileOutputStream(dest)
-        val destChannel = fos.channel
-        // do data copy
-        destChannel.transferFrom(srcChannel, 0, srcChannel.size())
-        srcChannel.close()
-        destChannel.close()
-        fis.close()
-        fos.close()
+    fun copyFileTo(fd: FileDescriptor, dest: File, fileName: String) {
+        val nameOnly = dest.isFile && dest.exists()
+
+        if (!nameOnly) {
+            val fis = FileInputStream(fd)
+            val srcChannel = fis.channel.position(0)
+            val fos = FileOutputStream(dest)
+            val destChannel = fos.channel
+            // do data copy
+            destChannel.transferFrom(srcChannel, 0, srcChannel.size())
+            srcChannel.close()
+            destChannel.close()
+            fis.close()
+            fos.close()
+        }
+
+        val nameFile = File(dest.parentFile, dest.name + ".names")
+        if (nameFile.exists()) {
+            val existingName = nameFile.readLines()
+            if (existingName.contains(fileName)) {
+                return
+            }
+        }
+        nameFile.appendText("$fileName\n")
+    }
+
+    const val UNKNOWN_FILE_NAME = "file.name.unknown"
+    const val FILE_NAME_SUFFIX = ".names"
+    @JvmStatic
+    @Suppress("unused")
+    fun getGoodFileNameFromMd5File(md5File: File): String? {
+        val nameFile = File(md5File.parentFile, md5File.name + FILE_NAME_SUFFIX)
+        if (!nameFile.exists()) {
+            return null
+        }
+        val names = nameFile.readLines()
+            .filter { it.isNotBlank() }.filter { it != UNKNOWN_FILE_NAME }
+        return if (names.isNotEmpty()) names[0] else UNKNOWN_FILE_NAME
     }
 
     @JvmStatic
-    fun getFileNameFromUri(context: Context, uri: Uri): String? {
+    @Suppress("unused")
+    fun getAllFileNamesFromMd5File(md5File: File): List<String>? {
+        val nameFile = File(md5File.parentFile, md5File.name + FILE_NAME_SUFFIX)
+        if (!nameFile.exists()) {
+            return null
+        }
+        return nameFile.readLines()
+    }
+
+    @JvmStatic
+    fun getFileNameFromUri(context: Context, uri: Uri): String {
         // ContentResolver to resolve the content Uri
         val resolver = context.contentResolver
         // Query the file name from the content Uri
@@ -72,7 +109,7 @@ object FileHelper {
             }
             cursor.close()
         }
-        return fileName
+        return fileName ?: UNKNOWN_FILE_NAME
     }
 
     @JvmStatic
@@ -84,12 +121,11 @@ object FileHelper {
                     Log.e(TAG, "saveUriToFile: failed to open uri: $uri")
                     return null
                 }
+                val fileName = getFileNameFromUri(context, uri)
                 val fd = inputPFD.fileDescriptor
                 val md5sum = calculateMD5(fd)
                 val retFile = md5ToFile(storeFolder, md5sum)
-                if (!(retFile.isFile && retFile.exists())) {
-                    copyFileTo(fd, retFile)
-                }
+                copyFileTo(fd, retFile, fileName)
                 return retFile
             }
         } catch (e: Exception) {

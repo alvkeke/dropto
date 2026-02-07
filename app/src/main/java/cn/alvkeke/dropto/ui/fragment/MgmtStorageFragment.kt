@@ -19,8 +19,9 @@ import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
+import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.activity.MainViewModel
-import cn.alvkeke.dropto.ui.adapter.ImageListAdapter
+import cn.alvkeke.dropto.ui.adapter.AttachmentListAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -30,10 +31,10 @@ import java.util.LinkedList
 class MgmtStorageFragment : Fragment() {
 
     private lateinit var viewModel: MainViewModel
-    private lateinit var cbImage: CheckBox
+    private lateinit var cbAttachment: CheckBox
     private lateinit var cbCache: CheckBox
     private lateinit var buttonClear: Button
-    private lateinit var imageListAdapter: ImageListAdapter
+    private lateinit var attachmentListAdapter: AttachmentListAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -48,7 +49,7 @@ class MgmtStorageFragment : Fragment() {
 
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
 
-        cbImage = view.findViewById(R.id.mgmt_storage_image)
+        cbAttachment = view.findViewById(R.id.mgmt_storage_attachment)
         cbCache = view.findViewById(R.id.mgmt_storage_cache)
         buttonClear = view.findViewById(R.id.mgmt_storage_btn_clear)
         val listFilename = view.findViewById<RecyclerView>(R.id.mgmt_storage_list_files)
@@ -63,9 +64,9 @@ class MgmtStorageFragment : Fragment() {
             )
         )
 
-        imageListAdapter = ImageListAdapter(context)
-        listFilename.setAdapter(imageListAdapter)
-        imageListAdapter.setItemClickListener(OnItemClickListener())
+        attachmentListAdapter = AttachmentListAdapter(context)
+        listFilename.setAdapter(attachmentListAdapter)
+        attachmentListAdapter.setItemClickListener(OnItemClickListener())
 
         buttonClear.setOnClickListener { ignored: View ->
             this.clearSelectedData(
@@ -73,7 +74,7 @@ class MgmtStorageFragment : Fragment() {
             )
         }
 
-        cbImage.isChecked = true
+        cbAttachment.isChecked = true
         cbCache.isChecked = true
 
         initFolders()
@@ -81,15 +82,15 @@ class MgmtStorageFragment : Fragment() {
             taskCalcCache()
         }
         viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
-            taskCalcImage()
+            taskCalcAttachments()
         }
     }
 
-    lateinit var folderImage: File
-    lateinit var folderCache: File
+    lateinit var attachmentFolder: File
+    lateinit var cacheFolder: File
     private fun initFolders() {
-        folderCache = getFolderImageShare(requireContext())
-        folderImage = getFolderImage(requireContext())
+        cacheFolder = getFolderImageShare(requireContext())
+        attachmentFolder = getFolderImage(requireContext())
     }
 
     private fun interface FolderIterator {
@@ -139,25 +140,25 @@ class MgmtStorageFragment : Fragment() {
         buttonClear.isEnabled = false
         if (cbCache.isChecked) {
             viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
-                emptyFolder(folderCache)
+                emptyFolder(cacheFolder)
                 taskCalcCache()
             }
         }
-        if (cbImage.isChecked) {
+        if (cbAttachment.isChecked) {
             viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
-                emptyFolder(folderImage)
-                handler.post { imageListAdapter.emptyList() }
-                taskCalcImage()
+                emptyFolder(attachmentFolder)
+                handler.post { attachmentListAdapter.emptyList() }
+                taskCalcAttachments()
             }
         }
         buttonClear.isEnabled = true
     }
 
-    private inner class OnItemClickListener : ImageListAdapter.OnItemClickListener {
+    private inner class OnItemClickListener : AttachmentListAdapter.OnItemClickListener {
         override fun onClick(index: Int) {
-            val name = imageListAdapter.get(index)
+            val name = attachmentListAdapter.get(index)
 
-            val imageFile = File(folderImage, name)
+            val imageFile = File(attachmentFolder, name)
             val fragment = ImageViewerFragment()
             viewModel.setImageFile(imageFile)
 
@@ -165,13 +166,13 @@ class MgmtStorageFragment : Fragment() {
         }
 
         override fun onLongClick(index: Int): Boolean {
-            val name = imageListAdapter.get(index)
-            val imageFile = File(folderImage, name)
+            val name = attachmentListAdapter.get(index)
+            val imageFile = File(attachmentFolder, name)
             val tmp = imageFile.length()
             if (imageFile.delete()) {
-                sizeImage -= tmp
-                imageListAdapter.remove(index)
-                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage)
+                sizeAttachments -= tmp
+                attachmentListAdapter.remove(index)
+                setTextSizeString(cbAttachment, R.string.string_image_storage_usage_prompt, sizeAttachments)
             }
             return true
         }
@@ -180,7 +181,7 @@ class MgmtStorageFragment : Fragment() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var sizeCache: Long = 0
-    private var sizeImage: Long = 0
+    private var sizeAttachments: Long = 0
     private fun setTextSizeString(view: TextView, strId: Int, size: Long) {
         var string = resources.getString(strId)
         string += " " + getSizeString(size)
@@ -189,7 +190,7 @@ class MgmtStorageFragment : Fragment() {
 
     private fun taskCalcCache() {
         sizeCache = 0
-        iterateFolder(folderCache) { file ->
+        iterateFolder(cacheFolder) { file ->
             if (file.isFile) sizeCache += file.length()
             handler.post {
                 setTextSizeString(
@@ -200,13 +201,26 @@ class MgmtStorageFragment : Fragment() {
         }
     }
 
-    private fun taskCalcImage() {
-        sizeImage = 0
-        iterateFolder(folderImage) { file ->
-            if (file.isFile) sizeImage += file.length()
+    private fun taskCalcAttachments() {
+        sizeAttachments = 0
+        iterateFolder(attachmentFolder) { file ->
+            if (file.isFile) sizeAttachments += file.length()
             handler.post {
-                if (file.isFile) imageListAdapter.add(file.name)
-                setTextSizeString(cbImage, R.string.string_image_storage_usage_prompt, sizeImage)
+                if (!file.isFile) return@post
+                if (file.name.endsWith(FileHelper.FILE_NAME_SUFFIX))
+                    return@post
+                val fileNames = FileHelper.getAllFileNamesFromMd5File(file)
+                if (fileNames == null) {
+                    attachmentListAdapter.add(file.name)
+                } else {
+                    val sb = StringBuffer()
+                    sb.append("${file.name}\n")
+                    for (fn in fileNames) {
+                        sb.append("* $fn\n")
+                    }
+                    attachmentListAdapter.add(sb.toString())
+                }
+                setTextSizeString(cbAttachment, R.string.string_image_storage_usage_prompt, sizeAttachments)
             }
         }
     }
