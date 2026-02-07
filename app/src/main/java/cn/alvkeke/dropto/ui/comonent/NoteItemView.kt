@@ -30,7 +30,7 @@ import java.util.Locale
 
 class NoteItemView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
-) : View(context, attrs) {
+) : View(context, attrs), SelectableRecyclerView.HighlightAble {
 
     private val density = context.resources.displayMetrics.density
     private fun Int.dp(): Int = (this * density).toInt()
@@ -913,6 +913,18 @@ class NoteItemView @JvmOverloads constructor(
 
     }
 
+    private val highlightPath = Path()
+    override fun getHighlightArea(): Path {
+        highlightPath.reset()
+        highlightPath.addRoundRect(
+            bubbleRect,
+            BUBBLE_RADIUS.toFloat(),
+            BUBBLE_RADIUS.toFloat(),
+            Path.Direction.CW
+        )
+        return highlightPath
+    }
+
     class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
         enum class Type {
             BACKGROUND,
@@ -981,10 +993,6 @@ class NoteItemView @JvmOverloads constructor(
         const val TEXT_SIZE_TIME = 30f
 
         var sdf: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
     }
 
 }

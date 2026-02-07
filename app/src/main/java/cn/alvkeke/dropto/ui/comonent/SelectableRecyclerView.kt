@@ -72,11 +72,18 @@ class SelectableRecyclerView @JvmOverloads constructor(
                 canvas.withSave {
                     highlightPaint.alpha = (50 * highlightRatio).toInt()
                     highlightPath.reset()
-                    highlightPath.addRect(
-                        child.left.toFloat(), child.top.toFloat(),
-                        child.right.toFloat(), child.bottom.toFloat(),
-                        Path.Direction.CW
-                    )
+
+                    if (child is HighlightAble) {
+                        val path = child.getHighlightArea()
+                        highlightPath.addPath(path)
+                        highlightPath.offset(child.left.toFloat(), child.top.toFloat())
+                    } else {
+                        highlightPath.addRect(
+                            child.left.toFloat(), child.top.toFloat(),
+                            child.right.toFloat(), child.bottom.toFloat(),
+                            Path.Direction.CW
+                        )
+                    }
                     canvas.clipOutPath(highlightPath)
                     canvas.drawRect(
                         0f, 0f, width.toFloat(), height.toFloat(),
@@ -305,6 +312,10 @@ class SelectableRecyclerView @JvmOverloads constructor(
     fun highLight(index: Int) {
         highlightIndex = index
         animateHighlight()
+    }
+
+    interface HighlightAble {
+        fun getHighlightArea(): Path
     }
 
     companion object {
