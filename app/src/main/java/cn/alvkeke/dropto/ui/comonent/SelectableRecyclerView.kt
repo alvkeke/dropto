@@ -200,10 +200,12 @@ class SelectableRecyclerView @JvmOverloads constructor(
         val lastCount = selectedCount
         animateSelect(index, SelectAnimationType.UNSELECT) {
             selectedMap[index] = false
-        }
-        selectListener?.onSelect(index)
-        if (lastCount > 0 && selectedCount == 0) {
-            selectListener?.onSelectExit()
+            handler.post {
+                selectListener?.onUnSelect(index)
+                if (lastCount > 0 && selectedCount == 0) {
+                    selectListener?.onSelectExit()
+                }
+            }
         }
     }
 
