@@ -2,9 +2,10 @@ package cn.alvkeke.dropto.ui.comonent
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.util.AttributeSet
-import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.withSave
 import androidx.core.view.isGone
@@ -30,11 +31,10 @@ class SelectableRecyclerView @JvmOverloads constructor(
         alpha = 40
     }
 
-//    private val highlightPaint: Paint = Paint().apply {
-//        color = Color.BLACK
-//        alpha = 120
-//    }
-//    private val highlightPath: Path = Path()
+    private val highlightPaint: Paint = Paint().apply {
+        color = Color.BLACK
+    }
+    private val highlightPath: Path = Path()
 
     protected override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
@@ -46,8 +46,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
             }
             val pos = getChildAdapterPosition(child)
 
-            Log.e(TAG, "drawing select mask for pos: $pos, isSelected: ${isItemSelected(pos)}, isAnimating: ${_animationMap[pos]?.isAnimating}")
-            val info: AnimationInfo? = _animationMap[pos]
+            val info: SelectAnimationInfo? = _selectAnimationMap[pos]
             canvas.withSave {
                 if (info != null && info.isAnimating) {
                     clipRect(
@@ -69,65 +68,60 @@ class SelectableRecyclerView @JvmOverloads constructor(
                 }
             }
 
-//            if (highlightStatus == HighlightStatus.Highlighted) {
-//                canvas.withSave {
-//                    highlightPath.addRoundRect(
-//                        bubbleRect,
-//                        BUBBLE_RADIUS.toFloat(),
-//                        BUBBLE_RADIUS.toFloat(),
-//                        Path.Direction.CW
-//                    )
-//                    canvas.clipOutPath(highlightPath)
-//                    canvas.drawRect(
-//                        0f, 0f, width.toFloat(), height.toFloat(),
-//                        highlightPaint
-//                    )
-//                }
-//            } else if (highlightStatus == HighlightStatus.Dimmed) {
-//                canvas.withSave {
-//                    canvas.drawRect(
-//                        0f, 0f, width.toFloat(), height.toFloat(),
-//                        highlightPaint
-//                    )
-//                }
-//            }
-
+            if (highlightIndex == pos) {
+                canvas.withSave {
+                    highlightPaint.alpha = (50 * highlightRatio).toInt()
+                    highlightPath.reset()
+                    highlightPath.addRect(
+                        child.left.toFloat(), child.top.toFloat(),
+                        child.right.toFloat(), child.bottom.toFloat(),
+                        Path.Direction.CW
+                    )
+                    canvas.clipOutPath(highlightPath)
+                    canvas.drawRect(
+                        0f, 0f, width.toFloat(), height.toFloat(),
+                        highlightPaint
+                    )
+                    canvas.drawRect(
+                        0f, 0f,
+                        width.toFloat(), height.toFloat(), highlightPaint
+                    )
+                }
+            }
         }
     }
 
 
-
-
-    private class AnimationInfo(
+    private class SelectAnimationInfo(
         @Volatile var ratio: Float = 0f,
         @Volatile var isAnimating: Boolean = false,
         var selectJob: Job? = null,
         var unselectJob: Job? = null,
     )
-    private val _animationMap = HashMap<Int, AnimationInfo>()
-    private fun getAnimationInfo(index: Int): AnimationInfo {
-        return _animationMap.getOrPut(index) {
-            AnimationInfo()
+    private val _selectAnimationMap = HashMap<Int, SelectAnimationInfo>()
+    private fun getSelectAnimationInfo(index: Int): SelectAnimationInfo {
+        return _selectAnimationMap.getOrPut(index) {
+            SelectAnimationInfo()
         }
     }
 
-    private var _animationScope: CoroutineScope? = null
-    private val animationScope: CoroutineScope
+    private var _selectAnimationScope: CoroutineScope? = null
+    private val selectAnimationScope: CoroutineScope
         get() {
-            if (_animationScope == null || _animationScope?.isActive != true) {
-                _animationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            if (_selectAnimationScope == null || _selectAnimationScope?.isActive != true) {
+                _selectAnimationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             }
-            return _animationScope!!
+            return _selectAnimationScope!!
         }
 
-    private fun selectAnimate(index: Int) {
-        val info = getAnimationInfo(index)
+    private fun animateSelect(index: Int) {
+        val info = getSelectAnimationInfo(index)
         if (info.selectJob?.isActive == true) return
 
         val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
         val step = 1f / totalFrames
 
-        info.selectJob = animationScope.launch {
+        info.selectJob = selectAnimationScope.launch {
             info.isAnimating = true
             if (info.unselectJob?.isActive == true) {
                 info.unselectJob?.cancel()
@@ -144,15 +138,15 @@ class SelectableRecyclerView @JvmOverloads constructor(
         }
     }
 
-    private fun unselectAnimate(index: Int) {
-        val info = getAnimationInfo(index)
+    private fun animateUnselect(index: Int) {
+        val info = getSelectAnimationInfo(index)
         if (info.unselectJob?.isActive == true) return
 
         val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
         var currentFrame = 0
         val step = 1f / totalFrames
 
-        info.unselectJob = animationScope.launch {
+        info.unselectJob = selectAnimationScope.launch {
             info.isAnimating = true
             if (info.selectJob?.isActive == true) {
                 info.selectJob?.cancel()
@@ -186,7 +180,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
         }
         val lastCount = selectedCount
         selectedMap[index] = true
-        selectAnimate(index)
+        animateSelect(index)
         selectListener?.onSelect(index)
         if (lastCount == 0 && selectedCount > 0) {
             selectListener?.onSelectEnter()
@@ -198,7 +192,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
             return
         }
         val lastCount = selectedCount
-        unselectAnimate(index)
+        animateUnselect(index)
         selectedMap[index] = false
         selectListener?.onSelect(index)
         if (lastCount > 0 && selectedCount == 0) {
@@ -255,14 +249,53 @@ class SelectableRecyclerView @JvmOverloads constructor(
     }
 
     private var highlightIndex = -1
+    private var highlightRatio = 0f
+    private var highlightJob: Job? = null
+    private var highlightAnimating = false
+
+    private fun animateHighlight(
+        isExit: Boolean = false,
+        runOnFinish: (() -> Unit)? = null
+    ) {
+        val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL / 2).toInt()
+        val step: Float
+        val isEnd: (Float) -> Boolean
+        when (isExit) {
+            true -> {
+                step = -1f / totalFrames
+                isEnd = { ratio -> ratio <= 0f }
+            }
+            false -> {
+                step = 1f / totalFrames
+                isEnd = { ratio -> ratio >= 1f }
+            }
+        }
+        highlightJob?.cancel()
+
+        highlightJob = selectAnimationScope.launch {
+            highlightAnimating = true
+            while (true) {
+                highlightRatio += step
+                invalidate()
+                if (isEnd(highlightRatio)) {
+                    break
+                }
+                kotlinx.coroutines.delay(ANIMATION_INTERVAL)
+            }
+            highlightAnimating = false
+            runOnFinish?.invoke()
+        }
+    }
+
     fun clearHighLight() {
-        highlightIndex = -1
-        invalidate()
+        animateHighlight(true) {
+            highlightIndex = -1
+        }
     }
 
     fun highLight(index: Int) {
         highlightIndex = index
-        invalidate()
+        animateHighlight()
     }
 
     companion object {
