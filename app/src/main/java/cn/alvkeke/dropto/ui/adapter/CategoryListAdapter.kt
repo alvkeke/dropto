@@ -1,6 +1,5 @@
 package cn.alvkeke.dropto.ui.adapter
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -42,11 +41,5 @@ class CategoryListAdapter : SelectableListAdapter<Category, CategoryListAdapter.
         viewHolder.setTitle(c.title)
         viewHolder.setPreview(c.previewText)
         viewHolder.setType(c.type)
-        if (isSelected(i)) {
-            // TODO: use another color for selected item
-            viewHolder.itemView.setBackgroundColor(Color.LTGRAY)
-        } else {
-            viewHolder.itemView.setBackgroundColor(Color.TRANSPARENT)
-        }
     }
 }

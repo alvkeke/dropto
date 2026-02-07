@@ -23,7 +23,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
-    <androidx.recyclerview.widget.RecyclerView
+    <cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
         android:id="@+id/category_list_listview"
         app:layout_constraintTop_toBottomOf="@id/category_list_toolbar"
         app:layout_constraintBottom_toTopOf="@id/category_list_navigation_bar"
