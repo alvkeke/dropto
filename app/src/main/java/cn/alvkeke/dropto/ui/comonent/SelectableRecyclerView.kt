@@ -48,6 +48,11 @@ class SelectableRecyclerView @JvmOverloads constructor(
             val pos = getChildAdapterPosition(child)
 
             val info: SelectAnimationInfo? = _selectAnimationMap[pos]
+
+            canvas.withSave {
+                extraDrawer?.drawItemBackground(canvas, child, pos)
+            }
+
             canvas.withSave {
                 if (info != null && info.type != null) {
                     clipRect(
@@ -96,6 +101,18 @@ class SelectableRecyclerView @JvmOverloads constructor(
         }
     }
 
+    override fun onDraw(c: Canvas) {
+        super.onDraw(c)
+        c.withSave {
+            extraDrawer?.drawListBackground(c, width, height)
+        }
+    }
+
+    interface ExtraDrawListener {
+        fun drawListBackground(canvas: Canvas, width: Int, height: Int)
+        fun drawItemBackground(canvas: Canvas, child: android.view.View, pos: Int)
+    }
+    var extraDrawer: ExtraDrawListener? = null
 
     private enum class SelectAnimationType {
         SELECT,
