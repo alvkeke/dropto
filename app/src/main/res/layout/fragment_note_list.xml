@@ -37,7 +37,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp">
 
-            <androidx.recyclerview.widget.RecyclerView
+            <cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
                 android:id="@+id/note_list_listview"
                 android:scrollbars="vertical"
                 app:layout_constraintTop_toTopOf="parent"

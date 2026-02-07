@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -20,19 +19,10 @@ import android.util.Log
 import android.util.Size
 import android.view.View
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.withSave
 import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -171,18 +161,6 @@ class NoteItemView @JvmOverloads constructor(
     val medias: MutableList<AttachmentFile> = AttachmentList(_medias)
     private val _files: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
     val files: MutableList<AttachmentFile> = AttachmentList(_files)
-
-    private val selectMaskPaint: Paint = Paint().apply {
-        style = Paint.Style.FILL
-        color = ContextCompat.getColor(context, R.color.note_item_select_mask)
-        alpha = 40
-    }
-
-    private val highlightPaint: Paint = Paint().apply {
-        color = Color.BLACK
-        alpha = 120
-    }
-    private val highlightPath: Path = Path()
 
     private var bubbleRect: RectF = RectF()
     private var bubblePaint: Paint = Paint().apply {
@@ -933,127 +911,7 @@ class NoteItemView @JvmOverloads constructor(
             timeLayout.draw(this)
         }
 
-        if (isAnimating) {
-            canvas.clipRect(0f, 0f, width.toFloat(), height.toFloat())
-            val cx = width / 2f
-            val cy = height / 2f
-            val radius = width * animationRatio
-            canvas.drawCircle(
-                cx, cy, radius, selectMaskPaint
-            )
-        } else if (isSelected) {
-            canvas.drawRect(
-                0f, 0f, width.toFloat(), height.toFloat(),
-                selectMaskPaint
-            )
-        }
-
-        if (highlightStatus == HighlightStatus.Highlighted) {
-            canvas.withSave {
-                highlightPath.addRoundRect(
-                    bubbleRect,
-                    BUBBLE_RADIUS.toFloat(),
-                    BUBBLE_RADIUS.toFloat(),
-                    Path.Direction.CW
-                )
-                canvas.clipOutPath(highlightPath)
-                canvas.drawRect(
-                    0f, 0f, width.toFloat(), height.toFloat(),
-                    highlightPaint
-                )
-            }
-        } else if (highlightStatus == HighlightStatus.Dimmed) {
-            canvas.withSave {
-                canvas.drawRect(
-                    0f, 0f, width.toFloat(), height.toFloat(),
-                    highlightPaint
-                )
-            }
-        }
     }
-
-    @Volatile private var animationRatio = 0f
-
-    // An outside state holder is needed for the RecyclerView, the child views in the RecyclerView
-    // will be recycled and reused for different data, so we will not able to get the correct
-    // selected stats from the view, and result in the wierd animation.
-    var lastSelected: Boolean = false
-    override fun setSelected(selected: Boolean) {
-        val changed = lastSelected != selected
-        super.setSelected(selected)
-
-        if (!changed) return
-        // run animation when selected state changed
-        if (isSelected) {
-            animationRatio = 0f
-            selectAnimate()
-        } else {
-            animationRatio = 1f
-            unselectAnimate()
-        }
-    }
-
-    @Volatile private var isAnimating: Boolean = false
-
-    private var _animationScope: CoroutineScope? = null
-    private val animationScope: CoroutineScope
-        get() {
-            if (_animationScope == null || _animationScope?.isActive != true) {
-                _animationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-            }
-            return _animationScope!!
-        }
-
-    private var selectAnimationJob: Job? = null
-    private fun selectAnimate() {
-        if (selectAnimationJob?.isActive == true) return
-
-        val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
-        var currentFrame = 0
-
-        selectAnimationJob = animationScope.launch {
-            isAnimating = true
-            while (currentFrame <= totalFrames) {
-                animationRatio = currentFrame.toFloat() / totalFrames
-                animationRatio = animationRatio
-                    .coerceAtLeast(0f).coerceAtMost(1f)
-                val ratio2 = animationRatio * animationRatio
-                animationRatio *= ratio2 * ratio2   // for better animation curve
-                invalidate()
-                currentFrame++
-                delay(ANIMATION_INTERVAL)
-            }
-            isAnimating = false
-        }
-    }
-    private var unselectAnimationJob: Job? = null
-    private fun unselectAnimate() {
-        if (unselectAnimationJob?.isActive == true) return
-
-        val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
-        var currentFrame = 0
-
-        unselectAnimationJob = animationScope.launch {
-            selectAnimationJob?.join()
-            isAnimating = true
-            while (currentFrame <= totalFrames) {
-                animationRatio = 1f - (currentFrame.toFloat() / totalFrames)
-                animationRatio = animationRatio
-                    .coerceAtLeast(0f).coerceAtMost(1f)
-                invalidate()
-                currentFrame++
-                delay(ANIMATION_INTERVAL)
-            }
-            isAnimating = false
-        }
-    }
-
-    enum class HighlightStatus {
-        None,
-        Highlighted,
-        Dimmed
-    }
-    var highlightStatus: HighlightStatus = HighlightStatus.None
 
     class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
         enum class Type {
@@ -1122,15 +980,11 @@ class NoteItemView @JvmOverloads constructor(
         const val TEXT_SIZE_CONTENT = 48f
         const val TEXT_SIZE_TIME = 30f
 
-        const val ANIMATION_DURATION = 300L
-        const val ANIMATION_INTERVAL = 5L
-
         var sdf: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        animationScope.cancel()
     }
 
 }

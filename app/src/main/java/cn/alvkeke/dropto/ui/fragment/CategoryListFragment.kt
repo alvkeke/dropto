@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MenuItem
@@ -24,7 +25,8 @@ import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.activity.MgmtActivity
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
-import cn.alvkeke.dropto.ui.adapter.SelectableListAdapter.SelectListener
+import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
+import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
 import cn.alvkeke.dropto.ui.intf.CategoryDBAttemptListener
 import cn.alvkeke.dropto.ui.intf.CategoryUIAttemptListener
 import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
@@ -38,6 +40,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
     private lateinit var viewModel: MainViewModel
     private lateinit var dbListener: CategoryDBAttemptListener
     private lateinit var uiListener: CategoryUIAttemptListener
+    private lateinit var rlCategory: SelectableRecyclerView
     private lateinit var categoryListAdapter: CategoryListAdapter
     private lateinit var toolbar: MaterialToolbar
 
@@ -57,7 +60,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
         dbListener = context as CategoryDBAttemptListener
         uiListener = context as CategoryUIAttemptListener
 
-        val rlCategory = view.findViewById<RecyclerView>(R.id.category_list_listview)
+        rlCategory = view.findViewById(R.id.category_list_listview)
         toolbar = view.findViewById(R.id.category_list_toolbar)
         val statusBar = view.findViewById<View>(R.id.category_list_status_bar)
         val navigationBar = view.findViewById<View>(R.id.category_list_navigation_bar)
@@ -73,7 +76,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
             categoryListAdapter.setList(newCategories)
         }
 
-        categoryListAdapter.setSelectListener(CategorySelectListener())
+        rlCategory.setSelectListener(CategorySelectListener())
         setMenuBySelectedCount()
 
         rlCategory.setAdapter(categoryListAdapter)
@@ -108,6 +111,25 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
         handler.onError(msg)
     }
 
+    private fun getSelectedCategory(): ArrayList<Category> {
+        val items = ArrayList<Category>()
+        for (i in 0 until rlCategory.childCount) {
+            if (rlCategory.isItemSelected(i)) {
+                items.add(categoryListAdapter.get(i))
+            }
+        }
+        return items
+    }
+
+    private fun getFirstSelectedCategory(): Category? {
+        for (i in 0 until rlCategory.childCount) {
+            if (rlCategory.isItemSelected(i)) {
+                return categoryListAdapter.get(i)
+            }
+        }
+        return null
+    }
+
     private inner class CategoryMenuListener : Toolbar.OnMenuItemClickListener {
         override fun onMenuItemClick(item: MenuItem): Boolean {
             when (val menuId = item.itemId) {
@@ -115,16 +137,19 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
                     uiListener.onAttempt(CategoryUIAttemptListener.Attempt.SHOW_CREATE)
                 }
                 R.id.category_menu_item_edit -> {
-                    val category = categoryListAdapter.selectedItems[0]
+                    val category = getFirstSelectedCategory() ?: run {
+                        Log.e(TAG, "edit menu clicked but no category selected")
+                        return false
+                    }
                     uiListener.onAttempt(
                         CategoryUIAttemptListener.Attempt.SHOW_DETAIL,
                         category
                     )
-                    categoryListAdapter.clearSelectItems()
+                    rlCategory.clearSelectItems()
                 }
                 R.id.category_menu_item_remove -> {
-                    val selected: ArrayList<Category> = categoryListAdapter.selectedItems
-                    categoryListAdapter.clearSelectItems()
+                    val selected: ArrayList<Category> = getSelectedCategory()
+                    rlCategory.clearSelectItems()
                     AlertDialog.Builder(context)
                         .setTitle(R.string.dialog_category_delete_selected_title)
                         .setMessage(R.string.dialog_category_delete_selected_message)
@@ -159,7 +184,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
     }
 
     private fun setMenuBySelectedCount() {
-        val count = categoryListAdapter.selectedCount
+        val count = rlCategory.selectedCount
         when (count) {
             0 -> {
                 setMenuItemVisible(R.id.category_menu_item_add, true)
@@ -197,8 +222,8 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
 
     private inner class OnListItemClickListener : OnRecyclerViewTouchListener(context) {
         override fun onItemClick(v: View, index: Int): Boolean {
-            if (categoryListAdapter.isSelectMode) {
-                categoryListAdapter.toggleSelectItems(index)
+            if (rlCategory.isSelectMode) {
+                rlCategory.toggleSelectItems(index)
                 return true
             }
             val category = categoryListAdapter.get(index)
@@ -208,7 +233,7 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
 
         override fun onItemLongClick(v: View, index: Int): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            categoryListAdapter.toggleSelectItems(index)
+            rlCategory.toggleSelectItems(index)
             return true
         }
     }
@@ -225,5 +250,9 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
             Notify.REMOVED -> categoryListAdapter.remove(itemObj)
             Notify.CLEARED -> categoryListAdapter.clear()
         }
+    }
+
+    companion object {
+        const val TAG = "CategoryListFragment"
     }
 }

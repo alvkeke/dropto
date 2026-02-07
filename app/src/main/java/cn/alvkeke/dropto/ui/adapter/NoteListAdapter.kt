@@ -19,9 +19,6 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         return ViewHolder(view)
     }
 
-    private val lastStatusMap: HashMap<Int, Boolean> = HashMap()
-    private var highlightIndex = -1
-
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val note = this.get(position)
         val view = holder.content
@@ -32,32 +29,6 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.medias.addAll(note.medias)
         view.files.clear()
         view.files.addAll(note.files)
-        val noteStatus = isSelected(note)
-        view.lastSelected = lastStatusMap[position] ?: false
-        view.isSelected = noteStatus
-        lastStatusMap[position] = noteStatus
-
-        view.highlightStatus = if (highlightIndex == -1) {
-            NoteItemView.HighlightStatus.None
-        } else if (position == highlightIndex) {
-            NoteItemView.HighlightStatus.Highlighted
-        } else {
-            NoteItemView.HighlightStatus.Dimmed
-        }
-
-        view.invalidate()
     }
 
-    fun clearHighLight() {
-        val i = highlightIndex
-        highlightIndex = -1
-        if (i != -1) {
-            notifyItemRangeChanged(0, itemCount)
-        }
-    }
-
-    fun highLight(index: Int) {
-        highlightIndex = index
-        notifyItemRangeChanged(0, itemCount)
-    }
 }
