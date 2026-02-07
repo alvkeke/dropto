@@ -48,7 +48,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
 
             val info: SelectAnimationInfo? = _selectAnimationMap[pos]
             canvas.withSave {
-                if (info != null && info.isAnimating) {
+                if (info != null && info.type != null) {
                     clipRect(
                         child.left.toFloat(), child.top.toFloat(),
                         child.right.toFloat(), child.bottom.toFloat(),
@@ -92,11 +92,14 @@ class SelectableRecyclerView @JvmOverloads constructor(
     }
 
 
+    private enum class SelectAnimationType {
+        SELECT,
+        UNSELECT
+    }
     private class SelectAnimationInfo(
         @Volatile var ratio: Float = 0f,
-        @Volatile var isAnimating: Boolean = false,
-        var selectJob: Job? = null,
-        var unselectJob: Job? = null,
+        @Volatile var type: SelectAnimationType? = null,
+        var job: Job? = null,
     )
     private val _selectAnimationMap = HashMap<Int, SelectAnimationInfo>()
     private fun getSelectAnimationInfo(index: Int): SelectAnimationInfo {
@@ -114,53 +117,49 @@ class SelectableRecyclerView @JvmOverloads constructor(
             return _selectAnimationScope!!
         }
 
-    private fun animateSelect(index: Int) {
+    private fun animateSelect(
+        index: Int,
+        type: SelectAnimationType,
+        runOnFinish: (() -> Unit)? = null
+    ) {
         val info = getSelectAnimationInfo(index)
-        if (info.selectJob?.isActive == true) return
 
         val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
-        val step = 1f / totalFrames
-
-        info.selectJob = selectAnimationScope.launch {
-            info.isAnimating = true
-            if (info.unselectJob?.isActive == true) {
-                info.unselectJob?.cancel()
-            } else {
-                info.ratio = 0f
+        val step: Float
+        val isEnd: (Float) -> Boolean
+        when (type) {
+            SelectAnimationType.SELECT -> {
+                step = 1f / totalFrames
+                isEnd = { ratio -> ratio >= 1f }
             }
+            SelectAnimationType.UNSELECT -> {
+                step = -1f / totalFrames
+                isEnd = { ratio -> ratio <= 0f }
+            }
+        }
+
+        if (info.job?.isActive != true) {
+            info.ratio = when (type) {
+                SelectAnimationType.SELECT -> 0f
+                SelectAnimationType.UNSELECT -> 1f
+            }
+        } else {
+            info.job?.cancel()
+        }
+
+        info.job = selectAnimationScope.launch {
+            info.type = type
 
             while (info.ratio <= 1f) {
-                info.ratio += step
+                info.ratio = (info.ratio + step).coerceIn(0f, 1f)
                 invalidate()
+                if (isEnd(info.ratio)) {
+                    break
+                }
                 kotlinx.coroutines.delay(ANIMATION_INTERVAL)
             }
-            info.isAnimating = false
-        }
-    }
-
-    private fun animateUnselect(index: Int) {
-        val info = getSelectAnimationInfo(index)
-        if (info.unselectJob?.isActive == true) return
-
-        val totalFrames = (ANIMATION_DURATION / ANIMATION_INTERVAL).toInt()
-        var currentFrame = 0
-        val step = 1f / totalFrames
-
-        info.unselectJob = selectAnimationScope.launch {
-            info.isAnimating = true
-            if (info.selectJob?.isActive == true) {
-                info.selectJob?.cancel()
-            } else {
-                info.ratio = 1f
-            }
-
-            while (info.ratio >= 0f) {
-                info.ratio -= step
-                invalidate()
-                currentFrame++
-                kotlinx.coroutines.delay(ANIMATION_INTERVAL)
-            }
-            info.isAnimating = false
+            runOnFinish?.invoke()
+            info.type = null
         }
     }
 
@@ -180,7 +179,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
         }
         val lastCount = selectedCount
         selectedMap[index] = true
-        animateSelect(index)
+        animateSelect(index, SelectAnimationType.SELECT)
         selectListener?.onSelect(index)
         if (lastCount == 0 && selectedCount > 0) {
             selectListener?.onSelectEnter()
@@ -192,8 +191,9 @@ class SelectableRecyclerView @JvmOverloads constructor(
             return
         }
         val lastCount = selectedCount
-        animateUnselect(index)
-        selectedMap[index] = false
+        animateSelect(index, SelectAnimationType.UNSELECT) {
+            selectedMap[index] = false
+        }
         selectListener?.onSelect(index)
         if (lastCount > 0 && selectedCount == 0) {
             selectListener?.onSelectExit()
@@ -272,10 +272,19 @@ class SelectableRecyclerView @JvmOverloads constructor(
         }
         highlightJob?.cancel()
 
+        if (highlightJob?.isActive != true) {
+            highlightRatio = when (isExit) {
+                true -> 1f
+                false -> 0f
+            }
+        } else {
+            highlightJob?.cancel()
+        }
+
         highlightJob = selectAnimationScope.launch {
             highlightAnimating = true
             while (true) {
-                highlightRatio += step
+                highlightRatio = (highlightRatio + step).coerceIn(0f, 1f)
                 invalidate()
                 if (isEnd(highlightRatio)) {
                     break
