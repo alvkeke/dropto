@@ -160,10 +160,8 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
     private fun getSelectedNoteItems(): ArrayList<NoteItem> {
         val items = ArrayList<NoteItem>()
-        for (i in 0 until rlNoteList.childCount) {
-            if (rlNoteList.isItemSelected(i)) {
-                items.add(noteItemAdapter.get(i))
-            }
+        for (i in rlNoteList.selectedIndexes) {
+            items.add(noteItemAdapter.get(i))
         }
         return items
     }

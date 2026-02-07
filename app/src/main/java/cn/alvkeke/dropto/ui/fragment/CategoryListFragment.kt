@@ -113,19 +113,15 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
 
     private fun getSelectedCategory(): ArrayList<Category> {
         val items = ArrayList<Category>()
-        for (i in 0 until rlCategory.childCount) {
-            if (rlCategory.isItemSelected(i)) {
-                items.add(categoryListAdapter.get(i))
-            }
+        for (i in rlCategory.selectedIndexes) {
+            items.add(categoryListAdapter.get(i))
         }
         return items
     }
 
     private fun getFirstSelectedCategory(): Category? {
-        for (i in 0 until rlCategory.childCount) {
-            if (rlCategory.isItemSelected(i)) {
-                return categoryListAdapter.get(i)
-            }
+        for (i in rlCategory.selectedIndexes) {
+            return categoryListAdapter.get(i)
         }
         return null
     }

@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -86,12 +87,9 @@ class SelectableRecyclerView @JvmOverloads constructor(
                     }
                     canvas.clipOutPath(highlightPath)
                     canvas.drawRect(
-                        0f, 0f, width.toFloat(), height.toFloat(),
-                        highlightPaint
-                    )
-                    canvas.drawRect(
                         0f, 0f,
-                        width.toFloat(), height.toFloat(), highlightPaint
+                        width.toFloat(), height.toFloat(),
+                        highlightPaint
                     )
                 }
             }
@@ -175,6 +173,8 @@ class SelectableRecyclerView @JvmOverloads constructor(
         get() = selectedMap.filter { e -> e.value }.size
     val isSelectMode: Boolean
         get() = selectedMap.any { e -> e.value }
+    val selectedIndexes: List<Int>
+        get() = selectedMap.filter { e -> e.value }.map { e -> e.key }
 
     fun isItemSelected(index: Int): Boolean {
         return selectedMap[index] ?: false
@@ -200,7 +200,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
         val lastCount = selectedCount
         animateSelect(index, SelectAnimationType.UNSELECT) {
             selectedMap[index] = false
-            handler.post {
+            post {
                 selectListener?.onUnSelect(index)
                 if (lastCount > 0 && selectedCount == 0) {
                     selectListener?.onSelectExit()
@@ -318,6 +318,11 @@ class SelectableRecyclerView @JvmOverloads constructor(
 
     interface HighlightAble {
         fun getHighlightArea(): Path
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        _selectAnimationScope?.cancel()
     }
 
     companion object {
