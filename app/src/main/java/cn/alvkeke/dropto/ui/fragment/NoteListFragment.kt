@@ -592,19 +592,10 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             val note = noteItemForMenu
             when (val itemId = menuItem.itemId) {
                 R.id.item_pop_m_delete -> {
-                    AlertDialog.Builder(context)
-                        .setTitle(R.string.dialog_note_delete_pop_remove_title)
-                        .setMessage(R.string.dialog_note_delete_pop_remove_message)
-                        .setNegativeButton(R.string.string_cancel, null)
-                        .setPositiveButton(
-                            R.string.string_ok
-                        ) { _: DialogInterface, _: Int ->
-                            dbListener.onAttempt(
-                                NoteDBAttemptListener.Attempt.REMOVE,
-                                note
-                            )
-                        }
-                        .create().show()
+                    dbListener.onAttempt(
+                        NoteDBAttemptListener.Attempt.REMOVE,
+                        note
+                    )
                 }
 
                 R.id.item_pop_m_restore -> {
