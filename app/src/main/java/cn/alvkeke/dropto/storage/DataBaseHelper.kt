@@ -26,7 +26,7 @@ class DataBaseHelper(private val context: Context) :
         const val TAG = "DataBaseHelper"
 
         private const val DATABASE_NAME = "note.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
 
         private const val TABLE_CATEGORY = "category"
         private const val CATEGORY_COLUMN_ID = "_id"
@@ -49,20 +49,15 @@ class DataBaseHelper(private val context: Context) :
         private const val NOTE_COLUMN_C_TIME_TYPE = "INTEGER"
         private const val NOTE_COLUMN_ATTACHMENT_INFO_V1 = "img_info"
         private const val NOTE_COLUMN_ATTACHMENT_INFO_V2 = "attachment_info"
-        // for backward compatibility, use in this version only
-        private val NOTE_COLUMN_ATTACHMENT_INFO = when (DATABASE_VERSION) {
-            1 -> NOTE_COLUMN_ATTACHMENT_INFO_V1
-            2-> NOTE_COLUMN_ATTACHMENT_INFO_V2
-            else -> throw IllegalStateException("Unsupported database version: $DATABASE_VERSION")
-        }
+        private const val NOTE_COLUMN_ATTACHMENT_INFO = NOTE_COLUMN_ATTACHMENT_INFO_V2
         private const val NOTE_COLUMN_ATTACHMENT_INFO_TYPE = "TEXT"
         private const val NOTE_ATTACHMENT_PREFIX_IMAGE = "img"
         private const val NOTE_ATTACHMENT_PREFIX_FILE = "file"
         private const val NOTE_COLUMN_FLAGS = "flags"
         private const val NOTE_COLUMN_FLAGS_TYPE = "INTEGER DEFAULT 0"
-        private const val NOTE_FLAG_IS_DELETED = 1 shl 0
-        private const val NOTE_FLAG_IS_EDITED = 1 shl 1
-        private const val NOTE_FLAG_IS_SYNCED = 1 shl 2
+        private const val NOTE_FLAG_IS_DELETED: Long = 1 shl 0
+        private const val NOTE_FLAG_IS_EDITED:Long = 1 shl 1
+        private const val NOTE_FLAG_IS_SYNCED:Long = 1 shl 2
 
         private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
         private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
@@ -174,8 +169,9 @@ class DataBaseHelper(private val context: Context) :
         )
     }
 
-    private fun createNoteTable(db: SQLiteDatabase) {
-        val sqlV1 = """
+    /*
+    private fun createNoteTableV1(db: SQLiteDatabase) {
+        val sql = """
             CREATE TABLE IF NOT EXISTS $TABLE_NOTE (
                 $NOTE_COLUMN_ID $NOTE_COLUMN_ID_TYPE,
                 $NOTE_COLUMN_CATE_ID $NOTE_COLUMN_CATE_ID_TYPE,
@@ -184,22 +180,24 @@ class DataBaseHelper(private val context: Context) :
                 $NOTE_COLUMN_ATTACHMENT_INFO_V1 $NOTE_COLUMN_ATTACHMENT_INFO_TYPE
             );
         """.trimIndent()
-        val sqlV2 = """
+
+        db.execSQL(sql)
+    }
+     */
+
+    private fun createNoteTable(db: SQLiteDatabase) {
+        val sql = """
             CREATE TABLE IF NOT EXISTS $TABLE_NOTE (
                 $NOTE_COLUMN_ID $NOTE_COLUMN_ID_TYPE,
                 $NOTE_COLUMN_CATE_ID $NOTE_COLUMN_CATE_ID_TYPE,
                 $NOTE_COLUMN_TEXT $NOTE_COLUMN_TEXT_TYPE,
                 $NOTE_COLUMN_C_TIME $NOTE_COLUMN_C_TIME_TYPE,
-                $NOTE_COLUMN_ATTACHMENT_INFO_V2 $NOTE_COLUMN_ATTACHMENT_INFO_TYPE,
+                $NOTE_COLUMN_ATTACHMENT_INFO $NOTE_COLUMN_ATTACHMENT_INFO_TYPE,
                 $NOTE_COLUMN_FLAGS $NOTE_COLUMN_FLAGS_TYPE
             );
         """.trimIndent()
 
-        db.execSQL(when (DATABASE_VERSION) {
-            1 -> sqlV1
-            2 -> sqlV2
-            else -> throw IllegalStateException("Unsupported database version: $DATABASE_VERSION")
-        })
+        db.execSQL(sql)
     }
 
     @Suppress("unused")
@@ -385,10 +383,36 @@ class DataBaseHelper(private val context: Context) :
         return from(Global.attachmentStorage, sMd5, sName, sType)
     }
 
+    private fun Long.set(flag: Long): Long {
+        return this or flag
+    }
+
+    private fun Long.reset(flag: Long): Long {
+        return this and flag.inv()
+    }
+
+    private fun Long.isSet(flag: Long): Boolean {
+        return this and flag == flag
+    }
+
+    private fun NoteItem.generateFlags(): Long {
+        var flags = 0L
+        if (isDeleted) flags = NOTE_FLAG_IS_DELETED
+        if (isEdited) flags = flags.set(NOTE_FLAG_IS_EDITED)
+        if (isSynced) flags = flags.set(NOTE_FLAG_IS_SYNCED)
+        return flags
+    }
+
+    private fun NoteItem.parseFlags(flags: Long) {
+        isDeleted = flags.isSet(NOTE_FLAG_IS_DELETED)
+        isEdited = flags.isSet(NOTE_FLAG_IS_EDITED)
+        isSynced = flags.isSet(NOTE_FLAG_IS_SYNCED)
+    }
+
     @Throws(SQLiteException::class)
     fun insertNote(
         id: Long, categoryId: Long, text: String?, ctime: Long,
-        attachmentInfo: String?
+        attachmentInfo: String?, flags: Long
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_ID, id)
@@ -396,19 +420,21 @@ class DataBaseHelper(private val context: Context) :
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
+        values.put(NOTE_COLUMN_FLAGS, flags)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
     @Throws(SQLiteException::class)
     fun insertNote(
         categoryId: Long, text: String?, ctime: Long,
-        attachmentInfo: String?
+        attachmentInfo: String?, flags: Long
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
+        values.put(NOTE_COLUMN_FLAGS, flags)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
@@ -422,11 +448,11 @@ class DataBaseHelper(private val context: Context) :
     fun insertNote(n: NoteItem): Long {
         val id: Long = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
             insertNote(n.categoryId, n.text, n.createTime,
-                n.generateAttachmentString())
+                n.generateAttachmentString(), n.generateFlags())
         } else {
             insertNote(
                 n.id, n.categoryId, n.text, n.createTime,
-                n.generateAttachmentString()
+                n.generateAttachmentString(), n.generateFlags()
             )
         }
         if (id < 0) {
@@ -437,17 +463,85 @@ class DataBaseHelper(private val context: Context) :
         return id
     }
 
+    private val noteQueryFlagsColumn: Array<String> = arrayOf(NOTE_COLUMN_FLAGS)
+    fun queryFlags(id: Long): Long? {
+        val args = arrayOf(id.toString())
+        val cursor = db.query(
+            TABLE_NOTE, noteQueryFlagsColumn,
+            NOTE_WHERE_CLAUSE_ID, args,
+            null, null, null
+        )
+        if (cursor.moveToFirst()) {
+            val idx = cursor.getColumnIndex(NOTE_COLUMN_FLAGS)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx for flags")
+                cursor.close()
+                return null
+            }
+            val flags = cursor.getLong(idx)
+            cursor.close()
+            return flags
+        } else {
+            Log.e(TAG, "no note found with id: $id")
+            cursor.close()
+            return null
+        }
+    }
+
+    fun updateFlags(id: Long, flags: Long): Int {
+        val values = ContentValues()
+        values.put(NOTE_COLUMN_FLAGS, flags)
+        val args = arrayOf(id.toString())
+        return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args)
+    }
+
+    fun deleteNote(id: Long): Int {
+        val flags = queryFlags(id) ?: return -1
+        val newFlags = flags.set(NOTE_FLAG_IS_DELETED)
+
+        return updateFlags(id, newFlags)
+    }
+
+    fun deleteNotes(categoryId: Long): Int {
+        val noteIds = queryNoteIds(categoryId)
+        var count = 0
+        for (id in noteIds) {
+            if (deleteNote(id) > 0) {
+                count++
+            }
+        }
+        return count
+    }
+
+    fun restoreNote(id: Long): Int {
+        val flags = queryFlags(id) ?: return -1
+        val newFlags = flags.reset(NOTE_FLAG_IS_DELETED)
+
+        return updateFlags(id, newFlags)
+    }
+
+    fun restoreNotes(categoryId: Long): Int {
+        val noteIds = queryNoteIds(categoryId)
+        var count = 0
+        for (id in noteIds) {
+            if (restoreNote(id) > 0) {
+                count++
+            }
+        }
+        return count
+    }
+
     /**
      * delete a noteItem in database with specific id
      * @param id ID of target noteItem
      * @return number of deleted entries
      */
-    fun deleteNote(id: Long): Int {
+    fun realDeleteNote(id: Long): Int {
         val args = arrayOf(id.toString())
         return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_ID, args)
     }
 
-    fun deleteNotes(categoryId: Long): Int {
+    fun realDeleteNotes(categoryId: Long): Int {
         val args = arrayOf(categoryId.toString())
         return db.delete(TABLE_NOTE, NOTE_WHERE_CLAUSE_CATE_ID, args)
     }
@@ -463,13 +557,14 @@ class DataBaseHelper(private val context: Context) :
      */
     fun updateNote(
         id: Long, categoryId: Long, text: String?, ctime: Long,
-        attachmentInfo: String?
+        attachmentInfo: String?, flags: Long
     ): Int {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
+        values.put(NOTE_COLUMN_FLAGS, flags)
         val args = arrayOf(id.toString())
         return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args)
     }
@@ -482,7 +577,8 @@ class DataBaseHelper(private val context: Context) :
     fun updateNote(note: NoteItem): Int {
         return updateNote(
             note.id, note.categoryId, note.text,
-            note.createTime, note.generateAttachmentString()
+            note.createTime,
+            note.generateAttachmentString(), note.generateFlags()
         )
     }
 
@@ -517,8 +613,15 @@ class DataBaseHelper(private val context: Context) :
             return null
         }
         val attachInfoAll: String? = getString(idx)
+        idx = getColumnIndex(NOTE_COLUMN_FLAGS)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for flags")
+            return null
+        }
+        val flags = getLong(idx)
 
         val e = NoteItem(text, ctime)
+        e.parseFlags(flags)
         e.id = id
         e.categoryId = categoryId
         if (attachInfoAll != null && !attachInfoAll.isEmpty()) {
@@ -578,6 +681,31 @@ class DataBaseHelper(private val context: Context) :
         }
 
         cursor.close()
+    }
+
+    private val queryNoteIdsSelection = "$NOTE_COLUMN_CATE_ID = ?"
+    fun queryNoteIds(targetCategoryId: Long): ArrayList<Long> {
+        val ids = ArrayList<Long>()
+
+        val selectionArgs = arrayOf(targetCategoryId.toString())
+
+        val cursor = db.query(
+            TABLE_NOTE, arrayOf(NOTE_COLUMN_ID), queryNoteIdsSelection, selectionArgs,
+            null, null, null
+        )
+
+        while (cursor.moveToNext()) {
+            val idx: Int = cursor.getColumnIndex(NOTE_COLUMN_ID)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx for id")
+                continue
+            }
+            val id = cursor.getLong(idx)
+            ids.add(id)
+        }
+
+        cursor.close()
+        return ids
     }
 
 }

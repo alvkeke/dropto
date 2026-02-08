@@ -607,6 +607,13 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                         .create().show()
                 }
 
+                R.id.item_pop_m_restore -> {
+                    dbListener.onAttempt(
+                        NoteDBAttemptListener.Attempt.RESTORE,
+                        note
+                    )
+                }
+
                 R.id.item_pop_m_pin -> {
                     throwErrorMessage("try to Pin item")
                 }
@@ -654,6 +661,10 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         }
         Log.v(TAG, "show popup menu for item-$index at x:$x, y:$y")
         noteItemForMenu = noteItem
+        val isDeleted = noteItem.isDeleted
+        popupMenu.setMenuItemVisible(R.id.item_pop_m_restore, isDeleted)
+        popupMenu.setMenuItemVisible(R.id.item_pop_m_delete, !isDeleted)
+
         val targetTop = y - popupMenu.height / 3
         val targetBottom = targetTop + popupMenu.height
         val xShow = v.width / 5
@@ -701,7 +712,13 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             }
 
             Notify.UPDATED -> noteItemAdapter.update(index)
-            Notify.REMOVED -> noteItemAdapter.remove(itemObj)
+            Notify.REMOVED -> {
+//                noteItemAdapter.remove(itemObj)
+                noteItemAdapter.update(index)
+            }
+            Notify.RESTORED -> {
+                noteItemAdapter.update(index)
+            }
             Notify.CLEARED -> noteItemAdapter.clear()
         }
     }

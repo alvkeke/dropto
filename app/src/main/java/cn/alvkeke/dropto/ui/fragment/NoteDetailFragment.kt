@@ -137,7 +137,8 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
             dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, note!!)
             return
         }
-        note!!.setText(text, true)
+        note!!.text = text
+        note!!.isEdited = true
         if (removedAttachments.isNotEmpty()) {
             note!!.attachments.removeAll(removedAttachments)
             removedAttachments.clear()

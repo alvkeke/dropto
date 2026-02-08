@@ -7,6 +7,7 @@ interface NoteDBAttemptListener {
         CREATE,
         REMOVE,
         UPDATE,
+        RESTORE,
     }
 
     fun onAttempt(attempt: Attempt, e: NoteItem)

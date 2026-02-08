@@ -19,7 +19,7 @@ object Global {
         add(ATTACHMENT_FOLDER_OLD)
         add(ATTACHMENT_FOLDER_NEW)
     }
-    private const val ATTACHMENT_FOLDER = ATTACHMENT_FOLDER_OLD
+    private const val ATTACHMENT_FOLDER = ATTACHMENT_FOLDER_NEW
     private const val ATTACHMENT_SHARE_FOLDER = "share"
 
     private fun File.isValid(): Boolean {
@@ -42,7 +42,7 @@ object Global {
             Log.e(TAG, "attachment folder doesn't exist, create: " + attachmentStorage.mkdir())
         }
 
-        Log.e(TAG, "checking other available folders: ${ATTACHMENT_FOLDER_AVAILABLE.size}")
+        Log.e(TAG, "checking available folders: ${ATTACHMENT_FOLDER_AVAILABLE.size}")
         for (s in ATTACHMENT_FOLDER_AVAILABLE) {
             if (s == ATTACHMENT_FOLDER) continue    // skip current folder
 

@@ -176,9 +176,13 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
     private fun onCategoryTaskFinish(task: Task) {
         if (task.result < 0) return
         when (task.job) {
-            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE -> categorySelectorFragment.notifyItemListChanged(
-                jobToNotify(task.job), task.result, task.taskObj as Category
-            )
+            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE, Task.Job.RESTORE -> {
+                categorySelectorFragment.notifyItemListChanged(
+                    jobToNotify(task.job),
+                    task.result,
+                    task.taskObj as Category
+                )
+            }
         }
     }
 

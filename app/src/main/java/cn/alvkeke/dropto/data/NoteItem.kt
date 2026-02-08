@@ -10,10 +10,11 @@ class NoteItem : Serializable, Cloneable {
     @JvmField
     var categoryId: Long = 0
     var text: String
-        private set
     val createTime: Long
+
     var isEdited: Boolean = false
-        private set
+    var isDeleted: Boolean = false
+    var isSynced: Boolean = false
 
     val medias: ArrayList<AttachmentFile> = ArrayList()
     val files: ArrayList<AttachmentFile> = ArrayList()
@@ -240,15 +241,18 @@ class NoteItem : Serializable, Cloneable {
         this.createTime = createTime
     }
 
-    fun update(target: NoteItem, edited: Boolean) {
-        if (this === target) return  // prevent update in place
+    fun updateFrom(src: NoteItem) {
+        if (this === src) return  // prevent update in place
 
-        setText(target.text, edited)
-        if (target.attachments.isNotEmpty()) {
-            target.attachments.clear()
-            target.attachments.addAll(target.attachments)
+        this.text = src.text
+        if (src.attachments.isNotEmpty()) {
+            src.attachments.clear()
+            this.attachments.addAll(src.attachments)
         }
-        this.categoryId = target.categoryId
+        this.isDeleted = src.isDeleted
+        this.isEdited = src.isEdited
+        this.isSynced = src.isSynced
+        this.categoryId = src.categoryId
     }
 
     public override fun clone(): NoteItem {
@@ -256,13 +260,6 @@ class NoteItem : Serializable, Cloneable {
         noteItem.attachments.addAll(this.attachments)
         noteItem.categoryId = this.categoryId
         return noteItem
-    }
-
-    fun setText(text: String, edited: Boolean) {
-        this.text = text
-        if (edited) {
-            isEdited = true
-        }
     }
 
     companion object {

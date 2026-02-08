@@ -3,9 +3,9 @@ package cn.alvkeke.dropto.debug
 import android.content.Context
 import cn.alvkeke.dropto.BuildConfig
 import cn.alvkeke.dropto.R.raw
-import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.AttachmentFile.Type
+import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import java.io.File
@@ -116,7 +116,7 @@ object DebugFunction {
                     val e = NoteItem("ITEM$i$i", System.currentTimeMillis())
                     e.categoryId = categoryId
                     if (r.nextBoolean()) {
-                        e.setText(e.text, true)
+                        e.isEdited = true
                     }
                     if (idx < imgFiles.size && r.nextBoolean()) {
                         val imgFile = imgFiles[idx]

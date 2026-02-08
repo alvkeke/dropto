@@ -18,4 +18,7 @@
     <item
         android:id="@+id/item_pop_m_delete"
         android:title="@string/title_item_pop_menu_delete" />
+    <item
+        android:id="@+id/item_pop_m_restore"
+        android:title="@string/title_item_pop_menu_restore" />
 </menu>

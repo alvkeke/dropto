@@ -4,6 +4,7 @@ interface ListNotification<T> {
     enum class Notify {
         INSERTED,
         REMOVED,
+        RESTORED,
         UPDATED,
         CLEARED,
     }

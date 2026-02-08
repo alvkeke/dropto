@@ -220,12 +220,44 @@ class CoreService : Service() {
                 dbHelper.start()
                 if (0 == dbHelper.deleteNote(e.id)) Log.e(this.toString(), "no row be deleted")
                 dbHelper.finish()
-                c.delNoteItem(e)
+                e.isDeleted = true  // TODO: need to think how to treat the deleted item, mark it as deleted now
                 task.result = index
             }
         } catch (_: Exception) {
             Log.e(
                 this.toString(), "Failed to remove item with id " +
+                        e.id + ", exception: " + e
+            )
+            task.result = -1
+        }
+        notifyListener(task)
+    }
+
+    private fun handleTaskNoteRestore(task: Task) {
+        val e = task.taskObj as NoteItem
+        val c = findCategory(e.categoryId)
+        if (c == null) {
+            Log.e(this.toString(), "Failed to find category with id " + e.categoryId)
+            return
+        }
+
+        val index = c.indexNoteItem(e)
+        if (index == -1) return
+
+        try {
+            DataBaseHelper(this).use { dbHelper ->
+                dbHelper.start()
+                if (0 == dbHelper.restoreNote(e.id)) Log.e(
+                    this.toString(),
+                    "no row be restored in database"
+                )
+                dbHelper.finish()
+                e.isDeleted = false
+                task.result = index
+            }
+        } catch (_: Exception) {
+            Log.e(
+                this.toString(), "Failed to restore item with id " +
                         e.id + ", exception: " + e
             )
             task.result = -1
@@ -256,7 +288,8 @@ class CoreService : Service() {
                     task.result = -1
                 } else {
                     dbHelper.finish()
-                    oldItem.update(newItem, true)
+                    oldItem.updateFrom(newItem)
+                    oldItem.isEdited = true
                     task.result = index
                 }
             }
@@ -273,12 +306,14 @@ class CoreService : Service() {
                 Task.Job.CREATE -> handleTaskCategoryCreate(task)
                 Task.Job.REMOVE -> handleTaskCategoryRemove(task)
                 Task.Job.UPDATE -> handleTaskCategoryUpdate(task)
+                Task.Job.RESTORE -> Log.e(TAG, "category restoring is not supported now")
             }
         } else if (task.type == Task.Type.NoteItem) {
             when (task.job) {
                 Task.Job.CREATE -> handleTaskNoteCreate(task)
                 Task.Job.REMOVE -> handleTaskNoteRemove(task)
                 Task.Job.UPDATE -> handleTaskNoteUpdate(task)
+                Task.Job.RESTORE -> handleTaskNoteRestore(task)
             }
         }
     }

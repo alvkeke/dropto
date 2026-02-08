@@ -17,6 +17,7 @@ class Task {
     enum class Job {
         CREATE,
         REMOVE,
+        RESTORE,
         UPDATE,
     }
 
@@ -69,6 +70,7 @@ class Task {
                 Job.CREATE -> Notify.INSERTED
                 Job.UPDATE -> Notify.UPDATED
                 Job.REMOVE -> Notify.REMOVED
+                Job.RESTORE -> Notify.RESTORED
             }
         }
 
@@ -111,6 +113,11 @@ class Task {
         @JvmStatic
         fun removeNote(noteItem: NoteItem): Task {
             return onNoteStorage(Job.REMOVE, noteItem)
+        }
+
+        @JvmStatic
+        fun restoreNote(noteItem: NoteItem): Task {
+            return onNoteStorage(Job.RESTORE, noteItem)
         }
     }
 }

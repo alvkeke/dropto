@@ -34,6 +34,7 @@ import cn.alvkeke.dropto.service.Task.Companion.createNote
 import cn.alvkeke.dropto.service.Task.Companion.jobToNotify
 import cn.alvkeke.dropto.service.Task.Companion.removeCategory
 import cn.alvkeke.dropto.service.Task.Companion.removeNote
+import cn.alvkeke.dropto.service.Task.Companion.restoreNote
 import cn.alvkeke.dropto.service.Task.Companion.updateCategory
 import cn.alvkeke.dropto.service.Task.Companion.updateNote
 import cn.alvkeke.dropto.service.Task.ResultListener
@@ -257,7 +258,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                 val e = NoteItem("ITEM$i$i", System.currentTimeMillis())
                 e.categoryId = cateId
                 if (r.nextBoolean()) {
-                    e.setText(e.text, true)
+                    e.isEdited = true
                 }
                 if (idx < imgFiles.size && r.nextBoolean()) {
                     val imgFile = imgFiles[idx]
@@ -500,6 +501,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
             NoteDBAttemptListener.Attempt.REMOVE -> app.service?.queueTask(removeNote(e))
             NoteDBAttemptListener.Attempt.CREATE -> app.service?.queueTask(createNote(e))
             NoteDBAttemptListener.Attempt.UPDATE -> app.service?.queueTask(updateNote(e))
+            NoteDBAttemptListener.Attempt.RESTORE -> app.service?.queueTask(restoreNote(e))
         }
     }
 
@@ -509,6 +511,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     ) {
         when (attempt) {
             NoteDBAttemptListener.Attempt.REMOVE,
+            NoteDBAttemptListener.Attempt.RESTORE,
             NoteDBAttemptListener.Attempt.CREATE,
             NoteDBAttemptListener.Attempt.UPDATE -> {
                 val job: Task.Job = convertAttemptToJob(attempt)
@@ -595,7 +598,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     private fun onCategoryTaskFinish(task: Task) {
         if (task.result < 0) return
         when (task.job) {
-            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE -> {
+            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE, Task.Job.RESTORE -> {
                 categoryListFragment.notifyItemListChanged(
                     jobToNotify(task.job),
                     task.result,
@@ -644,6 +647,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         private fun convertAttemptToJob(attempt: NoteDBAttemptListener.Attempt): Task.Job {
             return when (attempt) {
                 NoteDBAttemptListener.Attempt.REMOVE -> Task.Job.REMOVE
+                NoteDBAttemptListener.Attempt.RESTORE -> Task.Job.RESTORE
                 NoteDBAttemptListener.Attempt.UPDATE -> Task.Job.UPDATE
                 NoteDBAttemptListener.Attempt.CREATE -> Task.Job.CREATE
             }

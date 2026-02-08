@@ -244,6 +244,9 @@ class CategoryListFragment : Fragment(), ListNotification<Category> {
             Notify.INSERTED -> categoryListAdapter.add(index, itemObj)
             Notify.UPDATED -> categoryListAdapter.update(itemObj)
             Notify.REMOVED -> categoryListAdapter.remove(itemObj)
+            Notify.RESTORED -> {
+                Log.e(TAG, "restoring category is not supported now")
+            }
             Notify.CLEARED -> categoryListAdapter.clear()
         }
     }
