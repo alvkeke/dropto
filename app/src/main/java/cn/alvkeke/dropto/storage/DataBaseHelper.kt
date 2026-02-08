@@ -9,16 +9,64 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.util.Base64
 import android.util.Log
 import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
+import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.mgmt.Global.getFolderImage
+import cn.alvkeke.dropto.mgmt.Global
+import java.io.File
 
 
 class DataBaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
     fun interface IterateCallback<T> {
         fun onIterate(o: T)
+    }
+
+    companion object {
+        const val TAG = "DataBaseHelper"
+
+        private const val DATABASE_NAME = "note.db"
+        private const val DATABASE_VERSION = 1
+
+        private const val TABLE_CATEGORY = "category"
+        private const val CATEGORY_COLUMN_ID = "_id"
+        private const val CATEGORY_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
+        private const val CATEGORY_COLUMN_NAME = "name"
+        private const val CATEGORY_COLUMN_NAME_TYPE = "TEXT"
+        private const val CATEGORY_COLUMN_PREVIEW = "preview_text"
+        private const val CATEGORY_COLUMN_PREVIEW_TYPE = "TEXT"
+        private const val CATEGORY_COLUMN_TYPE = "type"
+        private const val CATEGORY_COLUMN_TYPE_TYPE = "INTEGER"
+
+        private const val TABLE_NOTE = "note"
+        private const val NOTE_COLUMN_ID = "_id"
+        private const val NOTE_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
+        private const val NOTE_COLUMN_CATE_ID = "category_id"
+        private const val NOTE_COLUMN_CATE_ID_TYPE = "INTEGER"
+        private const val NOTE_COLUMN_TEXT = "text"
+        private const val NOTE_COLUMN_TEXT_TYPE = "TEXT"
+        private const val NOTE_COLUMN_C_TIME = "ctime"
+        private const val NOTE_COLUMN_C_TIME_TYPE = "INTEGER"
+        private const val NOTE_COLUMN_ATTACHMENT_INFO_V1 = "img_info"
+        private const val NOTE_COLUMN_ATTACHMENT_INFO_V2 = "attachment_info"
+        // for backward compatibility, use in this version only
+        private val NOTE_COLUMN_ATTACHMENT_INFO = when (DATABASE_VERSION) {
+            1 -> NOTE_COLUMN_ATTACHMENT_INFO_V1
+            2-> NOTE_COLUMN_ATTACHMENT_INFO_V2
+            else -> throw IllegalStateException("Unsupported database version: $DATABASE_VERSION")
+        }
+        private const val NOTE_COLUMN_ATTACHMENT_INFO_TYPE = "TEXT"
+        private const val NOTE_ATTACHMENT_PREFIX_IMAGE = "img"
+        private const val NOTE_ATTACHMENT_PREFIX_FILE = "file"
+        private const val NOTE_COLUMN_FLAGS = "flags"
+        private const val NOTE_COLUMN_FLAGS_TYPE = "INTEGER DEFAULT 0"
+        private const val NOTE_FLAG_IS_DELETED = 1 shl 0
+        private const val NOTE_FLAG_IS_EDITED = 1 shl 1
+        private const val NOTE_FLAG_IS_SYNCED = 1 shl 2
+
+        private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
+        private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
+        private const val NOTE_WHERE_CLAUSE_CATE_ID: String = "$NOTE_COLUMN_CATE_ID = ?"
     }
 
     private lateinit var db: SQLiteDatabase
@@ -28,7 +76,90 @@ class DataBaseHelper(private val context: Context) :
         createNoteTable(db)
     }
 
-    override fun onUpgrade(sqLiteDatabase: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion == 1) {
+            upgradeV1ToV2(db)
+        }
+    }
+
+    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion == 2) {
+            downgradeV2ToV1(db)
+        }
+    }
+
+    private fun upgradeV1ToV2(db: SQLiteDatabase) {
+        Log.e(TAG, "Database upgrading: 1 -> 2, rename current note table to backup table")
+        db.execSQL("ALTER TABLE $TABLE_NOTE RENAME TO ${TABLE_NOTE}_BAK;")
+        Log.e(TAG, "Database upgrading: 1 -> 2, create new note table with updated schema")
+        createNoteTable(db)
+        Log.e(TAG, "Database upgrading: 1 -> 2, copy data from backup table to new table")
+        db.execSQL("""
+            INSERT INTO $TABLE_NOTE (
+                $NOTE_COLUMN_ID,
+                $NOTE_COLUMN_CATE_ID,
+                $NOTE_COLUMN_TEXT,
+                $NOTE_COLUMN_C_TIME,
+                $NOTE_COLUMN_ATTACHMENT_INFO_V2
+            )
+            SELECT
+                $NOTE_COLUMN_ID,
+                $NOTE_COLUMN_CATE_ID,
+                $NOTE_COLUMN_TEXT,
+                $NOTE_COLUMN_C_TIME,
+                $NOTE_COLUMN_ATTACHMENT_INFO_V1
+            FROM ${TABLE_NOTE}_BAK;
+        """.trimIndent())
+        Log.e(TAG, "Database upgrading: 1 -> 2, drop backup table")
+        db.execSQL("DROP TABLE IF EXISTS ${TABLE_NOTE}_BAK;")
+        Log.e(TAG, "Database upgraded successfully: 1 -> 2")
+        printCurrentDbStruct(db)
+    }
+
+    private fun downgradeV2ToV1(db: SQLiteDatabase) {
+        Log.e(TAG, "Database downgrading: 2 -> 1, rename current note table to backup table")
+        db.execSQL("ALTER TABLE $TABLE_NOTE RENAME TO ${TABLE_NOTE}_BAK;")
+        Log.e(TAG, "Database downgrading: 2 -> 1, create new note table with supported schema")
+        createNoteTable(db)
+        printCurrentDbStruct(db)
+        Log.e(TAG, "Database downgrading: 2 -> 1, copy data from backup table to new table")
+        db.execSQL("""
+            INSERT INTO $TABLE_NOTE (
+                $NOTE_COLUMN_ID,
+                $NOTE_COLUMN_CATE_ID,
+                $NOTE_COLUMN_TEXT,
+                $NOTE_COLUMN_C_TIME,
+                $NOTE_COLUMN_ATTACHMENT_INFO_V1
+            )
+            SELECT
+                $NOTE_COLUMN_ID,
+                $NOTE_COLUMN_CATE_ID,
+                $NOTE_COLUMN_TEXT,
+                $NOTE_COLUMN_C_TIME,
+                $NOTE_COLUMN_ATTACHMENT_INFO_V2
+            FROM ${TABLE_NOTE}_BAK;
+        """.trimIndent())
+        Log.e(TAG, "Database downgrading: 2 -> 1, drop backup table")
+        db.execSQL("DROP TABLE IF EXISTS ${TABLE_NOTE}_BAK;")
+        Log.e(TAG, "Database downgraded successfully: 2 -> 1")
+        printCurrentDbStruct(db)
+    }
+
+    private fun printCurrentDbStruct(db: SQLiteDatabase) {
+        val cursor = db.rawQuery("PRAGMA table_info($TABLE_NOTE);", null)
+        while (cursor.moveToNext()) {
+            val nameIdx = cursor.getColumnIndex("name")
+            val typeIdx = cursor.getColumnIndex("type")
+            if (nameIdx == -1 || typeIdx == -1) continue
+            val name = cursor.getString(nameIdx)
+            val type = cursor.getString(typeIdx)
+            Log.e(TAG, "Note table column: $name, type: $type")
+        }
+        cursor.close()
+    }
+
+    fun exportDatabaseFile(): File {
+        return context.getDatabasePath(DATABASE_NAME)
     }
 
     private fun createCategoryTable(db: SQLiteDatabase) {
@@ -44,16 +175,31 @@ class DataBaseHelper(private val context: Context) :
     }
 
     private fun createNoteTable(db: SQLiteDatabase) {
-        db.execSQL(
-            String.format(
-                "CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s, %s %s)",
-                TABLE_NOTE, NOTE_COLUMN_ID, NOTE_COLUMN_ID_TYPE,
-                NOTE_COLUMN_CATE_ID, NOTE_COLUMN_CATE_ID_TYPE,
-                NOTE_COLUMN_TEXT, NOTE_COLUMN_TEXT_TYPE,
-                NOTE_COLUMN_C_TIME, NOTE_COLUMN_C_TIME_TYPE,
-                NOTE_COLUMN_ATTACHMENT_INFO, NOTE_COLUMN_IMG_INFO_TYPE
-            )
-        )
+        val sqlV1 = """
+            CREATE TABLE IF NOT EXISTS $TABLE_NOTE (
+                $NOTE_COLUMN_ID $NOTE_COLUMN_ID_TYPE,
+                $NOTE_COLUMN_CATE_ID $NOTE_COLUMN_CATE_ID_TYPE,
+                $NOTE_COLUMN_TEXT $NOTE_COLUMN_TEXT_TYPE,
+                $NOTE_COLUMN_C_TIME $NOTE_COLUMN_C_TIME_TYPE,
+                $NOTE_COLUMN_ATTACHMENT_INFO_V1 $NOTE_COLUMN_ATTACHMENT_INFO_TYPE
+            );
+        """.trimIndent()
+        val sqlV2 = """
+            CREATE TABLE IF NOT EXISTS $TABLE_NOTE (
+                $NOTE_COLUMN_ID $NOTE_COLUMN_ID_TYPE,
+                $NOTE_COLUMN_CATE_ID $NOTE_COLUMN_CATE_ID_TYPE,
+                $NOTE_COLUMN_TEXT $NOTE_COLUMN_TEXT_TYPE,
+                $NOTE_COLUMN_C_TIME $NOTE_COLUMN_C_TIME_TYPE,
+                $NOTE_COLUMN_ATTACHMENT_INFO_V2 $NOTE_COLUMN_ATTACHMENT_INFO_TYPE,
+                $NOTE_COLUMN_FLAGS $NOTE_COLUMN_FLAGS_TYPE
+            );
+        """.trimIndent()
+
+        db.execSQL(when (DATABASE_VERSION) {
+            1 -> sqlV1
+            2 -> sqlV2
+            else -> throw IllegalStateException("Unsupported database version: $DATABASE_VERSION")
+        })
     }
 
     @Suppress("unused")
@@ -213,8 +359,6 @@ class DataBaseHelper(private val context: Context) :
         return sb.toString()
     }
 
-    // don't consider the backward compatibility of attachment info format here
-    // TODO: implement database upgrade methods
     private fun parseAttachmentFile(info: String): AttachmentFile? {
         val infoS = info.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
 
@@ -238,10 +382,7 @@ class DataBaseHelper(private val context: Context) :
                 Base64.DEFAULT
             )
         )
-        return from(
-            getFolderImage(context),
-            sMd5, sName, sType
-        )
+        return from(Global.attachmentStorage, sMd5, sName, sType)
     }
 
     @Throws(SQLiteException::class)
@@ -439,39 +580,4 @@ class DataBaseHelper(private val context: Context) :
         cursor.close()
     }
 
-    companion object {
-        const val TAG = "DataBaseHelper"
-
-        private const val DATABASE_NAME = "note.db"
-        private const val DATABASE_VERSION = 1
-
-        private const val TABLE_CATEGORY = "category"
-        private const val CATEGORY_COLUMN_ID = "_id"
-        private const val CATEGORY_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
-        private const val CATEGORY_COLUMN_NAME = "name"
-        private const val CATEGORY_COLUMN_NAME_TYPE = "TEXT"
-        private const val CATEGORY_COLUMN_PREVIEW = "preview_text"
-        private const val CATEGORY_COLUMN_PREVIEW_TYPE = "TEXT"
-        private const val CATEGORY_COLUMN_TYPE = "type"
-        private const val CATEGORY_COLUMN_TYPE_TYPE = "INTEGER"
-
-        private const val TABLE_NOTE = "note"
-        private const val NOTE_COLUMN_ID = "_id"
-        private const val NOTE_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
-        private const val NOTE_COLUMN_CATE_ID = "category_id"
-        private const val NOTE_COLUMN_CATE_ID_TYPE = "INTEGER"
-        private const val NOTE_COLUMN_TEXT = "text"
-        private const val NOTE_COLUMN_TEXT_TYPE = "TEXT"
-        private const val NOTE_COLUMN_C_TIME = "ctime"
-        private const val NOTE_COLUMN_C_TIME_TYPE = "INTEGER"
-        private const val NOTE_COLUMN_ATTACHMENT_INFO = "img_info"  // TODO: rename to attachment_info
-        private const val NOTE_COLUMN_IMG_INFO_TYPE = "TEXT"
-
-        private const val NOTE_ATTACHMENT_PREFIX_IMAGE = "img"
-        private const val NOTE_ATTACHMENT_PREFIX_FILE = "file"
-
-        private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
-        private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
-        private const val NOTE_WHERE_CLAUSE_CATE_ID: String = "$NOTE_COLUMN_CATE_ID = ?"
-    }
 }

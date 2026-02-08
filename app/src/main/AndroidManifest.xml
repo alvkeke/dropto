@@ -20,6 +20,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DropTo">
         <activity
+            android:name=".ui.activity.StartupActivity"
+            android:exported="true"
+            android:theme="@style/Theme.DropTo.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".ui.activity.MgmtActivity"
             android:theme="@style/Theme.DropTo.NoActionBar"
             android:configChanges="uiMode"
@@ -36,11 +46,6 @@
             android:exported="true"
             android:configChanges="uiMode"
             android:theme="@style/Theme.DropTo.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
         <activity
             android:name=".ui.activity.ShareRecvActivity"

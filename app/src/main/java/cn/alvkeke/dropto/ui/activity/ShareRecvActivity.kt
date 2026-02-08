@@ -13,7 +13,6 @@ import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.mgmt.Global
-import cn.alvkeke.dropto.mgmt.Global.getFolderImage
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createNote
 import cn.alvkeke.dropto.service.Task.Companion.jobToNotify
@@ -156,7 +155,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
     }
 
     private fun extractAttachmentFromUri(uri: Uri): AttachmentFile? {
-        val folder = getFolderImage(this)
+        val folder = Global.attachmentStorage
         val md5file = saveUriToFile(this, uri, folder)
         if (md5file == null) {
             Log.e(this.toString(), "Failed to save uri to file: $uri")

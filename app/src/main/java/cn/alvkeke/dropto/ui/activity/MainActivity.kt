@@ -28,8 +28,6 @@ import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.mgmt.Global
-import cn.alvkeke.dropto.mgmt.Global.getFolderImage
-import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createCategory
 import cn.alvkeke.dropto.service.Task.Companion.createNote
@@ -58,8 +56,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Random
 import java.util.function.Consumer
@@ -249,7 +245,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
         lifecycleScope.launch(Dispatchers.IO) {
             delay(1000)
-            val imgFolder = getFolderImage(this@MainActivity)
+            val imgFolder = Global.attachmentStorage
             val imgFiles = tryExtractResImages(this@MainActivity, imgFolder) ?: return@launch
             val categories: ArrayList<Category> = categories
             if (categories.isEmpty()) return@launch
@@ -330,7 +326,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
     }
 
     private fun generateShareFile(imageFile: AttachmentFile): File? {
-        shareFolder = getFolderImageShare(this)
+        shareFolder = Global.attachmentCacheShare
 
         try {
             val imageName = imageFile.name
@@ -339,7 +335,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
                 fileToShare = imageFile.md5file
             } else {
                 fileToShare = File(shareFolder, imageName)
-                copyFile(imageFile.md5file, fileToShare)
+                imageFile.md5file.copyTo(fileToShare, true)
             }
             return fileToShare
         } catch (e: IOException) {
@@ -632,18 +628,18 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
 
         const val TAG: String = "MainActivity"
 
-        @Throws(IOException::class)
-        private fun copyFile(src: File, dst: File) {
-            val fi = FileInputStream(src)
-            val fo = FileOutputStream(dst)
-            val buffer = ByteArray(1024)
-            var length: Int
-            while ((fi.read(buffer).also { length = it }) > 0) {
-                fo.write(buffer, 0, length)
-            }
-            fi.close()
-            fo.close()
-        }
+//        @Throws(IOException::class)
+//        private fun copyFile(src: File, dst: File) {
+//            val fi = FileInputStream(src)
+//            val fo = FileOutputStream(dst)
+//            val buffer = ByteArray(1024)
+//            var length: Int
+//            while ((fi.read(buffer).also { length = it }) > 0) {
+//                fo.write(buffer, 0, length)
+//            }
+//            fi.close()
+//            fo.close()
+//        }
 
         private fun convertAttemptToJob(attempt: NoteDBAttemptListener.Attempt): Task.Job {
             return when (attempt) {

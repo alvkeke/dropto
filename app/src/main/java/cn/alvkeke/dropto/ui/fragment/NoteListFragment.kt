@@ -540,7 +540,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     if (content.isEmpty()) return@launch
                 } else {
                     for (a in attachments) {
-                        val folder = Global.getFolderImage(context)
+                        val folder = Global.attachmentStorage
                         val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
                         val imgName = FileHelper.getFileNameFromUri(context, a.uri)
                         val imageFile = AttachmentFile.from(md5file!!, imgName, a.type)

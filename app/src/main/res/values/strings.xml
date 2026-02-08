@@ -38,4 +38,5 @@
     <string name="string_clear_storage_button_prompt">Clear storage:</string>
     <string name="string_mgmt_list_label">Saved Files:</string>
     <string name="description_button_attach_file">Select file attachments</string>
+    <string name="string_export_db_button_prompt">Export current database</string>
 </resources>

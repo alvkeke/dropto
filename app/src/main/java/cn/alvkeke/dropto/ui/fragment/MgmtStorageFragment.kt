@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.fragment
 
+import android.content.DialogInterface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +11,8 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -17,8 +20,8 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.mgmt.Global.getFolderImage
-import cn.alvkeke.dropto.mgmt.Global.getFolderImageShare
+import cn.alvkeke.dropto.mgmt.Global
+import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.AttachmentListAdapter
@@ -26,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.IOException
 import java.util.LinkedList
 
 class MgmtStorageFragment : Fragment() {
@@ -34,6 +38,7 @@ class MgmtStorageFragment : Fragment() {
     private lateinit var cbAttachment: CheckBox
     private lateinit var cbCache: CheckBox
     private lateinit var buttonClear: Button
+    private lateinit var buttonExportDb: Button
     private lateinit var attachmentListAdapter: AttachmentListAdapter
 
     override fun onCreateView(
@@ -52,6 +57,7 @@ class MgmtStorageFragment : Fragment() {
         cbAttachment = view.findViewById(R.id.mgmt_storage_attachment)
         cbCache = view.findViewById(R.id.mgmt_storage_cache)
         buttonClear = view.findViewById(R.id.mgmt_storage_btn_clear)
+        buttonExportDb = view.findViewById(R.id.mgmt_storage_btn_export_db)
         val listFilename = view.findViewById<RecyclerView>(R.id.mgmt_storage_list_files)
 
         val context = requireContext()
@@ -69,9 +75,51 @@ class MgmtStorageFragment : Fragment() {
         attachmentListAdapter.setItemClickListener(OnItemClickListener())
 
         buttonClear.setOnClickListener { ignored: View ->
-            this.clearSelectedData(
-                ignored
-            )
+            // show dialog to confirm
+            AlertDialog.Builder(context)
+                .setTitle("Remove all attachments and cache")
+                .setMessage("Do you want to remove all attachments and cache? This action cannot be undone.")
+                .setNegativeButton(R.string.string_cancel, null)
+                .setPositiveButton(
+                    R.string.string_ok
+                ) { _: DialogInterface, _: Int ->
+                    this.clearSelectedData(
+                        ignored
+                    )
+                }
+                .create().show()
+        }
+
+        buttonExportDb.setOnClickListener { _ ->
+            val dbFile = DataBaseHelper(requireContext()).exportDatabaseFile()
+            Log.e(TAG, "exported db file to " + dbFile.absolutePath)
+            val shareFolder = Global.attachmentCacheShare
+
+            try {
+                val tmpFile = File(shareFolder, "dropto_database_exported.sqlite3")
+                dbFile.copyTo(tmpFile, true)
+
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    requireContext(),
+                    requireContext().packageName + ".fileprovider",
+                    tmpFile
+                )
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND)
+                intent.type = "application/octet-stream"
+                intent.putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                startActivity(android.content.Intent.createChooser(intent, "Share database file"))
+
+            } catch (e: IOException) {
+                val msg = "Failed to copy file for export database: $e"
+                Log.e(this.toString(), msg)
+                Toast.makeText(
+                    requireContext(),
+                    msg,
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
         }
 
         cbAttachment.isChecked = true
@@ -89,8 +137,8 @@ class MgmtStorageFragment : Fragment() {
     lateinit var attachmentFolder: File
     lateinit var cacheFolder: File
     private fun initFolders() {
-        cacheFolder = getFolderImageShare(requireContext())
-        attachmentFolder = getFolderImage(requireContext())
+        cacheFolder = Global.attachmentCacheShare
+        attachmentFolder = Global.attachmentStorage
     }
 
     private fun interface FolderIterator {
@@ -226,6 +274,9 @@ class MgmtStorageFragment : Fragment() {
     }
 
     companion object {
+
+        const val TAG = "MgmtStorageFragment"
+
         private fun getSizeType(size: Long): Int {
             return if (size < 1000L) 0
             else if (size < 1000000L) 1
