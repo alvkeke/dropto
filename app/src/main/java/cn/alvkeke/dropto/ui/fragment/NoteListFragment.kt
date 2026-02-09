@@ -63,6 +63,7 @@ import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 
 class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
@@ -313,19 +314,29 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             return true
         }
 
+        private fun opFun(index: Int) {
+            if (moveToSelect)
+                rlNoteList.selectItem(index)
+            else
+                rlNoteList.unselectItem(index)
+        }
+        private fun opFunNeg(index: Int) {
+            if (moveToSelect)
+                rlNoteList.unselectItem(index)
+            else
+                rlNoteList.selectItem(index)
+        }
         override fun onItemLongClickSlideOn(v: View, index: Int): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
 
-            // FIXME: unselect last item will make the animation weird, fix this
-            if (lastHoldItem != firstHoldItem) {
-                if (moveToSelect)
-                    rlNoteList.unselectItem(lastHoldItem)
-                else
-                    rlNoteList.selectItem(lastHoldItem)
-            }
+            val lastRange = abs(lastHoldItem - firstHoldItem)
+            val curRange = abs(index - firstHoldItem)
 
-            rlNoteList
-                .setRangeSelection(firstHoldItem, index, moveToSelect)
+            if (curRange > lastRange) {
+                opFun(index)
+            } else if (curRange < lastRange) {
+                opFunNeg(lastHoldItem)
+            }
 
             lastHoldItem = index
             return true
