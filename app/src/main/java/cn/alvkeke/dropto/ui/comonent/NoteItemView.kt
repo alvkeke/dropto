@@ -569,12 +569,12 @@ class NoteItemView @JvmOverloads constructor(
         return fileCount * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
     }
 
-    private fun measureIcons(): Int {
-        if (isEdited || isDeleted || !isSynced) {
-            return ICON_SIZE.dp() + MARGIN_ICON
-        }
-        return 0
-    }
+//    private fun measureIcons(): Int {
+//        if (isEdited || isDeleted || !isSynced) {
+//            return ICON_SIZE.dp() + MARGIN_ICON
+//        }
+//        return 0
+//    }
 
     private fun measureHeight(width: Int) : Int {
         val contentWidth =
@@ -607,12 +607,12 @@ class NoteItemView @JvmOverloads constructor(
             .setLineSpacing(0f, 1f)
             .setIncludePad(false)
             .build()
-        val iconHeight = measureIcons()
-        desiredHeight += if (iconHeight != 0) {
-            iconHeight
-        } else {
-            timeLayout.height + MARGIN_TIME
-        }
+//        val iconHeight = measureIcons()
+//        desiredHeight += if (iconHeight != 0) {
+//            iconHeight
+//        } else {
+            desiredHeight += timeLayout.height + MARGIN_TIME
+//        }
 
         return desiredHeight
     }
@@ -893,7 +893,7 @@ class NoteItemView @JvmOverloads constructor(
         return offsetY
     }
 
-    private fun Canvas.drawIcons(contentWidth: Int): Float {
+    private fun Canvas.drawIcons(size: Float): Float {
         var offsetX = 0f
         if (isDeleted) {
             drawBitmap(
@@ -901,10 +901,11 @@ class NoteItemView @JvmOverloads constructor(
                 null,
                 RectF(
                     offsetX, 0f,
-                    offsetX + ICON_SIZE.dp(), ICON_SIZE.dp().toFloat()),
+                    offsetX + size, size
+                ),
                 iconPaint
             )
-            offsetX += ICON_SIZE.dp() + MARGIN_ICON
+            offsetX += size + MARGIN_ICON
         }
         if (!isSynced) {
             drawBitmap(
@@ -912,10 +913,11 @@ class NoteItemView @JvmOverloads constructor(
                 null,
                 RectF(
                     offsetX, 0f,
-                    offsetX + ICON_SIZE.dp(), ICON_SIZE.dp().toFloat()),
+                    offsetX + size, size
+                ),
                 iconPaint
             )
-            offsetX += ICON_SIZE.dp() + MARGIN_ICON
+            offsetX += size + MARGIN_ICON
         }
         if (isEdited) {
             drawBitmap(
@@ -923,10 +925,11 @@ class NoteItemView @JvmOverloads constructor(
                 null,
                 RectF(
                     offsetX, 0f,
-                    offsetX + ICON_SIZE.dp(), ICON_SIZE.dp().toFloat()),
+                    offsetX + size, size
+                ),
                 iconPaint
             )
-            offsetX += ICON_SIZE.dp() + MARGIN_ICON
+            offsetX += size + MARGIN_ICON
         }
         return offsetX
     }
@@ -965,11 +968,11 @@ class NoteItemView @JvmOverloads constructor(
             }
             offY += textLayout.height + MARGIN_TEXT
         }
-        canvas.withTranslation(offX, offY) {
-            drawIcons(contentWidth)
-        }
         canvas.withTranslation(offX + MARGIN_TIME.toFloat(), offY) {
             timeLayout.draw(this)
+        }
+        canvas.withTranslation(offX, offY) {
+            drawIcons(timeLayout.height.toFloat())
         }
 
     }
@@ -1047,7 +1050,6 @@ class NoteItemView @JvmOverloads constructor(
         const val TEXT_SIZE_FILENAME = 40f
         const val MAX_FILE_COUNT = 4
 
-        const val ICON_SIZE = 16 // in dp
         const val MARGIN_ICON = 8
 
         const val MARGIN_TEXT = 16
