@@ -120,7 +120,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         toolbar.setNavigationOnClickListener(OnNavigationIconClick())
         toolbar.setOnMenuItemClickListener(NoteListMenuListener())
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar)
-        setToolbarMenuVisible(false)
+        setToolbarMenuBySelectedItems(0)
 
         val layoutManager = LinearLayoutManager(context)
         layoutManager.setReverseLayout(true)
@@ -206,38 +206,60 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.SHOW_FORWARD, items)
     }
 
+    private fun handleMenuDeletedVisible() {
+        noteItemAdapter.showDeleted = !noteItemAdapter.showDeleted
+        val menuItem = toolbar.menu.findItem(R.id.note_list_menu_deleted_visible)
+        menuItem.title = if (noteItemAdapter.showDeleted) {
+            resources.getString(R.string.hide_deleted_notes)
+        } else {
+            resources.getString(R.string.show_deleted_notes)
+        }
+    }
+
     private inner class NoteListMenuListener : Toolbar.OnMenuItemClickListener {
         override fun onMenuItemClick(item: MenuItem): Boolean {
-            val menuId = item.itemId
-            if (R.id.note_list_menu_delete == menuId) {
-                handleMenuDelete()
-            } else if (R.id.note_list_menu_copy == menuId) {
-                handleMenuCopy()
-            } else if (R.id.note_list_menu_share == menuId) {
-                handleMenuShare()
-            } else if (R.id.note_list_menu_forward == menuId) {
-                handleMenuForward()
+            when (item.itemId) {
+                R.id.note_list_menu_delete -> handleMenuDelete()
+                R.id.note_list_menu_copy -> handleMenuCopy()
+                R.id.note_list_menu_share -> handleMenuShare()
+                R.id.note_list_menu_forward -> handleMenuForward()
+                R.id.note_list_menu_deleted_visible -> handleMenuDeletedVisible()
+                else -> {
+                    Log.e(this.toString(), "Unknown menu id: ${item.itemId}")
+                    return false
+                }
             }
             return false
         }
     }
 
-    private fun setToolbarMenuVisible(visible: Boolean) {
+    private fun setToolbarMenuBySelectedItems(count: Int) {
         val menu = toolbar.getMenu()
-        for (i in 0..<menu.size) {
-            val menuItem = menu[i]
-            menuItem.isVisible = visible
+
+        when (count) {
+            0 -> {
+                for (i in 0 until menu.size) {
+                    val menuItem = menu[i]
+                    menuItem.isVisible = menuItem.itemId == R.id.note_list_menu_deleted_visible
+                }
+            }
+            else -> {
+                for (i in 0 until menu.size) {
+                    val menuItem = menu[i]
+                    menuItem.isVisible = menuItem.itemId != R.id.note_list_menu_deleted_visible
+                }
+            }
         }
     }
 
     private inner class NoteListSelectListener : SelectListener {
         override fun onSelectEnter() {
-            setToolbarMenuVisible(true)
+            setToolbarMenuBySelectedItems(rlNoteList.selectedCount)
             toolbar.setNavigationIcon(R.drawable.icon_common_cross)
         }
 
         override fun onSelectExit() {
-            setToolbarMenuVisible(false)
+            setToolbarMenuBySelectedItems(0)
             toolbar.setNavigationIcon(R.drawable.icon_common_back)
             toolbar.title = category.title
         }
@@ -565,7 +587,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun showNoteDetail(index: Int) {
-        val noteItem = category.getNoteItem(index)
+        val noteItem = noteItemAdapter.get(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.SHOW_DETAIL,
             noteItem,
@@ -573,7 +595,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun showMediaView(index: Int, attachmentIndex: Int) {
-        val noteItem = category.getNoteItem(index)
+        val noteItem = noteItemAdapter.get(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.SHOW_MEDIA,
             noteItem,
@@ -582,7 +604,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     }
 
     private fun tryOpenFile(index: Int, fileIndex: Int) {
-        val noteItem = category.getNoteItem(index)
+        val noteItem = noteItemAdapter.get(index)
         uiListener.onAttempt(
             NoteUIAttemptListener.Attempt.OPEN_FILE,
             noteItem,
@@ -649,7 +671,7 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
     private lateinit var popupMenu: PopupMenu
     @SuppressLint("RestrictedApi")
     private fun showItemPopMenu(index: Int, v: View, x: Int, y: Int) {
-        val noteItem = category.getNoteItem(index)
+        val noteItem = noteItemAdapter.get(index)
         if (!::popupMenu.isInitialized) {
             popupMenu = PopupMenu(context)
             val menu = MenuBuilder(context)
@@ -715,8 +737,12 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
 
             Notify.UPDATED -> noteItemAdapter.update(index)
             Notify.REMOVED -> {
-//                noteItemAdapter.remove(itemObj)
-                noteItemAdapter.update(index)
+                Log.e(TAG, "item removed: $index, showDeleted: ${noteItemAdapter.showDeleted}")
+                if (noteItemAdapter.showDeleted) {
+                    noteItemAdapter.update(index)
+                } else {
+                    noteItemAdapter.remove(itemObj)
+                }
             }
             Notify.RESTORED -> {
                 noteItemAdapter.update(index)

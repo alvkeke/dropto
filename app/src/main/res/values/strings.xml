@@ -40,4 +40,6 @@
     <string name="description_button_attach_file">Select file attachments</string>
     <string name="string_export_db_button_prompt">Export current database</string>
     <string name="title_item_pop_menu_restore">Restore</string>
+    <string name="show_deleted_notes">Show deleted notes</string>
+    <string name="hide_deleted_notes">Hide deleted notes</string>
 </resources>

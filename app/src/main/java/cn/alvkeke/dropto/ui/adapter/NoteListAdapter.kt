@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.ui.adapter
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,6 +18,38 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.rlist_item_note, parent, false)
         return ViewHolder(view)
+    }
+
+    var showDeleted = false
+        @SuppressLint("NotifyDataSetChanged")
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
+    override fun getItemCount(): Int {
+        return if (showDeleted) {
+            elements.size
+        } else {
+            elements.filter { !it.isDeleted }.size
+        }
+    }
+
+    override fun get(index: Int): NoteItem {
+        return if (showDeleted) {
+            elements[index]
+        } else {
+            elements.filter { !it.isDeleted }[index]
+        }
+    }
+
+    override fun remove(e: NoteItem) {
+        if (showDeleted) {
+            super.remove(e)
+        } else {
+            val index = elements.filter { !it.isDeleted || it == e }.indexOf(e)
+            notifyItemRemoved(index)
+        }
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {

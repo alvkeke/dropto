@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.recyclerview.widget.RecyclerView
 
 abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerView.Adapter<H>() {
-    private val elements = ArrayList<E>()
+    protected val elements = ArrayList<E>()
 
     override fun getItemCount(): Int {
         return elements.size
@@ -45,7 +45,7 @@ abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         return true
     }
 
-    fun remove(e: E) {
+    open fun remove(e: E) {
         val index = elements.indexOf(e)
         elements.remove(e)
         notifyItemRemoved(index)
@@ -68,7 +68,7 @@ abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         }
     }
 
-    fun get(index: Int): E {
+    open fun get(index: Int): E {
         return elements[index]
     }
 
