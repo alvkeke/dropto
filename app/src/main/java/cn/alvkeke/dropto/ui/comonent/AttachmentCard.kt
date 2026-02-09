@@ -235,65 +235,124 @@ class AttachmentCard @JvmOverloads constructor(
         }
 
         if (animateRatio > 0f) {
-            contentOffset = contentRect.width() / 4 * animateRatio
+            if (contentType == ContentType.FILE) {
+                // contentOffset is already set in onMeasure
+                val buttonHeight = contentOffset * 5 / 4
+                val btnWidth = contentRect.width() / 3
+                val offY = contentRect.bottom + contentOffset - buttonHeight
+                var offX = contentRect.left
 
-            val buttonHeight = contentRect.height() / 3
-            val offX = contentRect.left
-            var offY = contentRect.top
-            val btnWidth = contentOffset * 5 / 4 + offX
+                buttonRect.set(
+                    offX, offY,
+                    offX + btnWidth, offY + buttonHeight
+                )
+                buttonPaint.color = Color.RED
+                canvas.drawRect(buttonRect, buttonPaint)
+                var icon = ImageLoader.iconDeleted
+                var ix = (buttonRect.width()) / 2 - icon.width / 2
+                var iy = (buttonRect.height()) / 2 - icon.height / 2
+                canvas.drawBitmap(
+                    icon,
+                    buttonRect.left + ix,
+                    buttonRect.top + iy,
+                    bitmapPaint
+                )
 
-            buttonRect.set(
-                offX, offY,
-                btnWidth, offY + buttonHeight
-            )
-            buttonPaint.color = Color.RED
-            canvas.drawRect(buttonRect, buttonPaint)
-            var icon = ImageLoader.iconDeleted
-            var ix = (buttonRect.width()) / 2 - icon.width / 2
-            var iy = (buttonRect.height()) / 2 - icon.height / 2
-            canvas.drawBitmap(
-                icon,
-                buttonRect.left + ix,
-                buttonRect.top + iy,
-                bitmapPaint
-            )
+                offX += btnWidth
+                buttonRect.set(
+                    offX, offY,
+                    offX + btnWidth, offY + buttonHeight
+                )
+                buttonPaint.color = Color.GRAY
+                canvas.drawRect(buttonRect, buttonPaint)
+                icon = ImageLoader.iconShare
+                ix = (buttonRect.width()) / 2 - icon.width / 2
+                iy = (buttonRect.height()) / 2 - icon.height / 2
+                canvas.drawBitmap(
+                    icon,
+                    buttonRect.left + ix,
+                    buttonRect.top + iy,
+                    bitmapPaint
+                )
 
-            offY += buttonHeight
-            buttonRect.set(
-                offX, offY,
-                btnWidth, offY + buttonHeight
-            )
-            buttonPaint.color = Color.GRAY
-            canvas.drawRect(buttonRect, buttonPaint)
-            icon = ImageLoader.iconShare
-            ix = (buttonRect.width()) / 2 - icon.width / 2
-            iy = (buttonRect.height()) / 2 - icon.height / 2
-            canvas.drawBitmap(
-                icon,
-                buttonRect.left + ix,
-                buttonRect.top + iy,
-                bitmapPaint
-            )
+                offX += btnWidth
+                buttonRect.set(
+                    offX, offY,
+                    offX + btnWidth, offY + buttonHeight
+                )
+                buttonPaint.color = Color.LTGRAY
+                canvas.drawRect(buttonRect, buttonPaint)
+                icon = ImageLoader.iconMore
+                ix = (buttonRect.width()) / 2 - icon.width / 2
+                iy = (buttonRect.height()) / 2 - icon.height / 2
+                canvas.drawBitmap(
+                    icon,
+                    buttonRect.left + ix,
+                    buttonRect.top + iy,
+                    bitmapPaint
+                )
+
+            } else {
+                contentOffset = contentRect.width() / 4 * animateRatio
+
+                val buttonHeight = contentRect.height() / 3
+                val offX = contentRect.left
+                var offY = contentRect.top
+                val btnWidth = contentOffset * 5 / 4 + offX
+
+                buttonRect.set(
+                    offX, offY,
+                    offX + btnWidth, offY + buttonHeight
+                )
+                buttonPaint.color = Color.RED
+                canvas.drawRect(buttonRect, buttonPaint)
+                var icon = ImageLoader.iconDeleted
+                var ix = (buttonRect.width()) / 2 - icon.width / 2
+                var iy = (buttonRect.height()) / 2 - icon.height / 2
+                canvas.drawBitmap(
+                    icon,
+                    buttonRect.left + ix,
+                    buttonRect.top + iy,
+                    bitmapPaint
+                )
+
+                offY += buttonHeight
+                buttonRect.set(
+                    offX, offY,
+                    offX + btnWidth, offY + buttonHeight
+                )
+                buttonPaint.color = Color.GRAY
+                canvas.drawRect(buttonRect, buttonPaint)
+                icon = ImageLoader.iconShare
+                ix = (buttonRect.width()) / 2 - icon.width / 2
+                iy = (buttonRect.height()) / 2 - icon.height / 2
+                canvas.drawBitmap(
+                    icon,
+                    buttonRect.left + ix,
+                    buttonRect.top + iy,
+                    bitmapPaint
+                )
 
 
-            offY += buttonHeight
-            buttonRect.set(
-                offX, offY,
-                btnWidth, offY + buttonHeight
-            )
-            buttonPaint.color = Color.LTGRAY
-            canvas.drawRect(buttonRect, buttonPaint)
-            icon = ImageLoader.iconMore
-            ix = (buttonRect.width()) / 2 - icon.width / 2
-            iy = (buttonRect.height()) / 2 - icon.height / 2
-            canvas.drawBitmap(
-                icon,
-                buttonRect.left + ix,
-                buttonRect.top + iy,
-                bitmapPaint
-            )
+                offY += buttonHeight
+                buttonRect.set(
+                    offX, offY,
+                    offX + btnWidth, offY + buttonHeight
+                )
+                buttonPaint.color = Color.LTGRAY
+                canvas.drawRect(buttonRect, buttonPaint)
+                icon = ImageLoader.iconMore
+                ix = (buttonRect.width()) / 2 - icon.width / 2
+                iy = (buttonRect.height()) / 2 - icon.height / 2
+                canvas.drawBitmap(
+                    icon,
+                    buttonRect.left + ix,
+                    buttonRect.top + iy,
+                    bitmapPaint
+                )
 
-            canvas.translate(contentOffset, 0f)
+                canvas.translate(contentOffset, 0f)
+            }
         }
 
         contentPath.addRoundRect(
@@ -314,9 +373,15 @@ class AttachmentCard @JvmOverloads constructor(
     private val marginCardContentY = MARGIN_CARD_CONTENT_Y.dp()
 
     private fun measureHeight(width: Int): Int {
-        val contentHeight = when (contentType) {
-            ContentType.IMAGE, ContentType.VIDEO -> width / 2
-            ContentType.FILE -> width / 4
+        val contentHeight: Int
+        when (contentType) {
+            ContentType.IMAGE, ContentType.VIDEO -> {
+                contentHeight = width / 2
+            }
+            ContentType.FILE -> {
+                contentHeight = width / 4
+                contentOffset = contentHeight * animateRatio
+            }
         }
 
         contentRect.set(
@@ -326,7 +391,14 @@ class AttachmentCard @JvmOverloads constructor(
             (marginCardContentY + contentHeight).toFloat()
         )
 
-        return (marginCardContentY * 2 + contentHeight)
+        return when (contentType) {
+            ContentType.FILE -> {
+                (marginCardContentY * 2 + contentHeight + contentOffset.toInt())
+            }
+            else -> {
+                (marginCardContentY * 2 + contentHeight)
+            }
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -413,12 +485,12 @@ class AttachmentCard @JvmOverloads constructor(
     }
 
     private val checkRect = RectF()
-    private fun checkClickedContent(x: Int, y: Int): Int {
+    private fun checkClickedContentMedia(x: Int, y: Int): Int {
         checkRect.set(contentRect)
         checkRect.offset(contentOffset, 0f)
-        if (checkRect.contains(x.toFloat(), y.toFloat()))
+        if (checkRect.contains(x.toFloat(), y.toFloat())) {
             return 0
-        else {
+        } else {
             checkRect.set(
                 0f, 0f,
                 contentOffset, contentRect.height()
@@ -432,6 +504,34 @@ class AttachmentCard @JvmOverloads constructor(
                 }
             }
             return 0
+        }
+    }
+    private fun checkClickedContentFile(x: Int, y: Int): Int {
+        checkRect.set(contentRect)
+        if (checkRect.contains(x.toFloat(), y.toFloat())) {
+            return 0
+        } else {
+            checkRect.set(
+                contentRect.left, contentRect.bottom,
+                contentRect.width(), contentRect.bottom + contentOffset
+            )
+            if (checkRect.contains(x.toFloat(), y.toFloat())) {
+                val div = checkRect.width() / 3
+                return when {
+                    x < div -> 1
+                    x < div * 2 -> 2
+                    else -> 3
+                }
+            }
+            return 0
+        }
+    }
+
+    private fun checkClickedContent(x: Int, y: Int): Int {
+        return when (contentType) {
+            ContentType.IMAGE,
+            ContentType.VIDEO -> checkClickedContentMedia(x, y)
+            ContentType.FILE -> checkClickedContentFile(x, y)
         }
     }
 
@@ -503,6 +603,7 @@ class AttachmentCard @JvmOverloads constructor(
             while(true) {
                 animateRatio = (animateRatio + step)
                     .coerceIn(0f, 1f)
+                this@AttachmentCard.requestLayout()
                 invalidate()
                 if (isEnd(animateRatio)) break
                 kotlinx.coroutines.delay(PopupMenu.ANIMATION_INTERVAL)
