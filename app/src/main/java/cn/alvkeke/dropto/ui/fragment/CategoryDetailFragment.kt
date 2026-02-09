@@ -10,27 +10,26 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Spinner
 import androidx.appcompat.widget.Toolbar
+import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.ui.adapter.CategoryTypeSpinnerAdapter
-import cn.alvkeke.dropto.ui.intf.CategoryDBAttemptListener
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class CategoryDetailFragment : BottomSheetDialogFragment {
-    private lateinit var listener: CategoryDBAttemptListener
+    private val app: DroptoApplication
+        get() = requireActivity().application as DroptoApplication
+
     private lateinit var etCategoryTitle: EditText
     private lateinit var spinnerType: Spinner
     private var category: Category? = null
 
     constructor()
 
-    constructor(category: Category?) {
-        this.category = category
-    }
-
-    fun setCategory(category: Category) {
+    fun setCategory(category: Category?) {
         this.category = category
     }
 
@@ -42,13 +41,21 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         return inflater.inflate(R.layout.fragment_category_detail, container, false)
     }
 
+    override fun onStart() {
+        super.onStart()
+        refreshViewFromCategory()
+    }
+
+    override fun onStop() {
+        super.onStop()
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         val toolbar = view.findViewById<MaterialToolbar>(R.id.category_detail_toolbar)
         etCategoryTitle = view.findViewById(R.id.category_detail_title)
         spinnerType = view.findViewById(R.id.category_detail_type_spinner)
-        listener = requireContext() as CategoryDBAttemptListener
 
         setPeekHeight(view)
         fillTypeSpinner()
@@ -60,7 +67,6 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         } else {
             toolbar.setTitle("Edit Category:")
             toolbar.setNavigationIcon(R.drawable.icon_common_remove)
-            loadCategory()
             toolbar.setNavigationOnClickListener(DeleteButtonClick())
         }
         toolbar.inflateMenu(R.menu.fragment_category_detail)
@@ -86,9 +92,14 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         layoutParams.height = displayHei
     }
 
-    private fun loadCategory() {
-        etCategoryTitle.setText(category!!.title)
-        spinnerType.setSelection(category!!.type.ordinal)
+    private fun refreshViewFromCategory() {
+        if (category != null) {
+            etCategoryTitle.setText(category!!.title)
+            spinnerType.setSelection(category!!.type.ordinal)
+        } else {
+            etCategoryTitle.text.clear()
+            spinnerType.setSelection(0)
+        }
     }
 
     private fun finish() {
@@ -104,11 +115,11 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         val type = spinnerType.selectedItem as Category.Type
         if (category == null) {
             category = Category(title, type)
-            listener.onAttempt(CategoryDBAttemptListener.Attempt.CREATE, category!!)
+            app.service?.queueTask(Task.createCategory(category!!))
         } else {
             category!!.title = title
             category!!.type = type
-            listener.onAttempt(CategoryDBAttemptListener.Attempt.UPDATE, category!!)
+            app.service?.queueTask(Task.updateCategory(category!!))
         }
         finish()
     }
@@ -134,7 +145,7 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         builder.setPositiveButton(
             R.string.string_ok
         ) { _: DialogInterface, _: Int ->
-            listener.onAttempt(CategoryDBAttemptListener.Attempt.REMOVE, category!!)
+            app.service?.queueTask(Task.removeCategory(category!!))
             finish()
         }
 

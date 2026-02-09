@@ -52,6 +52,36 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         }
     }
 
+    override fun update(e: NoteItem) {
+        if (showDeleted) {
+            super.update(e)
+        } else {
+            val index = elements.filter { !it.isDeleted || it == e }.indexOf(e)
+            notifyItemChanged(index)
+        }
+    }
+
+    override fun add(index: Int, e: NoteItem): Boolean {
+        if (showDeleted) {
+            return super.add(index, e)
+        } else {
+            val filtered = elements.filter { !it.isDeleted }
+            var actualIndex = 0
+            var count = 0
+            while (actualIndex < elements.size && count < index) {
+                if (!elements[actualIndex].isDeleted) {
+                    count++
+                }
+                actualIndex++
+            }
+            elements.add(actualIndex, e)
+            notifyItemInserted(index)
+            notifyItemRangeChanged(index, filtered.size - index + 1)
+            return true
+        }
+    }
+
+
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val note = this.get(position)
         val view = holder.content

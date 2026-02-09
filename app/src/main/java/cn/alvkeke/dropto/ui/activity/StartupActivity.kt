@@ -12,8 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.storage.DataBaseHelper
+import cn.alvkeke.dropto.storage.FileHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -93,7 +93,7 @@ class StartupActivity : AppCompatActivity() {
                 // do nothing, just to trigger database creation / upgrade / downgrade
                 helper.finish()
             }
-            Global.folderInitAndMigrate(this@StartupActivity)
+            FileHelper.folderInitAndMigrate(this@StartupActivity)
 
             withContext(Dispatchers.Main) {
                 startActivity(Intent(this@StartupActivity, MainActivity::class.java))

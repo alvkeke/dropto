@@ -31,7 +31,7 @@ abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         return index
     }
 
-    fun add(index: Int, e: E): Boolean {
+    open fun add(index: Int, e: E): Boolean {
         val idx = elements.indexOf(e)
         if (idx >= 0) {
             if (idx != index) {
@@ -61,7 +61,7 @@ abstract class SelectableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         notifyItemChanged(index)
     }
 
-    fun update(e: E) {
+    open fun update(e: E) {
         val index = elements.indexOf(e)
         if (index != -1) {
             notifyItemChanged(index)

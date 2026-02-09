@@ -1,6 +1,6 @@
 package cn.alvkeke.dropto.data
 
-import cn.alvkeke.dropto.mgmt.Global
+import cn.alvkeke.dropto.storage.FileHelper
 import java.io.File
 
 class AttachmentFile(val md5file: File, var name: String, val type: Type) {
@@ -22,7 +22,7 @@ class AttachmentFile(val md5file: File, var name: String, val type: Type) {
         }
 
     val mimeType: String
-        get() = Global.mimeTypeFromFileName(name)
+        get() = FileHelper.mimeTypeFromFileName(name)
 
     companion object {
         @JvmStatic

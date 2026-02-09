@@ -2,7 +2,6 @@ package cn.alvkeke.dropto.service
 
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
 
 class Task {
     enum class Target {
@@ -64,15 +63,6 @@ class Task {
 
         @Suppress("unused")
         val Jobs: Array<Job> = Job.entries.toTypedArray()
-        @JvmStatic
-        fun jobToNotify(job: Job): Notify {
-            return when (job) {
-                Job.CREATE -> Notify.INSERTED
-                Job.UPDATE -> Notify.UPDATED
-                Job.REMOVE -> Notify.REMOVED
-                Job.RESTORE -> Notify.RESTORED
-            }
-        }
 
         fun onCategoryStorage(job: Job, taskObj: Any): Task {
             val task = Task(Target.Storage, Type.Category, job, taskObj)

@@ -4,18 +4,101 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.core.content.FileProvider
+import cn.alvkeke.dropto.data.AttachmentFile
+import cn.alvkeke.dropto.data.NoteItem
 import java.io.File
 import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.security.MessageDigest
+import java.util.function.Consumer
 
 object FileHelper {
 
     private const val TAG = "FileHelper"
 
     private const val BUFFER_SIZE = 1024
+
+    lateinit var attachmentStorage: File
+        private set
+    lateinit var attachmentCacheShare: File
+        private set
+
+    private const val ATTACHMENT_FOLDER_OLD = "imgs"
+    private const val ATTACHMENT_FOLDER_NEW = "attachments"
+    private val ATTACHMENT_FOLDER_AVAILABLE = ArrayList<String>().apply {
+        add(ATTACHMENT_FOLDER_OLD)
+        add(ATTACHMENT_FOLDER_NEW)
+    }
+    private const val ATTACHMENT_FOLDER = ATTACHMENT_FOLDER_NEW
+    private const val ATTACHMENT_SHARE_FOLDER = "share"
+
+    private fun File.isValid(): Boolean {
+        return this.exists() && this.isDirectory
+    }
+
+    fun folderInitAndMigrate(context: Context) {
+        attachmentStorage = context.getExternalFilesDir(ATTACHMENT_FOLDER)!!
+        Log.e(TAG, "migrating attachment folders to ${attachmentStorage.absolutePath}")
+
+        if (attachmentStorage.exists() && !attachmentStorage.isDirectory) {
+            val bakFile = File(
+                "${attachmentStorage.absolutePath}.${System.currentTimeMillis()}.bak"
+            )
+            Log.e(TAG, "attachment folder exist but not a folder, backup it to ${bakFile.name}")
+            attachmentStorage.renameTo(bakFile)
+        }
+
+        if (!attachmentStorage.exists()) {
+            Log.e(TAG, "attachment folder doesn't exist, create: " + attachmentStorage.mkdir())
+        }
+
+        Log.e(TAG, "checking available folders: ${ATTACHMENT_FOLDER_AVAILABLE.size}")
+        for (s in ATTACHMENT_FOLDER_AVAILABLE) {
+            if (s == ATTACHMENT_FOLDER) continue    // skip current folder
+
+            Log.e(TAG, "checking folder: $s")
+            val otherFolder = context.getExternalFilesDir(s) ?: continue
+            if (otherFolder.isValid()) {
+                val files = otherFolder.listFiles()
+
+                if (files == null || files.isEmpty()) {
+                    Log.e(TAG, "folder $s is empty, delete it")
+                    otherFolder.delete()
+                    continue
+                }
+
+                Log.e(TAG, "folder $s exists and valid, move ${files.size} files from it")
+                files.forEach { file ->
+                    Log.e(TAG, "Move file: ${file.name}")
+                    file.renameTo(File(attachmentStorage, file.name))
+                }
+                otherFolder.delete()
+            }
+        }
+
+        // init cache folder
+        attachmentCacheShare = context.externalCacheDir!!
+        attachmentCacheShare = File(attachmentCacheShare, ATTACHMENT_SHARE_FOLDER)
+        if (attachmentCacheShare.exists() && !attachmentCacheShare.isDirectory) {
+            val bakFile = File(
+                "${attachmentCacheShare.absolutePath}.${System.currentTimeMillis()}.bak"
+            )
+            Log.e(TAG, "share folder exist but not a folder, backup it to ${bakFile.name}")
+            attachmentCacheShare.renameTo(bakFile)
+        }
+        if (!attachmentCacheShare.exists()) {
+            Log.i(TAG, "share folder not exist, create: " + attachmentCacheShare.mkdir())
+        }
+    }
+
+    fun mimeTypeFromFileName(name: String): String {
+        val extension = name.substringAfterLast('.', "")
+        return android.webkit.MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(extension.lowercase()) ?: "*/*"
+    }
 
     fun bytesToHex(bytes: ByteArray): String {
         val sb = StringBuilder()
@@ -133,4 +216,59 @@ object FileHelper {
             return null
         }
     }
+
+    private fun generateShareFile(imageFile: AttachmentFile): File? {
+        try {
+            val imageName = imageFile.name
+            val fileToShare: File?
+            if (imageName.isEmpty()) {
+                fileToShare = imageFile.md5file
+            } else {
+                fileToShare = File(attachmentCacheShare, imageName)
+                imageFile.md5file.copyTo(fileToShare, true)
+            }
+            return fileToShare
+        } catch (e: IOException) {
+            Log.e(this.toString(), "Failed to copy file: $e")
+            return null
+        }
+    }
+
+    fun getUriForFile(context: Context, file: File): Uri {
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider", file
+        )
+    }
+
+    fun generateShareFile(
+        context: Context,
+        attachment: AttachmentFile,
+    ) : Uri {
+        val ff = generateShareFile(attachment)
+        val uri = getUriForFile(context, ff!!)
+        return uri
+    }
+
+    fun generateShareFiles(
+        context: Context,
+        note: NoteItem,
+        uris: ArrayList<Uri>
+    ) {
+        note.attachments.iterator().forEachRemaining(Consumer { f: AttachmentFile ->
+            val uri = generateShareFile(context, f)
+            uris.add(uri)
+        })
+    }
+
+    fun emptyShareFolder() {
+        val files = attachmentCacheShare.listFiles() ?: return
+        for (file in files) {
+            if (!file.isDirectory) {
+                val ret = file.delete()
+                Log.d("emptyFolder", "file delete result: $ret")
+            }
+        }
+    }
+
 }

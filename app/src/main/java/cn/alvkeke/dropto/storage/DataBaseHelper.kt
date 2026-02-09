@@ -12,7 +12,6 @@ import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.mgmt.Global
 import java.io.File
 
 
@@ -380,7 +379,7 @@ class DataBaseHelper(private val context: Context) :
                 Base64.DEFAULT
             )
         )
-        return from(Global.attachmentStorage, sMd5, sName, sType)
+        return from(FileHelper.attachmentStorage, sMd5, sName, sType)
     }
 
     private fun Long.set(flag: Long): Long {

@@ -1,7 +1,7 @@
 package cn.alvkeke.dropto.data
 
 import android.util.Log
-import cn.alvkeke.dropto.mgmt.Global
+import cn.alvkeke.dropto.storage.FileHelper
 import java.io.Serializable
 
 class NoteItem : Serializable, Cloneable {
@@ -173,7 +173,7 @@ class NoteItem : Serializable, Cloneable {
             var firstTypeMain: String? = null
             var firstTypeSub: String? = null
             for (file in attachments) {
-                val fileMimeType = Global.mimeTypeFromFileName(file.name)
+                val fileMimeType = FileHelper.mimeTypeFromFileName(file.name)
                 Log.v(TAG, "attachment mime type: $fileMimeType")
                 val main = fileMimeType.substringBefore('/')
                 val sub = fileMimeType.substringAfter('/')
@@ -197,7 +197,7 @@ class NoteItem : Serializable, Cloneable {
             var firstTypeSub: String? = null
 
             for (file in attachments) {
-                val fileMimeType = Global.mimeTypeFromFileName(file.name)
+                val fileMimeType = FileHelper.mimeTypeFromFileName(file.name)
                 Log.e(TAG, "attachment mime type: $fileMimeType")
                 val mainType = fileMimeType.substringBefore('/')
                 val subType = fileMimeType.substringAfter('/')

@@ -12,32 +12,20 @@ import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.mgmt.Global
-import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createNote
-import cn.alvkeke.dropto.service.Task.Companion.jobToNotify
-import cn.alvkeke.dropto.service.Task.ResultListener
 import cn.alvkeke.dropto.storage.DataLoader.categories
+import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.FileHelper.getFileNameFromUri
 import cn.alvkeke.dropto.storage.FileHelper.saveUriToFile
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
 
-class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.CategorySelectListener,
-    ResultListener {
+class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.CategorySelectListener {
 
     private val app: DroptoApplication
         get() = application as DroptoApplication
 
-    private lateinit var categorySelectorFragment: CategorySelectorFragment
-
-    override fun onStart() {
-        super.onStart()
-        app.addTaskListener(this)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        app.delTaskListener(this)
+    private val categorySelectorFragment: CategorySelectorFragment by lazy {
+        CategorySelectorFragment()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,8 +57,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         Log.e(TAG, "received type: $type")
         pendingUris = handleReceivedUris(intent)
 
-        categorySelectorFragment = CategorySelectorFragment()
-        categorySelectorFragment.setCategories(categories)
+        categorySelectorFragment.prepare(categories, this)
         supportFragmentManager.beginTransaction()
             .add(categorySelectorFragment, null)
             .commit()
@@ -121,11 +108,6 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         finish()
     }
 
-    override fun onError(error: String) {
-        Toast.makeText(this@ShareRecvActivity, error, Toast.LENGTH_SHORT).show()
-        finish()
-    }
-
     private fun handleTextInfo(intent: Intent): String {
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)
         if (text == null) {
@@ -155,14 +137,14 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
     }
 
     private fun extractAttachmentFromUri(uri: Uri): AttachmentFile? {
-        val folder = Global.attachmentStorage
+        val folder = FileHelper.attachmentStorage
         val md5file = saveUriToFile(this, uri, folder)
         if (md5file == null) {
             Log.e(this.toString(), "Failed to save uri to file: $uri")
             return null
         }
         val fileName = getFileNameFromUri(this, uri)
-        val mimeType = Global.mimeTypeFromFileName(fileName)
+        val mimeType = FileHelper.mimeTypeFromFileName(fileName)
         val attachmentType = if (mimeType.startsWith("image/") ||
             mimeType.startsWith("video/")) {
             Type.MEDIA
@@ -171,23 +153,6 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         }
 
         return AttachmentFile(md5file, fileName, attachmentType)
-    }
-
-    private fun onCategoryTaskFinish(task: Task) {
-        if (task.result < 0) return
-        when (task.job) {
-            Task.Job.CREATE, Task.Job.REMOVE, Task.Job.UPDATE, Task.Job.RESTORE -> {
-                categorySelectorFragment.notifyItemListChanged(
-                    jobToNotify(task.job),
-                    task.result,
-                    task.taskObj as Category
-                )
-            }
-        }
-    }
-
-    override fun onTaskFinish(task: Task) {
-        if (task.type == Task.Type.Category) onCategoryTaskFinish(task)
     }
 
     companion object {

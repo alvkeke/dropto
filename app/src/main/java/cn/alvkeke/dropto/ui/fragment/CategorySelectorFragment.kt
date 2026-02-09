@@ -11,25 +11,24 @@ import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
-import cn.alvkeke.dropto.ui.intf.ListNotification
-import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
-class CategorySelectorFragment : BottomSheetDialogFragment(), ListNotification<Category> {
-    interface CategorySelectListener {
+class CategorySelectorFragment : BottomSheetDialogFragment() {
+
+    fun interface CategorySelectListener {
         fun onSelected(index: Int, category: Category)
-        fun onError(error: String)
     }
 
     private lateinit var listener: CategorySelectListener
     private lateinit var categoryListAdapter: CategoryListAdapter
 
     private var categories: ArrayList<Category>? = null
-    fun setCategories(categories: ArrayList<Category>?) {
+    fun prepare(categories: ArrayList<Category>, listener: CategorySelectListener) {
         this.categories = categories
+        this.listener = listener
     }
 
     override fun onCreateView(
@@ -44,7 +43,6 @@ class CategorySelectorFragment : BottomSheetDialogFragment(), ListNotification<C
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val context = requireContext()
-        listener = context as CategorySelectListener
 
         val rlCategory = view.findViewById<RecyclerView>(R.id.share_recv_rlist)
         setPeekHeight()
@@ -86,20 +84,5 @@ class CategorySelectorFragment : BottomSheetDialogFragment(), ListNotification<C
 
     private fun finish() {
         this.dismiss()
-    }
-
-    override fun notifyItemListChanged(notify: Notify, index: Int, itemObj: Category) {
-
-        if (notify == Notify.UPDATED && categoryListAdapter.get(index) != itemObj) {
-            listener.onError("target Category not exist")
-            return
-        }
-
-        when (notify) {
-            Notify.INSERTED -> categoryListAdapter.add(index, itemObj)
-            Notify.UPDATED -> categoryListAdapter.update(itemObj)
-            Notify.REMOVED -> categoryListAdapter.remove(itemObj)
-            else -> {}
-        }
     }
 }

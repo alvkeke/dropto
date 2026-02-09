@@ -20,7 +20,6 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.mgmt.Global
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.activity.MainViewModel
@@ -93,7 +92,7 @@ class MgmtStorageFragment : Fragment() {
         buttonExportDb.setOnClickListener { _ ->
             val dbFile = DataBaseHelper(requireContext()).exportDatabaseFile()
             Log.e(TAG, "exported db file to " + dbFile.absolutePath)
-            val shareFolder = Global.attachmentCacheShare
+            val shareFolder = FileHelper.attachmentCacheShare
 
             try {
                 val tmpFile = File(shareFolder, "dropto_database_exported.sqlite3")
@@ -137,8 +136,8 @@ class MgmtStorageFragment : Fragment() {
     lateinit var attachmentFolder: File
     lateinit var cacheFolder: File
     private fun initFolders() {
-        cacheFolder = Global.attachmentCacheShare
-        attachmentFolder = Global.attachmentStorage
+        cacheFolder = FileHelper.attachmentCacheShare
+        attachmentFolder = FileHelper.attachmentStorage
     }
 
     private fun interface FolderIterator {

@@ -4,6 +4,8 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.DialogInterface
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -16,28 +18,31 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
-import androidx.lifecycle.ViewModelProvider
+import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.ui.activity.MainViewModel
+import cn.alvkeke.dropto.service.Task
+import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
 import cn.alvkeke.dropto.ui.comonent.AttachmentCard
-import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
-import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListener{
+    private val app: DroptoApplication
+        get() = requireActivity().application as DroptoApplication
 
-    private lateinit var viewModel: MainViewModel
-    private lateinit var dbListener: NoteDBAttemptListener
-    private lateinit var uiListener: NoteUIAttemptListener
     private lateinit var etNoteItemText: EditText
     private lateinit var scrollContainer: LinearLayout
 
     private var note: NoteItem? = null
+    fun setNoteItem(note: NoteItem?) {
+        this.note = note
+    }
     private val removedAttachments = ArrayList<AttachmentFile>()
 
     override fun onCreateView(
@@ -48,11 +53,15 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         return inflater.inflate(R.layout.fragment_note_detail, container, false)
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (note != null) {
+            loadItemDataToUI(note!!)
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
-        dbListener = requireContext() as NoteDBAttemptListener
-        uiListener = requireContext() as NoteUIAttemptListener
 
         val toolbar = view.findViewById<MaterialToolbar>(R.id.note_detail_toolbar)
         etNoteItemText = view.findViewById(R.id.note_detail_text)
@@ -61,11 +70,6 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
 
         initEssentialVars()
         setPeekHeight(view)
-
-        viewModel.noteItem.observe(this) { item ->
-            note = item
-            loadItemDataToUI(note ?: return@observe)
-        }
 
         toolbar.inflateMenu(R.menu.note_detail_toolbar)
         toolbar.setOnMenuItemClickListener(NoteDetailMenuListener())
@@ -124,7 +128,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         val text = etNoteItemText.text.toString()
         if (note == null) {
             note = NoteItem(text)
-            dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, note!!)
+            app.service?.queueTask(Task.createNote(note!!))
             return
         }
         if (text.isEmpty() && removedAttachments.containsAll(note!!.attachments)) {
@@ -133,7 +137,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
                 "Got empty item after modifying, remove it", Toast.LENGTH_SHORT
             ).show()
             Log.i(TAG, "Got empty item after modifying, remove it, note-${note!!.id}")
-            dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, note!!)
+            app.service?.queueTask(Task.removeNote(note!!))
             return
         }
         note!!.text = text
@@ -142,7 +146,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
             note!!.attachments.removeAll(removedAttachments)
             removedAttachments.clear()
         }
-        dbListener.onAttempt(NoteDBAttemptListener.Attempt.UPDATE, note!!)
+        app.service?.queueTask(Task.updateNote(note!!))
     }
 
     private inner class NoteDetailMenuListener : Toolbar.OnMenuItemClickListener {
@@ -152,7 +156,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
                 handleOk()
             } else if (R.id.note_detail_menu_item_delete == menuId) {
                 Log.d(this.toString(), "remove item")
-                dbListener.onAttempt(NoteDBAttemptListener.Attempt.REMOVE, note!!)
+                app.service?.queueTask(Task.removeNote(note!!))
             } else {
                 Log.e(this.toString(), "got unknown menu id: $menuId")
                 return false
@@ -196,35 +200,49 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         animator.start()
     }
 
+    private fun triggerShare(text: String, type: String, uri: Uri) {
+        val sendIntent = Intent(Intent.ACTION_SEND)
+
+        sendIntent.type = type
+
+        sendIntent.putExtra(Intent.EXTRA_STREAM, uri)
+
+        sendIntent.putExtra(Intent.EXTRA_TEXT, text)
+        Log.d(this.toString(), "no image, share text: $text")
+
+        val shareIntent = Intent.createChooser(sendIntent, "Share to")
+        try {
+            this.startActivity(shareIntent)
+        } catch (e: Exception) {
+            Log.e(this.toString(), "Failed to create share Intent: $e")
+        }
+    }
+
+
     override fun onShare(
         card: AttachmentCard,
         attachment: AttachmentFile
     ) {
-        uiListener.onAttempt(
-            NoteUIAttemptListener.Attempt.SHOW_SHARE,
-            note!!, note!!.attachments.indexOf(attachment)
-        )
+        val uri = FileHelper.generateShareFile(requireContext(), attachment)
+        val text = attachment.name
+        val mimeType = attachment.mimeType
+
+        triggerShare(text, mimeType, uri)
     }
 
     override fun onClick(card: AttachmentCard, attachment: AttachmentFile) {
-        val attempt = when (attachment.type) {
+        when (attachment.type) {
             AttachmentFile.Type.MEDIA -> {
-                NoteUIAttemptListener.Attempt.SHOW_MEDIA
+                this.showMediaFragment(attachment)
             }
             AttachmentFile.Type.FILE -> {
-                NoteUIAttemptListener.Attempt.OPEN_FILE
+                requireContext().openFileWithExternalApp(attachment)
             }
         }
-        val index = note!!.attachments.indexOf(attachment)
-        uiListener.onAttempt(attempt, note!!, index)
     }
 
     override fun onOpen(card: AttachmentCard, attachment: AttachmentFile) {
-        uiListener.onAttempt(
-            // long click to force open file with external app
-            NoteUIAttemptListener.Attempt.OPEN_FILE,
-            note!!, note!!.attachments.indexOf(attachment)
-        )
+        requireContext().openFileWithExternalApp(attachment)
     }
 
     companion object {

@@ -6,7 +6,6 @@ import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.DialogInterface
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -22,11 +21,11 @@ import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.Toast
 import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -39,12 +38,20 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.mgmt.Global
+import cn.alvkeke.dropto.service.Task
+import cn.alvkeke.dropto.service.Task.Companion.createNote
+import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFileToExternal
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.showNoteDetailFragment
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
@@ -52,12 +59,7 @@ import cn.alvkeke.dropto.ui.comonent.NoteItemView
 import cn.alvkeke.dropto.ui.comonent.PopupMenu
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
-import cn.alvkeke.dropto.ui.intf.ErrorMessageHandler
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
-import cn.alvkeke.dropto.ui.intf.ListNotification
-import cn.alvkeke.dropto.ui.intf.ListNotification.Notify
-import cn.alvkeke.dropto.ui.intf.NoteDBAttemptListener
-import cn.alvkeke.dropto.ui.intf.NoteUIAttemptListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
@@ -66,11 +68,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 
-class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackListener {
+class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener {
+    private val app: DroptoApplication
+        get() = requireActivity().application as DroptoApplication
+
     private lateinit var context: Context
     private lateinit var viewModel: MainViewModel
-    private lateinit var dbListener: NoteDBAttemptListener
-    private lateinit var uiListener: NoteUIAttemptListener
     private lateinit var fragmentParent: View
     private lateinit var fragmentView: View
     private lateinit var etInputText: EditText
@@ -94,13 +97,21 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         return fragmentParent
     }
 
+    override fun onStart() {
+        super.onStart()
+        app.addTaskListener(this)
+    }
+
+    override fun onStop() {
+        app.delTaskListener(this)
+        super.onStop()
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
-        dbListener = context as NoteDBAttemptListener
-        uiListener = context as NoteUIAttemptListener
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
@@ -171,39 +182,28 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         return items
     }
 
-    private fun removeSelectedNotes() {
+    private fun handleMenuDelete() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
         rlNoteList.clearSelectItems()
-        dbListener.onAttemptBatch(NoteDBAttemptListener.Attempt.REMOVE, items)
-    }
-
-    private fun handleMenuDelete() {
-        AlertDialog.Builder(context)
-            .setTitle(R.string.dialog_note_delete_selected_title)
-            .setMessage(R.string.dialog_note_delete_selected_message)
-            .setNegativeButton(R.string.string_cancel, null)
-            .setPositiveButton(
-                R.string.string_ok
-            ) { _: DialogInterface, _: Int -> removeSelectedNotes() }
-            .create().show()
+        requestRemoveNotes(items)
     }
 
     private fun handleMenuCopy() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
         rlNoteList.clearSelectItems()
-        uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.COPY, items)
+        handleCopyMultipleNotes(items)
     }
 
     private fun handleMenuShare() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
         rlNoteList.clearSelectItems()
-        uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.SHOW_SHARE, items)
+        handleShareMultipleNotes(items)
     }
 
     private fun handleMenuForward() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
         rlNoteList.clearSelectItems()
-        uiListener.onAttemptBatch(NoteUIAttemptListener.Attempt.SHOW_FORWARD, items)
+        handleForwardMultipleNotes(items)
     }
 
     private fun handleMenuDeletedVisible() {
@@ -573,51 +573,27 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                     if (content.isEmpty()) return@launch
                 } else {
                     for (a in attachments) {
-                        val folder = Global.attachmentStorage
+                        val folder = FileHelper.attachmentStorage
                         val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
                         val imgName = FileHelper.getFileNameFromUri(context, a.uri)
                         val imageFile = AttachmentFile.from(md5file!!, imgName, a.type)
                         item.attachments.add(imageFile)
                     }
                 }
-                setPendingItem(item)
-                dbListener.onAttempt(NoteDBAttemptListener.Attempt.CREATE, item)
+                requestCreateNote(item)
             }
         }
     }
 
-    private fun showNoteDetail(index: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        uiListener.onAttempt(
-            NoteUIAttemptListener.Attempt.SHOW_DETAIL,
-            noteItem,
-        )
-    }
-
-    private fun showMediaView(index: Int, attachmentIndex: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        uiListener.onAttempt(
-            NoteUIAttemptListener.Attempt.SHOW_MEDIA,
-            noteItem,
-            attachmentIndex
-        )
-    }
-
-    private fun tryOpenFile(index: Int, fileIndex: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        uiListener.onAttempt(
-            NoteUIAttemptListener.Attempt.OPEN_FILE,
-            noteItem,
-            fileIndex
-        )
-    }
 
     private fun throwErrorMessage(msg: String) {
-        if (dbListener !is ErrorMessageHandler) return
-        val handler = dbListener as ErrorMessageHandler
-        handler.onError(msg)
+        Log.e(TAG, msg)
+        Toast.makeText(
+            context,
+            msg,
+            Toast.LENGTH_SHORT
+        ).show()
     }
-
 
     private lateinit var noteItemForMenu: NoteItem
     private val menuListener: PopupMenu.MenuListener = object : PopupMenu.MenuListener {
@@ -625,17 +601,11 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
             val note = noteItemForMenu
             when (val itemId = menuItem.itemId) {
                 R.id.item_pop_m_delete -> {
-                    dbListener.onAttempt(
-                        NoteDBAttemptListener.Attempt.REMOVE,
-                        note
-                    )
+                    requestRemoveNote(note)
                 }
 
                 R.id.item_pop_m_restore -> {
-                    dbListener.onAttempt(
-                        NoteDBAttemptListener.Attempt.RESTORE,
-                        note
-                    )
+                    requestRestoreNote(note)
                 }
 
                 R.id.item_pop_m_pin -> {
@@ -643,19 +613,19 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
                 }
 
                 R.id.item_pop_m_edit -> {
-                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_DETAIL, note)
+                    showNoteDetailFragment(note)
                 }
 
                 R.id.item_pop_m_copy_text -> {
-                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.COPY, note)
+                    handleNoteCopy(note)
                 }
 
                 R.id.item_pop_m_share -> {
-                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_SHARE, note)
+                    handleNoteShare(note)
                 }
 
                 R.id.item_pop_m_forward -> {
-                    uiListener.onAttempt(NoteUIAttemptListener.Attempt.SHOW_FORWARD, note)
+                    handleNoteForward(note)
                 }
 
                 else -> {
@@ -709,6 +679,105 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
     }
 
+    private fun showNoteDetail(index: Int) {
+        val noteItem = noteItemAdapter.get(index)
+        showNoteDetailFragment(noteItem)
+    }
+
+    private fun showMediaView(index: Int, attachmentIndex: Int) {
+        val noteItem = noteItemAdapter.get(index)
+        this.showMediaFragment(noteItem.attachments[attachmentIndex])
+    }
+
+    private fun tryOpenFile(index: Int, fileIndex: Int) {
+        val noteItem = noteItemAdapter.get(index)
+        context.openFileWithExternalApp(noteItem.attachments[fileIndex])
+    }
+
+    private fun handleShareMultipleNotes(items: ArrayList<NoteItem>) {
+        FileHelper.emptyShareFolder()
+        val uris = ArrayList<Uri>()
+        val sb = StringBuilder()
+        var typeMain: String? = null
+        for (e in items) {
+            FileHelper.generateShareFiles(context,e, uris)
+            if (e.text.isNotEmpty()) {
+                sb.append(e.text)
+                sb.append('\n')
+            }
+            val type = e.getAttachmentMimeType().substringBefore('/')
+            if (typeMain == null) {
+                typeMain = type
+                continue
+            }
+
+            if (typeMain != type) {
+                typeMain = "*"
+            }
+        }
+        typeMain += "/*"
+        context.shareFileToExternal(sb.toString(), typeMain, uris)
+    }
+
+    private fun handleNoteShare(item: NoteItem, index: Int = -1) {
+        if (index >= 0) {
+            val attachment = item.attachments[index]
+            val uri = FileHelper.generateShareFile(context, attachment)
+            val text = attachment.name
+            val mimeType = attachment.mimeType
+            context.shareFileToExternal(text, mimeType, arrayListOf(uri))
+
+            return
+        }
+
+        FileHelper.emptyShareFolder()
+        val uris = ArrayList<Uri>()
+        FileHelper.generateShareFiles(context, item, uris)
+        val text = item.text
+        val mimeType = item.getAttachmentMimeType()
+        context.shareFileToExternal(text, mimeType, uris)
+    }
+
+    private fun handleNoteCopy(e: NoteItem) {
+        context.copyText(e.text)
+    }
+
+    private fun handleCopyMultipleNotes(items: ArrayList<NoteItem>) {
+        val sb = StringBuilder()
+        for (e in items) {
+            if (e.text.isNotEmpty()) {
+                sb.append(e.text)
+                sb.append('\n')
+            }
+        }
+        context.copyText(sb.toString())
+    }
+
+    private val forwardFragment by lazy {
+        CategorySelectorFragment()
+    }
+    private fun handleNoteForward(note: NoteItem) {
+        forwardFragment.prepare(categories) { index, category ->
+            Log.d(TAG, "Category-$index[${category.title}] selected for forwarding")
+            val item = note.clone()
+            item.categoryId = category.id
+            app.service?.queueTask(createNote(item))
+        }
+        forwardFragment.show(parentFragmentManager, null)
+    }
+    private fun handleForwardMultipleNotes(notes: ArrayList<NoteItem>) {
+        forwardFragment.prepare(categories) { index, category ->
+            Log.d(TAG, "Category-$index[${category.title}] selected for forwarding, ${notes.size} notes")
+            if (notes.isEmpty()) return@prepare
+            for (note in notes) {
+                val item = note.clone()
+                item.categoryId = category.id
+                app.service?.queueTask(createNote(item))
+            }
+        }
+        forwardFragment.show(parentFragmentManager, null)
+    }
+
     private var pendingNoteItem: NoteItem? = null
     private fun setPendingItem(item: NoteItem) {
         pendingNoteItem = item
@@ -718,36 +787,68 @@ class NoteListFragment : Fragment(), ListNotification<NoteItem>, FragmentOnBackL
         pendingNoteItem = null
     }
 
-    override fun notifyItemListChanged(notify: Notify, index: Int, itemObj: NoteItem) {
-        if (itemObj.categoryId != category.id) {
-            Log.e(this.toString(), "target NoteItem not exist in current category")
+    private fun requestCreateNote(item: NoteItem) {
+        setPendingItem(item)
+        val task = createNote(item)
+        app.service?.queueTask(task)
+    }
+
+    private fun requestRemoveNote(item: NoteItem) {
+        val task = Task.removeNote(item)
+        app.service?.queueTask(task)
+    }
+
+    private fun requestRemoveNotes(items: ArrayList<NoteItem>) {
+        for (item in items) {
+            requestRemoveNote(item)
+        }
+    }
+
+    private fun requestRestoreNote(item: NoteItem) {
+        val task = Task.restoreNote(item)
+        app.service?.queueTask(task)
+    }
+
+    override fun onTaskFinish(task: Task) {
+        if (task.type != Task.Type.NoteItem) {
+            Log.v(TAG, "ignore non-note-item task finish: ${task.type}")
             return
         }
-        when (notify) {
-            Notify.INSERTED -> {
-                if (!noteItemAdapter.add(index, itemObj)) return
-                rlNoteList.smoothScrollToPosition(index)
-                if (itemObj == pendingNoteItem) {
-                    clearPendingItem()
-                    // clear input box text for manually added item
-                    etInputText.setText("")
-                    clearAttachments()
-                }
-            }
 
-            Notify.UPDATED -> noteItemAdapter.update(index)
-            Notify.REMOVED -> {
-                Log.e(TAG, "item removed: $index, showDeleted: ${noteItemAdapter.showDeleted}")
-                if (noteItemAdapter.showDeleted) {
-                    noteItemAdapter.update(index)
-                } else {
-                    noteItemAdapter.remove(itemObj)
+        val item = task.taskObj as NoteItem
+        if (item.categoryId != category.id) {
+            Log.d(TAG, "target NoteItem not exist in current category, ignore task finish")
+            return
+        }
+        val index = task.result
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            when (task.job) {
+                Task.Job.CREATE -> {
+                    noteItemAdapter.add(index, item)
+                    rlNoteList.smoothScrollToPosition(0)
+                    if (item == pendingNoteItem) {
+                        clearPendingItem()
+                        etInputText.text.clear()
+                        clearAttachments()
+                    }
+                }
+                Task.Job.REMOVE -> {
+                    if (noteItemAdapter.showDeleted) {
+                        noteItemAdapter.update(item)
+                    } else {
+                        noteItemAdapter.remove(item)
+                    }
+                }
+
+                Task.Job.RESTORE -> {
+                    noteItemAdapter.update(item)
+                }
+
+                Task.Job.UPDATE -> {
+                    noteItemAdapter.update(item)
                 }
             }
-            Notify.RESTORED -> {
-                noteItemAdapter.update(index)
-            }
-            Notify.CLEARED -> noteItemAdapter.clear()
         }
     }
 
