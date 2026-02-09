@@ -6,7 +6,6 @@ import android.animation.ValueAnimator
 import android.content.DialogInterface
 import android.os.Bundle
 import android.util.Log
-import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -197,6 +196,16 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         animator.start()
     }
 
+    override fun onShare(
+        card: AttachmentCard,
+        attachment: AttachmentFile
+    ) {
+        uiListener.onAttempt(
+            NoteUIAttemptListener.Attempt.SHOW_SHARE,
+            note!!, note!!.attachments.indexOf(attachment)
+        )
+    }
+
     override fun onClick(card: AttachmentCard, attachment: AttachmentFile) {
         val attempt = when (attachment.type) {
             AttachmentFile.Type.MEDIA -> {
@@ -210,8 +219,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         uiListener.onAttempt(attempt, note!!, index)
     }
 
-    override fun onLongClick(card: AttachmentCard, attachment: AttachmentFile) {
-        card.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+    override fun onOpen(card: AttachmentCard, attachment: AttachmentFile) {
         uiListener.onAttempt(
             // long click to force open file with external app
             NoteUIAttemptListener.Attempt.OPEN_FILE,

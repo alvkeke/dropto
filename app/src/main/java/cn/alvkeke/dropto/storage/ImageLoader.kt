@@ -78,6 +78,8 @@ object ImageLoader {
         private set
     lateinit var iconEdited: Bitmap
         private set
+    lateinit var iconShare: Bitmap
+        private set
 
     fun initImageLoader(context: Context) {
         // Load vector drawable and convert to bitmap
@@ -87,6 +89,13 @@ object ImageLoader {
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         errorBitmap = bitmap
+
+        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_share, null)!!
+        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        iconShare = bitmap
 
         drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_not_sync, null)!!
         bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)

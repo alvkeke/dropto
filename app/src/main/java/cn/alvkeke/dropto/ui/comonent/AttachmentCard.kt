@@ -7,8 +7,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
@@ -17,12 +15,20 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.util.AttributeSet
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 @SuppressLint("ViewConstructor")
 class AttachmentCard @JvmOverloads constructor(
@@ -46,10 +52,7 @@ class AttachmentCard @JvmOverloads constructor(
         AttachmentFile.Type.FILE -> ContentType.FILE
     }
 
-    private var contentRect = RectF()   // updated in measureHeight
-    private var contentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.DKGRAY
-    }
+
     private var bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var cachedBitmap: Bitmap? = null
     private var srcRect: Rect? = null
@@ -95,44 +98,14 @@ class AttachmentCard @JvmOverloads constructor(
     private fun loadFileBitmap() {
         cachedBitmap = ImageLoader.iconFile
         srcRect = null
+        val size = contentRect.height() - MARGIN_CARD_INFO * 4
         dstRect.set(
             contentRect.left,
             contentRect.top,
-            contentRect.left + contentRect.height(),
-            contentRect.bottom
+            contentRect.left + size,
+            contentRect.top + size
         )
         invalidate()
-    }
-
-    private val contentPath = Path()
-    private fun drawCachedBitmap(canvas: Canvas) {
-        if (cachedBitmap == null) return
-
-        if (contentType == ContentType.FILE) {
-            canvas.drawRoundRect(contentRect,
-                RADIUS_CARD_CONTENT.toFloat(),
-                RADIUS_CARD_CONTENT.toFloat(),
-                contentPaint
-            )
-        }
-
-        val saveCount = canvas.saveLayer(dstRect, null)
-        // Draw rounded rect as mask
-        contentPath.reset()
-        contentPath.addRoundRect(
-            contentRect,
-            RADIUS_CARD_CONTENT.toFloat(),
-            RADIUS_CARD_CONTENT.toFloat(),
-            Path.Direction.CW
-        )
-        canvas.drawPath(contentPath, bitmapPaint)
-
-        // Set xfermode to only draw bitmap where the rounded rect was drawn
-        val oldMode = bitmapPaint.xfermode
-        bitmapPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-        canvas.drawBitmap(cachedBitmap!!, srcRect, dstRect, bitmapPaint)
-        bitmapPaint.xfermode = oldMode
-        canvas.restoreToCount(saveCount)
     }
 
     private val infoTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -146,147 +119,194 @@ class AttachmentCard @JvmOverloads constructor(
     private val videoIconPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val videoIconPath = Path()
     private val infoBackRect = RectF()
-    private fun drawAttachmentInfo(canvas: Canvas) {
+
+    private fun Canvas.drawFile() {
+        drawRect(
+            contentRect,
+            contentPaint
+        )
+        drawBitmap(cachedBitmap!!, srcRect, dstRect, bitmapPaint)
+
         val info = attachment.name
+        val infoWidth = (contentRect.width() - dstRect.width() - MARGIN_CARD_INFO * 2).toInt()
+        val textStatic = StaticLayout.Builder.obtain(
+            info, 0, info.length,
+            infoTextPaint, infoWidth)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
 
-        when (contentType) {
-            ContentType.FILE -> {
-                val infoWidth = (contentRect.width() - dstRect.width() - MARGIN_CARD_INFO * 2).toInt()
-                val textStatic = StaticLayout.Builder.obtain(
-                    info, 0, info.length,
-                    infoTextPaint, infoWidth)
-                    .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                    .setLineSpacing(0f, 1f)
-                    .setIncludePad(false)
-                    .build()
-
-                val x = dstRect.right + MARGIN_CARD_INFO
-                val y = dstRect.top + MARGIN_CARD_INFO
-                canvas.withTranslation(x, y) {
-                    textStatic.draw(canvas)
-                }
-            }
-            else -> {
-                val textStatic = StaticLayout.Builder.obtain(
-                    info, 0, info.length,
-                    infoTextPaint,
-                    (contentRect.width() - MARGIN_CARD_INFO * 2).toInt())
-                    .setMaxLines(2)
-                    .setAlignment(Layout.Alignment.ALIGN_OPPOSITE)
-                    .setLineSpacing(0f, 1f)
-                    .setIncludePad(false)
-                    .build()
-                infoBackRect.set(
-                    contentRect.left,
-                    contentRect.bottom - textStatic.height - MARGIN_CARD_INFO * 2,
-                    contentRect.right,
-                    contentRect.bottom
-                )
-                canvas.drawRoundRect(
-                    infoBackRect,
-                    RADIUS_CARD_CONTENT.toFloat(),
-                    RADIUS_CARD_CONTENT.toFloat(),
-                    infoBackPaint
-                )
-
-                if (contentType == ContentType.VIDEO) {
-                    // draw play icon at center
-                    val dst = contentRect
-                    val iconSize = (dst.height() / 3).toInt().coerceAtMost(40.dp())
-
-                    val iconLeft = dst.left + (dst.width() - iconSize) / 2
-                    val iconTop = dst.top + (dst.height() - infoBackRect.height() - iconSize) / 2
-                    val iconRect = RectF(
-                        iconLeft,
-                        iconTop,
-                        iconLeft + iconSize,
-                        iconTop + iconSize
-                    )
-                    val radius = iconSize / 2f
-                    val cx = iconRect.centerX()
-                    val cy = iconRect.centerY()
-                    videoIconPaint.style = Paint.Style.FILL
-                    videoIconPaint.color = Color.BLACK
-                    videoIconPaint.alpha = 100
-                    canvas.drawCircle(cx, cy, radius, videoIconPaint)
-
-                    videoIconPaint.style = Paint.Style.STROKE
-                    videoIconPaint.alpha = 255
-                    videoIconPaint.color = Color.WHITE
-                    videoIconPaint.strokeWidth = (iconSize / 6f).coerceAtMost(6f)
-                    canvas.drawCircle(cx, cy, radius, videoIconPaint)
-                    videoIconPaint.style = Paint.Style.FILL
-
-                    videoIconPath.reset()
-                    videoIconPath.moveTo(cx - radius / 3f, cy - radius / 2f)
-                    videoIconPath.lineTo(cx - radius / 3f, cy + radius / 2f)
-                    videoIconPath.lineTo(cx + radius * 2f / 3f, cy)
-                    videoIconPath.close()
-                    canvas.drawPath(videoIconPath, videoIconPaint)
-                }
-
-                canvas.withTranslation(
-                    infoBackRect.left + MARGIN_CARD_INFO,
-                    infoBackRect.top + MARGIN_CARD_INFO) {
-                    textStatic.draw(canvas)
-                }
-            }
+        val x = dstRect.right + MARGIN_CARD_INFO
+        val y = contentRect.top + contentRect.height() / 2 - textStatic.height / 2
+        withTranslation(x, y) {
+            textStatic.draw(this)
         }
     }
 
-    private var removeButtonRadius = 0f
-    private var removeButtonCx = 0f
-    private var removeButtonCy = 0f
-    private val removeButtonBackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.RED
-        style = Paint.Style.FILL
-    }
-    private val removeButtonCrossPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        strokeCap = Paint.Cap.ROUND
-    }
-    private fun drawCardOverlay(canvas: Canvas) {
-        removeButtonRadius = contentRect.width() / 25
-        val offset = removeButtonRadius * 4f / 5
-        removeButtonCx = contentRect.left + offset
-        removeButtonCy = contentRect.top + offset
-        canvas.drawCircle(removeButtonCx, removeButtonCy, removeButtonRadius, removeButtonBackPaint)
-        // Draw a white cross (X) inside the circle
+    private fun Canvas.drawMedia() {
+        if (cachedBitmap == null) return
 
-        val crossLen = removeButtonRadius
-        removeButtonCrossPaint.strokeWidth = removeButtonRadius / 2.5f
-        // Line from top-left to bottom-right
-        canvas.drawLine(
-            removeButtonCx - crossLen / 2,
-            removeButtonCy - crossLen / 2,
-            removeButtonCx + crossLen / 2,
-            removeButtonCy + crossLen / 2,
-            removeButtonCrossPaint
+        drawBitmap(cachedBitmap!!, srcRect, dstRect, bitmapPaint)
+
+        val info = attachment.name
+        val textStatic = StaticLayout.Builder.obtain(
+            info, 0, info.length,
+            infoTextPaint,
+            (contentRect.width() - MARGIN_CARD_INFO * 2).toInt())
+            .setMaxLines(2)
+            .setAlignment(Layout.Alignment.ALIGN_OPPOSITE)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+        infoBackRect.set(
+            contentRect.left,
+            contentRect.bottom - textStatic.height - MARGIN_CARD_INFO * 2,
+            contentRect.right,
+            contentRect.bottom
         )
-        // Line from bottom-left to top-right
-        canvas.drawLine(
-            removeButtonCx - crossLen / 2,
-            removeButtonCy + crossLen / 2,
-            removeButtonCx + crossLen / 2,
-            removeButtonCy - crossLen / 2,
-            removeButtonCrossPaint
+        drawRect(
+            infoBackRect,
+            infoBackPaint
         )
+        withTranslation(
+            infoBackRect.left + MARGIN_CARD_INFO,
+            infoBackRect.top + MARGIN_CARD_INFO) {
+            textStatic.draw(this)
+        }
+
+        // draw play icon at center
+        if (contentType == ContentType.VIDEO) {
+            val dst = contentRect
+            val iconSize = (dst.height() / 3).toInt().coerceAtMost(40.dp())
+
+            val iconLeft = dst.left + (dst.width() - iconSize) / 2
+            val iconTop = dst.top + (dst.height() - infoBackRect.height() - iconSize) / 2
+            val iconRect = RectF(
+                iconLeft,
+                iconTop,
+                iconLeft + iconSize,
+                iconTop + iconSize
+            )
+            val radius = iconSize / 2f
+            val cx = iconRect.centerX()
+            val cy = iconRect.centerY()
+            videoIconPaint.style = Paint.Style.FILL
+            videoIconPaint.color = Color.BLACK
+            videoIconPaint.alpha = 100
+            drawCircle(cx, cy, radius, videoIconPaint)
+
+            videoIconPaint.style = Paint.Style.STROKE
+            videoIconPaint.alpha = 255
+            videoIconPaint.color = Color.WHITE
+            videoIconPaint.strokeWidth = (iconSize / 6f).coerceAtMost(6f)
+            drawCircle(cx, cy, radius, videoIconPaint)
+            videoIconPaint.style = Paint.Style.FILL
+
+            videoIconPath.reset()
+            videoIconPath.moveTo(cx - radius / 3f, cy - radius / 2f)
+            videoIconPath.lineTo(cx - radius / 3f, cy + radius / 2f)
+            videoIconPath.lineTo(cx + radius * 2f / 3f, cy)
+            videoIconPath.close()
+            drawPath(videoIconPath, videoIconPaint)
+        }
+
     }
 
+    private var contentOffset = 0f
+    private var contentRect = RectF()
+    private val contentPath = Path()
+    private var contentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.DKGRAY
+    }
+
+    private val buttonRect = RectF()
+    private val buttonPaint = Paint()
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        if (cachedBitmap != null) {
-            drawCachedBitmap(canvas)
-            drawAttachmentInfo(canvas)
-            drawCardOverlay(canvas)
+        if (cachedBitmap == null) {
+            when (contentType) {
+                ContentType.IMAGE -> loadImageBitmap()
+                ContentType.VIDEO -> loadVideoBitmap()
+                ContentType.FILE -> loadFileBitmap()
+            }
             return
         }
 
+        if (animateRatio > 0f) {
+            contentOffset = contentRect.width() / 4 * animateRatio
+
+            val buttonHeight = contentRect.height() / 3
+            val offX = contentRect.left
+            var offY = contentRect.top
+            val btnWidth = contentOffset * 5 / 4 + offX
+
+            buttonRect.set(
+                offX, offY,
+                btnWidth, offY + buttonHeight
+            )
+            buttonPaint.color = Color.RED
+            canvas.drawRect(buttonRect, buttonPaint)
+            var icon = ImageLoader.iconDeleted
+            var ix = (buttonRect.width()) / 2 - icon.width / 2
+            var iy = (buttonRect.height()) / 2 - icon.height / 2
+            canvas.drawBitmap(
+                icon,
+                buttonRect.left + ix,
+                buttonRect.top + iy,
+                bitmapPaint
+            )
+
+            offY += buttonHeight
+            buttonRect.set(
+                offX, offY,
+                btnWidth, offY + buttonHeight
+            )
+            buttonPaint.color = Color.GRAY
+            canvas.drawRect(buttonRect, buttonPaint)
+            icon = ImageLoader.iconShare
+            ix = (buttonRect.width()) / 2 - icon.width / 2
+            iy = (buttonRect.height()) / 2 - icon.height / 2
+            canvas.drawBitmap(
+                icon,
+                buttonRect.left + ix,
+                buttonRect.top + iy,
+                bitmapPaint
+            )
+
+
+            offY += buttonHeight
+            buttonRect.set(
+                offX, offY,
+                btnWidth, offY + buttonHeight
+            )
+            buttonPaint.color = Color.LTGRAY
+            canvas.drawRect(buttonRect, buttonPaint)
+            icon = ImageLoader.iconMore
+            ix = (buttonRect.width()) / 2 - icon.width / 2
+            iy = (buttonRect.height()) / 2 - icon.height / 2
+            canvas.drawBitmap(
+                icon,
+                buttonRect.left + ix,
+                buttonRect.top + iy,
+                bitmapPaint
+            )
+
+            canvas.translate(contentOffset, 0f)
+        }
+
+        contentPath.addRoundRect(
+            contentRect,
+            RADIUS_CARD_CONTENT.toFloat(),
+            RADIUS_CARD_CONTENT.toFloat(),
+            Path.Direction.CW
+        )
+        canvas.clipPath(contentPath)
+
         when (contentType) {
-            ContentType.IMAGE -> loadImageBitmap()
-            ContentType.VIDEO -> loadVideoBitmap()
-            ContentType.FILE -> loadFileBitmap()
+            ContentType.IMAGE, ContentType.VIDEO -> canvas.drawMedia()
+            ContentType.FILE -> canvas.drawFile()
         }
     }
 
@@ -336,10 +356,12 @@ class AttachmentCard @JvmOverloads constructor(
 
     interface CardListener {
         fun onRemove(card: AttachmentCard, attachment: AttachmentFile)
+        fun onShare(card: AttachmentCard, attachment: AttachmentFile)
+        fun onOpen(card: AttachmentCard, attachment: AttachmentFile)
         fun onClick(card: AttachmentCard, attachment: AttachmentFile)
-        fun onLongClick(card: AttachmentCard, attachment: AttachmentFile)
     }
 
+    private var canClick = false
     private var downX = 0f
     private var downY = 0f
     private var longClickFired = false
@@ -355,27 +377,31 @@ class AttachmentCard @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                downX = event.x
-                downY = event.y
+                downX = event.rawX
+                downY = event.rawY
+                canClick = true
                 longClickFired = false
                 longClickHandler.postDelayed(longClickRunnable, longClickTimeout)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                val dx = event.x - downX
-                val dy = event.y - downY
+                val dx = event.rawX - downX
+                val dy = event.rawY - downY
                 if (dx * dx + dy * dy > touchSlop * touchSlop) {
                     longClickHandler.removeCallbacks(longClickRunnable)
+                    canClick = false
                 }
             }
             MotionEvent.ACTION_UP -> {
                 longClickHandler.removeCallbacks(longClickRunnable)
-                if (!longClickFired) {
+                if (canClick && !longClickFired) {
                     clickAt(event.x.toInt(), event.y.toInt())
                 }
+                canClick = false
             }
             MotionEvent.ACTION_CANCEL -> {
                 longClickHandler.removeCallbacks(longClickRunnable)
+                canClick = false
             }
         }
         return super.onTouchEvent(event)
@@ -386,23 +412,108 @@ class AttachmentCard @JvmOverloads constructor(
         return true
     }
 
-    private fun isPointInRemoveButton(x: Int, y: Int): Boolean {
-        val dx = x - removeButtonCx
-        val dy = y - removeButtonCy
-        return dx * dx + dy * dy <= removeButtonRadius * removeButtonRadius
+    private val checkRect = RectF()
+    private fun checkClickedContent(x: Int, y: Int): Int {
+        checkRect.set(contentRect)
+        checkRect.offset(contentOffset, 0f)
+        if (checkRect.contains(x.toFloat(), y.toFloat()))
+            return 0
+        else {
+            checkRect.set(
+                0f, 0f,
+                contentOffset, contentRect.height()
+            )
+            if (checkRect.contains(x.toFloat(), y.toFloat())) {
+                val div = checkRect.height() / 3
+                return when {
+                    y < div -> 1
+                    y < div * 2 -> 2
+                    else -> 3
+                }
+            }
+            return 0
+        }
     }
 
     private fun clickAt(x: Int, y: Int) {
         performClick()
-        if (isPointInRemoveButton(x, y)) {
-            listener.onRemove(this, attachment)
-            return
+        if (animateRatio == 0f) {
+            listener.onClick(this, attachment)
+        } else {
+            val clicked = checkClickedContent(x, y)
+            when (clicked) {
+                1 -> listener.onRemove(this, attachment)
+                2 -> listener.onShare(this, attachment)
+                3 -> listener.onOpen(this, attachment)
+                else -> animateStart(false)
+            }
         }
-        listener.onClick(this, attachment)
     }
 
     private fun longClickAt() {
-        listener.onLongClick(this, attachment)
+        this.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        if (animationRunning) return
+        if (animateRatio == 0f) {
+            animateStart()
+        } else {
+            animateStart(false)
+        }
+    }
+
+    private var _scope: CoroutineScope? = null
+    private val scope : CoroutineScope
+        get() {
+            if (_scope?.isActive != true) {
+                _scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+            }
+            return _scope!!
+        }
+
+    private var animateJob: Job? = null
+    @Volatile private var animateRatio = 0f
+    @Volatile private var animationRunning = false
+    @Volatile private var animationIsEnter = true
+    private fun animateStart(
+        isEnter: Boolean = true
+    ) {
+        if (animationRunning && isEnter == animationIsEnter) return
+
+        val totalFrames = ANIMATION_DURATION / ANIMATION_INTERVAL
+        val step: Float
+        val isEnd: (Float) -> Boolean
+        when (isEnter) {
+            true -> {
+                step = 1f / totalFrames
+                isEnd = { ratio -> ratio >= 1f }
+            }
+            false -> {
+                step = -1f / totalFrames
+                isEnd = { ratio -> ratio <= 0f }
+            }
+        }
+
+        if (animateJob?.isActive != true) {
+            animateRatio = if (isEnter) { 0f } else { 1f }
+        } else {
+            animateJob?.cancel()
+        }
+        animationIsEnter = isEnter
+        animateJob = scope.launch {
+            animationRunning = true
+            while(true) {
+                animateRatio = (animateRatio + step)
+                    .coerceIn(0f, 1f)
+                invalidate()
+                if (isEnd(animateRatio)) break
+                kotlinx.coroutines.delay(PopupMenu.ANIMATION_INTERVAL)
+            }
+            animationRunning = false
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        _scope?.cancel()
+        super.onDetachedFromWindow()
     }
 
     companion object {
@@ -414,6 +525,8 @@ class AttachmentCard @JvmOverloads constructor(
 
         const val MARGIN_CARD_INFO = 16
 
+        const val ANIMATION_DURATION = 300L
+        const val ANIMATION_INTERVAL = 15L
     }
 
 }

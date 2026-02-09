@@ -345,6 +345,14 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         }
     }
 
+    private fun generateShareFileAndUriForAttachment(
+        attachment: AttachmentFile,
+    ) : Uri {
+        val ff = generateShareFile(attachment)
+        val uri = getUriForFile(ff!!)
+        return uri
+    }
+
     private fun generateShareFileAndUriForNote(note: NoteItem, uris: ArrayList<Uri>) {
         note.attachments.iterator().forEachRemaining(Consumer { f: AttachmentFile ->
             val ff = generateShareFile(f)
@@ -404,7 +412,17 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         triggerShare(sb.toString(), typeMain, uris)
     }
 
-    private fun handleNoteShare(item: NoteItem) {
+    private fun handleNoteShare(item: NoteItem, index: Int = -1) {
+        if (index >= 0) {
+            val attachment = item.attachments[index]
+            val uri = generateShareFileAndUriForAttachment(attachment)
+            val text = attachment.name
+            val mimeType = attachment.mimeType
+            triggerShare(text, mimeType, arrayListOf(uri))
+
+            return
+        }
+
         emptyShareFolder()
         val uris = ArrayList<Uri>()
         generateShareFileAndUriForNote(item, uris)
@@ -531,7 +549,7 @@ class MainActivity : AppCompatActivity(), ErrorMessageHandler, ResultListener,
         when (attempt) {
             NoteUIAttemptListener.Attempt.COPY -> handleNoteCopy(e)
             NoteUIAttemptListener.Attempt.SHOW_DETAIL -> handleNoteDetailShow(e)
-            NoteUIAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e)
+            NoteUIAttemptListener.Attempt.SHOW_SHARE -> handleNoteShare(e, index)
             NoteUIAttemptListener.Attempt.SHOW_FORWARD -> handleNoteForward(e)
             NoteUIAttemptListener.Attempt.SHOW_MEDIA -> {
                 val attachment = e.attachments[index]
