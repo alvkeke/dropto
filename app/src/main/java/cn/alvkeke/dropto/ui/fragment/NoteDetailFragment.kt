@@ -56,7 +56,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
     override fun onStart() {
         super.onStart()
         if (note != null) {
-            loadItemDataToUI(note!!)
+            refreshUIData(note!!)
         }
     }
 
@@ -166,18 +166,28 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         }
     }
 
-    /**
-     * load item info to View, input item cannot be null,
-     * there is no valid-check for the item.
-     */
-    private fun loadItemDataToUI(item: NoteItem) {
+    private fun checkIfAttachmentCardExist(attachment: AttachmentFile): Boolean {
+        for (i in 0 until scrollContainer.childCount) {
+            val child = scrollContainer.getChildAt(i)
+            if (child is AttachmentCard) {
+                if (child.attachment == attachment) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private fun refreshUIData(item: NoteItem) {
         etNoteItemText.setText(item.text)
-
-        if (item.attachments.isEmpty()) return
-
+        if (item.attachments.isEmpty())
+            return
         val context = requireContext()
-        item.attachments.iterator().forEach { attachment ->
-            val card = AttachmentCard(context, attachment, this)
+        item.attachments.forEach {
+            if (checkIfAttachmentCardExist(it)) {
+                return@forEach
+            }
+            val card = AttachmentCard(context, it, this)
             scrollContainer.addView(card)
         }
     }
