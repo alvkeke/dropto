@@ -569,14 +569,17 @@ class NoteItemView @JvmOverloads constructor(
         return fileCount * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
     }
 
-//    private fun measureIcons(): Int {
-//        if (isEdited || isDeleted || !isSynced) {
-//            return ICON_SIZE.dp() + MARGIN_ICON
-//        }
-//        return 0
-//    }
+    private fun measureIconWidth(size: Int): Int {
+        var totalWidth = MARGIN_ICON
 
-    private fun measureHeight(width: Int) : Int {
+        if (isEdited) totalWidth += size + MARGIN_ICON
+        if (isDeleted) totalWidth += size + MARGIN_ICON
+        if (!isSynced) totalWidth += size + MARGIN_ICON
+
+        return totalWidth - MARGIN_ICON
+    }
+
+    private fun measureHeightMixed(width: Int) : Int {
         val contentWidth =
             width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END - MARGIN_BORDER * 2
         var desiredHeight = MARGIN_BORDER * 2
@@ -603,18 +606,117 @@ class NoteItemView @JvmOverloads constructor(
                 timeText, 0, timeText.length, timePaint,
                 contentWidth - (MARGIN_TIME * 2)
             )
-            .setAlignment(Layout.Alignment.ALIGN_OPPOSITE)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setLineSpacing(0f, 1f)
             .setIncludePad(false)
             .build()
-//        val iconHeight = measureIcons()
-//        desiredHeight += if (iconHeight != 0) {
-//            iconHeight
-//        } else {
-            desiredHeight += timeLayout.height + MARGIN_TIME
-//        }
+
+        desiredHeight += timeLayout.height + MARGIN_TIME
+
+        bubbleRect.set(
+            MARGIN_BUBBLE_START.toFloat(),
+            MARGIN_BUBBLE_Y.toFloat(),
+            (MARGIN_BUBBLE_START + contentWidth + MARGIN_BORDER * 2).toFloat(),
+            (MARGIN_BUBBLE_Y + desiredHeight).toFloat()
+        )
 
         return desiredHeight
+    }
+
+    private fun measureHeightTextOnly(width: Int) : Int {
+        val maxWidth =
+            width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END - MARGIN_BORDER * 2
+        var desiredHeight = MARGIN_BORDER * 2 + MARGIN_TEXT
+
+        textLayout = StaticLayout.Builder
+            .obtain(
+                text, 0, text.length, textPaint,
+                maxWidth - (MARGIN_TEXT * 2)
+            )
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+        desiredHeight += textLayout.height + MARGIN_TEXT * 2
+
+        val timeText = createTime.format()
+        timeLayout = StaticLayout.Builder
+            .obtain(
+                timeText, 0, timeText.length, timePaint,
+                maxWidth - (MARGIN_TIME * 2)
+            )
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+
+        // include margin
+        val iconsWidth = measureIconWidth(timeLayout.height)
+
+        var contentWidth = 0f
+        if (textLayout.lineCount == 1) {
+            val textWidth = textLayout.getLineWidth(0)
+            val timeWidth = timeLayout.getLineWidth(0)
+            contentWidth = textWidth + timeWidth + MARGIN_TEXT + iconsWidth
+            if (contentWidth > maxWidth) {
+                contentWidth = maxOf(textWidth, timeWidth)
+                desiredHeight += timeLayout.height + MARGIN_TIME
+            }
+        } else {
+            var maxTextWidth = 0f
+            for (i in 0 until textLayout.lineCount - 1) {
+                maxTextWidth = maxOf(maxTextWidth, textLayout.getLineWidth(i))
+            }
+
+            val lastLineWidth = textLayout.getLineWidth(textLayout.lineCount-1)
+            val timeWidth = timeLayout.getLineWidth(0)
+            val combineWidth = lastLineWidth + MARGIN_TEXT + timeWidth + iconsWidth
+            if (combineWidth > maxWidth) {
+                maxTextWidth = maxOf(maxTextWidth, lastLineWidth)
+                contentWidth = maxOf(maxTextWidth, timeWidth)
+                desiredHeight += timeLayout.height + MARGIN_TIME
+            }
+        }
+
+        val resultWidth = contentWidth + MARGIN_TEXT * 2 + MARGIN_BORDER
+
+        bubbleRect.set(
+            MARGIN_BUBBLE_START.toFloat(),
+            MARGIN_BUBBLE_Y.toFloat(),
+            (MARGIN_BUBBLE_START + resultWidth).toFloat(),
+            (MARGIN_BUBBLE_Y + desiredHeight).toFloat()
+        )
+
+        return desiredHeight + MARGIN_BUBBLE_Y
+    }
+
+    private enum class ContentStatus {
+        ONLY_TEXT,
+        ONLY_MEDIA,
+        ONLY_FILE,
+        MIXED
+    }
+    private fun checkContentStatus(): ContentStatus {
+        val hasText = !text.isEmpty()
+        val hasMedia = _medias.isNotEmpty()
+        val hasFile = _files.isNotEmpty()
+
+        return when {
+            hasText && !hasMedia && !hasFile -> ContentStatus.ONLY_TEXT
+            !hasText && hasMedia && !hasFile -> ContentStatus.ONLY_MEDIA
+            !hasText && !hasMedia && hasFile -> ContentStatus.ONLY_FILE
+            else -> ContentStatus.MIXED
+        }
+    }
+    private fun measureHeight(width: Int) : Int {
+        return when (checkContentStatus()) {
+            ContentStatus.ONLY_TEXT -> {
+                measureHeightTextOnly(width)
+            }
+            else -> {
+                measureHeightMixed(width)
+            }
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -649,12 +751,6 @@ class NoteItemView @JvmOverloads constructor(
         Log.v(TAG, "onMeasure: width=$width, height=$height")
         setMeasuredDimension(width, height)
 
-        bubbleRect.set(
-            MARGIN_BUBBLE_START.toFloat(),
-            MARGIN_BUBBLE_Y.toFloat(),
-            (width - MARGIN_BUBBLE_END).toFloat(),
-            (height - MARGIN_BUBBLE_Y).toFloat()
-        )
 
     }
 
@@ -966,12 +1062,15 @@ class NoteItemView @JvmOverloads constructor(
             canvas.withTranslation(offX + MARGIN_TEXT.toFloat(), offY) {
                 textLayout.draw(this)
             }
-            offY += textLayout.height + MARGIN_TEXT
         }
-        canvas.withTranslation(offX + MARGIN_TIME.toFloat(), offY) {
+
+        val timeX = bubbleRect.right - MARGIN_BORDER - MARGIN_TIME - timeLayout.getLineWidth(0)
+        val timeY = bubbleRect.bottom - MARGIN_BORDER - MARGIN_TIME - timeLayout.height
+        canvas.withTranslation(timeX, timeY) {
             timeLayout.draw(this)
         }
-        canvas.withTranslation(offX, offY) {
+        val iconX = timeX - measureIconWidth(timeLayout.height)
+        canvas.withTranslation(iconX, timeY) {
             drawIcons(timeLayout.height.toFloat())
         }
 
