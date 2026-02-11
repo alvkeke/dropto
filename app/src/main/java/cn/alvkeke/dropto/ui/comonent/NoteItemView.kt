@@ -623,6 +623,40 @@ class NoteItemView @JvmOverloads constructor(
         return desiredHeight
     }
 
+    private fun measureHeightMediaOnly(width: Int) : Int {
+        val maxWidth =
+            width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END - MARGIN_BORDER * 2
+        var desiredHeight = MARGIN_BORDER * 2
+
+        measureMediasHeight(maxWidth)
+
+        val last = _medias.last().rect
+        val right = last.right + MARGIN_IMAGE
+        val bottom = last.bottom + MARGIN_IMAGE
+
+        desiredHeight += bottom.toInt() + MARGIN_IMAGE
+
+        val timeText = createTime.format()
+        timeLayout = StaticLayout.Builder
+            .obtain(
+                timeText, 0, timeText.length, timePaint,
+                maxWidth - (MARGIN_TIME * 2)
+            )
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+
+        bubbleRect.set(
+            MARGIN_BUBBLE_START.toFloat(),
+            MARGIN_BUBBLE_Y.toFloat(),
+            MARGIN_BUBBLE_START + right + MARGIN_BORDER,
+            MARGIN_BUBBLE_Y + bottom + MARGIN_BORDER
+        )
+
+        return desiredHeight + MARGIN_BUBBLE_Y
+    }
+
     private fun measureHeightTextOnly(width: Int) : Int {
         val maxWidth =
             width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END - MARGIN_BORDER * 2
@@ -712,6 +746,9 @@ class NoteItemView @JvmOverloads constructor(
         return when (checkContentStatus()) {
             ContentStatus.ONLY_TEXT -> {
                 measureHeightTextOnly(width)
+            }
+            ContentStatus.ONLY_MEDIA -> {
+                measureHeightMediaOnly(width)
             }
             else -> {
                 measureHeightMixed(width)
