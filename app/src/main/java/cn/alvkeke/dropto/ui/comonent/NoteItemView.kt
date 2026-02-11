@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -625,23 +624,24 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     private fun measureBubbleMediaOnly(width: Int) : Int {
-        val maxWidth =
-            width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END - MARGIN_BORDER * 2
-        var desiredHeight = MARGIN_BORDER * 2
+        val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
+        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
+        var bubbleHeight = MARGIN_BORDER * 2
 
-        measureMediasHeight(maxWidth)
+        measureMediasHeight(contentMaxWidth)
 
         val last = _medias.last().rect
-        val right = last.right + MARGIN_IMAGE
-        val bottom = last.bottom + MARGIN_IMAGE
+        val right = last.right
+        val bottom = last.bottom
 
-        desiredHeight += bottom.toInt() + MARGIN_IMAGE
+        bubbleHeight += bottom.toInt()
+        val bubbleWidth = right + MARGIN_BORDER * 2
 
         val timeText = createTime.format()
         timeLayout = StaticLayout.Builder
             .obtain(
                 timeText, 0, timeText.length, timePaint,
-                maxWidth - (MARGIN_TIME * 2)
+                contentMaxWidth - (MARGIN_TIME * 2)
             )
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setLineSpacing(0f, 1f)
@@ -651,11 +651,11 @@ class NoteItemView @JvmOverloads constructor(
         bubbleRect.set(
             MARGIN_BUBBLE_START.toFloat(),
             MARGIN_BUBBLE_Y.toFloat(),
-            MARGIN_BUBBLE_START + right + MARGIN_BORDER,
-            MARGIN_BUBBLE_Y + bottom + MARGIN_BORDER
+            MARGIN_BUBBLE_START + bubbleWidth,
+            (MARGIN_BUBBLE_Y + bubbleHeight).toFloat()
         )
 
-        return desiredHeight + MARGIN_BUBBLE_Y
+        return bubbleHeight
     }
 
     private fun measureBubbleTextOnly(width: Int) : Int {
