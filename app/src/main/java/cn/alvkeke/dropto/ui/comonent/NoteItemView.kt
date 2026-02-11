@@ -635,7 +635,7 @@ class NoteItemView @JvmOverloads constructor(
         val bottom = last.bottom
 
         bubbleHeight += bottom.toInt()
-        val bubbleWidth = right + MARGIN_BORDER * 2
+        var bubbleWidth = right + MARGIN_BORDER * 2
 
         val timeText = createTime.format()
         timeLayout = StaticLayout.Builder
@@ -647,6 +647,20 @@ class NoteItemView @JvmOverloads constructor(
             .setLineSpacing(0f, 1f)
             .setIncludePad(false)
             .build()
+
+        val iconsWidth = measureIconWidth(timeLayout.height)
+        val extInfoWidth = iconsWidth + timeLayout.getLineWidth(0)
+        val extInfoWidthWithMargin = extInfoWidth + MARGIN_IMAGE * 2
+        val neededInfoWidth = MARGIN_BORDER * 2 + extInfoWidthWithMargin
+        if (neededInfoWidth > bubbleWidth) {
+            // for now, only single media case can goes into this branch
+            bubbleWidth = neededInfoWidth
+            val rect0 = _medias[0].rect
+            rect0.set(rect0.left, rect0.top,
+                rect0.left + extInfoWidthWithMargin,
+                rect0.bottom
+            )
+        }
 
         bubbleRect.set(
             MARGIN_BUBBLE_START.toFloat(),
