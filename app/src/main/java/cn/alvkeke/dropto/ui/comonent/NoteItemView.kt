@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -214,10 +215,13 @@ class NoteItemView @JvmOverloads constructor(
         textSize = TEXT_SIZE_TIME
         isAntiAlias = true
     }
-
     private val iconPaint = Paint().apply {
         color = ContextCompat.getColor(context, R.color.color_text_sub)
         isAntiAlias = true
+    }
+    private val extInfoBackgroundPaint = Paint().apply {
+        color = Color.BLACK
+        alpha = 180
     }
 
     /*
@@ -623,6 +627,7 @@ class NoteItemView @JvmOverloads constructor(
         return desiredHeight
     }
 
+    private var extInfoNeedBackground = false
     private fun measureBubbleMediaOnly(width: Int) : Int {
         val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
         val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
@@ -668,6 +673,7 @@ class NoteItemView @JvmOverloads constructor(
             MARGIN_BUBBLE_START + bubbleWidth,
             (MARGIN_BUBBLE_Y + bubbleHeight).toFloat()
         )
+        extInfoNeedBackground = true
 
         return bubbleHeight
     }
@@ -754,6 +760,7 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
     private fun measureHeight(width: Int) : Int {
+        extInfoNeedBackground = false
         return MARGIN_BUBBLE_Y * 2 + when (checkContentStatus()) {
             ContentStatus.ONLY_TEXT -> {
                 measureBubbleTextOnly(width)
@@ -1110,10 +1117,20 @@ class NoteItemView @JvmOverloads constructor(
 
         val timeX = bubbleRect.right - MARGIN_BORDER - MARGIN_TIME - timeLayout.getLineWidth(0)
         val timeY = bubbleRect.bottom - MARGIN_BORDER - MARGIN_TIME - timeLayout.height
+        val iconX = timeX - measureIconWidth(timeLayout.height)
+        if (extInfoNeedBackground) {
+            canvas.drawRoundRect(
+                iconX - MARGIN_TIME, timeY - MARGIN_TIME,
+                bubbleRect.right - MARGIN_BORDER,
+                bubbleRect.bottom - MARGIN_BORDER,
+                IMAGE_RADIUS.toFloat(), IMAGE_RADIUS.toFloat(),
+                extInfoBackgroundPaint
+            )
+        }
+
         canvas.withTranslation(timeX, timeY) {
             timeLayout.draw(this)
         }
-        val iconX = timeX - measureIconWidth(timeLayout.height)
         canvas.withTranslation(iconX, timeY) {
             drawIcons(timeLayout.height.toFloat())
         }
