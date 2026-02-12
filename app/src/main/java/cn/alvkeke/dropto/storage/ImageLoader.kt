@@ -81,70 +81,42 @@ object ImageLoader {
     lateinit var iconShare: Bitmap
         private set
 
+    fun loadDrawable(context: Context, id: Int, color: Int = -1): Bitmap {
+        val drawable = ResourcesCompat.getDrawable(context.resources, id, null)!!
+        if (color != -1) {
+            drawable.setTint(color)
+        }
+        val bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
+        val canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+
+        return bitmap
+    }
+
+    private fun Context.loadDrawable(id: Int): Bitmap {
+        return loadDrawable(this, id)
+    }
+
     fun initImageLoader(context: Context) {
         // Load vector drawable and convert to bitmap
-        var drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_load_error, null)!!
-        var bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        var canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        errorBitmap = bitmap
+        errorBitmap = context.loadDrawable(R.drawable.img_load_error)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_share, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        iconShare = bitmap
+        iconShare = context.loadDrawable(R.drawable.icon_common_share)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_not_sync, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        iconUnsynced = bitmap
+        iconUnsynced = context.loadDrawable(R.drawable.icon_common_not_sync)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_remove, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        iconDeleted = bitmap
+        iconDeleted = context.loadDrawable(R.drawable.icon_common_remove)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_edit, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        iconEdited = bitmap
+        iconEdited = context.loadDrawable(R.drawable.icon_common_edit)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.img_loading, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        loadingBitmap = bitmap
+        loadingBitmap = context.loadDrawable(R.drawable.img_loading)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_file, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        iconFile = bitmap
+        iconFile = context.loadDrawable(R.drawable.icon_common_file)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_video_play, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        iconVideoPlay = bitmap
+        iconVideoPlay = context.loadDrawable(R.drawable.icon_common_video_play)
 
-        drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.icon_common_more, null)!!
-        bitmap = createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight)
-        canvas = android.graphics.Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        iconMore = bitmap
+        iconMore = context.loadDrawable(R.drawable.icon_common_more)
     }
 
     private fun LockedHashMap<String, WrappedBitmap>.removeTimeoutCache(): Boolean {
