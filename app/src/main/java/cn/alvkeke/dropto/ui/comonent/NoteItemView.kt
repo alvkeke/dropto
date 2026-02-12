@@ -1139,9 +1139,12 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun Canvas.drawIcons(size: Float): Float {
         var offsetX = 0f
+        // TODO: cache the images?
         if (isDeleted) {
             drawBitmap(
-                ImageLoader.iconDeleted,
+                ImageLoader.loadDrawable(context, R.drawable.icon_common_remove,
+                    ContextCompat.getColor(context, R.color.color_text_sub)
+                    ),
                 null,
                 RectF(
                     offsetX, 0f,
@@ -1153,7 +1156,9 @@ class NoteItemView @JvmOverloads constructor(
         }
         if (!isSynced) {
             drawBitmap(
-                ImageLoader.iconUnsynced,
+                ImageLoader.loadDrawable(context, R.drawable.icon_common_not_sync,
+                    ContextCompat.getColor(context, R.color.color_text_sub)
+                ),
                 null,
                 RectF(
                     offsetX, 0f,
@@ -1165,7 +1170,9 @@ class NoteItemView @JvmOverloads constructor(
         }
         if (isEdited) {
             drawBitmap(
-                ImageLoader.iconEdited,
+                ImageLoader.loadDrawable(context, R.drawable.icon_common_edit,
+                    ContextCompat.getColor(context, R.color.color_text_sub)
+                ),
                 null,
                 RectF(
                     offsetX, 0f,
