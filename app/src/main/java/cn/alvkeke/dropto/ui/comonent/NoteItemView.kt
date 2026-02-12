@@ -627,6 +627,82 @@ class NoteItemView @JvmOverloads constructor(
         return desiredHeight
     }
 
+    private fun measureBubbleMediaText(width: Int) : Int {
+        val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
+        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
+        var bubbleHeight = MARGIN_BORDER * 2
+
+        measureMediasHeight(contentMaxWidth)
+        val last = _medias.last().rect
+        val right = last.right
+        val bottom = last.bottom
+        val mediaWidth = right
+        var bubbleWidth = mediaWidth + MARGIN_BORDER * 2
+
+        bubbleHeight += bottom.toInt()
+
+        textLayout = StaticLayout.Builder
+            .obtain(
+                text, 0, text.length, textPaint,
+                contentMaxWidth - (MARGIN_TEXT * 2)
+            )
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+        bubbleHeight += textLayout.height + MARGIN_TEXT * 2
+
+        val timeText = createTime.format()
+        timeLayout = StaticLayout.Builder
+            .obtain(
+                timeText, 0, timeText.length, timePaint,
+                contentMaxWidth - (MARGIN_TIME * 2)
+            )
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+
+        var maxTextLayoutWidth = 0f // include the margin later
+        for (i in 0 until textLayout.lineCount - 1) {
+            maxTextLayoutWidth = maxOf(textLayout.getLineWidth(i), maxTextLayoutWidth)
+        }
+
+        val lastLineWidth = textLayout.getLineWidth(textLayout.lineCount - 1)
+        val iconWidth = measureIconWidth(timeLayout.height)
+        val timeWidth = timeLayout.getLineWidth(0)
+        val extInfoWidth = timeWidth + iconWidth
+        val combinedWidth = lastLineWidth + extInfoWidth + MARGIN_TEXT + MARGIN_TIME
+        if (combinedWidth > contentMaxWidth) {
+            maxTextLayoutWidth = maxOf(lastLineWidth, maxTextLayoutWidth)
+            maxTextLayoutWidth += MARGIN_TEXT * 2
+            maxTextLayoutWidth = maxOf(maxTextLayoutWidth, extInfoWidth + MARGIN_TIME * 2)
+            bubbleHeight += timeLayout.height + MARGIN_TIME
+        } else {
+            maxTextLayoutWidth += MARGIN_TEXT * 2
+            maxTextLayoutWidth = maxOf(maxTextLayoutWidth, combinedWidth)
+        }
+
+
+        if (mediaWidth < maxTextLayoutWidth) {
+            // only single media case can get into this branch
+            bubbleWidth = maxTextLayoutWidth + MARGIN_BORDER * 2
+            val rect0 = _medias[0].rect
+            rect0.set(rect0.left, rect0.top,
+                rect0.left + maxTextLayoutWidth,
+                rect0.bottom
+            )
+        }
+        bubbleRect.set(
+            MARGIN_BUBBLE_START.toFloat(),
+            MARGIN_BUBBLE_Y.toFloat(),
+            MARGIN_BUBBLE_START + bubbleWidth,
+            (MARGIN_BUBBLE_Y + bubbleHeight).toFloat()
+        )
+
+        return bubbleHeight
+    }
+
     private var extInfoNeedBackground = false
     private fun measureBubbleMediaOnly(width: Int) : Int {
         val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
@@ -658,7 +734,7 @@ class NoteItemView @JvmOverloads constructor(
         val extInfoWidthWithMargin = extInfoWidth + MARGIN_IMAGE * 2
         val neededInfoWidth = MARGIN_BORDER * 2 + extInfoWidthWithMargin
         if (neededInfoWidth > bubbleWidth) {
-            // for now, only single media case can goes into this branch
+            // for now, only single media case can go into this branch
             bubbleWidth = neededInfoWidth
             val rect0 = _medias[0].rect
             rect0.set(rect0.left, rect0.top,
@@ -745,6 +821,7 @@ class NoteItemView @JvmOverloads constructor(
         ONLY_TEXT,
         ONLY_MEDIA,
         ONLY_FILE,
+        MEDIA_TEXT,
         MIXED
     }
     private fun checkContentStatus(): ContentStatus {
@@ -756,6 +833,7 @@ class NoteItemView @JvmOverloads constructor(
             hasText && !hasMedia && !hasFile -> ContentStatus.ONLY_TEXT
             !hasText && hasMedia && !hasFile -> ContentStatus.ONLY_MEDIA
             !hasText && !hasMedia && hasFile -> ContentStatus.ONLY_FILE
+            hasText && hasMedia && !hasFile -> ContentStatus.MEDIA_TEXT
             else -> ContentStatus.MIXED
         }
     }
@@ -767,6 +845,9 @@ class NoteItemView @JvmOverloads constructor(
             }
             ContentStatus.ONLY_MEDIA -> {
                 measureBubbleMediaOnly(width)
+            }
+            ContentStatus.MEDIA_TEXT -> {
+                measureBubbleMediaText(width)
             }
             else -> {
                 measureBubbleMixed(width)
