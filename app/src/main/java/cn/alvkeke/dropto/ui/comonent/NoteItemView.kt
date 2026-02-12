@@ -220,8 +220,8 @@ class NoteItemView @JvmOverloads constructor(
         isAntiAlias = true
     }
     private val extInfoBackgroundPaint = Paint().apply {
-        color = Color.BLACK
-        alpha = 180
+        color = ContextCompat.getColor(context, R.color.ext_info_mask)
+        alpha = 200
     }
 
     /*

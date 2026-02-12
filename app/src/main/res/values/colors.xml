@@ -16,6 +16,7 @@
     <color name="note_bubble_shadow">#55000022</color>
     <color name="color_text_main">#222222</color>
     <color name="color_text_sub">#555555</color>
+    <color name="ext_info_mask">#FFFFFF</color>
 
 
     <!--  common values without set in night  -->

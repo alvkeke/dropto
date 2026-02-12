@@ -16,5 +16,6 @@
 <!--    <color name="note_bubble_shadow">#55000022</color>-->
     <color name="color_text_main">#FFFFFF</color>
     <color name="color_text_sub">#959595</color>
+    <color name="ext_info_mask">#000000</color>
 
 </resources>
