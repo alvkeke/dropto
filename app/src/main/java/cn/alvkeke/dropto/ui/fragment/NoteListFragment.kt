@@ -575,7 +575,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             val content = etInputText.text.toString().trim { it <= ' ' }
             val item = NoteItem(content)
             item.categoryId = category.id
-            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 if (attachments.isEmpty()) {
                     if (content.isEmpty()) return@launch
                 } else {
