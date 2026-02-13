@@ -306,8 +306,13 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
             val r = Random()
             val cateId = categories[r.nextInt(categories.size)].id
             var idx = 0
+            val now = System.currentTimeMillis()
+            val millisInDay = 24 * 60 * 60 * 1000L
             for (i in 0..14) {
-                val e = NoteItem("ITEM$i$i", System.currentTimeMillis())
+                // Spread notes over the past 15 days
+                val daysAgo = 14 - i
+                val createTime = now - daysAgo * millisInDay
+                val e = NoteItem("ITEM$i$i", createTime)
                 e.categoryId = cateId
                 if (r.nextBoolean()) {
                     e.isEdited = true

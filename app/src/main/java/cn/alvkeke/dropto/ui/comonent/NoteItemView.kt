@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -1286,7 +1285,22 @@ class NoteItemView @JvmOverloads constructor(
     }
 
     private fun Long.format(): String {
-        return sdf.format(Date(this))
+        val noteDate = Date(this)
+        val now = Date()
+        val calNote = java.util.Calendar.getInstance().apply { time = noteDate }
+        val calNow = java.util.Calendar.getInstance().apply { time = now }
+
+        val sameYear = calNote.get(java.util.Calendar.YEAR) == calNow.get(java.util.Calendar.YEAR)
+        val dayOfYearNote = calNote.get(java.util.Calendar.DAY_OF_YEAR)
+        val dayOfYearNow = calNow.get(java.util.Calendar.DAY_OF_YEAR)
+        val diffDays = dayOfYearNow - dayOfYearNote
+
+        return when {
+            sameYear && diffDays == 0 -> dataFormatToday.format(noteDate) // Today
+            sameYear && diffDays == 1 -> "Yesterday " + dataFormatToday.format(noteDate)
+            sameYear && diffDays in 2..6 -> dataFormatWeekly.format(noteDate)
+            else -> dataFormatCommon.format(noteDate)
+        }
     }
 
     companion object {
@@ -1317,7 +1331,10 @@ class NoteItemView @JvmOverloads constructor(
         const val TEXT_SIZE_CONTENT = 48f
         const val TEXT_SIZE_TIME = 30f
 
-        var sdf: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
+        val dataFormatCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
+        val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
+        val dataFormatWeekly: SimpleDateFormat = SimpleDateFormat("EEE HH:mm", Locale.CHINESE)
+
     }
 
 }
