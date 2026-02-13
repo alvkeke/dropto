@@ -19,10 +19,13 @@ import android.util.Log
 import android.util.Size
 import android.view.View
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withSave
 import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,6 +44,8 @@ class NoteItemView @JvmOverloads constructor(
     var isEdited: Boolean = false
     var isDeleted: Boolean = false
     var isSynced: Boolean = false
+
+    var sender: String? = null
 
     @JvmField
     var asyncImageLoad: Boolean = true
@@ -221,6 +226,32 @@ class NoteItemView @JvmOverloads constructor(
     private val extInfoBackgroundPaint = Paint().apply {
         color = ContextCompat.getColor(context, R.color.ext_info_mask)
         alpha = 200
+    }
+    private val senderAvatarPaint = Paint().apply {
+        isAntiAlias = true
+    }
+    private val senderAvatarRect = RectF()
+    private val senderAvatarPath = Path()
+
+    private val avatarBitmap = createBitmap(AVATAR_SIZE.dp(), AVATAR_SIZE.dp())
+    private var avatarBitmapSetName: String? = null
+    private fun getSenderIcon(sender: String) : Bitmap {
+        if (avatarBitmapSetName != null && avatarBitmapSetName == sender) {
+            return avatarBitmap
+        }
+        try {
+            val drawable = context.packageManager.getApplicationIcon(sender)
+            val drawableWidth = AVATAR_SIZE.dp()
+            val drawableHeight = AVATAR_SIZE.dp()
+            val canvas = Canvas(avatarBitmap)
+            drawable.setBounds(0, 0, drawableWidth, drawableHeight)
+            drawable.draw(canvas)
+            avatarBitmapSetName = sender
+            return avatarBitmap
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get sender icon for $sender, use default avatar, error: $e")
+            return ImageLoader.errorBitmap
+        }
     }
 
     /*
@@ -582,8 +613,7 @@ class NoteItemView @JvmOverloads constructor(
         return totalWidth - MARGIN_ICON
     }
 
-    private fun measureBubbleMixed(width: Int) : Int {
-        val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
+    private fun measureBubbleMixed(bubbleMaxWidth: Int) : Int {
         val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
         var bubbleHeight = MARGIN_BORDER
 
@@ -628,17 +658,15 @@ class NoteItemView @JvmOverloads constructor(
         val bubbleWidth = contentMaxWidth + MARGIN_BORDER * 2
 
         bubbleRect.set(
-            MARGIN_BUBBLE_START.toFloat(),
-            MARGIN_BUBBLE_Y.toFloat(),
-            (MARGIN_BUBBLE_START + bubbleWidth).toFloat(),
-            (MARGIN_BUBBLE_Y + bubbleHeight).toFloat()
+            0f, 0f,
+            bubbleWidth.toFloat(),
+            bubbleHeight.toFloat()
         )
 
         return bubbleHeight
     }
 
-    private fun measureBubbleMediaText(width: Int) : Int {
-        val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
+    private fun measureBubbleMediaText(bubbleMaxWidth: Int) : Int {
         val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
         var bubbleHeight = MARGIN_BORDER * 2
 
@@ -704,18 +732,16 @@ class NoteItemView @JvmOverloads constructor(
             )
         }
         bubbleRect.set(
-            MARGIN_BUBBLE_START.toFloat(),
-            MARGIN_BUBBLE_Y.toFloat(),
-            MARGIN_BUBBLE_START + bubbleWidth,
-            (MARGIN_BUBBLE_Y + bubbleHeight).toFloat()
+            0f, 0f,
+            bubbleWidth,
+            bubbleHeight.toFloat()
         )
 
         return bubbleHeight
     }
 
     private var extInfoNeedBackground = false
-    private fun measureBubbleMediaOnly(width: Int) : Int {
-        val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
+    private fun measureBubbleMediaOnly(bubbleMaxWidth: Int) : Int {
         val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
         var bubbleHeight = MARGIN_BORDER * 2
 
@@ -754,18 +780,16 @@ class NoteItemView @JvmOverloads constructor(
         }
 
         bubbleRect.set(
-            MARGIN_BUBBLE_START.toFloat(),
-            MARGIN_BUBBLE_Y.toFloat(),
-            MARGIN_BUBBLE_START + bubbleWidth,
-            (MARGIN_BUBBLE_Y + bubbleHeight).toFloat()
+            0f, 0f,
+            bubbleWidth,
+            bubbleHeight.toFloat()
         )
         extInfoNeedBackground = true
 
         return bubbleHeight
     }
 
-    private fun measureBubbleTextOnly(width: Int) : Int {
-        val bubbleMaxWidth = width - MARGIN_BUBBLE_START - MARGIN_BUBBLE_END
+    private fun measureBubbleTextOnly(bubbleMaxWidth: Int) : Int {
         val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
         var bubbleHeight = MARGIN_BORDER * 2
 
@@ -818,10 +842,9 @@ class NoteItemView @JvmOverloads constructor(
         val bubbleWidth = contentWidth + MARGIN_TEXT * 2 + MARGIN_BORDER * 2
 
         bubbleRect.set(
-            MARGIN_BUBBLE_START.toFloat(),
-            MARGIN_BUBBLE_Y.toFloat(),
-            (MARGIN_BUBBLE_START + bubbleWidth),
-            (MARGIN_BUBBLE_Y + bubbleHeight).toFloat()
+            0f, 0f,
+            bubbleWidth,
+            bubbleHeight.toFloat()
         )
 
         return bubbleHeight
@@ -849,20 +872,42 @@ class NoteItemView @JvmOverloads constructor(
     }
     private fun measureHeight(width: Int) : Int {
         extInfoNeedBackground = false
-        return MARGIN_BUBBLE_Y * 2 + when (checkContentStatus()) {
+
+
+        val bubbleMaxWidth = when (sender) {
+            null -> width - MARGIN_BUBBLE_END.dp() - MARGIN_BUBBLE_NULL_SENDER.dp()
+            else -> width - MARGIN_BUBBLE_END.dp() - MARGIN_BUBBLE_HAVE_SENDER.dp()
+        }
+
+        val bubbleHeight = when (checkContentStatus()) {
             ContentStatus.ONLY_TEXT -> {
-                measureBubbleTextOnly(width)
+                measureBubbleTextOnly(bubbleMaxWidth)
             }
             ContentStatus.ONLY_MEDIA -> {
-                measureBubbleMediaOnly(width)
+                measureBubbleMediaOnly(bubbleMaxWidth)
             }
             ContentStatus.MEDIA_TEXT -> {
-                measureBubbleMediaText(width)
+                measureBubbleMediaText(bubbleMaxWidth)
             }
             else -> {
-                measureBubbleMixed(width)
+                measureBubbleMixed(bubbleMaxWidth)
             }
         }
+
+        if (sender == null) {
+            val offX = width - bubbleRect.width() - MARGIN_BUBBLE_NULL_SENDER.dp()
+            bubbleRect.offset(
+                offX,
+                MARGIN_BUBBLE_Y.dp().toFloat()
+            )
+        } else {
+            bubbleRect.offset(
+                MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
+                MARGIN_BUBBLE_Y.dp().toFloat()
+            )
+        }
+
+        return bubbleHeight + MARGIN_BUBBLE_Y.dp() * 2
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -1233,6 +1278,34 @@ class NoteItemView @JvmOverloads constructor(
             drawIcons(timeLayout.height.toFloat())
         }
 
+        canvas.withSave {
+            sender?.let {
+                val offX = MARGIN_BUBBLE_SENDER_AVATAR.dp().toFloat()
+                val offY = height - MARGIN_BUBBLE_SENDER_AVATAR.dp() - AVATAR_SIZE.dp().toFloat()
+                senderAvatarRect.set(
+                    offX, offY,
+                    (offX + AVATAR_SIZE.dp()),
+                    (offY + AVATAR_SIZE.dp())
+                )
+                senderAvatarPath.addCircle(
+                    senderAvatarRect.centerX(),
+                    senderAvatarRect.centerY(),
+                    AVATAR_SIZE.dp() / 2.1f,    // 2.1 to avoid straight line on the edge
+                    Path.Direction.CW
+                )
+                val bitmap = when (sender) {
+                    ShareRecvActivity.UNKNOWN_SENDER_PACKAGE -> ImageLoader.errorBitmap
+                    else -> getSenderIcon(it)
+                }
+
+                canvas.clipPath(senderAvatarPath)
+                canvas.drawBitmap(
+                    bitmap, null,
+                    senderAvatarRect,
+                    senderAvatarPaint
+                )
+            }
+        }
     }
 
     private val highlightPath = Path()
@@ -1250,20 +1323,30 @@ class NoteItemView @JvmOverloads constructor(
     class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
         enum class Type {
             BACKGROUND,
+            SENDER_ICON,
             MEDIA,
             FILE,
         }
     }
 
+    private val checkRect = RectF()
     fun checkClickedContent(x: Float, y: Float): ClickedContent {
         Log.v(TAG, "index-$index, checkClickedItem: x=$x, y=$y")
 
+        sender?.let {
+            checkRect.set(senderAvatarRect)
+            if (checkRect.contains(x, y)) {
+                Log.v(TAG, "checkClickedItem: sender icon clicked")
+                return ClickedContent(ClickedContent.Type.SENDER_ICON)
+            }
+        }
+
         val attachments = (_medias + _files)
         attachments.iterator().forEach { info ->
-            val checkRect = RectF(
-                info.rect.left + MARGIN_BUBBLE_START + MARGIN_BORDER,
+            checkRect.set(
+                info.rect.left + bubbleRect.left + MARGIN_BORDER,
                 info.rect.top + MARGIN_BUBBLE_Y + MARGIN_BORDER,
-                info.rect.right + MARGIN_BUBBLE_START + MARGIN_BORDER,
+                info.rect.right + bubbleRect.left + MARGIN_BORDER,
                 info.rect.bottom + MARGIN_BUBBLE_Y + MARGIN_BORDER
             )
             if (checkRect.contains(x, y)) {
@@ -1307,8 +1390,11 @@ class NoteItemView @JvmOverloads constructor(
         const val TAG: String = "NoteItemView"
 
         const val MARGIN_BUBBLE_Y = 4
-        const val MARGIN_BUBBLE_START = 64
-        const val MARGIN_BUBBLE_END = 256
+        const val MARGIN_BUBBLE_NULL_SENDER = 8 // in dp
+        const val MARGIN_BUBBLE_HAVE_SENDER = 52   // in dp, enough for avatar and margin
+        const val MARGIN_BUBBLE_SENDER_AVATAR = 4   // in dp
+        const val AVATAR_SIZE = MARGIN_BUBBLE_HAVE_SENDER - MARGIN_BUBBLE_SENDER_AVATAR * 2   // in dp
+        const val MARGIN_BUBBLE_END = 48    // in dp
         const val BUBBLE_RADIUS = 16
 
         const val MARGIN_BORDER = 8

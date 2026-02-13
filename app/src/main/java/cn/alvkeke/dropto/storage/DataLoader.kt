@@ -18,7 +18,7 @@ object DataLoader {
         try {
             DataBaseHelper(context).use { helper ->
                 helper.start()
-                helper.queryCategory(-1, categories)
+                helper.queryCategory(categories)
                 helper.finish()
             }
         } catch (_: Exception) {
@@ -44,7 +44,7 @@ object DataLoader {
         try {
             DataBaseHelper(context).use { helper ->
                 helper.start()
-                helper.queryNote(-1, category.id, category.noteItems)
+                helper.queryNote(category.id, category.noteItems)
                 category.isInitialized = true
                 helper.finish()
             }

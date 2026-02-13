@@ -1,6 +1,7 @@
 package cn.alvkeke.dropto.ui.fragment
 
 import android.annotation.SuppressLint
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,8 +19,9 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class CategorySelectorFragment : BottomSheetDialogFragment() {
 
-    fun interface CategorySelectListener {
+    interface CategorySelectListener {
         fun onSelected(index: Int, category: Category)
+        fun onCancel()
     }
 
     private lateinit var listener: CategorySelectListener
@@ -61,6 +63,7 @@ class CategorySelectorFragment : BottomSheetDialogFragment() {
             override fun onItemClick(v: View, index: Int): Boolean {
                 val category = categoryListAdapter.get(index)
 
+                skipCancel = true
                 listener.onSelected(index, category)
                 finish()
                 return true
@@ -84,5 +87,11 @@ class CategorySelectorFragment : BottomSheetDialogFragment() {
 
     private fun finish() {
         this.dismiss()
+    }
+
+    private var skipCancel = false
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        if (!skipCancel) listener.onCancel()
     }
 }

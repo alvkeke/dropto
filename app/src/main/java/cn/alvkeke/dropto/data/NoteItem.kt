@@ -12,6 +12,9 @@ class NoteItem : Serializable, Cloneable {
     var text: String
     val createTime: Long
 
+    var sender: String? = null
+        private set
+
     var isEdited: Boolean = false
     var isDeleted: Boolean = false
     var isSynced: Boolean = false
@@ -223,10 +226,11 @@ class NoteItem : Serializable, Cloneable {
      * construct a new NoteItem instance, with auto generated create_time
      * @param text the content of the item
      */
-    constructor(text: String) {
+    constructor(text: String, sender: String? = null) {
         this.id = ID_NOT_ASSIGNED
         this.text = text
         this.createTime = System.currentTimeMillis()
+        this.sender = sender
     }
 
     /**
@@ -235,10 +239,11 @@ class NoteItem : Serializable, Cloneable {
      * @param text content of the item
      * @param createTime the specific create_time
      */
-    constructor(text: String, createTime: Long) {
+    constructor(text: String, createTime: Long, sender: String? = null) {
         this.id = ID_NOT_ASSIGNED
         this.text = text
         this.createTime = createTime
+        this.sender = sender
     }
 
     fun updateFrom(src: NoteItem) {

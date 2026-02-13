@@ -28,17 +28,89 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         CategorySelectorFragment()
     }
 
+    private lateinit var senderPackageName: String
+    private fun Intent.tryGetSenderPackageName(): String {
+        callingPackage?.let {
+            Log.d(TAG, "get sender package name from callingPackage: $it")
+            return it
+        }
+
+        callingActivity?.packageName?.let {
+            Log.d(TAG, "get sender package name from callingActivity: $it")
+            return it
+        }
+
+        getPackageFromReferrerUri(referrer)?.let {
+            Log.d(TAG, "get sender package name from getReferrer: $it")
+            return it
+        }
+
+        intent.getStringExtra(Intent.EXTRA_REFERRER_NAME)?.let {
+            val fromExtra = getPackageFromReferrerName(it)
+            if (fromExtra != null) {
+                Log.d(TAG, "get sender package name from EXTRA_REFERRER_NAME: $fromExtra")
+                return fromExtra
+            }
+        }
+
+        intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME)?.let {
+            Log.d(TAG, "get sender package name from EXTRA_PACKAGE_NAME: $it")
+            return it
+        }
+
+        intent.`package`?.let {
+            Log.d(TAG, "get sender package name from intent.package: $it")
+            return it
+        }
+
+        this.getContentAuthorityFromIntent()?.let {
+            Log.d(TAG, "get sender content authority from intent: $it")
+            return it
+        }
+
+        return UNKNOWN_SENDER_PACKAGE
+    }
+
+    private fun getPackageFromReferrerUri(referrer: Uri?): String? {
+        if (referrer == null) return null
+        if (referrer.scheme == "android-app") return referrer.host
+        return referrer.authority ?: referrer.host
+    }
+
+    private fun getPackageFromReferrerName(referrerName: String): String? {
+        if (referrerName.isBlank()) return null
+        return try {
+            val parsed = Uri.parse(referrerName)
+            when (parsed.scheme) {
+                null -> referrerName
+                "android-app" -> parsed.host
+                else -> parsed.authority ?: parsed.host
+            }
+        } catch (ex: Exception) {
+            Log.d(TAG, "Failed to parse EXTRA_REFERRER_NAME: $referrerName", ex)
+            referrerName
+        }
+    }
+
+    private fun Intent.getContentAuthorityFromIntent(): String? {
+        val clipData = clipData
+        if (clipData != null && clipData.itemCount > 0) {
+            val uri = clipData.getItemAt(0)?.uri
+            if (uri != null && uri.scheme == "content") return uri.authority
+        }
+
+        val streamUri = getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        if (streamUri != null && streamUri.scheme == "content") return streamUri.authority
+
+        return null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         this.enableEdgeToEdge()
 
-        if (savedInstanceState != null) {
-            this.finish()
-            // just end after change to dark mode
-            return
-        }
-
         val intent = getIntent()
+        senderPackageName = intent.tryGetSenderPackageName()
         val action = intent.action
         if (action == null) {
             Toast.makeText(this, "action is null", Toast.LENGTH_SHORT).show()
@@ -83,7 +155,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
 
         Log.v(TAG, "selected category: ${category.title}")
 
-        val recvNote = NoteItem(pendingText)
+        val recvNote = NoteItem(pendingText, senderPackageName)
         recvNote.categoryId = category.id
         for (uri in pendingUris) {
             val imageFile = extractAttachmentFromUri(uri)
@@ -105,6 +177,10 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         } else {
             app.service?.queueTask(createNote(recvNote))
         }
+        finish()
+    }
+
+    override fun onCancel() {
         finish()
     }
 
@@ -157,6 +233,8 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
 
     companion object {
         private const val TAG = "ShareRecvActivity"
+
+        const val UNKNOWN_SENDER_PACKAGE = "UNKNOWN"
     }
 
 }

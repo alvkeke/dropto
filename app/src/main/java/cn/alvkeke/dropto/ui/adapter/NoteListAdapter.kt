@@ -91,6 +91,7 @@ class NoteListAdapter : SelectableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.isEdited = note.isEdited
         view.isDeleted = note.isDeleted
         view.isSynced = note.isSynced
+        view.sender = note.sender
         view.medias.clear()
         view.medias.addAll(note.medias)
         view.files.clear()

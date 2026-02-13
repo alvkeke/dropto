@@ -294,6 +294,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                     NoteItemView.ClickedContent.Type.BACKGROUND -> {
                         showItemPopMenu(index, v, x, y)
                     }
+                    NoteItemView.ClickedContent.Type.SENDER_ICON -> {
+                        android.app.AlertDialog.Builder(context)
+                            .setTitle("Sender Package")
+                            .setMessage("Sender: ${itemView.sender}")
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show()
+                    }
 
                     NoteItemView.ClickedContent.Type.MEDIA -> {
                         if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
@@ -757,24 +764,34 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
         CategorySelectorFragment()
     }
     private fun handleNoteForward(note: NoteItem) {
-        forwardFragment.prepare(categories) { index, category ->
-            Log.d(TAG, "Category-$index[${category.title}] selected for forwarding")
-            val item = note.clone()
-            item.categoryId = category.id
-            app.service?.queueTask(createNote(item))
-        }
-        forwardFragment.show(parentFragmentManager, null)
-    }
-    private fun handleForwardMultipleNotes(notes: ArrayList<NoteItem>) {
-        forwardFragment.prepare(categories) { index, category ->
-            Log.d(TAG, "Category-$index[${category.title}] selected for forwarding, ${notes.size} notes")
-            if (notes.isEmpty()) return@prepare
-            for (note in notes) {
+        forwardFragment.prepare(categories, object : CategorySelectorFragment.CategorySelectListener {
+            override fun onSelected(index: Int, category: Category) {
+                Log.d(TAG, "Category-$index[${category.title}] selected for forwarding")
                 val item = note.clone()
                 item.categoryId = category.id
                 app.service?.queueTask(createNote(item))
             }
-        }
+
+            override fun onCancel() { }
+        })
+        forwardFragment.show(parentFragmentManager, null)
+    }
+    private fun handleForwardMultipleNotes(notes: ArrayList<NoteItem>) {
+        forwardFragment.prepare(categories, object : CategorySelectorFragment.CategorySelectListener{
+            override fun onSelected(index: Int, category: Category) {
+                Log.d(
+                    TAG,
+                    "Category-$index[${category.title}] selected for forwarding, ${notes.size} notes"
+                )
+                if (notes.isEmpty()) return
+                for (note in notes) {
+                    val item = note.clone()
+                    item.categoryId = category.id
+                    app.service?.queueTask(createNote(item))
+                }
+            }
+            override fun onCancel() { }
+        })
         forwardFragment.show(parentFragmentManager, null)
     }
 

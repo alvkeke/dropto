@@ -25,7 +25,7 @@ class DataBaseHelper(private val context: Context) :
         const val TAG = "DataBaseHelper"
 
         private const val DATABASE_NAME = "note.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
 
         private const val TABLE_CATEGORY = "category"
         private const val CATEGORY_COLUMN_ID = "_id"
@@ -57,6 +57,8 @@ class DataBaseHelper(private val context: Context) :
         private const val NOTE_FLAG_IS_DELETED: Long = 1 shl 0
         private const val NOTE_FLAG_IS_EDITED:Long = 1 shl 1
         private const val NOTE_FLAG_IS_SYNCED:Long = 1 shl 2
+        private const val NOTE_COLUMN_SENDER = "sender"
+        private const val NOTE_COLUMN_SENDER_TYPE = "TEXT DEFAULT NULL"
 
         private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
         private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
@@ -73,13 +75,14 @@ class DataBaseHelper(private val context: Context) :
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion == 1) {
             upgradeV1ToV2(db)
+            upgradeV2ToV3(db)
+        } else if (oldVersion == 2) {
+            upgradeV2ToV3(db)
         }
     }
 
     override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion == 2) {
-            downgradeV2ToV1(db)
-        }
+        Log.e(TAG, "Database try downgrade: $oldVersion -> $newVersion")
     }
 
     private fun upgradeV1ToV2(db: SQLiteDatabase) {
@@ -110,6 +113,17 @@ class DataBaseHelper(private val context: Context) :
         printCurrentDbStruct(db)
     }
 
+    private fun upgradeV2ToV3(db: SQLiteDatabase) {
+        Log.e(TAG, "Database upgrading: 2 -> 3, add new column for the column")
+        try {
+            db.execSQL("ALTER TABLE $TABLE_NOTE ADD COLUMN $NOTE_COLUMN_SENDER $NOTE_COLUMN_SENDER_TYPE;")
+            Log.e(TAG, "Database upgraded successfully: 2 -> 3")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to add new column for sender, maybe already exists, ignore and continue: $e")
+        }
+    }
+
+    @Suppress("unused")
     private fun downgradeV2ToV1(db: SQLiteDatabase) {
         Log.e(TAG, "Database downgrading: 2 -> 1, rename current note table to backup table")
         db.execSQL("ALTER TABLE $TABLE_NOTE RENAME TO ${TABLE_NOTE}_BAK;")
@@ -137,6 +151,11 @@ class DataBaseHelper(private val context: Context) :
         db.execSQL("DROP TABLE IF EXISTS ${TABLE_NOTE}_BAK;")
         Log.e(TAG, "Database downgraded successfully: 2 -> 1")
         printCurrentDbStruct(db)
+    }
+
+    @Suppress("unused")
+    private fun downgradeV3ToV2(db: SQLiteDatabase) {
+        Log.e(TAG, "nothing to do in downgrading from V3 to V2, the new column doesn't matter")
     }
 
     private fun printCurrentDbStruct(db: SQLiteDatabase) {
@@ -192,7 +211,8 @@ class DataBaseHelper(private val context: Context) :
                 $NOTE_COLUMN_TEXT $NOTE_COLUMN_TEXT_TYPE,
                 $NOTE_COLUMN_C_TIME $NOTE_COLUMN_C_TIME_TYPE,
                 $NOTE_COLUMN_ATTACHMENT_INFO $NOTE_COLUMN_ATTACHMENT_INFO_TYPE,
-                $NOTE_COLUMN_FLAGS $NOTE_COLUMN_FLAGS_TYPE
+                $NOTE_COLUMN_FLAGS $NOTE_COLUMN_FLAGS_TYPE,
+                $NOTE_COLUMN_SENDER $NOTE_COLUMN_SENDER_TYPE
             );
         """.trimIndent()
 
@@ -273,8 +293,8 @@ class DataBaseHelper(private val context: Context) :
 
     @JvmOverloads
     fun queryCategory(
-        maxNum: Int,
         categories: ArrayList<Category>,
+        maxNum: Int = -1,
         cb: IterateCallback<Category>? = null
     ) {
 
@@ -293,7 +313,8 @@ class DataBaseHelper(private val context: Context) :
         var nCategory = 0
         while (cursor.moveToNext()) {
 
-            if (maxNum in 1..nCategory) break
+            nCategory++
+            if (maxNum > -1 && nCategory > maxNum) break
             var idx: Int = cursor.getColumnIndex(CATEGORY_COLUMN_ID)
             if (idx == -1) {
                 Log.e(TAG, "invalid idx")
@@ -328,7 +349,6 @@ class DataBaseHelper(private val context: Context) :
             c.id = id
             c.previewText = preview
             categories.add(c)
-            nCategory++
             cb?.onIterate(c)
         }
 
@@ -410,7 +430,7 @@ class DataBaseHelper(private val context: Context) :
 
     @Throws(SQLiteException::class)
     fun insertNote(
-        id: Long, categoryId: Long, text: String?, ctime: Long,
+        id: Long, categoryId: Long, text: String?, ctime: Long, sender: String?,
         attachmentInfo: String?, flags: Long
     ): Long {
         val values = ContentValues()
@@ -418,6 +438,7 @@ class DataBaseHelper(private val context: Context) :
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
+        values.put(NOTE_COLUMN_SENDER, sender)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
         return db.insertOrThrow(TABLE_NOTE, null, values)
@@ -425,13 +446,14 @@ class DataBaseHelper(private val context: Context) :
 
     @Throws(SQLiteException::class)
     fun insertNote(
-        categoryId: Long, text: String?, ctime: Long,
+        categoryId: Long, text: String?, ctime: Long, sender: String?,
         attachmentInfo: String?, flags: Long
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
+        values.put(NOTE_COLUMN_SENDER, sender)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
         return db.insertOrThrow(TABLE_NOTE, null, values)
@@ -446,12 +468,12 @@ class DataBaseHelper(private val context: Context) :
     @Throws(SQLiteException::class)
     fun insertNote(n: NoteItem): Long {
         val id: Long = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
-            insertNote(n.categoryId, n.text, n.createTime,
+            insertNote(n.categoryId, n.text, n.createTime, n.sender,
                 n.generateAttachmentString(), n.generateFlags())
         } else {
             insertNote(
-                n.id, n.categoryId, n.text, n.createTime,
-                n.generateAttachmentString(), n.generateFlags()
+                n.id, n.categoryId, n.text, n.createTime, n.sender,
+                n.generateAttachmentString(), n.generateFlags(),
             )
         }
         if (id < 0) {
@@ -562,6 +584,7 @@ class DataBaseHelper(private val context: Context) :
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
         values.put(NOTE_COLUMN_TEXT, text)
         values.put(NOTE_COLUMN_C_TIME, ctime)
+        // update sender is not allowed now
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
         val args = arrayOf(id.toString())
@@ -618,12 +641,18 @@ class DataBaseHelper(private val context: Context) :
             return null
         }
         val flags = getLong(idx)
+        idx = getColumnIndex(NOTE_COLUMN_SENDER)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for sender")
+            return null
+        }
+        val sender: String? = getString(idx)
 
-        val e = NoteItem(text, ctime)
+        val e = NoteItem(text, ctime, sender)
         e.parseFlags(flags)
         e.id = id
         e.categoryId = categoryId
-        if (attachInfoAll != null && !attachInfoAll.isEmpty()) {
+        if (!attachInfoAll.isNullOrEmpty()) {
             Log.d(TAG, "imgInfoAll: $attachInfoAll")
 
             val imgInfoAllS =
@@ -651,9 +680,9 @@ class DataBaseHelper(private val context: Context) :
      */
     @JvmOverloads
     fun queryNote(
-        maxNum: Int,
         targetCategoryId: Long,
         noteItems: ArrayList<NoteItem>,
+        maxNum: Int = -1,
         cb: IterateCallback<NoteItem>? = null
     ) {
 
@@ -671,11 +700,11 @@ class DataBaseHelper(private val context: Context) :
 
         var nNotes = 0
         while (cursor.moveToNext()) {
-            if (maxNum in 1..nNotes) break
+            nNotes++
+            if (maxNum > -1 && nNotes > maxNum) break
 
             val e = cursor.parseCurrentNoteItem() ?: continue
             noteItems.add(e)
-            nNotes++
             cb?.onIterate(e)
         }
 
