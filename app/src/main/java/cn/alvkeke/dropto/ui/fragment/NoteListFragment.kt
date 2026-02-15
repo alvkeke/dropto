@@ -47,6 +47,8 @@ import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createNote
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFileToExternal
@@ -124,7 +126,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
         naviBar = view.findViewById(R.id.note_list_navigation_bar)
         toolbar = view.findViewById(R.id.note_list_toolbar)
 
-        setSystemBarHeight(view, statusBar, naviBar)
+        UserInterfaceHelper.setSystemBarHeight(view, statusBar, naviBar)
         setIMEViewChange(view)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_back)
@@ -427,28 +429,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
 
     @JvmOverloads
     fun finish(duration: Long = 200) {
-        val startX = fragmentView.translationX
-        val width = fragmentView.width.toFloat()
-        val animator = ObjectAnimator.ofFloat(
-            fragmentView,
-            PROP_NAME, startX, width
-        ).setDuration(duration)
-        animator.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                super.onAnimationEnd(animation)
-                rlNoteList.clearSelectItems()
-                attachments.clear()
-                getParentFragmentManager().beginTransaction()
-                    .remove(this@NoteListFragment).commit()
-            }
-        })
-        animator.addUpdateListener { valueAnimator: ValueAnimator ->
+        animateRemoveFromParent(fragmentView, duration, closeToRight = true) { valueAnimator: ValueAnimator ->
+            val width = fragmentView.width.toFloat()
             val deltaX = valueAnimator.animatedValue as Float
             val ratio = (width - deltaX) / width
             setMaskTransparent(ratio)
             moveUpperFragmentView(ratio)
         }
-        animator.start()
     }
 
     fun resetPosition() {
@@ -458,18 +445,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             fragmentView,
             PROP_NAME, startX, 0f
         ).setDuration(100).start()
-    }
-
-    private fun setSystemBarHeight(parent: View, status: View, navi: View) {
-        ViewCompat.setOnApplyWindowInsetsListener(
-            parent
-        ) { _: View, insets: WindowInsetsCompat ->
-            val statusHei: Int = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            val naviHei: Int = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            status.layoutParams.height = statusHei
-            navi.layoutParams.height = naviHei
-            WindowInsetsCompat.CONSUMED
-        }
     }
 
     private fun setIMEViewChange(view: View) {

@@ -31,8 +31,8 @@ import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.activity.MainViewModel
-import cn.alvkeke.dropto.ui.activity.MgmtActivity
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
@@ -80,7 +80,7 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
         toolbar = view.findViewById(R.id.category_list_toolbar)
         val statusBar = view.findViewById<View>(R.id.category_list_status_bar)
         val navigationBar = view.findViewById<View>(R.id.category_list_navigation_bar)
-        setSystemBarHeight(view, statusBar, navigationBar)
+        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navigationBar)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_menu)
         toolbar.setNavigationOnClickListener(OnCategoryListMenuClick())
@@ -111,18 +111,6 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
                 mgmtPageFragment = MgmtPageFragment()
             }
             startFragmentAnime(mgmtPageFragment!!)
-        }
-    }
-
-    private fun setSystemBarHeight(parent: View, status: View, navi: View) {
-        ViewCompat.setOnApplyWindowInsetsListener(
-            parent
-        ) { _: View, winInsets: WindowInsetsCompat ->
-            val statusHei: Int = winInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            val naviHei: Int = winInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            status.layoutParams.height = statusHei
-            navi.layoutParams.height = naviHei
-            winInsets
         }
     }
 

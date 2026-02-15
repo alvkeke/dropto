@@ -22,6 +22,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/mgmt_page_status_bar"
         android:background="?android:statusBarColor"
+        app:navigationIcon="@drawable/icon_common_back"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
