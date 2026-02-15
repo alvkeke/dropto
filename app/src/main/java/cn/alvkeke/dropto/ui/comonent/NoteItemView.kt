@@ -874,10 +874,8 @@ class NoteItemView @JvmOverloads constructor(
         extInfoNeedBackground = false
 
 
-        val bubbleMaxWidth = when (sender) {
-            null -> width - MARGIN_BUBBLE_END.dp() - MARGIN_BUBBLE_NULL_SENDER.dp()
-            else -> width - MARGIN_BUBBLE_END.dp() - MARGIN_BUBBLE_HAVE_SENDER.dp()
-        }
+        // unify the max size of the bubble to have a better look
+        val bubbleMaxWidth = width - MARGIN_BUBBLE_END.dp() - MARGIN_BUBBLE_HAVE_SENDER.dp()
 
         val bubbleHeight = when (checkContentStatus()) {
             ContentStatus.ONLY_TEXT -> {
