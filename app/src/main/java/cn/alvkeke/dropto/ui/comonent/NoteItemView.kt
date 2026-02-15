@@ -902,19 +902,12 @@ class NoteItemView @JvmOverloads constructor(
             )
         } else {
             val avatarHeight = AVATAR_SIZE.dp() + MARGIN_BUBBLE_Y.dp() * 2
-            if (noteHeight < avatarHeight) {
-                val diff = avatarHeight - noteHeight
-                bubbleRect.offset(
-                    MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
-                    MARGIN_BUBBLE_Y.dp().toFloat() + diff
-                )
-                noteHeight = avatarHeight
-            } else {
-                bubbleRect.offset(
-                    MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
-                    MARGIN_BUBBLE_Y.dp().toFloat()
-                )
-            }
+            val diff = (avatarHeight - noteHeight).coerceAtLeast(0)
+            bubbleRect.offset(
+                MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
+                MARGIN_BUBBLE_Y.dp().toFloat() + diff
+            )
+            noteHeight += diff
         }
 
         return noteHeight
