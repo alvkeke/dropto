@@ -1,7 +1,5 @@
 package cn.alvkeke.dropto.ui.fragment
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
@@ -65,7 +63,6 @@ import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 

@@ -57,7 +57,6 @@ class MgmtItemView(
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        val viewWidth = r - l
         val viewHeight = b - t
 
         // icon

@@ -29,7 +29,6 @@ import cn.alvkeke.dropto.ui.adapter.AttachmentListAdapter
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
@@ -140,10 +139,10 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
         cbCache.isChecked = true
 
         initFolders()
-        viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             taskCalcCache()
         }
-        viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             taskCalcAttachments()
         }
     }
@@ -212,13 +211,13 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
     private fun clearSelectedData(v: View) {
         buttonClear.isEnabled = false
         if (cbCache.isChecked) {
-            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 emptyFolder(cacheFolder)
                 taskCalcCache()
             }
         }
         if (cbAttachment.isChecked) {
-            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 emptyFolder(attachmentFolder)
                 handler.post { attachmentListAdapter.emptyList() }
                 taskCalcAttachments()
@@ -301,7 +300,6 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
     companion object {
 
         const val TAG = "MgmtStorageFragment"
-        const val PROP_NAME = "translationX"
 
         private fun getSizeType(size: Long): Int {
             return if (size < 1000L) 0

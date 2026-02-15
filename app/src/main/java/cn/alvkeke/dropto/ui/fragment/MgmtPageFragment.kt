@@ -1,17 +1,11 @@
 package cn.alvkeke.dropto.ui.fragment
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.DroptoApplication
@@ -27,7 +21,6 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
 
     companion object {
         const val TAG = "MgmtPageFragment"
-        const val PROP_NAME = "translationX"
     }
 
     private val app: DroptoApplication
