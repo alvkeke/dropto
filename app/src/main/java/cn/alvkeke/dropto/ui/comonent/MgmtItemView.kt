@@ -25,8 +25,6 @@ class MgmtItemView(
 
     init {
         imageView.scaleType = ImageView.ScaleType.FIT_CENTER
-        imageView.layoutParams.height = iconSize
-        imageView.layoutParams.width = iconSize
         addView(imageView)
 
         textView.textSize = 20f
@@ -38,15 +36,19 @@ class MgmtItemView(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val iconSpec = MeasureSpec.makeMeasureSpec(iconSize, MeasureSpec.EXACTLY)
         imageView.measure(iconSpec, iconSpec)
-        measureChildWithMargins(textView, widthMeasureSpec, 0, heightMeasureSpec, 0)
+        measureChildWithMargins(
+            textView,
+            widthMeasureSpec,
+            0,
+            heightMeasureSpec,
+            0
+        )
 
-        val imageWidth = iconSize
-        val imageHeight = iconSize
         val textWidth = textView.measuredWidth
         val textHeight = textView.measuredHeight
 
-        val width = imageWidth + margin + textWidth + margin * 2
-        val height = maxOf(imageHeight, textHeight) + margin * 2
+        val width = margin + iconSize + margin + textWidth + margin
+        val height = maxOf(iconSize + margin * 2, textHeight + margin * 2)
 
         setMeasuredDimension(
             resolveSize(width, widthMeasureSpec),
@@ -55,33 +57,27 @@ class MgmtItemView(
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        val parentLeft = paddingLeft
-        val parentTop = paddingTop
-        val parentBottom = b - t - paddingBottom
+        val viewWidth = r - l
+        val viewHeight = b - t
 
-        val imageWidth = iconSize
-        val imageHeight = iconSize
-        val textWidth = textView.measuredWidth
-        val textHeight = textView.measuredHeight
-
-        val totalHeight = maxOf(imageHeight, textHeight)
-        val topOffset = parentTop + (parentBottom - parentTop - totalHeight) / 2
-
-        val imageTop = topOffset + (totalHeight - imageHeight) / 2
+        // icon
+        val iconLeft = margin
+        val iconTop = margin
         imageView.layout(
-            parentLeft,
-            imageTop,
-            parentLeft + imageWidth + margin,
-            imageTop + imageHeight + margin
+            iconLeft,
+            iconTop,
+            iconLeft + iconSize,
+            iconTop + iconSize
         )
 
-        val textLeft = parentLeft + imageWidth + margin
-        val textTop = topOffset + (totalHeight - textHeight) / 2
+        // textView
+        val textLeft = margin + iconSize + margin
+        val textTop = (viewHeight - textView.measuredHeight) / 2
         textView.layout(
             textLeft,
             textTop,
-            textLeft + textWidth,
-            textTop + textHeight
+            textLeft + textView.measuredWidth,
+            textTop + textView.measuredHeight
         )
     }
 
