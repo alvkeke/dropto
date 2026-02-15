@@ -29,6 +29,7 @@ import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
@@ -102,12 +103,14 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
     private var mgmtPageFragment: MgmtPageFragment? = null
     private inner class OnCategoryListMenuClick : View.OnClickListener {
         override fun onClick(view: View) {
-//            val intent = Intent(context, MgmtActivity::class.java)
-//            startActivity(intent)
             if (mgmtPageFragment == null) {
                 mgmtPageFragment = MgmtPageFragment()
             }
-            startFragmentAnime(mgmtPageFragment!!)
+            parentFragmentManager.startFragmentAnime(
+                mgmtPageFragment!!,
+                R.id.main_container,
+                false
+            )
         }
     }
 
@@ -237,14 +240,6 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
         }
     }
 
-    private fun startFragmentAnime(fragment: Fragment) {
-        parentFragmentManager.beginTransaction()
-            .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
-            .add(R.id.main_container, fragment, null)
-            .addToBackStack(fragment.javaClass.simpleName)
-            .commit()
-    }
-
     private val noteListFragment: NoteListFragment by lazy {
         NoteListFragment()
     }
@@ -254,7 +249,10 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
             Log.e(this.toString(), "Failed to get noteList from database")
         }
         viewModel.setCategory(category)
-        startFragmentAnime(noteListFragment)
+        parentFragmentManager.startFragmentAnime(
+            noteListFragment,
+            R.id.main_container,
+        )
     }
 
     private val categoryDetailFragment: CategoryDetailFragment by lazy {

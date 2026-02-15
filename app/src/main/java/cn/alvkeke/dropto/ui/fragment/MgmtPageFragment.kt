@@ -12,6 +12,7 @@ import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.comonent.MgmtItemView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -71,19 +72,14 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
             if (storageFragment == null) {
                 storageFragment = MgmtStorageFragment()
             }
-            startFragmentAnime(storageFragment!!)
+            parentFragmentManager.startFragmentAnime(
+                storageFragment!!,
+                R.id.main_container,
+            )
         }
         itemNotes.setTitle("Manage Notes")
         itemNotes.setIcon(R.drawable.icon_mgmt_storage)
 
-    }
-
-    private fun startFragmentAnime(fragment: Fragment) {
-        parentFragmentManager.beginTransaction()
-            .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
-            .add(R.id.main_container, fragment, null)
-            .addToBackStack(fragment.javaClass.simpleName)
-            .commit()
     }
 
     override fun onBackPressed(): Boolean {

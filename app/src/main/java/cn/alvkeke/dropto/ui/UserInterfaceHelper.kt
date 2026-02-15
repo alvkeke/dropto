@@ -16,6 +16,8 @@ import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.FileHelper
@@ -132,6 +134,22 @@ object UserInterfaceHelper {
             navi.layoutParams.height = naviHei
             WindowInsetsCompat.CONSUMED
         }
+    }
+
+    fun FragmentManager.startFragmentAnime(
+        fragment: Fragment,
+        containerId: Int,
+        fromRight: Boolean = true
+    ) {
+        val animIn = if (fromRight)
+            R.anim.slide_in_from_right
+        else
+            R.anim.slide_in_from_left
+        beginTransaction()
+            .setCustomAnimations(animIn, R.anim.slide_out)
+            .add(containerId, fragment, null)
+            .addToBackStack(fragment.javaClass.simpleName)
+            .commit()
     }
 
     private const val PROP_NAME = "translationX"
