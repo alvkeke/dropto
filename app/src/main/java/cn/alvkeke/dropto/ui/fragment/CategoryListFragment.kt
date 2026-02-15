@@ -102,10 +102,15 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
         rlCategory.setOnTouchListener(OnListItemClickListener())
     }
 
+    private var mgmtPageFragment: MgmtPageFragment? = null
     private inner class OnCategoryListMenuClick : View.OnClickListener {
         override fun onClick(view: View) {
-            val intent = Intent(context, MgmtActivity::class.java)
-            startActivity(intent)
+//            val intent = Intent(context, MgmtActivity::class.java)
+//            startActivity(intent)
+            if (mgmtPageFragment == null) {
+                mgmtPageFragment = MgmtPageFragment()
+            }
+            startFragmentAnime(mgmtPageFragment!!)
         }
     }
 
