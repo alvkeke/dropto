@@ -894,6 +894,8 @@ class NoteItemView @JvmOverloads constructor(
             }
         }
 
+        var noteHeight = bubbleHeight + MARGIN_BUBBLE_Y.dp() * 2
+
         if (sender == null) {
             val offX = width - bubbleRect.width() - MARGIN_BUBBLE_NULL_SENDER.dp()
             bubbleRect.offset(
@@ -901,13 +903,23 @@ class NoteItemView @JvmOverloads constructor(
                 MARGIN_BUBBLE_Y.dp().toFloat()
             )
         } else {
-            bubbleRect.offset(
-                MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
-                MARGIN_BUBBLE_Y.dp().toFloat()
-            )
+            val avatarHeight = AVATAR_SIZE.dp() + MARGIN_BUBBLE_Y.dp() * 2
+            if (noteHeight < avatarHeight) {
+                val diff = avatarHeight - noteHeight
+                bubbleRect.offset(
+                    MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
+                    MARGIN_BUBBLE_Y.dp().toFloat() + diff
+                )
+                noteHeight = avatarHeight
+            } else {
+                bubbleRect.offset(
+                    MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
+                    MARGIN_BUBBLE_Y.dp().toFloat()
+                )
+            }
         }
 
-        return bubbleHeight + MARGIN_BUBBLE_Y.dp() * 2
+        return noteHeight
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
