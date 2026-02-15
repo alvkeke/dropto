@@ -228,18 +228,18 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
 
     private inner class OnItemClickListener : AttachmentListAdapter.OnItemClickListener {
         override fun onClick(index: Int) {
-            val name = attachmentListAdapter.get(index)
+            val md5FileName = attachmentListAdapter.get(index).file
 
-            val imageFile = File(attachmentFolder, name)
+            val imageFile = File(attachmentFolder, md5FileName)
             val fragment = ImageViewerFragment()
-            viewModel.setImageFile(imageFile)
+            fragment.setImage(imageFile)
 
-            fragment.show(getParentFragmentManager(), null)
+            fragment.show(parentFragmentManager, null)
         }
 
         override fun onLongClick(index: Int): Boolean {
-            val name = attachmentListAdapter.get(index)
-            val imageFile = File(attachmentFolder, name)
+            val md5FileName = attachmentListAdapter.get(index).file
+            val imageFile = File(attachmentFolder, md5FileName)
             val tmp = imageFile.length()
             if (imageFile.delete()) {
                 sizeAttachments -= tmp
@@ -286,11 +286,11 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
                     attachmentListAdapter.add(file.name)
                 } else {
                     val sb = StringBuffer()
-                    sb.append("${file.name}\n")
+//                    sb.append("${file.name}\n")
                     for (fn in fileNames) {
                         sb.append("* $fn\n")
                     }
-                    attachmentListAdapter.add(sb.toString())
+                    attachmentListAdapter.add(file.name, sb.toString())
                 }
                 setTextSizeString(cbAttachment, R.string.string_image_storage_usage_prompt, sizeAttachments)
             }
