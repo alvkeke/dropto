@@ -75,6 +75,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
             parentFragmentManager.startFragmentAnime(
                 storageFragment!!,
                 R.id.main_container,
+                false
             )
         }
         itemNotes.setTitle("Manage Notes")

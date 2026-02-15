@@ -154,7 +154,7 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
 
     @JvmOverloads
     fun finish(duration: Long = 200) {
-        animateRemoveFromParent(fragmentView, duration = duration)
+        animateRemoveFromParent(fragmentView, duration = duration, closeToRight = false)
     }
 
 
