@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:focusable="true"
+    android:clickable="true"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <View
+        android:id="@+id/mgmt_reaction_status_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="?android:statusBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="20dp"/>
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/mgmt_reaction_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_status_bar"
+        android:background="?android:statusBarColor"
+        app:title="Reactions Management"
+        app:navigationIcon="@drawable/icon_common_back"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/mgmt_reaction_list"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_toolbar"
+        app:layout_constraintBottom_toTopOf="@id/mgmt_reaction_nav_bar"
+        android:overScrollMode="never"
+        android:background="@color/color_background"
+        android:layout_width="match_parent"
+        android:layout_height="0dp" />
+
+    <View
+        android:id="@+id/mgmt_reaction_nav_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:background="?android:navigationBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

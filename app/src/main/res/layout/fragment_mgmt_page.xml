@@ -45,6 +45,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
+        <cn.alvkeke.dropto.ui.comonent.MgmtItemView
+            android:id="@+id/mgmt_page_item_reactions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
     </LinearLayout>
 
     <View
