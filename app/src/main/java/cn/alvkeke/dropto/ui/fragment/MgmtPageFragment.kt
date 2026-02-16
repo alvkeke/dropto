@@ -36,6 +36,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
     private lateinit var itemNotes: MgmtItemView
 
     private var storageFragment: MgmtStorageFragment? = null
+    private var noteFragment: MgmtNotesFragment? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -80,6 +81,16 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         }
         itemNotes.setTitle("Manage Notes")
         itemNotes.setIcon(R.drawable.icon_mgmt_storage)
+        itemNotes.setOnClickListener {
+            if (noteFragment == null) {
+                noteFragment = MgmtNotesFragment()
+            }
+            parentFragmentManager.startFragmentAnime(
+                noteFragment!!,
+                R.id.main_container,
+                false
+            )
+        }
 
     }
 

@@ -205,16 +205,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
         handleForwardMultipleNotes(items)
     }
 
-    private fun handleMenuDeletedVisible() {
-        noteItemAdapter.showDeleted = !noteItemAdapter.showDeleted
-        val menuItem = toolbar.menu.findItem(R.id.note_list_menu_deleted_visible)
-        menuItem.title = if (noteItemAdapter.showDeleted) {
-            resources.getString(R.string.hide_deleted_notes)
-        } else {
-            resources.getString(R.string.show_deleted_notes)
-        }
-    }
-
     private inner class NoteListMenuListener : Toolbar.OnMenuItemClickListener {
         override fun onMenuItemClick(item: MenuItem): Boolean {
             when (item.itemId) {
@@ -222,7 +212,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                 R.id.note_list_menu_copy -> handleMenuCopy()
                 R.id.note_list_menu_share -> handleMenuShare()
                 R.id.note_list_menu_forward -> handleMenuForward()
-                R.id.note_list_menu_deleted_visible -> handleMenuDeletedVisible()
                 else -> {
                     Log.e(this.toString(), "Unknown menu id: ${item.itemId}")
                     return false
@@ -239,13 +228,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             0 -> {
                 for (i in 0 until menu.size) {
                     val menuItem = menu[i]
-                    menuItem.isVisible = menuItem.itemId == R.id.note_list_menu_deleted_visible
+                    menuItem.isVisible = false
                 }
             }
             else -> {
                 for (i in 0 until menu.size) {
                     val menuItem = menu[i]
-                    menuItem.isVisible = menuItem.itemId != R.id.note_list_menu_deleted_visible
+                    menuItem.isVisible = true
                 }
             }
         }

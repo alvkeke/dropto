@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:clickable="true"
+    android:focusable="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <View
+        android:id="@+id/mgmt_note_status_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="?android:statusBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/mgmt_note_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_note_status_bar"
+        android:background="?android:statusBarColor"
+        app:title="Notes Management"
+        app:navigationIcon="@drawable/icon_common_back"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_note_toolbar"
+        app:layout_constraintBottom_toTopOf="@id/mgmt_note_navigation_bar"
+        android:background="@color/color_background"
+        android:layout_width="match_parent"
+        android:layout_height="0dp">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/mgmt_note_viewpager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/mgmt_note_tab"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/mgmt_note_tab"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:tabMode="scrollable"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <View
+        android:id="@+id/mgmt_note_navigation_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:background="?android:navigationBarColor"
+        android:layout_width="match_parent"
+        android:layout_height="20dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
