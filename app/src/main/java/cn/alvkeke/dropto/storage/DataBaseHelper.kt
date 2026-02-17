@@ -25,7 +25,7 @@ class DataBaseHelper(private val context: Context) :
         const val TAG = "DataBaseHelper"
 
         private const val DATABASE_NAME = "note.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 4
 
         private const val TABLE_CATEGORY = "category"
         private const val CATEGORY_COLUMN_ID = "_id"
@@ -59,6 +59,16 @@ class DataBaseHelper(private val context: Context) :
         private const val NOTE_FLAG_IS_SYNCED:Long = 1 shl 2
         private const val NOTE_COLUMN_SENDER = "sender"
         private const val NOTE_COLUMN_SENDER_TYPE = "TEXT DEFAULT NULL"
+        private const val NOTE_COLUMN_REACTION = "reaction"
+        private const val NOTE_COLUMN_REACTION_TYPE = "TEXT DEFAULT NULL"
+
+        private const val TABLE_REACTION = "reaction"
+        private const val REACTION_COLUMN_ID = "_id"
+        private const val REACTION_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
+        private const val REACTION_COLUMN_TEXT = "reaction_text"
+        private const val REACTION_COLUMN_TEXT_TYPE = "TEXT"
+        private const val REACTION_COLUMN_SEQUENCE = "reaction_sequence"
+        private const val REACTION_COLUMN_SEQUENCE_TYPE = "INTEGER"
 
         private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
         private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
@@ -73,11 +83,19 @@ class DataBaseHelper(private val context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion == 1) {
-            upgradeV1ToV2(db)
-            upgradeV2ToV3(db)
-        } else if (oldVersion == 2) {
-            upgradeV2ToV3(db)
+        when (oldVersion) {
+            1 -> {
+                upgradeV1ToV2(db)
+                upgradeV2ToV3(db)
+                upgradeV3ToV4(db)
+            }
+            2 -> {
+                upgradeV2ToV3(db)
+                upgradeV3ToV4(db)
+            }
+            3 -> {
+                upgradeV3ToV4(db)
+            }
         }
     }
 
@@ -120,6 +138,18 @@ class DataBaseHelper(private val context: Context) :
             Log.e(TAG, "Database upgraded successfully: 2 -> 3")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add new column for sender, maybe already exists, ignore and continue: $e")
+        }
+    }
+
+    private fun upgradeV3ToV4(db: SQLiteDatabase) {
+        Log.e(TAG, "Database upgrading: 3 -> 4, add new table for reactions")
+        createReactionTable(db)
+        Log.e(TAG, "Database upgrading: 3 -> 4, add new column for reaction in note table")
+        try {
+            db.execSQL("ALTER TABLE $TABLE_NOTE ADD COLUMN $NOTE_COLUMN_REACTION $NOTE_COLUMN_REACTION_TYPE;")
+            Log.e(TAG, "Database upgraded successfully: 3 -> 4")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to upgrade database for reactions, maybe already exists, ignore and continue: $e")
         }
     }
 
@@ -213,6 +243,18 @@ class DataBaseHelper(private val context: Context) :
                 $NOTE_COLUMN_ATTACHMENT_INFO $NOTE_COLUMN_ATTACHMENT_INFO_TYPE,
                 $NOTE_COLUMN_FLAGS $NOTE_COLUMN_FLAGS_TYPE,
                 $NOTE_COLUMN_SENDER $NOTE_COLUMN_SENDER_TYPE
+            );
+        """.trimIndent()
+
+        db.execSQL(sql)
+    }
+
+    private fun createReactionTable(db: SQLiteDatabase) {
+        val sql = """
+            CREATE TABLE IF NOT EXISTS $TABLE_REACTION (
+                $REACTION_COLUMN_ID $REACTION_COLUMN_ID_TYPE,
+                $REACTION_COLUMN_TEXT $REACTION_COLUMN_TEXT_TYPE,
+                $REACTION_COLUMN_SEQUENCE $REACTION_COLUMN_SEQUENCE_TYPE
             );
         """.trimIndent()
 
