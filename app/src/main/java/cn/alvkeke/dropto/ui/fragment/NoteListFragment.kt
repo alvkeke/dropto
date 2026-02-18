@@ -43,6 +43,7 @@ import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createNote
+import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
@@ -57,6 +58,7 @@ import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
 import cn.alvkeke.dropto.ui.comonent.NoteItemView
 import cn.alvkeke.dropto.ui.comonent.PopupMenu
+import cn.alvkeke.dropto.ui.comonent.ReactionDialog
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -645,7 +647,43 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
 
         rlNoteList.highLight(index)
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
+        DataBaseHelper(context).use {
+            it.start()
+            reactionView.setReactions(it.getReactionList())
+            it.finish()
+        }
+        reactionView.onReactionClick = { reaction ->
+            Toast.makeText(
+                context,
+                "Clicked reaction: $reaction",
+                Toast.LENGTH_SHORT
+            ).show()
+            popupMenu.dismiss()
+        }
+        reactionView.showAtLocation(
+            rlNoteList,
+            Gravity.NO_GRAVITY,
+            xShow,
+            yShow - reactionView.height
+        )
     }
+
+    private var _reactionView: ReactionDialog? = null
+    private val reactionView: ReactionDialog
+        get() {
+            if (_reactionView == null) {
+                _reactionView = ReactionDialog(context).apply {
+                    height = 64 * (resources.displayMetrics.density).toInt()
+                    setMaxWidth(resources.displayMetrics.widthPixels  / 4)
+                    DataBaseHelper(context).use {
+                        it.start()
+                        reactionList.addAll(it.getReactionList())
+                        it.finish()
+                    }
+                }
+            }
+            return _reactionView!!
+        }
 
     private fun showNoteDetail(index: Int) {
         val noteItem = noteItemAdapter.get(index)
