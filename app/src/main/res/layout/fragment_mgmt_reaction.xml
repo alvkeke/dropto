@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/color_background"
     android:focusable="true"
     android:clickable="true"
     xmlns:app="http://schemas.android.com/apk/res-auto">
@@ -24,10 +25,28 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
+    <Button
+        android:id="@+id/mgmt_reaction_btn_add"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_toolbar"
+        app:layout_constraintEnd_toStartOf="@id/mgmt_reaction_btn_save"
+        android:text="Add"
+        android:layout_marginEnd="10dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/mgmt_reaction_btn_save"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_toolbar"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:text="Save"
+        android:layout_marginEnd="10dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/mgmt_reaction_list"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_toolbar"
+        app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_btn_add"
         app:layout_constraintBottom_toTopOf="@id/mgmt_reaction_nav_bar"
         android:overScrollMode="never"
         android:background="@color/color_background"

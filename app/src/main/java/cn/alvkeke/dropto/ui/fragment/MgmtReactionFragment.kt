@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -14,6 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -28,6 +31,8 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
     private lateinit var rlReaction: RecyclerView
     private lateinit var adapter: ReactionListAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
+    private lateinit var btnAdd: Button
+    private lateinit var btnSave: Button
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -48,13 +53,20 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
         toolbar = view.findViewById(R.id.mgmt_reaction_toolbar)
         navBar = view.findViewById(R.id.mgmt_reaction_nav_bar)
         rlReaction = view.findViewById(R.id.mgmt_reaction_list)
+        btnAdd = view.findViewById(R.id.mgmt_reaction_btn_add)
+        btnSave = view.findViewById(R.id.mgmt_reaction_btn_save)
 
         UserInterfaceHelper.setSystemBarHeight(view, statusBar, navBar)
 
         toolbar.setNavigationOnClickListener { finish() }
 
-        // TODO: for debug now, load from database in feature
-        val reactionList = mutableListOf("Like", "Love", "Haha", "Wow", "Sad", "Angry", "😀")
+        val reactionList: MutableList<String>
+        DataBaseHelper(requireContext()).use { db ->
+            db.start()
+            reactionList = db.getReactionList() as MutableList<String>
+            db.finish()
+        }
+
         adapter = ReactionListAdapter(reactionList)
         rlReaction.adapter = adapter
         val layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
@@ -81,6 +93,37 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
         })
         itemTouchHelper.attachToRecyclerView(rlReaction)
         adapter.setItemTouchHelper(itemTouchHelper)
+
+        val context = requireContext()
+        val input = EditText(context)
+        input.hint = "input reaction"
+        val dialog = android.app.AlertDialog.Builder(context)
+            .setTitle("Add Reaction")
+            .setView(input)
+            .setPositiveButton("Add") { _, _ ->
+                val text = input.text.toString().trim()
+                if (text.isNotEmpty()) {
+                    adapter.addItem(text)
+                    rlReaction.scrollToPosition(adapter.itemCount - 1)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .setOnDismissListener {
+                input.text.clear()
+            }
+            .create()
+        btnAdd.setOnClickListener {
+            dialog.show()
+        }
+
+        btnSave.setOnClickListener {
+            DataBaseHelper(requireContext()).use { db ->
+                db.start()
+                db.updateReactionList(reactionList)
+                db.finish()
+            }
+        }
+
     }
 
     override fun onBackPressed(): Boolean {
@@ -202,6 +245,11 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
             val item = reactionList.removeAt(from)
             reactionList.add(to, item)
             notifyItemMoved(from, to)
+        }
+
+        fun addItem(item: String) {
+            reactionList.add(item)
+            notifyItemInserted(reactionList.size - 1)
         }
     }
 

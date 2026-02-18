@@ -13,6 +13,7 @@ import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import java.io.File
+import androidx.core.database.sqlite.transaction
 
 
 class DataBaseHelper(private val context: Context) :
@@ -776,6 +777,43 @@ class DataBaseHelper(private val context: Context) :
 
         cursor.close()
         return ids
+    }
+
+
+    fun getReactionList(): ArrayList<String> {
+        val reactions = ArrayList<String>()
+        val cursor = db.query(
+            TABLE_REACTION, arrayOf(REACTION_COLUMN_TEXT),
+            null, null, null, null,
+            "$REACTION_COLUMN_SEQUENCE ASC"
+        )
+        while (cursor.moveToNext()) {
+            val idx: Int = cursor.getColumnIndex(REACTION_COLUMN_TEXT)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx for reaction text")
+                continue
+            }
+            val text = cursor.getString(idx)
+            reactions.add(text)
+        }
+        cursor.close()
+        return reactions
+    }
+
+    fun updateReactionList(reactions: List<String>) {
+        db.transaction {
+            try {
+                delete(TABLE_REACTION, null, null)
+                for (i in reactions.indices) {
+                    val values = ContentValues()
+                    values.put(REACTION_COLUMN_TEXT, reactions[i])
+                    values.put(REACTION_COLUMN_SEQUENCE, i)
+                    insertOrThrow(TABLE_REACTION, null, values)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to update reaction list: $e")
+            }
+        }
     }
 
 }
