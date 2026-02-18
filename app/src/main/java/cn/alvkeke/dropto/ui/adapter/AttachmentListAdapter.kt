@@ -13,7 +13,8 @@ class AttachmentListAdapter(context: Context) : RecyclerView.Adapter<AttachmentL
         fun onLongClick(index: Int): Boolean
     }
 
-    private val attachments = ArrayList<String>()
+    class AttachmentInfo(val file: String, val names: String?)
+    private val attachments = ArrayList<AttachmentInfo>()
     private var listener: OnItemClickListener? = null
 
     private val inflater: LayoutInflater = LayoutInflater.from(context)
@@ -24,7 +25,11 @@ class AttachmentListAdapter(context: Context) : RecyclerView.Adapter<AttachmentL
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, i: Int) {
-        viewHolder.setText(attachments[i])
+        var displayName = attachments[i].file
+        if (attachments[i].names != null) {
+            displayName += "\n${attachments[i].names}"
+        }
+        viewHolder.setText(displayName)
         viewHolder.setOnClickListener(i)
     }
 
@@ -32,9 +37,10 @@ class AttachmentListAdapter(context: Context) : RecyclerView.Adapter<AttachmentL
         return attachments.size
     }
 
-    fun add(file: String) {
-        attachments.add(file)
-        val index = attachments.indexOf(file)
+    fun add(file: String, names: String? = null) {
+        val info = AttachmentInfo(file, names)
+        attachments.add(info)
+        val index = attachments.indexOf(info)
         if (index >= 0) this.notifyItemInserted(index)
     }
 
@@ -44,7 +50,7 @@ class AttachmentListAdapter(context: Context) : RecyclerView.Adapter<AttachmentL
         notifyItemRangeChanged(index, attachments.size - index)
     }
 
-    fun get(index: Int): String {
+    fun get(index: Int): AttachmentInfo {
         return attachments[index]
     }
 

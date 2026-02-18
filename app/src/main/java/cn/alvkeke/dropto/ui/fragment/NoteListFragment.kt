@@ -1,7 +1,5 @@
 package cn.alvkeke.dropto.ui.fragment
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
@@ -47,6 +45,8 @@ import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.service.Task.Companion.createNote
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFileToExternal
@@ -63,7 +63,6 @@ import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -124,7 +123,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
         naviBar = view.findViewById(R.id.note_list_navigation_bar)
         toolbar = view.findViewById(R.id.note_list_toolbar)
 
-        setSystemBarHeight(view, statusBar, naviBar)
+        UserInterfaceHelper.setSystemBarHeight(view, statusBar, naviBar)
         setIMEViewChange(view)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_back)
@@ -206,16 +205,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
         handleForwardMultipleNotes(items)
     }
 
-    private fun handleMenuDeletedVisible() {
-        noteItemAdapter.showDeleted = !noteItemAdapter.showDeleted
-        val menuItem = toolbar.menu.findItem(R.id.note_list_menu_deleted_visible)
-        menuItem.title = if (noteItemAdapter.showDeleted) {
-            resources.getString(R.string.hide_deleted_notes)
-        } else {
-            resources.getString(R.string.show_deleted_notes)
-        }
-    }
-
     private inner class NoteListMenuListener : Toolbar.OnMenuItemClickListener {
         override fun onMenuItemClick(item: MenuItem): Boolean {
             when (item.itemId) {
@@ -223,7 +212,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                 R.id.note_list_menu_copy -> handleMenuCopy()
                 R.id.note_list_menu_share -> handleMenuShare()
                 R.id.note_list_menu_forward -> handleMenuForward()
-                R.id.note_list_menu_deleted_visible -> handleMenuDeletedVisible()
                 else -> {
                     Log.e(this.toString(), "Unknown menu id: ${item.itemId}")
                     return false
@@ -240,13 +228,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             0 -> {
                 for (i in 0 until menu.size) {
                     val menuItem = menu[i]
-                    menuItem.isVisible = menuItem.itemId == R.id.note_list_menu_deleted_visible
+                    menuItem.isVisible = false
                 }
             }
             else -> {
                 for (i in 0 until menu.size) {
                     val menuItem = menu[i]
-                    menuItem.isVisible = menuItem.itemId != R.id.note_list_menu_deleted_visible
+                    menuItem.isVisible = true
                 }
             }
         }
@@ -427,28 +415,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
 
     @JvmOverloads
     fun finish(duration: Long = 200) {
-        val startX = fragmentView.translationX
-        val width = fragmentView.width.toFloat()
-        val animator = ObjectAnimator.ofFloat(
-            fragmentView,
-            PROP_NAME, startX, width
-        ).setDuration(duration)
-        animator.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                super.onAnimationEnd(animation)
-                rlNoteList.clearSelectItems()
-                attachments.clear()
-                getParentFragmentManager().beginTransaction()
-                    .remove(this@NoteListFragment).commit()
-            }
-        })
-        animator.addUpdateListener { valueAnimator: ValueAnimator ->
+        animateRemoveFromParent(fragmentView, duration, closeToRight = true) { valueAnimator: ValueAnimator ->
+            val width = fragmentView.width.toFloat()
             val deltaX = valueAnimator.animatedValue as Float
             val ratio = (width - deltaX) / width
             setMaskTransparent(ratio)
             moveUpperFragmentView(ratio)
         }
-        animator.start()
     }
 
     fun resetPosition() {
@@ -458,18 +431,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             fragmentView,
             PROP_NAME, startX, 0f
         ).setDuration(100).start()
-    }
-
-    private fun setSystemBarHeight(parent: View, status: View, navi: View) {
-        ViewCompat.setOnApplyWindowInsetsListener(
-            parent
-        ) { _: View, insets: WindowInsetsCompat ->
-            val statusHei: Int = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            val naviHei: Int = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            status.layoutParams.height = statusHei
-            navi.layoutParams.height = naviHei
-            WindowInsetsCompat.CONSUMED
-        }
     }
 
     private fun setIMEViewChange(view: View) {

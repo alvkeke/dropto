@@ -10,6 +10,7 @@ import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -33,11 +34,15 @@ import kotlin.math.min
 
 class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
 
+    companion object {
+        const val TAG = "ImageViewerFragment"
+    }
+
     private lateinit var parentView: View
     private lateinit var imageView: ImageView
     private var loadedBitmap: Bitmap? = null
 
-    private lateinit var imgFile: File
+    private var imgFile: File? = null
     fun setImage(image: File) {
         this.imgFile = image
     }
@@ -58,16 +63,35 @@ class ImageViewerFragment : DialogFragment(), FragmentOnBackListener {
         imageView = view.findViewById(R.id.img_viewer_image)
         view.setOnTouchListener(ImageGestureListener(requireContext()))
 
-        if (!imgFile.exists() || !imgFile.isFile) {
-            Toast.makeText(requireContext(), "no Image view, exit", Toast.LENGTH_SHORT).show()
+        if (imgFile == null) {
+            Toast.makeText(
+                context,
+                "NO IMAGE FILE PASSED IN",
+                Toast.LENGTH_SHORT
+            ).show()
             finish()
             return
         }
 
-        ImageLoader.loadOriginalImageAsync(imgFile) { bitmap ->
-            loadedBitmap = bitmap
-            imageView.setImageBitmap(bitmap)
+        imgFile?.let { img ->
+            if (!img.exists() || !img.isFile) {
+                Toast.makeText(
+                    context,
+                    "Failed to view image: image file not exist",
+                    Toast.LENGTH_SHORT
+                ).show()
+                Log.e(TAG,
+                    "Failed to view image: exist: ${img.exists()}, isFile: ${img.isFile}, path: ${img.absolutePath}")
+                finish()
+                return
+            }
+
+            ImageLoader.loadOriginalImageAsync(img) { bitmap ->
+                loadedBitmap = bitmap
+                imageView.setImageBitmap(bitmap)
+            }
         }
+
     }
 
     private var window: Window? = null

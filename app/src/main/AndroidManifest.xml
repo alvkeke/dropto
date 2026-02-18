@@ -29,12 +29,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".ui.activity.MgmtActivity"
-            android:theme="@style/Theme.DropTo.NoActionBar"
-            android:configChanges="uiMode"
-            android:exported="false" />
-
         <service
             android:name=".service.CoreService"
             android:enabled="true"

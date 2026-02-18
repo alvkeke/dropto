@@ -22,18 +22,23 @@ import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.AttachmentListAdapter
+import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
+import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
 import java.util.LinkedList
 
-class MgmtStorageFragment : Fragment() {
+class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
 
     private lateinit var viewModel: MainViewModel
+    private lateinit var fragmentView: View
+    private lateinit var toolbar: MaterialToolbar
     private lateinit var cbAttachment: CheckBox
     private lateinit var cbCache: CheckBox
     private lateinit var buttonClear: Button
@@ -45,7 +50,8 @@ class MgmtStorageFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        return inflater.inflate(R.layout.fragment_mgmt_storage, container, false)
+        fragmentView = inflater.inflate(R.layout.fragment_mgmt_storage, container, false)
+        return fragmentView
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -53,11 +59,17 @@ class MgmtStorageFragment : Fragment() {
 
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
 
+        toolbar = view.findViewById(R.id.mgmt_storage_toolbar)
         cbAttachment = view.findViewById(R.id.mgmt_storage_attachment)
         cbCache = view.findViewById(R.id.mgmt_storage_cache)
         buttonClear = view.findViewById(R.id.mgmt_storage_btn_clear)
         buttonExportDb = view.findViewById(R.id.mgmt_storage_btn_export_db)
         val listFilename = view.findViewById<RecyclerView>(R.id.mgmt_storage_list_files)
+        val statusBar:View = view.findViewById(R.id.mgmt_storage_status_bar)
+        val navBar: View= view.findViewById(R.id.mgmt_storage_nav_bar)
+
+        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navBar)
+
 
         val context = requireContext()
         val layoutManager = LinearLayoutManager(context)
@@ -68,6 +80,8 @@ class MgmtStorageFragment : Fragment() {
                 DividerItemDecoration.VERTICAL
             )
         )
+
+        toolbar.setNavigationOnClickListener { finish() }
 
         attachmentListAdapter = AttachmentListAdapter(context)
         listFilename.setAdapter(attachmentListAdapter)
@@ -125,13 +139,24 @@ class MgmtStorageFragment : Fragment() {
         cbCache.isChecked = true
 
         initFolders()
-        viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             taskCalcCache()
         }
-        viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             taskCalcAttachments()
         }
     }
+
+    override fun onBackPressed(): Boolean {
+        finish()
+        return true
+    }
+
+    @JvmOverloads
+    fun finish(duration: Long = 200) {
+        animateRemoveFromParent(fragmentView, duration = duration, closeToRight = false)
+    }
+
 
     lateinit var attachmentFolder: File
     lateinit var cacheFolder: File
@@ -186,13 +211,13 @@ class MgmtStorageFragment : Fragment() {
     private fun clearSelectedData(v: View) {
         buttonClear.isEnabled = false
         if (cbCache.isChecked) {
-            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 emptyFolder(cacheFolder)
                 taskCalcCache()
             }
         }
         if (cbAttachment.isChecked) {
-            viewLifecycleOwner.lifecycleScope.launch(SupervisorJob() + Dispatchers.IO) {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 emptyFolder(attachmentFolder)
                 handler.post { attachmentListAdapter.emptyList() }
                 taskCalcAttachments()
@@ -203,18 +228,18 @@ class MgmtStorageFragment : Fragment() {
 
     private inner class OnItemClickListener : AttachmentListAdapter.OnItemClickListener {
         override fun onClick(index: Int) {
-            val name = attachmentListAdapter.get(index)
+            val md5FileName = attachmentListAdapter.get(index).file
 
-            val imageFile = File(attachmentFolder, name)
+            val imageFile = File(attachmentFolder, md5FileName)
             val fragment = ImageViewerFragment()
-            viewModel.setImageFile(imageFile)
+            fragment.setImage(imageFile)
 
-            fragment.show(getParentFragmentManager(), null)
+            fragment.show(parentFragmentManager, null)
         }
 
         override fun onLongClick(index: Int): Boolean {
-            val name = attachmentListAdapter.get(index)
-            val imageFile = File(attachmentFolder, name)
+            val md5FileName = attachmentListAdapter.get(index).file
+            val imageFile = File(attachmentFolder, md5FileName)
             val tmp = imageFile.length()
             if (imageFile.delete()) {
                 sizeAttachments -= tmp
@@ -261,11 +286,11 @@ class MgmtStorageFragment : Fragment() {
                     attachmentListAdapter.add(file.name)
                 } else {
                     val sb = StringBuffer()
-                    sb.append("${file.name}\n")
+//                    sb.append("${file.name}\n")
                     for (fn in fileNames) {
                         sb.append("* $fn\n")
                     }
-                    attachmentListAdapter.add(sb.toString())
+                    attachmentListAdapter.add(file.name, sb.toString())
                 }
                 setTextSizeString(cbAttachment, R.string.string_image_storage_usage_prompt, sizeAttachments)
             }

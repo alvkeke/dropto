@@ -1,5 +1,9 @@
 package cn.alvkeke.dropto.ui
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -7,8 +11,13 @@ import android.content.Context.CLIPBOARD_SERVICE
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.view.View
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.FileHelper
@@ -114,5 +123,73 @@ object UserInterfaceHelper {
             .add(noteDetailFragment, null)
             .commit()
     }
+
+    fun setSystemBarHeight(parent: View, status: View, navi: View) {
+        ViewCompat.setOnApplyWindowInsetsListener(
+            parent
+        ) { _: View, insets: WindowInsetsCompat ->
+            val statusHei: Int = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            val naviHei: Int = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            status.layoutParams.height = statusHei
+            navi.layoutParams.height = naviHei
+            WindowInsetsCompat.CONSUMED
+        }
+    }
+
+    fun FragmentManager.startFragmentAnime(
+        fragment: Fragment,
+        containerId: Int,
+        fromRight: Boolean = true
+    ) {
+        val animIn = if (fromRight)
+            R.anim.slide_in_from_right
+        else
+            R.anim.slide_in_from_left
+        beginTransaction()
+            .setCustomAnimations(animIn, R.anim.slide_out)
+            .add(containerId, fragment, null)
+            .addToBackStack(fragment.javaClass.simpleName)
+            .commit()
+    }
+
+    private const val PROP_NAME = "translationX"
+    fun Fragment.animateRemoveFromParent(
+        fragmentView: View,
+        duration: Long = 200,
+        closeToRight: Boolean = true,
+        animatorUpdateListener: ValueAnimator.AnimatorUpdateListener? = null,
+    ) {
+        val startX: Float
+        val width: Float
+        when (closeToRight) {
+            true -> {
+                startX = fragmentView.translationX
+                width = fragmentView.width.toFloat()
+            }
+            false -> {
+                startX = fragmentView.translationX
+                width = - fragmentView.width.toFloat()
+            }
+        }
+
+        val animator = ObjectAnimator.ofFloat(
+            fragmentView,
+            PROP_NAME, startX, width
+        ).setDuration(duration)
+        animator.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                super.onAnimationEnd(animation)
+                getParentFragmentManager().beginTransaction()
+                    .remove(this@animateRemoveFromParent).commit()
+            }
+        })
+
+        animatorUpdateListener?.let {
+            animator.addUpdateListener(it)
+        }
+
+        animator.start()
+    }
+
 
 }

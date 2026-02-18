@@ -3,7 +3,6 @@ package cn.alvkeke.dropto.ui.fragment
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.HapticFeedbackConstants
@@ -14,8 +13,6 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.Toolbar
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -31,8 +28,9 @@ import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
 import cn.alvkeke.dropto.ui.activity.MainViewModel
-import cn.alvkeke.dropto.ui.activity.MgmtActivity
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
@@ -80,7 +78,7 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
         toolbar = view.findViewById(R.id.category_list_toolbar)
         val statusBar = view.findViewById<View>(R.id.category_list_status_bar)
         val navigationBar = view.findViewById<View>(R.id.category_list_navigation_bar)
-        setSystemBarHeight(view, statusBar, navigationBar)
+        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navigationBar)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_menu)
         toolbar.setNavigationOnClickListener(OnCategoryListMenuClick())
@@ -102,22 +100,17 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
         rlCategory.setOnTouchListener(OnListItemClickListener())
     }
 
+    private var mgmtPageFragment: MgmtPageFragment? = null
     private inner class OnCategoryListMenuClick : View.OnClickListener {
         override fun onClick(view: View) {
-            val intent = Intent(context, MgmtActivity::class.java)
-            startActivity(intent)
-        }
-    }
-
-    private fun setSystemBarHeight(parent: View, status: View, navi: View) {
-        ViewCompat.setOnApplyWindowInsetsListener(
-            parent
-        ) { _: View, winInsets: WindowInsetsCompat ->
-            val statusHei: Int = winInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            val naviHei: Int = winInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            status.layoutParams.height = statusHei
-            navi.layoutParams.height = naviHei
-            winInsets
+            if (mgmtPageFragment == null) {
+                mgmtPageFragment = MgmtPageFragment()
+            }
+            parentFragmentManager.startFragmentAnime(
+                mgmtPageFragment!!,
+                R.id.main_container,
+                false
+            )
         }
     }
 
@@ -247,14 +240,6 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
         }
     }
 
-    private fun startFragmentAnime(fragment: Fragment) {
-        parentFragmentManager.beginTransaction()
-            .setCustomAnimations(R.anim.slide_in, R.anim.slide_out)
-            .add(R.id.main_container, fragment, null)
-            .addToBackStack(fragment.javaClass.simpleName)
-            .commit()
-    }
-
     private val noteListFragment: NoteListFragment by lazy {
         NoteListFragment()
     }
@@ -264,7 +249,10 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
             Log.e(this.toString(), "Failed to get noteList from database")
         }
         viewModel.setCategory(category)
-        startFragmentAnime(noteListFragment)
+        parentFragmentManager.startFragmentAnime(
+            noteListFragment,
+            R.id.main_container,
+        )
     }
 
     private val categoryDetailFragment: CategoryDetailFragment by lazy {
