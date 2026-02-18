@@ -653,11 +653,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             it.finish()
         }
         reactionView.onReactionClick = { reaction ->
-            Toast.makeText(
-                context,
-                "Clicked reaction: $reaction",
-                Toast.LENGTH_SHORT
-            ).show()
+            if (noteItem.reactions.contains(reaction)) {
+                noteItem.reactions.remove(reaction)
+            } else {
+                noteItem.reactions.add(reaction)
+            }
+            Log.v(TAG, "Reaction $reaction clicked for item-${noteItem.id}, current reactions: ${noteItem.reactions}")
             popupMenu.dismiss()
         }
         reactionView.showAtLocation(
