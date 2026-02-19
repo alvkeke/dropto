@@ -230,6 +230,11 @@ class NoteItemView @JvmOverloads constructor(
         color = ContextCompat.getColor(context, R.color.ext_info_mask)
         alpha = 200
     }
+    private val reactionPaint = TextPaint().apply {
+        color = ContextCompat.getColor(context, R.color.color_text_main)
+        textSize = TEXT_SIZE_REACTION
+        isAntiAlias = true
+    }
     private val senderAvatarPaint = Paint().apply {
         isAntiAlias = true
     }
@@ -606,15 +611,6 @@ class NoteItemView @JvmOverloads constructor(
         return fileCount * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
     }
 
-    private fun measureIconWidth(size: Int): Int {
-        var totalWidth = MARGIN_ICON
-
-        if (isEdited) totalWidth += size + MARGIN_ICON
-        if (isDeleted) totalWidth += size + MARGIN_ICON
-        if (!isSynced) totalWidth += size + MARGIN_ICON
-
-        return totalWidth - MARGIN_ICON
-    }
 
     private class TextSize(var width: Float, var height: Float, var lastLineWidth: Float)
     private fun measureTextSize(contentMaxWidth: Int): TextSize {
@@ -642,6 +638,38 @@ class NoteItemView @JvmOverloads constructor(
             textHeight,
             textLayout.getLineWidth(textLayout.lineCount - 1)
         )
+    }
+
+    private fun measureIconWidth(size: Int): Int {
+        var totalWidth = MARGIN_ICON
+
+        if (isEdited) totalWidth += size + MARGIN_ICON
+        if (isDeleted) totalWidth += size + MARGIN_ICON
+        if (!isSynced) totalWidth += size + MARGIN_ICON
+
+        return totalWidth - MARGIN_ICON
+    }
+
+    private class ReactionSize(val linesWidth: List<Float>, val totalHeight: Float)
+    private fun measureReactions(contentMaxWidth: Int) : ReactionSize? {
+        if (reactionList.isEmpty()) return null
+
+        val linesWidth = mutableListOf<Float>()
+        var totalHeight = 0f
+        var currentLine = 0
+        var currentLineWidth = 0f
+        for (reaction in reactionList) {
+            val reactionWidth = MARGIN_REACTION + reactionPaint.measureText(reaction) + MARGIN_REACTION
+            if (currentLineWidth + reactionWidth > contentMaxWidth) {
+                currentLine++
+                linesWidth.add(currentLineWidth)
+                currentLineWidth = 0f
+            }
+            currentLineWidth += reactionWidth
+        }
+        linesWidth.add(currentLineWidth)
+        totalHeight = (currentLine + 1) * (MARGIN_REACTION * 2 + TEXT_SIZE_REACTION)
+        return ReactionSize(linesWidth, totalHeight)
     }
 
     private class ExtInfoFitsResult(val fits: Boolean, val resultWidth: Float)
@@ -709,6 +737,8 @@ class NoteItemView @JvmOverloads constructor(
         val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
 
         val textSize = measureTextSize(contentMaxWidth)
+        val reactionSize = measureReactions(contentMaxWidth)
+        Log.e(TAG, "measureBubble: reactionHeight=${reactionSize?.totalHeight ?: 0f}, reactionWidthList=${reactionSize?.linesWidth ?: "null"}")
         val extInfoFitsResult = checkExtInfoFits(textSize, contentMaxWidth)
         val maxWidthOfText = maxOf(textSize.width, extInfoFitsResult.resultWidth)
         val fixTextSize : SizeF = if (extInfoFitsResult.fits) {
@@ -727,7 +757,7 @@ class NoteItemView @JvmOverloads constructor(
             fileSize.width,
             fixTextSize.width
         ) + MARGIN_BORDER * 2
-        val bubbleHeight: Float = MARGIN_BORDER * 2 + mediaSize.height + fileSize.height + fixTextSize.height
+        val bubbleHeight: Float = MARGIN_BORDER * 2 + mediaSize.height + fileSize.height + fixTextSize.height + (reactionSize?.totalHeight ?: 0f)
 
         bubbleRect.set(
             0f, 0f,
@@ -1276,9 +1306,11 @@ class NoteItemView @JvmOverloads constructor(
 
         const val MARGIN_TEXT = 16
         const val MARGIN_TIME = 8
+        const val MARGIN_REACTION = 8
 
         const val TEXT_SIZE_CONTENT = 48f
         const val TEXT_SIZE_TIME = 30f
+        const val TEXT_SIZE_REACTION = 48f
 
         val dataFormatCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
         val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
