@@ -3,6 +3,7 @@ package cn.alvkeke.dropto.ui.fragment
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.app.AlertDialog.*
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
@@ -285,7 +286,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                         showItemPopMenu(index, v, x, y)
                     }
                     NoteItemView.ClickedContent.Type.SENDER_ICON -> {
-                        android.app.AlertDialog.Builder(context)
+                        Builder(context)
                             .setTitle("Sender Package")
                             .setMessage("Sender: ${itemView.sender}")
                             .setPositiveButton(android.R.string.ok, null)
@@ -310,6 +311,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                         } else {
                             tryOpenFile(index, content.index)
                         }
+                    }
+
+                    NoteItemView.ClickedContent.Type.REACTION -> {
+                        removeReaction(index, content.index)
                     }
                 }
             }
@@ -700,6 +705,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
     private fun tryOpenFile(index: Int, fileIndex: Int) {
         val noteItem = noteItemAdapter.get(index)
         context.openFileWithExternalApp(noteItem.attachments[fileIndex])
+    }
+
+    private fun removeReaction(index: Int, reactionIndex: Int) {
+        val noteItem = noteItemAdapter.get(index)
+        noteItem.reactions.removeAt(reactionIndex)
+        app.service?.queueTask(Task.updateNote(noteItem))
     }
 
     private fun handleShareMultipleNotes(items: ArrayList<NoteItem>) {

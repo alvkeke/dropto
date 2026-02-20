@@ -49,6 +49,7 @@ class NoteItemView @JvmOverloads constructor(
     var sender: String? = null
 
     val reactionList = mutableListOf<String>()
+    val reactionRectList = mutableListOf<RectF>()
 
     @JvmField
     var asyncImageLoad: Boolean = true
@@ -239,8 +240,8 @@ class NoteItemView @JvmOverloads constructor(
         color = ContextCompat.getColor(context, R.color.reaction_background)
         isAntiAlias = true
     }
-    private val reactionRect = RectF()
-    private val reactionBgPath = Path()
+//    private val reactionRect = RectF()
+//    private val reactionBgPath = Path()
     private val senderAvatarPaint = Paint().apply {
         isAntiAlias = true
     }
@@ -1177,9 +1178,10 @@ class NoteItemView @JvmOverloads constructor(
             }
             var currentOffY = 0f
 
-            canvas.withTranslation(offX, offY) {
+            canvas.withSave {
                 var lineOffX = MARGIN_REACTION_BG.toFloat()
 
+                var idx = 0
                 reactionList.forEach { reaction ->
                     val reactionWidth = MARGIN_REACTION_TEXT_X * 2 + reactionPaint.measureText(reaction)
                     val reactionHeight = TEXT_SIZE_REACTION + MARGIN_REACTION_TEXT_Y * 2
@@ -1188,11 +1190,14 @@ class NoteItemView @JvmOverloads constructor(
                         lineOffX = MARGIN_REACTION_BG.toFloat()
                     }
 
+                    val reactionRect = reactionRectList.getOrElse(idx++) {
+                        RectF().also { reactionRectList.add(it) }
+                    }
                     reactionRect.set(
-                        lineOffX,
-                        currentOffY,
-                        lineOffX + reactionWidth,
-                        currentOffY + reactionHeight
+                        offX + lineOffX,
+                        offY + currentOffY,
+                        offX + lineOffX + reactionWidth,
+                        offY + currentOffY + reactionHeight
                     )
 
                     val radius = REACTION_BG_RADIUS.dp().toFloat()
@@ -1205,8 +1210,8 @@ class NoteItemView @JvmOverloads constructor(
 
                     drawText(
                         reaction,
-                        lineOffX + MARGIN_REACTION_TEXT_X,
-                        currentOffY + MARGIN_REACTION_TEXT_Y - reactionPaint.ascent(),
+                        offX + lineOffX + MARGIN_REACTION_TEXT_X,
+                        offY + currentOffY + MARGIN_REACTION_TEXT_Y - reactionPaint.ascent(),
                         reactionPaint
                     )
 
@@ -1284,6 +1289,7 @@ class NoteItemView @JvmOverloads constructor(
             SENDER_ICON,
             MEDIA,
             FILE,
+            REACTION,
         }
     }
 
@@ -1318,6 +1324,22 @@ class NoteItemView @JvmOverloads constructor(
                     type,
                     attachment,
                     attachments.indexOf(info)
+                )
+            }
+        }
+
+        for (i in reactionList.indices) {
+            val reactionRect = reactionRectList.getOrNull(i) ?: continue
+            checkRect.set(reactionRect)
+            // offset is no need for reaction, since the rects of them are set without bubbleRect offset,
+            // so check them directly here
+
+            if (checkRect.contains(x, y)) {
+                Log.v(TAG, "checkClickedItem: reaction ${reactionList[i]} clicked")
+                return ClickedContent(
+                    ClickedContent.Type.REACTION,
+                    null,
+                    i
                 )
             }
         }
