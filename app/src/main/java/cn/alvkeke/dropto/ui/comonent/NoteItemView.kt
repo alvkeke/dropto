@@ -235,6 +235,12 @@ class NoteItemView @JvmOverloads constructor(
         textSize = TEXT_SIZE_REACTION
         isAntiAlias = true
     }
+    private val reactionBgPaint = Paint().apply {
+        color = ContextCompat.getColor(context, R.color.reaction_background)
+        isAntiAlias = true
+    }
+    private val reactionRect = RectF()
+    private val reactionBgPath = Path()
     private val senderAvatarPaint = Paint().apply {
         isAntiAlias = true
     }
@@ -612,9 +618,9 @@ class NoteItemView @JvmOverloads constructor(
     }
 
 
-    private class TextSize(var width: Float, var height: Float, var lastLineWidth: Float)
-    private fun measureTextSize(contentMaxWidth: Int): TextSize {
-        if (text.isEmpty()) return TextSize(0f, 0f, 0f)
+    private class MultiLinesSize(var width: Float, var height: Float, var lastLineWidth: Float)
+    private fun measureTextSize(contentMaxWidth: Int): MultiLinesSize {
+        if (text.isEmpty()) return MultiLinesSize(0f, 0f, 0f)
 
         textLayout = StaticLayout.Builder
             .obtain(
@@ -633,7 +639,7 @@ class NoteItemView @JvmOverloads constructor(
         val textWidth = maxWidth + MARGIN_TEXT * 2
         val textHeight = textLayout.height + MARGIN_TEXT * 2f
 
-        return TextSize(
+        return MultiLinesSize(
             textWidth,
             textHeight,
             textLayout.getLineWidth(textLayout.lineCount - 1)
@@ -650,30 +656,39 @@ class NoteItemView @JvmOverloads constructor(
         return totalWidth - MARGIN_ICON
     }
 
-    private class ReactionSize(val linesWidth: List<Float>, val totalHeight: Float)
-    private fun measureReactions(contentMaxWidth: Int) : ReactionSize? {
+    private fun measureReactions(contentMaxWidth: Int) : MultiLinesSize? {
         if (reactionList.isEmpty()) return null
 
-        val linesWidth = mutableListOf<Float>()
-        var totalHeight = 0f
+        var maxWidth = 0f
         var currentLine = 0
         var currentLineWidth = 0f
+
         for (reaction in reactionList) {
-            val reactionWidth = MARGIN_REACTION + reactionPaint.measureText(reaction) + MARGIN_REACTION
+            val reactionWidth = MARGIN_REACTION * 2 + reactionPaint.measureText(reaction)
             if (currentLineWidth + reactionWidth > contentMaxWidth) {
                 currentLine++
-                linesWidth.add(currentLineWidth)
+                maxWidth = maxOf(maxWidth, currentLineWidth)
                 currentLineWidth = 0f
             }
             currentLineWidth += reactionWidth
         }
-        linesWidth.add(currentLineWidth)
-        totalHeight = (currentLine + 1) * (MARGIN_REACTION * 2 + TEXT_SIZE_REACTION)
-        return ReactionSize(linesWidth, totalHeight)
+        val lastLineWidth = currentLineWidth
+        maxWidth = maxOf(maxWidth, currentLineWidth)
+        val totalHeight = (currentLine + 1) * (MARGIN_REACTION * 2 + TEXT_SIZE_REACTION) + MARGIN_REACTION * 2
+
+        return MultiLinesSize(maxWidth, totalHeight, lastLineWidth)
     }
 
-    private class ExtInfoFitsResult(val fits: Boolean, val resultWidth: Float)
-    private fun checkExtInfoFits(textSize: TextSize, contentMaxWidth: Int): ExtInfoFitsResult {
+    private fun fixContentSizeWithExtInfo(
+        contentMaxWidth: Int,
+        textSize: MultiLinesSize,
+        reactionSize: MultiLinesSize?
+    ): SizeF {
+        val combinedLines = MultiLinesSize(
+            maxOf(textSize.width, reactionSize?.width ?: 0f),
+            textSize.height + (reactionSize?.height ?: 0f),
+           reactionSize?.lastLineWidth ?: textSize.lastLineWidth
+        )
 
         val timeText = createTime.format()
         timeLayout = StaticLayout.Builder
@@ -687,16 +702,20 @@ class NoteItemView @JvmOverloads constructor(
             .build()
 
         val extInfoWidth = measureIconWidth(timeLayout.height) + timeLayout.getLineWidth(0) + MARGIN_TIME
-        val combinedWidth = textSize.lastLineWidth + MARGIN_TEXT + extInfoWidth + MARGIN_TIME * 2
-        val fits = combinedWidth <= contentMaxWidth
-        val resultWidth = if (fits) {
-            combinedWidth
+        val combinedWidth = combinedLines.lastLineWidth + MARGIN_TEXT + extInfoWidth + MARGIN_TIME * 2
+        val isFit = combinedWidth <= contentMaxWidth
+
+        val resultHeight: Float
+        var resultWidth: Float
+        if (isFit) {
+            resultHeight = combinedLines.height
+            resultWidth = maxOf(combinedLines.width, combinedWidth)
         } else {
-            // if not fits, then the ext info will be in the next line,
-            // so the width is the max of text width and ext info width
-            maxOf(textSize.width, extInfoWidth + MARGIN_TIME * 2)
+            resultHeight = combinedLines.height + timeLayout.height + MARGIN_TIME
+            resultWidth = maxOf(combinedLines.width, extInfoWidth + MARGIN_TIME * 2)
         }
-        return ExtInfoFitsResult(combinedWidth <= contentMaxWidth, resultWidth)
+
+        return SizeF(resultWidth, resultHeight)
     }
 
     private fun measureMediaSize(contentMaxWidth: Int, minWidth: Float): SizeF {
@@ -738,26 +757,16 @@ class NoteItemView @JvmOverloads constructor(
 
         val textSize = measureTextSize(contentMaxWidth)
         val reactionSize = measureReactions(contentMaxWidth)
-        Log.e(TAG, "measureBubble: reactionHeight=${reactionSize?.totalHeight ?: 0f}, reactionWidthList=${reactionSize?.linesWidth ?: "null"}")
-        val extInfoFitsResult = checkExtInfoFits(textSize, contentMaxWidth)
-        val maxWidthOfText = maxOf(textSize.width, extInfoFitsResult.resultWidth)
-        val fixTextSize : SizeF = if (extInfoFitsResult.fits) {
-            SizeF(maxWidthOfText, textSize.height)
-        } else {
-            SizeF(
-                extInfoFitsResult.resultWidth,
-                textSize.height + timeLayout.height + MARGIN_TIME
-            )
-        }
-        val mediaSize = measureMediaSize(contentMaxWidth, maxWidthOfText)
+        val fixLineSize = fixContentSizeWithExtInfo(contentMaxWidth, textSize, reactionSize)
+        val mediaSize = measureMediaSize(contentMaxWidth, fixLineSize.width)
         val fileSize = measureFileSize(contentMaxWidth, mediaSize.height)
 
         val bubbleWidth = maxOf(
             mediaSize.width,
             fileSize.width,
-            fixTextSize.width
+            fixLineSize.width
         ) + MARGIN_BORDER * 2
-        val bubbleHeight: Float = MARGIN_BORDER * 2 + mediaSize.height + fileSize.height + fixTextSize.height + (reactionSize?.totalHeight ?: 0f)
+        val bubbleHeight = MARGIN_BORDER * 2 + mediaSize.height + fileSize.height + fixLineSize.height
 
         bubbleRect.set(
             0f, 0f,
@@ -765,7 +774,7 @@ class NoteItemView @JvmOverloads constructor(
             bubbleHeight
         )
 
-        if (_files.isEmpty() && text.isEmpty()) {
+        if (_files.isEmpty() && text.isEmpty() && reactionList.isEmpty()) {
             extInfoNeedBackground = true
         }
 
@@ -1149,6 +1158,38 @@ class NoteItemView @JvmOverloads constructor(
             canvas.withTranslation(offX + MARGIN_TEXT, offY) {
                 textLayout.draw(canvas)
             }
+            offY += textLayout.height + MARGIN_TEXT
+        }
+
+        if (reactionList.isNotEmpty()) {
+            offY += MARGIN_REACTION
+            var currentOffY = 0f
+
+            canvas.withTranslation(offX, offY) {
+                var lineOffX = MARGIN_REACTION.toFloat()
+                var currentLineWidth = lineOffX
+
+                reactionList.forEach { reaction ->
+                    val reactionWidth = MARGIN_REACTION * 2 + reactionPaint.measureText(reaction)
+
+                    if (currentLineWidth + reactionWidth > contentWidth) {
+                        Log.e(TAG, "reaction line break: currentLineWidth=$currentLineWidth, reactionWidth=$reactionWidth, contentWidth=$contentWidth")
+                        currentOffY += MARGIN_REACTION * 2f + TEXT_SIZE_REACTION
+                        lineOffX = MARGIN_REACTION.toFloat()
+                        currentLineWidth = 0f
+                    }
+
+                    canvas.drawText(
+                        reaction,
+                        lineOffX,
+                        currentOffY,
+                        reactionPaint
+                    )
+                    currentLineWidth += reactionWidth
+                    lineOffX += reactionWidth
+                }
+            }
+            // offY += currentOffY  // include this if there still something after reaction
         }
 
         val timeX = bubbleRect.right - MARGIN_BORDER - MARGIN_TIME - timeLayout.getLineWidth(0)
@@ -1306,7 +1347,7 @@ class NoteItemView @JvmOverloads constructor(
 
         const val MARGIN_TEXT = 16
         const val MARGIN_TIME = 8
-        const val MARGIN_REACTION = 8
+        const val MARGIN_REACTION = 16
 
         const val TEXT_SIZE_CONTENT = 48f
         const val TEXT_SIZE_TIME = 30f
