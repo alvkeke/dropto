@@ -19,6 +19,8 @@ class NoteItem : Serializable, Cloneable {
     var isDeleted: Boolean = false
     var isSynced: Boolean = false
 
+    val reactions: MutableList<String> = mutableListOf()
+
     val medias: ArrayList<AttachmentFile> = ArrayList()
     val files: ArrayList<AttachmentFile> = ArrayList()
 

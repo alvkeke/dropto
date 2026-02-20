@@ -33,10 +33,11 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
     private lateinit var toolbar: MaterialToolbar
 
     private lateinit var itemStorage: MgmtItemView
-    private lateinit var itemNotes: MgmtItemView
-
     private var storageFragment: MgmtStorageFragment? = null
+    private lateinit var itemNotes: MgmtItemView
     private var noteFragment: MgmtNotesFragment? = null
+    private lateinit var itemReactions: MgmtItemView
+    private var reactionFragment: MgmtReactionFragment? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -59,6 +60,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         toolbar = view.findViewById(R.id.mgmt_page_toolbar)
         itemStorage = view.findViewById(R.id.mgmt_page_item_storage)
         itemNotes = view.findViewById(R.id.mgmt_page_item_notes)
+        itemReactions = view.findViewById(R.id.mgmt_page_item_reactions)
 
         val statusBar = view.findViewById<View>(R.id.mgmt_page_status_bar)
         val navigationBar = view.findViewById<View>(R.id.mgmt_page_navigation_bar)
@@ -91,6 +93,21 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
                 false
             )
         }
+        itemReactions.setTitle("Manage Reactions")
+        itemReactions.setIcon(R.drawable.icon_mgmt_storage)
+        itemReactions.setOnClickListener {
+            if (reactionFragment == null) {
+                reactionFragment = MgmtReactionFragment()
+            }
+            parentFragmentManager.startFragmentAnime(
+                reactionFragment!!,
+                R.id.main_container,
+                false
+            )
+        }
+
+
+
 
     }
 

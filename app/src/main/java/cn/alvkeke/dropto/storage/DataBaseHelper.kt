@@ -13,6 +13,7 @@ import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import java.io.File
+import androidx.core.database.sqlite.transaction
 
 
 class DataBaseHelper(private val context: Context) :
@@ -25,7 +26,7 @@ class DataBaseHelper(private val context: Context) :
         const val TAG = "DataBaseHelper"
 
         private const val DATABASE_NAME = "note.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 4
 
         private const val TABLE_CATEGORY = "category"
         private const val CATEGORY_COLUMN_ID = "_id"
@@ -59,6 +60,16 @@ class DataBaseHelper(private val context: Context) :
         private const val NOTE_FLAG_IS_SYNCED:Long = 1 shl 2
         private const val NOTE_COLUMN_SENDER = "sender"
         private const val NOTE_COLUMN_SENDER_TYPE = "TEXT DEFAULT NULL"
+        private const val NOTE_COLUMN_REACTION = "reaction"
+        private const val NOTE_COLUMN_REACTION_TYPE = "TEXT DEFAULT NULL"
+
+        private const val TABLE_REACTION = "reaction"
+        private const val REACTION_COLUMN_ID = "_id"
+        private const val REACTION_COLUMN_ID_TYPE = "INTEGER PRIMARY KEY AUTOINCREMENT"
+        private const val REACTION_COLUMN_TEXT = "reaction_text"
+        private const val REACTION_COLUMN_TEXT_TYPE = "TEXT"
+        private const val REACTION_COLUMN_SEQUENCE = "reaction_sequence"
+        private const val REACTION_COLUMN_SEQUENCE_TYPE = "INTEGER"
 
         private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
         private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
@@ -73,11 +84,19 @@ class DataBaseHelper(private val context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion == 1) {
-            upgradeV1ToV2(db)
-            upgradeV2ToV3(db)
-        } else if (oldVersion == 2) {
-            upgradeV2ToV3(db)
+        when (oldVersion) {
+            1 -> {
+                upgradeV1ToV2(db)
+                upgradeV2ToV3(db)
+                upgradeV3ToV4(db)
+            }
+            2 -> {
+                upgradeV2ToV3(db)
+                upgradeV3ToV4(db)
+            }
+            3 -> {
+                upgradeV3ToV4(db)
+            }
         }
     }
 
@@ -120,6 +139,18 @@ class DataBaseHelper(private val context: Context) :
             Log.e(TAG, "Database upgraded successfully: 2 -> 3")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add new column for sender, maybe already exists, ignore and continue: $e")
+        }
+    }
+
+    private fun upgradeV3ToV4(db: SQLiteDatabase) {
+        Log.e(TAG, "Database upgrading: 3 -> 4, add new table for reactions")
+        createReactionTable(db)
+        Log.e(TAG, "Database upgrading: 3 -> 4, add new column for reaction in note table")
+        try {
+            db.execSQL("ALTER TABLE $TABLE_NOTE ADD COLUMN $NOTE_COLUMN_REACTION $NOTE_COLUMN_REACTION_TYPE;")
+            Log.e(TAG, "Database upgraded successfully: 3 -> 4")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to upgrade database for reactions, maybe already exists, ignore and continue: $e")
         }
     }
 
@@ -212,7 +243,20 @@ class DataBaseHelper(private val context: Context) :
                 $NOTE_COLUMN_C_TIME $NOTE_COLUMN_C_TIME_TYPE,
                 $NOTE_COLUMN_ATTACHMENT_INFO $NOTE_COLUMN_ATTACHMENT_INFO_TYPE,
                 $NOTE_COLUMN_FLAGS $NOTE_COLUMN_FLAGS_TYPE,
-                $NOTE_COLUMN_SENDER $NOTE_COLUMN_SENDER_TYPE
+                $NOTE_COLUMN_SENDER $NOTE_COLUMN_SENDER_TYPE,
+                $NOTE_COLUMN_REACTION $NOTE_COLUMN_REACTION_TYPE
+            );
+        """.trimIndent()
+
+        db.execSQL(sql)
+    }
+
+    private fun createReactionTable(db: SQLiteDatabase) {
+        val sql = """
+            CREATE TABLE IF NOT EXISTS $TABLE_REACTION (
+                $REACTION_COLUMN_ID $REACTION_COLUMN_ID_TYPE,
+                $REACTION_COLUMN_TEXT $REACTION_COLUMN_TEXT_TYPE,
+                $REACTION_COLUMN_SEQUENCE $REACTION_COLUMN_SEQUENCE_TYPE
             );
         """.trimIndent()
 
@@ -428,10 +472,30 @@ class DataBaseHelper(private val context: Context) :
         isSynced = flags.isSet(NOTE_FLAG_IS_SYNCED)
     }
 
+    private fun NoteItem.generateReactionString(): String? {
+        if (reactions.isEmpty()) return null
+
+        val sb = StringBuilder()
+        for (r in reactions) {
+            sb.append(Base64.encodeToString(r.toByteArray(), Base64.DEFAULT))
+            sb.append(',')
+        }
+
+        return sb.toString()
+    }
+
+    private fun NoteItem.parseReactions(reactionInfo: String?) {
+        if (reactionInfo == null) return
+        val reactionS = reactionInfo.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        for (r in reactionS) {
+            reactions.add(String(Base64.decode(r, Base64.DEFAULT)))
+        }
+    }
+
     @Throws(SQLiteException::class)
     fun insertNote(
         id: Long, categoryId: Long, text: String?, ctime: Long, sender: String?,
-        attachmentInfo: String?, flags: Long
+        attachmentInfo: String?, flags: Long, reactionInfo: String?
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_ID, id)
@@ -441,13 +505,14 @@ class DataBaseHelper(private val context: Context) :
         values.put(NOTE_COLUMN_SENDER, sender)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
+        values.put(NOTE_COLUMN_REACTION, reactionInfo)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
     @Throws(SQLiteException::class)
     fun insertNote(
         categoryId: Long, text: String?, ctime: Long, sender: String?,
-        attachmentInfo: String?, flags: Long
+        attachmentInfo: String?, flags: Long, reactionInfo: String?
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
@@ -456,6 +521,7 @@ class DataBaseHelper(private val context: Context) :
         values.put(NOTE_COLUMN_SENDER, sender)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
+        values.put(NOTE_COLUMN_REACTION, reactionInfo)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
@@ -469,11 +535,13 @@ class DataBaseHelper(private val context: Context) :
     fun insertNote(n: NoteItem): Long {
         val id: Long = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
             insertNote(n.categoryId, n.text, n.createTime, n.sender,
-                n.generateAttachmentString(), n.generateFlags())
+                n.generateAttachmentString(), n.generateFlags(),
+                n.generateReactionString())
         } else {
             insertNote(
                 n.id, n.categoryId, n.text, n.createTime, n.sender,
                 n.generateAttachmentString(), n.generateFlags(),
+                n.generateReactionString()
             )
         }
         if (id < 0) {
@@ -578,7 +646,7 @@ class DataBaseHelper(private val context: Context) :
      */
     fun updateNote(
         id: Long, categoryId: Long, text: String?, ctime: Long,
-        attachmentInfo: String?, flags: Long
+        attachmentInfo: String?, flags: Long, reactionInfo: String?
     ): Int {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
@@ -587,6 +655,7 @@ class DataBaseHelper(private val context: Context) :
         // update sender is not allowed now
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
+        values.put(NOTE_COLUMN_REACTION, reactionInfo)
         val args = arrayOf(id.toString())
         return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args)
     }
@@ -600,7 +669,8 @@ class DataBaseHelper(private val context: Context) :
         return updateNote(
             note.id, note.categoryId, note.text,
             note.createTime,
-            note.generateAttachmentString(), note.generateFlags()
+            note.generateAttachmentString(), note.generateFlags(),
+            note.generateReactionString()
         )
     }
 
@@ -647,9 +717,16 @@ class DataBaseHelper(private val context: Context) :
             return null
         }
         val sender: String? = getString(idx)
+        idx = getColumnIndex(NOTE_COLUMN_REACTION)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for reaction")
+            return null
+        }
+        val reactionInfo: String? = getString(idx)
 
         val e = NoteItem(text, ctime, sender)
         e.parseFlags(flags)
+        e.parseReactions(reactionInfo)
         e.id = id
         e.categoryId = categoryId
         if (!attachInfoAll.isNullOrEmpty()) {
@@ -734,6 +811,43 @@ class DataBaseHelper(private val context: Context) :
 
         cursor.close()
         return ids
+    }
+
+
+    fun getReactionList(): ArrayList<String> {
+        val reactions = ArrayList<String>()
+        val cursor = db.query(
+            TABLE_REACTION, arrayOf(REACTION_COLUMN_TEXT),
+            null, null, null, null,
+            "$REACTION_COLUMN_SEQUENCE ASC"
+        )
+        while (cursor.moveToNext()) {
+            val idx: Int = cursor.getColumnIndex(REACTION_COLUMN_TEXT)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx for reaction text")
+                continue
+            }
+            val text = cursor.getString(idx)
+            reactions.add(text)
+        }
+        cursor.close()
+        return reactions
+    }
+
+    fun updateReactionList(reactions: List<String>) {
+        db.transaction {
+            try {
+                delete(TABLE_REACTION, null, null)
+                for (i in reactions.indices) {
+                    val values = ContentValues()
+                    values.put(REACTION_COLUMN_TEXT, reactions[i])
+                    values.put(REACTION_COLUMN_SEQUENCE, i)
+                    insertOrThrow(TABLE_REACTION, null, values)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to update reaction list: $e")
+            }
+        }
     }
 
 }

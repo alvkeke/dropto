@@ -17,6 +17,7 @@ import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.Log
 import android.util.Size
+import android.util.SizeF
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
@@ -46,6 +47,9 @@ class NoteItemView @JvmOverloads constructor(
     var isSynced: Boolean = false
 
     var sender: String? = null
+
+    val reactionList = mutableListOf<String>()
+    val reactionRectList = mutableListOf<RectF>()
 
     @JvmField
     var asyncImageLoad: Boolean = true
@@ -227,6 +231,17 @@ class NoteItemView @JvmOverloads constructor(
         color = ContextCompat.getColor(context, R.color.ext_info_mask)
         alpha = 200
     }
+    private val reactionPaint = TextPaint().apply {
+        color = ContextCompat.getColor(context, R.color.color_text_main)
+        textSize = TEXT_SIZE_REACTION
+        isAntiAlias = true
+    }
+    private val reactionBgPaint = Paint().apply {
+        color = ContextCompat.getColor(context, R.color.reaction_background)
+        isAntiAlias = true
+    }
+//    private val reactionRect = RectF()
+//    private val reactionBgPath = Path()
     private val senderAvatarPaint = Paint().apply {
         isAntiAlias = true
     }
@@ -603,6 +618,35 @@ class NoteItemView @JvmOverloads constructor(
         return fileCount * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
     }
 
+
+    private class MultiLinesSize(var width: Float, var height: Float, var lastLineWidth: Float)
+    private fun measureTextSize(contentMaxWidth: Int): MultiLinesSize {
+        if (text.isEmpty()) return MultiLinesSize(0f, 0f, 0f)
+
+        textLayout = StaticLayout.Builder
+            .obtain(
+                text, 0, text.length, textPaint,
+                contentMaxWidth - (MARGIN_TEXT * 2)
+            )
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .setIncludePad(false)
+            .build()
+
+        var maxWidth = 0f
+        for (i in 0 until textLayout.lineCount) {
+            maxWidth = maxOf(maxWidth, textLayout.getLineWidth(i))
+        }
+        val textWidth = maxWidth + MARGIN_TEXT * 2
+        val textHeight = textLayout.height + MARGIN_TEXT * 2f
+
+        return MultiLinesSize(
+            textWidth,
+            textHeight,
+            textLayout.getLineWidth(textLayout.lineCount - 1)
+        )
+    }
+
     private fun measureIconWidth(size: Int): Int {
         var totalWidth = MARGIN_ICON
 
@@ -613,25 +657,49 @@ class NoteItemView @JvmOverloads constructor(
         return totalWidth - MARGIN_ICON
     }
 
-    private fun measureBubbleMixed(bubbleMaxWidth: Int) : Int {
-        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
-        var bubbleHeight = MARGIN_BORDER
+    private fun measureReactions(contentMaxWidth: Int, afterText: Boolean) : MultiLinesSize? {
+        if (reactionList.isEmpty()) return null
 
-        bubbleHeight += measureMediasHeight(contentMaxWidth)
-        bubbleHeight += measureFilesHeight(contentMaxWidth, bubbleHeight)
+        var maxWidth = 0f
+        var currentLine = 0
 
-        if (!text.isEmpty()) {
-            textLayout = StaticLayout.Builder
-                .obtain(
-                    text, 0, text.length, textPaint,
-                    contentMaxWidth - (MARGIN_TEXT * 2)
-                )
-                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                .setLineSpacing(0f, 1f)
-                .setIncludePad(false)
-                .build()
-            bubbleHeight += textLayout.height + MARGIN_TEXT * 2
+        /*
+         *  reaction layout: | margin_BG | margin_text_x | text | margin_text_x | margin_bg |
+         *                               |       background                     |
+         */
+        var currentLineWidth = MARGIN_REACTION_BG.toFloat()
+        for (reaction in reactionList) {
+            val reactionWidth = MARGIN_REACTION_TEXT_X * 2 + reactionPaint.measureText(reaction) + MARGIN_REACTION_BG
+            if (currentLineWidth + reactionWidth > contentMaxWidth) {
+                currentLine++
+                maxWidth = maxOf(maxWidth, currentLineWidth)
+                currentLineWidth = MARGIN_REACTION_BG.toFloat()
+            }
+            currentLineWidth += reactionWidth
         }
+
+        val lastLineWidth = currentLineWidth
+        maxWidth = maxOf(maxWidth, currentLineWidth)
+        currentLine ++
+
+        val topMargin = if (afterText) 0 else MARGIN_REACTION_BG
+        val totalHeight = currentLine *
+                (MARGIN_REACTION_TEXT_Y * 2 + TEXT_SIZE_REACTION + MARGIN_REACTION_BG) +
+                topMargin
+
+        return MultiLinesSize(maxWidth, totalHeight, lastLineWidth)
+    }
+
+    private fun fixContentSizeWithExtInfo(
+        contentMaxWidth: Int,
+        textSize: MultiLinesSize,
+        reactionSize: MultiLinesSize?
+    ): SizeF {
+        val combinedLines = MultiLinesSize(
+            maxOf(textSize.width, reactionSize?.width ?: 0f),
+            textSize.height + (reactionSize?.height ?: 0f),
+           reactionSize?.lastLineWidth ?: textSize.lastLineWidth
+        )
 
         val timeText = createTime.format()
         timeLayout = StaticLayout.Builder
@@ -644,232 +712,87 @@ class NoteItemView @JvmOverloads constructor(
             .setIncludePad(false)
             .build()
 
-        val lastLineWidth = textLayout.getLineWidth(textLayout.lineCount - 1)
-        val iconWidth = measureIconWidth(timeLayout.height)
-        val timeWidth = timeLayout.getLineWidth(0)
-        val extInfoWidth = iconWidth + timeWidth
-        val combinedWidth = lastLineWidth + MARGIN_TEXT + extInfoWidth + MARGIN_TIME
-        if (combinedWidth > contentMaxWidth) {
-            bubbleHeight += timeLayout.height + MARGIN_TIME
+        val extInfoWidth = measureIconWidth(timeLayout.height) + timeLayout.getLineWidth(0) + MARGIN_TIME
+        val combinedWidth = combinedLines.lastLineWidth + MARGIN_TEXT + extInfoWidth + MARGIN_TIME * 2
+        val isFit = combinedWidth <= contentMaxWidth
+
+        val resultHeight: Float
+        var resultWidth: Float
+        if (isFit) {
+            resultHeight = combinedLines.height
+            resultWidth = maxOf(combinedLines.width, combinedWidth)
+        } else {
+            resultHeight = combinedLines.height + timeLayout.height + MARGIN_TIME
+            resultWidth = maxOf(combinedLines.width, extInfoWidth + MARGIN_TIME * 2)
         }
 
-        bubbleHeight += MARGIN_BORDER
-
-        val bubbleWidth = contentMaxWidth + MARGIN_BORDER * 2
-
-        bubbleRect.set(
-            0f, 0f,
-            bubbleWidth.toFloat(),
-            bubbleHeight.toFloat()
-        )
-
-        return bubbleHeight
+        return SizeF(resultWidth, resultHeight)
     }
 
-    private fun measureBubbleMediaText(bubbleMaxWidth: Int) : Int {
-        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
-        var bubbleHeight = MARGIN_BORDER * 2
+    private fun measureMediaSize(contentMaxWidth: Int, minWidth: Float): SizeF {
+        if (_medias.isEmpty()) return SizeF(0f, 0f)
 
         measureMediasHeight(contentMaxWidth)
         val last = _medias.last().rect
-        val right = last.right
-        val bottom = last.bottom
-        val mediaWidth = right
-        var bubbleWidth = mediaWidth + MARGIN_BORDER * 2
+        val imageHeight = last.bottom
+        val imageWidth = last.right
 
-        bubbleHeight += bottom.toInt()
-
-        textLayout = StaticLayout.Builder
-            .obtain(
-                text, 0, text.length, textPaint,
-                contentMaxWidth - (MARGIN_TEXT * 2)
-            )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
-        bubbleHeight += textLayout.height + MARGIN_TEXT * 2
-
-        val timeText = createTime.format()
-        timeLayout = StaticLayout.Builder
-            .obtain(
-                timeText, 0, timeText.length, timePaint,
-                contentMaxWidth - (MARGIN_TIME * 2)
-            )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
-
-        var maxTextLayoutWidth = 0f // include the margin later
-        for (i in 0 until textLayout.lineCount - 1) {
-            maxTextLayoutWidth = maxOf(textLayout.getLineWidth(i), maxTextLayoutWidth)
+        if (imageWidth < minWidth) {
+            val scale = minWidth / imageWidth
+            for (info in _medias) {
+                info.rect.set(
+                    info.rect.left * scale,
+                    info.rect.top * scale,
+                    info.rect.right * scale,
+                    info.rect.bottom * scale
+                )
+            }
+            return SizeF(minWidth, (imageHeight * scale))
         }
 
-        val lastLineWidth = textLayout.getLineWidth(textLayout.lineCount - 1)
-        val iconWidth = measureIconWidth(timeLayout.height)
-        val timeWidth = timeLayout.getLineWidth(0)
-        val extInfoWidth = timeWidth + iconWidth
-        val combinedWidth = lastLineWidth + extInfoWidth + MARGIN_TEXT + MARGIN_TIME
-        if (combinedWidth > contentMaxWidth) {
-            maxTextLayoutWidth = maxOf(lastLineWidth, maxTextLayoutWidth)
-            maxTextLayoutWidth += MARGIN_TEXT * 2
-            maxTextLayoutWidth = maxOf(maxTextLayoutWidth, extInfoWidth + MARGIN_TIME * 2)
-            bubbleHeight += timeLayout.height + MARGIN_TIME
-        } else {
-            maxTextLayoutWidth += MARGIN_TEXT * 2
-            maxTextLayoutWidth = maxOf(maxTextLayoutWidth, combinedWidth)
-        }
+        return SizeF(imageWidth, imageHeight)
+    }
 
+    private fun measureFileSize(contentMaxWidth: Int, baseHeight: Float): SizeF {
+        if (_files.isEmpty()) return SizeF(0f, 0f)
 
-        if (mediaWidth < maxTextLayoutWidth) {
-            // only single media case can get into this branch
-            bubbleWidth = maxTextLayoutWidth + MARGIN_BORDER * 2
-            val rect0 = _medias[0].rect
-            rect0.set(rect0.left, rect0.top,
-                rect0.left + maxTextLayoutWidth,
-                rect0.bottom
-            )
-        }
+        // must invoke measureFilesHeight to set the file rect for checking click
+        val fileHeight = measureFilesHeight(contentMaxWidth, baseHeight.toInt())
+        val fileWidth = contentMaxWidth.toFloat()
+
+        return SizeF(fileWidth, fileHeight.toFloat())
+    }
+
+    private fun measureBubble(bubbleMaxWidth: Int) : Int {
+        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
+
+        val textSize = measureTextSize(contentMaxWidth)
+        val reactionSize = measureReactions(contentMaxWidth, textSize.height > 0)
+        val fixLineSize = fixContentSizeWithExtInfo(contentMaxWidth, textSize, reactionSize)
+        val mediaSize = measureMediaSize(contentMaxWidth, fixLineSize.width)
+        val fileSize = measureFileSize(contentMaxWidth, mediaSize.height)
+
+        val bubbleWidth = maxOf(
+            mediaSize.width,
+            fileSize.width,
+            fixLineSize.width
+        ) + MARGIN_BORDER * 2
+        val bubbleHeight = MARGIN_BORDER * 2 + mediaSize.height + fileSize.height + fixLineSize.height
+
         bubbleRect.set(
             0f, 0f,
             bubbleWidth,
-            bubbleHeight.toFloat()
+            bubbleHeight
         )
 
-        return bubbleHeight
+        if (_files.isEmpty() && text.isEmpty() && reactionList.isEmpty()) {
+            extInfoNeedBackground = true
+        }
+
+        return bubbleHeight.toInt()
     }
 
     private var extInfoNeedBackground = false
-    private fun measureBubbleMediaOnly(bubbleMaxWidth: Int) : Int {
-        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
-        var bubbleHeight = MARGIN_BORDER * 2
-
-        measureMediasHeight(contentMaxWidth)
-
-        val last = _medias.last().rect
-        val right = last.right
-        val bottom = last.bottom
-
-        bubbleHeight += bottom.toInt()
-        var bubbleWidth = right + MARGIN_BORDER * 2
-
-        val timeText = createTime.format()
-        timeLayout = StaticLayout.Builder
-            .obtain(
-                timeText, 0, timeText.length, timePaint,
-                contentMaxWidth - (MARGIN_TIME * 2)
-            )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
-
-        val iconsWidth = measureIconWidth(timeLayout.height)
-        val extInfoWidth = iconsWidth + timeLayout.getLineWidth(0)
-        val extInfoWidthWithMargin = extInfoWidth + MARGIN_IMAGE * 2
-        val neededInfoWidth = MARGIN_BORDER * 2 + extInfoWidthWithMargin
-        if (neededInfoWidth > bubbleWidth) {
-            // for now, only single media case can go into this branch
-            bubbleWidth = neededInfoWidth
-            val rect0 = _medias[0].rect
-            rect0.set(rect0.left, rect0.top,
-                rect0.left + extInfoWidthWithMargin,
-                rect0.bottom
-            )
-        }
-
-        bubbleRect.set(
-            0f, 0f,
-            bubbleWidth,
-            bubbleHeight.toFloat()
-        )
-        extInfoNeedBackground = true
-
-        return bubbleHeight
-    }
-
-    private fun measureBubbleTextOnly(bubbleMaxWidth: Int) : Int {
-        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
-        var bubbleHeight = MARGIN_BORDER * 2
-
-        textLayout = StaticLayout.Builder
-            .obtain(
-                text, 0, text.length, textPaint,
-                contentMaxWidth - (MARGIN_TEXT * 2)
-            )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
-        bubbleHeight += textLayout.height + MARGIN_TEXT * 2
-
-        val timeText = createTime.format()
-        timeLayout = StaticLayout.Builder
-            .obtain(
-                timeText, 0, timeText.length, timePaint,
-                contentMaxWidth - (MARGIN_TIME * 2)
-            )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
-
-        val iconsWidth = measureIconWidth(timeLayout.height)
-        val extInfoWidth = iconsWidth + timeLayout.getLineWidth(0)
-
-        var contentWidth = 0f
-
-        for (i in 0 until textLayout.lineCount - 1) {
-            contentWidth = maxOf(contentWidth, textLayout.getLineWidth(i))
-        }
-
-        val lastLineWidth = textLayout.getLineWidth(textLayout.lineCount-1)
-        val combineWidth = lastLineWidth + MARGIN_TEXT + extInfoWidth + MARGIN_TIME
-
-        if (combineWidth > contentMaxWidth) {
-            contentWidth = maxOf(contentWidth, lastLineWidth)
-            contentWidth = if (contentWidth + MARGIN_TIME * 2 > extInfoWidth + MARGIN_TIME * 2) {
-                contentWidth
-            } else {
-                extInfoWidth
-            }
-            bubbleHeight += timeLayout.height + MARGIN_TIME
-        } else {
-            contentWidth = maxOf(contentWidth, combineWidth)
-        }
-
-        val bubbleWidth = contentWidth + MARGIN_TEXT * 2 + MARGIN_BORDER * 2
-
-        bubbleRect.set(
-            0f, 0f,
-            bubbleWidth,
-            bubbleHeight.toFloat()
-        )
-
-        return bubbleHeight
-    }
-
-    private enum class ContentStatus {
-        ONLY_TEXT,
-        ONLY_MEDIA,
-        ONLY_FILE,
-        MEDIA_TEXT,
-        MIXED
-    }
-    private fun checkContentStatus(): ContentStatus {
-        val hasText = !text.isEmpty()
-        val hasMedia = _medias.isNotEmpty()
-        val hasFile = _files.isNotEmpty()
-
-        return when {
-            hasText && !hasMedia && !hasFile -> ContentStatus.ONLY_TEXT
-            !hasText && hasMedia && !hasFile -> ContentStatus.ONLY_MEDIA
-            !hasText && !hasMedia && hasFile -> ContentStatus.ONLY_FILE
-            hasText && hasMedia && !hasFile -> ContentStatus.MEDIA_TEXT
-            else -> ContentStatus.MIXED
-        }
-    }
     private fun measureHeight(width: Int) : Int {
         extInfoNeedBackground = false
 
@@ -877,20 +800,7 @@ class NoteItemView @JvmOverloads constructor(
         // unify the max size of the bubble to have a better look
         val bubbleMaxWidth = width - MARGIN_BUBBLE_END.dp() - MARGIN_BUBBLE_HAVE_SENDER.dp()
 
-        val bubbleHeight = when (checkContentStatus()) {
-            ContentStatus.ONLY_TEXT -> {
-                measureBubbleTextOnly(bubbleMaxWidth)
-            }
-            ContentStatus.ONLY_MEDIA -> {
-                measureBubbleMediaOnly(bubbleMaxWidth)
-            }
-            ContentStatus.MEDIA_TEXT -> {
-                measureBubbleMediaText(bubbleMaxWidth)
-            }
-            else -> {
-                measureBubbleMixed(bubbleMaxWidth)
-            }
-        }
+        val bubbleHeight = measureBubble(bubbleMaxWidth)
 
         var noteHeight = bubbleHeight + MARGIN_BUBBLE_Y.dp() * 2
 
@@ -1259,6 +1169,56 @@ class NoteItemView @JvmOverloads constructor(
             canvas.withTranslation(offX + MARGIN_TEXT, offY) {
                 textLayout.draw(canvas)
             }
+            offY += textLayout.height + MARGIN_TEXT
+        }
+
+        if (reactionList.isNotEmpty()) {
+            if (text.isEmpty()) {   // if reaction after text, no extra margin is needed
+                offY += MARGIN_REACTION_BG
+            }
+            var currentOffY = 0f
+
+            canvas.withSave {
+                var lineOffX = MARGIN_REACTION_BG.toFloat()
+
+                var idx = 0
+                reactionList.forEach { reaction ->
+                    val reactionWidth = MARGIN_REACTION_TEXT_X * 2 + reactionPaint.measureText(reaction)
+                    val reactionHeight = TEXT_SIZE_REACTION + MARGIN_REACTION_TEXT_Y * 2
+                    if (lineOffX + reactionWidth > contentWidth) {
+                        currentOffY += TEXT_SIZE_REACTION + MARGIN_REACTION_TEXT_Y * 2 + MARGIN_REACTION_BG
+                        lineOffX = MARGIN_REACTION_BG.toFloat()
+                    }
+
+                    val reactionRect = reactionRectList.getOrElse(idx++) {
+                        RectF().also { reactionRectList.add(it) }
+                    }
+                    reactionRect.set(
+                        offX + lineOffX,
+                        offY + currentOffY,
+                        offX + lineOffX + reactionWidth,
+                        offY + currentOffY + reactionHeight
+                    )
+
+                    val radius = REACTION_BG_RADIUS.dp().toFloat()
+                    drawRoundRect(
+                        reactionRect,
+                        radius,
+                        radius,
+                        reactionBgPaint
+                    )
+
+                    drawText(
+                        reaction,
+                        offX + lineOffX + MARGIN_REACTION_TEXT_X,
+                        offY + currentOffY + MARGIN_REACTION_TEXT_Y - reactionPaint.ascent(),
+                        reactionPaint
+                    )
+
+                    lineOffX += reactionWidth + MARGIN_REACTION_BG
+                }
+            }
+            // offY += currentOffY  // include this if there still something after reaction
         }
 
         val timeX = bubbleRect.right - MARGIN_BORDER - MARGIN_TIME - timeLayout.getLineWidth(0)
@@ -1329,6 +1289,7 @@ class NoteItemView @JvmOverloads constructor(
             SENDER_ICON,
             MEDIA,
             FILE,
+            REACTION,
         }
     }
 
@@ -1367,6 +1328,22 @@ class NoteItemView @JvmOverloads constructor(
             }
         }
 
+        for (i in reactionList.indices) {
+            val reactionRect = reactionRectList.getOrNull(i) ?: continue
+            checkRect.set(reactionRect)
+            // offset is no need for reaction, since the rects of them are set without bubbleRect offset,
+            // so check them directly here
+
+            if (checkRect.contains(x, y)) {
+                Log.v(TAG, "checkClickedItem: reaction ${reactionList[i]} clicked")
+                return ClickedContent(
+                    ClickedContent.Type.REACTION,
+                    null,
+                    i
+                )
+            }
+        }
+
         return ClickedContent(ClickedContent.Type.BACKGROUND)
     }
 
@@ -1388,6 +1365,11 @@ class NoteItemView @JvmOverloads constructor(
             else -> dataFormatCommon.format(noteDate)
         }
     }
+
+    private val marginReactionBg : Float by lazy { 16.dp().toFloat() }
+    private val marginReactionTextX: Float by lazy { 8.dp().toFloat() }
+    private val marginReactionTextY: Float by lazy { 16.dp().toFloat() }
+    private val reactionBgRadius: Float by lazy { 16.dp().toFloat() }
 
     companion object {
         const val TAG: String = "NoteItemView"
@@ -1416,9 +1398,14 @@ class NoteItemView @JvmOverloads constructor(
 
         const val MARGIN_TEXT = 16
         const val MARGIN_TIME = 8
+        const val MARGIN_REACTION_BG = 16
+        const val MARGIN_REACTION_TEXT_Y = 16
+        const val MARGIN_REACTION_TEXT_X = 32
+        const val REACTION_BG_RADIUS = 16
 
         const val TEXT_SIZE_CONTENT = 48f
         const val TEXT_SIZE_TIME = 30f
+        const val TEXT_SIZE_REACTION = 48f
 
         val dataFormatCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
         val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
