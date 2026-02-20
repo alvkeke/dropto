@@ -287,11 +287,11 @@ class CoreService : Service() {
                     Log.i(this.toString(), "no item was updated")
                     task.result = -1
                 } else {
-                    dbHelper.finish()
                     oldItem.updateFrom(newItem)
                     oldItem.isEdited = true
                     task.result = index
                 }
+                dbHelper.finish()
             }
         } catch (exception: Exception) {
             Log.e(this.toString(), "Failed to update note item in database: $exception")

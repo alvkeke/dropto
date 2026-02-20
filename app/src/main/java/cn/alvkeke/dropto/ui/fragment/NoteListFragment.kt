@@ -658,9 +658,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             } else {
                 noteItem.reactions.add(reaction)
             }
-            // TODO: update reactions in database, update the item in callback
-            noteItemAdapter.notifyItemChanged(index)
-            Log.v(TAG, "Reaction $reaction clicked for item-${noteItem.id}, current reactions: ${noteItem.reactions}")
+            app.service?.queueTask(Task.updateNote(noteItem))
+            // FIXME: the note isEdited will be set here
             popupMenu.dismiss()
         }
         reactionView.showAtLocation(

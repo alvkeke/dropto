@@ -243,7 +243,8 @@ class DataBaseHelper(private val context: Context) :
                 $NOTE_COLUMN_C_TIME $NOTE_COLUMN_C_TIME_TYPE,
                 $NOTE_COLUMN_ATTACHMENT_INFO $NOTE_COLUMN_ATTACHMENT_INFO_TYPE,
                 $NOTE_COLUMN_FLAGS $NOTE_COLUMN_FLAGS_TYPE,
-                $NOTE_COLUMN_SENDER $NOTE_COLUMN_SENDER_TYPE
+                $NOTE_COLUMN_SENDER $NOTE_COLUMN_SENDER_TYPE,
+                $NOTE_COLUMN_REACTION $NOTE_COLUMN_REACTION_TYPE
             );
         """.trimIndent()
 
@@ -471,10 +472,30 @@ class DataBaseHelper(private val context: Context) :
         isSynced = flags.isSet(NOTE_FLAG_IS_SYNCED)
     }
 
+    private fun NoteItem.generateReactionString(): String? {
+        if (reactions.isEmpty()) return null
+
+        val sb = StringBuilder()
+        for (r in reactions) {
+            sb.append(Base64.encodeToString(r.toByteArray(), Base64.DEFAULT))
+            sb.append(',')
+        }
+
+        return sb.toString()
+    }
+
+    private fun NoteItem.parseReactions(reactionInfo: String?) {
+        if (reactionInfo == null) return
+        val reactionS = reactionInfo.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        for (r in reactionS) {
+            reactions.add(String(Base64.decode(r, Base64.DEFAULT)))
+        }
+    }
+
     @Throws(SQLiteException::class)
     fun insertNote(
         id: Long, categoryId: Long, text: String?, ctime: Long, sender: String?,
-        attachmentInfo: String?, flags: Long
+        attachmentInfo: String?, flags: Long, reactionInfo: String?
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_ID, id)
@@ -484,13 +505,14 @@ class DataBaseHelper(private val context: Context) :
         values.put(NOTE_COLUMN_SENDER, sender)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
+        values.put(NOTE_COLUMN_REACTION, reactionInfo)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
     @Throws(SQLiteException::class)
     fun insertNote(
         categoryId: Long, text: String?, ctime: Long, sender: String?,
-        attachmentInfo: String?, flags: Long
+        attachmentInfo: String?, flags: Long, reactionInfo: String?
     ): Long {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
@@ -499,6 +521,7 @@ class DataBaseHelper(private val context: Context) :
         values.put(NOTE_COLUMN_SENDER, sender)
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
+        values.put(NOTE_COLUMN_REACTION, reactionInfo)
         return db.insertOrThrow(TABLE_NOTE, null, values)
     }
 
@@ -512,11 +535,13 @@ class DataBaseHelper(private val context: Context) :
     fun insertNote(n: NoteItem): Long {
         val id: Long = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
             insertNote(n.categoryId, n.text, n.createTime, n.sender,
-                n.generateAttachmentString(), n.generateFlags())
+                n.generateAttachmentString(), n.generateFlags(),
+                n.generateReactionString())
         } else {
             insertNote(
                 n.id, n.categoryId, n.text, n.createTime, n.sender,
                 n.generateAttachmentString(), n.generateFlags(),
+                n.generateReactionString()
             )
         }
         if (id < 0) {
@@ -621,7 +646,7 @@ class DataBaseHelper(private val context: Context) :
      */
     fun updateNote(
         id: Long, categoryId: Long, text: String?, ctime: Long,
-        attachmentInfo: String?, flags: Long
+        attachmentInfo: String?, flags: Long, reactionInfo: String?
     ): Int {
         val values = ContentValues()
         values.put(NOTE_COLUMN_CATE_ID, categoryId)
@@ -630,6 +655,7 @@ class DataBaseHelper(private val context: Context) :
         // update sender is not allowed now
         values.put(NOTE_COLUMN_ATTACHMENT_INFO, attachmentInfo)
         values.put(NOTE_COLUMN_FLAGS, flags)
+        values.put(NOTE_COLUMN_REACTION, reactionInfo)
         val args = arrayOf(id.toString())
         return db.update(TABLE_NOTE, values, NOTE_WHERE_CLAUSE_ID, args)
     }
@@ -643,7 +669,8 @@ class DataBaseHelper(private val context: Context) :
         return updateNote(
             note.id, note.categoryId, note.text,
             note.createTime,
-            note.generateAttachmentString(), note.generateFlags()
+            note.generateAttachmentString(), note.generateFlags(),
+            note.generateReactionString()
         )
     }
 
@@ -690,9 +717,16 @@ class DataBaseHelper(private val context: Context) :
             return null
         }
         val sender: String? = getString(idx)
+        idx = getColumnIndex(NOTE_COLUMN_REACTION)
+        if (idx == -1) {
+            Log.e(TAG, "invalid idx for reaction")
+            return null
+        }
+        val reactionInfo: String? = getString(idx)
 
         val e = NoteItem(text, ctime, sender)
         e.parseFlags(flags)
+        e.parseReactions(reactionInfo)
         e.id = id
         e.categoryId = categoryId
         if (!attachInfoAll.isNullOrEmpty()) {
