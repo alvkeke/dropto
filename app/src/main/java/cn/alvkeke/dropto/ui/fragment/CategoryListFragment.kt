@@ -323,14 +323,14 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         result: Int,
         category: Category,
     ) {
-        categoryListAdapter.remove(category)
+        categoryListAdapter.update(category)
     }
 
     override fun onCategoryRemoved(
         result: Int,
         category: Category,
     ) {
-        categoryListAdapter.update(category)
+        categoryListAdapter.remove(category)
     }
 
     companion object {
