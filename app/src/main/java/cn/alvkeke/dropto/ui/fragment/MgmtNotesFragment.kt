@@ -3,13 +3,11 @@ package cn.alvkeke.dropto.ui.fragment
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -18,20 +16,17 @@ import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.service.Task
+import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
-import cn.alvkeke.dropto.ui.fragment.NoteListFragment.Companion.TAG
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
 
@@ -113,7 +108,7 @@ class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
 
     }
 
-    class SimpleNoteListFragment(val category: Category) : Fragment(), Task.ResultListener {
+    class SimpleNoteListFragment(val category: Category) : Fragment(), CoreServiceListener {
         private val app: DroptoApplication
             get() = requireActivity().application as DroptoApplication
 
@@ -155,32 +150,21 @@ class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
             app.delTaskListener(this)
         }
 
-        override fun onTaskFinish(task: Task) {
-            if (task.type != Task.Type.NoteItem) {
-                Log.v(TAG, "ignore non-note-item task finish: ${task.type}")
-                return
-            }
+        override fun onNoteCreated(result: Int, noteItem: NoteItem) {
+            adapter.add(result, noteItem)
+            noteList.smoothScrollToPosition(0)
+        }
 
-            val item = task.taskObj as NoteItem
-            if (item.categoryId != category.id) {
-                Log.d(TAG, "target NoteItem not exist in current category, ignore task finish")
-                return
-            }
-            val index = task.result
+        override fun onNoteRemoved(result: Int, noteItem: NoteItem) {
+            adapter.update(noteItem)
+        }
 
-            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                when (task.job) {
-                    Task.Job.CREATE -> {
-                        adapter.add(index, item)
-                        noteList.smoothScrollToPosition(0)
-                    }
-                    Task.Job.REMOVE,
-                    Task.Job.RESTORE,
-                    Task.Job.UPDATE -> {
-                        adapter.update(item)
-                    }
-                }
-            }
+        override fun onNoteUpdated(result: Int, noteItem: NoteItem) {
+            adapter.update(noteItem)
+        }
+
+        override fun onNoteRestored(result: Int, noteItem: NoteItem) {
+            adapter.update(noteItem)
         }
 
         private inner class OnListTouchListener(context: Context) : OnRecyclerViewTouchListener(context) {
@@ -188,9 +172,9 @@ class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
                 v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 val item = adapter.get(index)
                 if (item.isDeleted) {
-                    app.service?.queueTask(Task.restoreNote(item))
+                    app.service?.restoreNote(item)
                 } else {
-                    app.service?.queueTask(Task.removeNote(item))
+                    app.service?.removeNote(item)
                 }
 
                 return true

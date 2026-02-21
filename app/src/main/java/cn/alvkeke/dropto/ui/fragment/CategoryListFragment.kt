@@ -25,7 +25,7 @@ import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
-import cn.alvkeke.dropto.service.Task
+import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
@@ -41,7 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Random
 
-class CategoryListFragment : Fragment(), Task.ResultListener {
+class CategoryListFragment : Fragment(), CoreServiceListener {
     private val app: DroptoApplication
         get() = requireActivity().application as DroptoApplication
     private lateinit var context: Context
@@ -162,7 +162,7 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
                         .setPositiveButton(R.string.string_ok
                         ) { _: DialogInterface, _: Int ->
                             for (c in selected) {
-                                app.service?.queueTask(Task.removeCategory(c))
+                                app.service?.removeCategory(c)
                             }
                         }.create().show()
                 }
@@ -273,16 +273,9 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
     }
 
     private fun addDebugData() {
-        app.service?.queueTask(Task.createCategory(Category("Local(Debug)", Category.Type.LOCAL_CATEGORY)))
-        app.service?.queueTask(Task.createCategory(Category("REMOTE USERS", Category.Type.REMOTE_USERS)))
-        app.service?.queueTask(
-            Task.createCategory(
-                Category(
-                    "REMOTE SELF DEVICE",
-                    Category.Type.REMOTE_SELF_DEV
-                )
-            )
-        )
+        app.service?.createCategory(Category("Local(Debug)", Category.Type.LOCAL_CATEGORY))
+        app.service?.createCategory(Category("REMOTE USERS", Category.Type.REMOTE_USERS))
+        app.service?.createCategory(Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV))
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             delay(1000)
@@ -314,24 +307,30 @@ class CategoryListFragment : Fragment(), Task.ResultListener {
                         e.attachments.add(imageFile)
                     }
                 }
-                app.service?.queueTask(Task.createNote(e))
+                app.service?.createNote(e)
             }
         }
     }
 
+    override fun onCategoryCreated(
+        result: Int,
+        category: Category,
+    ) {
+        categoryListAdapter.add(result, category)
+    }
 
-    override fun onTaskFinish(task: Task) {
-        if (task.type != Task.Type.Category) return
+    override fun onCategoryUpdated(
+        result: Int,
+        category: Category,
+    ) {
+        categoryListAdapter.remove(category)
+    }
 
-        val itemObj = task.taskObj as Category
-        val index = task.result
-
-        when (task.job) {
-            Task.Job.CREATE -> categoryListAdapter.add(index, itemObj)
-            Task.Job.REMOVE -> categoryListAdapter.remove(itemObj)
-            Task.Job.UPDATE -> categoryListAdapter.update(itemObj)
-            Task.Job.RESTORE -> Log.e(TAG, "restoring category is not supported now")
-        }
+    override fun onCategoryRemoved(
+        result: Int,
+        category: Category,
+    ) {
+        categoryListAdapter.update(category)
     }
 
     companion object {

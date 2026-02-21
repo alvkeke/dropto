@@ -4,13 +4,14 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.Intent
 import android.util.Log
+import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.service.CoreService
 import cn.alvkeke.dropto.service.CoreServiceConnection
-import cn.alvkeke.dropto.service.Task
-import cn.alvkeke.dropto.service.Task.ResultListener
+import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.ImageLoader
 
-class DroptoApplication : Application(), ResultListener{
+class DroptoApplication : Application(), CoreServiceListener{
 
 
     /**
@@ -71,21 +72,77 @@ class DroptoApplication : Application(), ResultListener{
     // to notify all registered ResultListener, move the listener from CoreService to here
     // due to the CoreService may not ready when activity be created
     // and trying to add itself as listener
-    private val listeners = ArrayList<ResultListener>()
+    private val listeners = ArrayList<CoreServiceListener>()
 
-    override fun onTaskFinish(task: Task) {
-        Log.d(TAG, "notifying listeners(${listeners.size}) for task finish: ${task.type}, ${task.job}")
-        listeners.iterator().forEach { listener ->
-            listener.onTaskFinish(task)
-        }
-    }
-
-    fun addTaskListener(listener: ResultListener) {
+    fun addTaskListener(listener: CoreServiceListener) {
         listeners.add(listener)
     }
 
-    fun delTaskListener(listener: ResultListener) {
+    fun delTaskListener(listener: CoreServiceListener) {
         listeners.remove(listener)
+    }
+
+    override fun onCategoryCreated(
+        result: Int,
+        category: Category,
+    ) {
+        listeners.forEach {
+            it.onCategoryCreated(result, category)
+        }
+    }
+
+    override fun onCategoryUpdated(
+        result: Int,
+        category: Category,
+    ) {
+        listeners.forEach {
+            it.onCategoryUpdated(result, category)
+        }
+    }
+
+    override fun onCategoryRemoved(
+        result: Int,
+        category: Category,
+    ) {
+        listeners.forEach {
+            it.onCategoryRemoved(result, category)
+        }
+    }
+
+    override fun onNoteCreated(
+        result: Int,
+        noteItem: NoteItem,
+    ) {
+        listeners.forEach {
+            it.onNoteCreated(result, noteItem)
+        }
+    }
+
+    override fun onNoteUpdated(
+        result: Int,
+        noteItem: NoteItem,
+    ) {
+        listeners.forEach {
+            it.onNoteUpdated(result, noteItem)
+        }
+    }
+
+    override fun onNoteRemoved(
+        result: Int,
+        noteItem: NoteItem,
+    ) {
+        listeners.forEach {
+            it.onNoteRemoved(result, noteItem)
+        }
+    }
+
+    override fun onNoteRestored(
+        result: Int,
+        noteItem: NoteItem,
+    ) {
+        listeners.forEach {
+            it.onNoteRestored(result, noteItem)
+        }
     }
 
     companion object {

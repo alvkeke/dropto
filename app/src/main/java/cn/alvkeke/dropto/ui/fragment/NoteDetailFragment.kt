@@ -22,7 +22,6 @@ import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
@@ -128,7 +127,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         val text = etNoteItemText.text.toString()
         if (note == null) {
             note = NoteItem(text)
-            app.service?.queueTask(Task.createNote(note!!))
+            app.service?.createNote(note!!)
             return
         }
         if (text.isEmpty() && removedAttachments.containsAll(note!!.attachments)) {
@@ -137,7 +136,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
                 "Got empty item after modifying, remove it", Toast.LENGTH_SHORT
             ).show()
             Log.i(TAG, "Got empty item after modifying, remove it, note-${note!!.id}")
-            app.service?.queueTask(Task.removeNote(note!!))
+            app.service?.removeNote(note!!)
             return
         }
         note!!.text = text
@@ -146,7 +145,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
             note!!.attachments.removeAll(removedAttachments)
             removedAttachments.clear()
         }
-        app.service?.queueTask(Task.updateNote(note!!))
+        app.service?.updateNote(note!!)
     }
 
     private inner class NoteDetailMenuListener : Toolbar.OnMenuItemClickListener {
@@ -156,7 +155,7 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
                 handleOk()
             } else if (R.id.note_detail_menu_item_delete == menuId) {
                 Log.d(this.toString(), "remove item")
-                app.service?.queueTask(Task.removeNote(note!!))
+                app.service?.removeNote(note!!)
             } else {
                 Log.e(this.toString(), "got unknown menu id: $menuId")
                 return false

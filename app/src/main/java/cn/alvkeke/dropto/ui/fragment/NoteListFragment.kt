@@ -42,8 +42,7 @@ import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.service.Task
-import cn.alvkeke.dropto.service.Task.Companion.createNote
+import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
@@ -71,7 +70,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 
-class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener {
+class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener {
     private val app: DroptoApplication
         get() = requireActivity().application as DroptoApplication
 
@@ -664,8 +663,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                 noteItem.reactions.add(reaction)
             }
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            app.service?.queueTask(Task.updateNote(noteItem))
-            // FIXME: the note isEdited will be set here
+            app.service?.updateNote(noteItem)
             popupMenu.dismiss()
         }
         reactionView.showAtLocation(
@@ -709,7 +707,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
     private fun removeReaction(index: Int, reactionIndex: Int) {
         val noteItem = noteItemAdapter.get(index)
         noteItem.reactions.removeAt(reactionIndex)
-        app.service?.queueTask(Task.updateNote(noteItem))
+        app.service?.updateNote(noteItem)
     }
 
     private fun handleShareMultipleNotes(items: ArrayList<NoteItem>) {
@@ -780,7 +778,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                 Log.d(TAG, "Category-$index[${category.title}] selected for forwarding")
                 val item = note.clone()
                 item.categoryId = category.id
-                app.service?.queueTask(createNote(item))
+                app.service?.createNote(item)
             }
 
             override fun onCancel() { }
@@ -798,7 +796,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                 for (note in notes) {
                     val item = note.clone()
                     item.categoryId = category.id
-                    app.service?.queueTask(createNote(item))
+                    app.service?.createNote(item)
                 }
             }
             override fun onCancel() { }
@@ -817,13 +815,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
 
     private fun requestCreateNote(item: NoteItem) {
         setPendingItem(item)
-        val task = createNote(item)
-        app.service?.queueTask(task)
+        app.service?.createNote(item)
     }
 
     private fun requestRemoveNote(item: NoteItem) {
-        val task = Task.removeNote(item)
-        app.service?.queueTask(task)
+        app.service?.removeNote(item)
     }
 
     private fun requestRemoveNotes(items: ArrayList<NoteItem>) {
@@ -833,51 +829,33 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
     }
 
     private fun requestRestoreNote(item: NoteItem) {
-        val task = Task.restoreNote(item)
-        app.service?.queueTask(task)
+        app.service?.restoreNote(item)
     }
 
-    override fun onTaskFinish(task: Task) {
-        if (task.type != Task.Type.NoteItem) {
-            Log.v(TAG, "ignore non-note-item task finish: ${task.type}")
-            return
+    override fun onNoteCreated(result: Int, noteItem: NoteItem) {
+        noteItemAdapter.add(result, noteItem)
+        rlNoteList.smoothScrollToPosition(0)
+        if (noteItem == pendingNoteItem) {
+            clearPendingItem()
+            etInputText.text.clear()
+            clearAttachments()
         }
+    }
 
-        val item = task.taskObj as NoteItem
-        if (item.categoryId != category.id) {
-            Log.d(TAG, "target NoteItem not exist in current category, ignore task finish")
-            return
+    override fun onNoteUpdated(result: Int, noteItem: NoteItem) {
+        noteItemAdapter.update(noteItem)
+    }
+
+    override fun onNoteRemoved(result: Int, noteItem: NoteItem) {
+        if (noteItemAdapter.showDeleted) {
+            noteItemAdapter.update(noteItem)
+        } else {
+            noteItemAdapter.remove(noteItem)
         }
-        val index = task.result
+    }
 
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-            when (task.job) {
-                Task.Job.CREATE -> {
-                    noteItemAdapter.add(index, item)
-                    rlNoteList.smoothScrollToPosition(0)
-                    if (item == pendingNoteItem) {
-                        clearPendingItem()
-                        etInputText.text.clear()
-                        clearAttachments()
-                    }
-                }
-                Task.Job.REMOVE -> {
-                    if (noteItemAdapter.showDeleted) {
-                        noteItemAdapter.update(item)
-                    } else {
-                        noteItemAdapter.remove(item)
-                    }
-                }
-
-                Task.Job.RESTORE -> {
-                    noteItemAdapter.update(item)
-                }
-
-                Task.Job.UPDATE -> {
-                    noteItemAdapter.update(item)
-                }
-            }
-        }
+    override fun onNoteRestored(result: Int, noteItem: NoteItem) {
+        noteItemAdapter.update(noteItem)
     }
 
     companion object {

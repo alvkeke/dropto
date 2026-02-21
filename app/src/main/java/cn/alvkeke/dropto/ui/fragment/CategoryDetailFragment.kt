@@ -13,7 +13,6 @@ import androidx.appcompat.widget.Toolbar
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.service.Task
 import cn.alvkeke.dropto.ui.adapter.CategoryTypeSpinnerAdapter
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -115,11 +114,11 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         val type = spinnerType.selectedItem as Category.Type
         if (category == null) {
             category = Category(title, type)
-            app.service?.queueTask(Task.createCategory(category!!))
+            app.service?.createCategory(category!!)
         } else {
             category!!.title = title
             category!!.type = type
-            app.service?.queueTask(Task.updateCategory(category!!))
+            app.service?.updateCategory(category!!)
         }
         finish()
     }
@@ -145,7 +144,7 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         builder.setPositiveButton(
             R.string.string_ok
         ) { _: DialogInterface, _: Int ->
-            app.service?.queueTask(Task.removeCategory(category!!))
+            app.service?.removeCategory(category!!)
             finish()
         }
 

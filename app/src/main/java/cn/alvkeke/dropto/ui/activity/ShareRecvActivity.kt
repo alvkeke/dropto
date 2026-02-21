@@ -12,7 +12,6 @@ import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.service.Task.Companion.createNote
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.FileHelper.getFileNameFromUri
@@ -175,7 +174,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
             Log.e(TAG, message)
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         } else {
-            app.service?.queueTask(createNote(recvNote))
+            app.service?.createNote(recvNote)
         }
         finish()
     }

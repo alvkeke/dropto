@@ -15,7 +15,6 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.service.Task.ResultListener
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.DataLoader.findCategory
@@ -67,9 +66,9 @@ class CoreService : Service() {
         val notification = createNotification()
         try {
             startForeground(CHANNEL_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-            Log.d(this.toString(), "startForeground finished")
+            Log.d(TAG, "startForeground finished")
         } catch (e: Exception) {
-            Log.e(this.toString(), "Failed to startForeground: $e")
+            Log.e(TAG, "Failed to startForeground: $e")
             Toast.makeText(
                 this, "Failed to start coreService",
                 Toast.LENGTH_SHORT
@@ -79,238 +78,21 @@ class CoreService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(this.toString(), "CoreService onCreate")
+        Log.d(TAG, "CoreService onCreate")
         startForeground()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(this.toString(), "CoreService onDestroy")
-        _serviceScope?.cancel() // 取消所有协程
+        Log.d(TAG, "CoreService onDestroy")
+        _serviceScope?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     @JvmField
-    var resultListener: ResultListener? = null
+    var resultListener: CoreServiceListener? = null
 
     private val handler = Handler(Looper.getMainLooper())
-    private fun notifyListener(task: Task) {
-        handler.post {
-            Log.d(TAG, "notifyListener for task: ${task.type}, ${task.job}, result: ${task.result}")
-            resultListener?.onTaskFinish(task)
-        }
-    }
-
-    private fun handleTaskCategoryCreate(task: Task) {
-        val category = task.taskObj as Category
-
-        try {
-            DataBaseHelper(this).writableDatabase.use { db ->
-                category.id = db.insertCategory(category)
-                val categories: ArrayList<Category> = categories
-                categories.add(category)
-                task.result = categories.indexOf(category)
-            }
-        } catch (_: Exception) {
-            Log.e(this.toString(), "Failed to add new category to database")
-            task.result = -1
-        }
-        notifyListener(task)
-    }
-
-    private fun handleTaskCategoryRemove(task: Task) {
-        val categories: ArrayList<Category> = categories
-        val category = task.taskObj as Category
-
-        val index: Int
-        if ((categories.indexOf(category).also { index = it }) == -1) {
-            Log.i(this.toString(), "category not exist in list, abort")
-            return
-        }
-
-        try {
-            DataBaseHelper(this).writableDatabase.use { db ->
-                db.deleteNotes(category.id)
-                if (0 == db.deleteCategory(category.id)) Log.e(
-                    this.toString(),
-                    "no category row be deleted in database"
-                )
-                categories.remove(category)
-                task.result = index
-            }
-        } catch (ex: Exception) {
-            Log.e(
-                this.toString(), "Failed to remove category with id " +
-                        category.id + ", exception: " + ex
-            )
-            task.result = -1
-        }
-        notifyListener(task)
-    }
-
-    private fun handleTaskCategoryUpdate(task: Task) {
-        val categories: ArrayList<Category> = categories
-        val category = task.taskObj as Category
-
-        val index: Int
-        if (-1 == (categories.indexOf(category).also { index = it })) {
-            Log.e(this.toString(), "category not exist in list, abort")
-            return
-        }
-
-        try {
-            DataBaseHelper(this).writableDatabase.use { db ->
-                if (0 == db.updateCategory(category)) {
-                    Log.e(this.toString(), "no category row be updated")
-                }
-                task.result = index
-            }
-        } catch (ex: Exception) {
-            Log.e(this.toString(), "Failed to modify Category: $ex")
-            task.result = -1
-        }
-        notifyListener(task)
-    }
-
-    private fun handleTaskNoteCreate(task: Task) {
-        val newItem = task.taskObj as NoteItem
-        val category = findCategory(newItem.categoryId)
-        if (category == null) {
-            Log.e(this.toString(), "Failed to find category with id " + newItem.categoryId)
-            task.result = -1
-            notifyListener(task)
-            return
-        }
-
-        newItem.categoryId = category.id
-        try {
-            DataBaseHelper(this).writableDatabase.use { db ->
-                newItem.id = db.insertNote(newItem)
-            }
-        } catch (e: Exception) {
-            Log.e(this.toString(), "Failed to add new item to database!", e)
-            task.result = -1
-            notifyListener(task)
-            return
-        }
-
-        if (!category.isInitialized) {
-            Log.i(this.toString(), "category not initialized, not add new item in the list")
-            task.result = -1
-            notifyListener(task)
-            return
-        }
-        task.result = category.addNoteItem(newItem)
-        notifyListener(task)
-    }
-
-    private fun handleTaskNoteRemove(task: Task) {
-        val e = task.taskObj as NoteItem
-        val c = findCategory(e.categoryId)
-        if (c == null) {
-            Log.e(this.toString(), "Failed to find category with id " + e.categoryId)
-            return
-        }
-
-        val index = c.indexNoteItem(e)
-        if (index == -1) return
-
-        try {
-            DataBaseHelper(this).writableDatabase.use { db ->
-                if (0 == db.deleteNote(e.id)) Log.e(this.toString(), "no row be deleted")
-                e.isDeleted = true  // TODO: need to think how to treat the deleted item, mark it as deleted now
-                task.result = index
-            }
-        } catch (_: Exception) {
-            Log.e(
-                this.toString(), "Failed to remove item with id " +
-                        e.id + ", exception: " + e
-            )
-            task.result = -1
-        }
-        notifyListener(task)
-    }
-
-    private fun handleTaskNoteRestore(task: Task) {
-        val e = task.taskObj as NoteItem
-        val c = findCategory(e.categoryId)
-        if (c == null) {
-            Log.e(this.toString(), "Failed to find category with id " + e.categoryId)
-            return
-        }
-
-        val index = c.indexNoteItem(e)
-        if (index == -1) return
-
-        try {
-            DataBaseHelper(this).writableDatabase.use { db ->
-                if (0 == db.restoreNote(e.id)) Log.e(
-                    this.toString(),
-                    "no row be restored in database"
-                )
-                e.isDeleted = false
-                task.result = index
-            }
-        } catch (_: Exception) {
-            Log.e(
-                this.toString(), "Failed to restore item with id " +
-                        e.id + ", exception: " + e
-            )
-            task.result = -1
-        }
-        notifyListener(task)
-    }
-
-    private fun handleTaskNoteUpdate(task: Task) {
-        val newItem = task.taskObj as NoteItem
-        val c = findCategory(newItem.categoryId)
-        if (c == null) {
-            Log.e(this.toString(), "Failed to find category with id " + newItem.categoryId)
-            return
-        }
-
-        val oldItem = c.findNoteItem(newItem.id)
-        if (oldItem == null) {
-            Log.e(this.toString(), "Failed to get note item with id " + newItem.id)
-            return
-        }
-        val index = c.indexNoteItem(oldItem)
-        newItem.id = oldItem.id
-        try {
-            DataBaseHelper(this).writableDatabase.use { db ->
-                if (0 == db.updateNote(newItem)) {
-                    Log.i(this.toString(), "no item was updated")
-                    task.result = -1
-                } else {
-                    oldItem.updateFrom(newItem)
-                    oldItem.isEdited = true
-                    task.result = index
-                }
-            }
-        } catch (exception: Exception) {
-            Log.e(this.toString(), "Failed to update note item in database: $exception")
-            task.result = -1
-        }
-        notifyListener(task)
-    }
-
-    private fun distributeTask(task: Task) {
-        if (task.type == Task.Type.Category) {
-            when (task.job) {
-                Task.Job.CREATE -> handleTaskCategoryCreate(task)
-                Task.Job.REMOVE -> handleTaskCategoryRemove(task)
-                Task.Job.UPDATE -> handleTaskCategoryUpdate(task)
-                Task.Job.RESTORE -> Log.e(TAG, "category restoring is not supported now")
-            }
-        } else if (task.type == Task.Type.NoteItem) {
-            when (task.job) {
-                Task.Job.CREATE -> handleTaskNoteCreate(task)
-                Task.Job.REMOVE -> handleTaskNoteRemove(task)
-                Task.Job.UPDATE -> handleTaskNoteUpdate(task)
-                Task.Job.RESTORE -> handleTaskNoteRestore(task)
-            }
-        }
-    }
 
     private var _serviceScope : CoroutineScope? = null
     private val serviceScope : CoroutineScope
@@ -321,12 +103,212 @@ class CoreService : Service() {
             return _serviceScope!!
         }
 
-    fun queueTask(task: Task) {
-        Log.d(TAG, "task queued: $task")
-        serviceScope.launch {
-            distributeTask(task)
+    private fun handleTaskCategoryCreate(category: Category) {
+
+        var result: Int
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                category.id = db.insertCategory(category)
+                val categories: ArrayList<Category> = categories
+                categories.add(category)
+                result = categories.indexOf(category)
+            }
+        } catch (_: Exception) {
+            Log.e(TAG, "Failed to add new category to database")
+            result = -1
         }
+        handler.post { resultListener?.onCategoryCreated(result, category) }
+
     }
+    fun createCategory(category: Category) {
+        serviceScope.launch { handleTaskCategoryCreate(category) }
+    }
+
+    private fun handleTaskCategoryRemove(category: Category) {
+        val categories: ArrayList<Category> = categories
+
+        val index: Int
+        var result = -1
+        if ((categories.indexOf(category).also { index = it }) == -1) {
+            Log.i(TAG, "category not exist in list, abort")
+            return
+        }
+
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                db.deleteNotes(category.id)
+                if (0 == db.deleteCategory(category.id)) Log.e(
+                    TAG,
+                    "no category row be deleted in database"
+                )
+                categories.remove(category)
+                result = index
+            }
+        } catch (ex: Exception) {
+            Log.e(
+                TAG, "Failed to remove category with id " +
+                        category.id + ", exception: " + ex
+            )
+        }
+        handler.post { resultListener?.onCategoryRemoved(result, category) }
+    }
+    fun removeCategory(category: Category) {
+        serviceScope.launch { handleTaskCategoryRemove(category) }
+    }
+
+    private fun handleTaskCategoryUpdate(category: Category) {
+        val categories: ArrayList<Category> = categories
+
+        val index: Int
+        var result = -1
+        if (-1 == (categories.indexOf(category).also { index = it })) {
+            Log.e(TAG, "category not exist in list, abort")
+            return
+        }
+
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.updateCategory(category)) {
+                    Log.e(TAG, "no category row be updated")
+                }
+                result = index
+            }
+        } catch (ex: Exception) {
+            Log.e(TAG, "Failed to modify Category: $ex")
+        }
+        handler.post { resultListener?.onCategoryUpdated(result, category) }
+    }
+    fun updateCategory(category: Category) {
+        serviceScope.launch { handleTaskCategoryUpdate(category) }
+    }
+
+
+    private fun handleTaskNoteRemove(e: NoteItem) {
+        val c = findCategory(e.categoryId)
+        if (c == null) {
+            Log.e(TAG, "Failed to find category with id " + e.categoryId)
+            return
+        }
+
+        val index = c.indexNoteItem(e)
+        if (index == -1) return
+
+        var result = -1
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.deleteNote(e.id)) Log.e(TAG, "no row be deleted")
+                e.isDeleted = true  // TODO: need to think how to treat the deleted item, mark it as deleted now
+                result = index
+            }
+        } catch (_: Exception) {
+            Log.e(
+                TAG, "Failed to remove item with id " +
+                        e.id + ", exception: " + e
+            )
+        }
+        handler.post { resultListener?.onNoteRemoved(result, e) }
+    }
+    fun removeNote(e: NoteItem) {
+        serviceScope.launch { handleTaskNoteRemove(e) }
+    }
+
+    private fun handleTaskNoteRestore(e: NoteItem) {
+        val c = findCategory(e.categoryId)
+        if (c == null) {
+            Log.e(TAG, "Failed to find category with id " + e.categoryId)
+            return
+        }
+
+        val index = c.indexNoteItem(e)
+        if (index == -1) return
+
+        var result = -1
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.restoreNote(e.id)) Log.e(
+                    TAG,
+                    "no row be restored in database"
+                )
+                e.isDeleted = false
+                result = index
+            }
+        } catch (_: Exception) {
+            Log.e(
+                TAG, "Failed to restore item with id " +
+                        e.id + ", exception: " + e
+            )
+        }
+        handler.post { resultListener?.onNoteRestored(result, e) }
+    }
+    fun restoreNote(e: NoteItem) {
+        serviceScope.launch { handleTaskNoteRestore(e) }
+    }
+
+    private fun handleTaskNoteUpdate(newItem: NoteItem) {
+        val c = findCategory(newItem.categoryId)
+        if (c == null) {
+            Log.e(TAG, "Failed to find category with id " + newItem.categoryId)
+            return
+        }
+
+        val oldItem = c.findNoteItem(newItem.id)
+        if (oldItem == null) {
+            Log.e(TAG, "Failed to get note item with id " + newItem.id)
+            return
+        }
+        val index = c.indexNoteItem(oldItem)
+        var result = -1
+        newItem.id = oldItem.id
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.updateNote(newItem)) {
+                    Log.i(TAG, "no item was updated")
+                } else {
+                    oldItem.updateFrom(newItem)
+                    result = index
+                }
+            }
+        } catch (exception: Exception) {
+            Log.e(TAG, "Failed to update note item in database: $exception")
+        }
+        handler.post { resultListener?.onNoteUpdated(result, newItem) }
+    }
+    fun updateNote(newItem: NoteItem) {
+        serviceScope.launch { handleTaskNoteUpdate(newItem) }
+    }
+
+    private fun handleCreateNote(newItem: NoteItem) {
+        val category = findCategory(newItem.categoryId)
+        var result = -1
+        if (category == null) {
+            Log.e(TAG, "Failed to find category with id " + newItem.categoryId)
+            handler.post { resultListener?.onNoteCreated(result, newItem) }
+            return
+        }
+
+        newItem.categoryId = category.id
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                newItem.id = db.insertNote(newItem)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to add new item to database!", e)
+            handler.post { resultListener?.onNoteCreated(result, newItem) }
+            return
+        }
+
+        if (!category.isInitialized) {
+            Log.i(TAG, "category not initialized, not add new item in the list")
+            handler.post { resultListener?.onNoteCreated(result, newItem) }
+            return
+        }
+        result = category.addNoteItem(newItem)
+        handler.post { resultListener?.onNoteCreated(result, newItem) }
+    }
+    fun createNote(newItem: NoteItem) {
+        serviceScope.launch { handleCreateNote(newItem) }
+    }
+
 
     companion object {
         private const val TAG = "CoreService"
