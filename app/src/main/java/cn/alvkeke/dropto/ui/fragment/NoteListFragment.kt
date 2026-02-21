@@ -314,6 +314,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                     }
 
                     NoteItemView.ClickedContent.Type.REACTION -> {
+                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         removeReaction(index, content.index)
                     }
                 }
@@ -663,6 +664,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
             } else {
                 noteItem.reactions.add(reaction)
             }
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             app.service?.queueTask(Task.updateNote(noteItem))
             // FIXME: the note isEdited will be set here
             popupMenu.dismiss()
