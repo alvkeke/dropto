@@ -8,6 +8,8 @@ import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.DataBaseHelper
+import cn.alvkeke.dropto.storage.insertCategory
+import cn.alvkeke.dropto.storage.insertNote
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -89,13 +91,11 @@ object DebugFunction {
         if (!BuildConfig.DEBUG) return
         dbgLog("Perform Debug function to fill database for categories")
         try {
-            DataBaseHelper(context).use { dbHelper ->
-                dbHelper.start()
+            DataBaseHelper(context).writableDatabase.use { db ->
                 // fix the category id, make sure it will not create multiple times
-                dbHelper.insertCategory(1, "Local(Debug)", Category.Type.LOCAL_CATEGORY, "")
-                dbHelper.insertCategory(2, "REMOTE USERS", Category.Type.REMOTE_USERS, "")
-                dbHelper.insertCategory(3, "REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "")
-                dbHelper.finish()
+                db.insertCategory(1, "Local(Debug)", Category.Type.LOCAL_CATEGORY, "")
+                db.insertCategory(2, "REMOTE USERS", Category.Type.REMOTE_USERS, "")
+                db.insertCategory(3, "REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV, "")
             }
         } catch (_: Exception) {
             dbgLog("Failed to perform debug database filling")
@@ -108,8 +108,7 @@ object DebugFunction {
         dbgLog("Perform Debug function to fill database for noteItems")
 
         try {
-            DataBaseHelper(context).use { dataBaseHelper ->
-                dataBaseHelper.start()
+            DataBaseHelper(context).writableDatabase.use { db ->
                 val r = Random()
                 var idx = 0
                 for (i in 0..14) {
@@ -130,9 +129,8 @@ object DebugFunction {
                         }
                     }
                     e.id = (i + 1).toLong()
-                    dataBaseHelper.insertNote(e)
+                    db.insertNote(e)
                 }
-                dataBaseHelper.finish()
             }
         } catch (_: Exception) {
             dbgLog("Failed to perform debug database filling for note")

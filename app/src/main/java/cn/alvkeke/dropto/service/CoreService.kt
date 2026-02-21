@@ -19,6 +19,14 @@ import cn.alvkeke.dropto.service.Task.ResultListener
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.DataLoader.findCategory
+import cn.alvkeke.dropto.storage.deleteCategory
+import cn.alvkeke.dropto.storage.deleteNote
+import cn.alvkeke.dropto.storage.deleteNotes
+import cn.alvkeke.dropto.storage.insertCategory
+import cn.alvkeke.dropto.storage.insertNote
+import cn.alvkeke.dropto.storage.restoreNote
+import cn.alvkeke.dropto.storage.updateCategory
+import cn.alvkeke.dropto.storage.updateNote
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -97,10 +105,8 @@ class CoreService : Service() {
         val category = task.taskObj as Category
 
         try {
-            DataBaseHelper(this).use { helper ->
-                helper.start()
-                category.id = helper.insertCategory(category)
-                helper.finish()
+            DataBaseHelper(this).writableDatabase.use { db ->
+                category.id = db.insertCategory(category)
                 val categories: ArrayList<Category> = categories
                 categories.add(category)
                 task.result = categories.indexOf(category)
@@ -123,14 +129,12 @@ class CoreService : Service() {
         }
 
         try {
-            DataBaseHelper(this).use { helper ->
-                helper.start()
-                helper.deleteNotes(category.id)
-                if (0 == helper.deleteCategory(category.id)) Log.e(
+            DataBaseHelper(this).writableDatabase.use { db ->
+                db.deleteNotes(category.id)
+                if (0 == db.deleteCategory(category.id)) Log.e(
                     this.toString(),
                     "no category row be deleted in database"
                 )
-                helper.finish()
                 categories.remove(category)
                 task.result = index
             }
@@ -155,12 +159,10 @@ class CoreService : Service() {
         }
 
         try {
-            DataBaseHelper(this).use { helper ->
-                helper.start()
-                if (0 == helper.updateCategory(category)) {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.updateCategory(category)) {
                     Log.e(this.toString(), "no category row be updated")
                 }
-                helper.finish()
                 task.result = index
             }
         } catch (ex: Exception) {
@@ -182,10 +184,8 @@ class CoreService : Service() {
 
         newItem.categoryId = category.id
         try {
-            DataBaseHelper(this).use { dbHelper ->
-                dbHelper.start()
-                newItem.id = dbHelper.insertNote(newItem)
-                dbHelper.finish()
+            DataBaseHelper(this).writableDatabase.use { db ->
+                newItem.id = db.insertNote(newItem)
             }
         } catch (e: Exception) {
             Log.e(this.toString(), "Failed to add new item to database!", e)
@@ -216,10 +216,8 @@ class CoreService : Service() {
         if (index == -1) return
 
         try {
-            DataBaseHelper(this).use { dbHelper ->
-                dbHelper.start()
-                if (0 == dbHelper.deleteNote(e.id)) Log.e(this.toString(), "no row be deleted")
-                dbHelper.finish()
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.deleteNote(e.id)) Log.e(this.toString(), "no row be deleted")
                 e.isDeleted = true  // TODO: need to think how to treat the deleted item, mark it as deleted now
                 task.result = index
             }
@@ -245,13 +243,11 @@ class CoreService : Service() {
         if (index == -1) return
 
         try {
-            DataBaseHelper(this).use { dbHelper ->
-                dbHelper.start()
-                if (0 == dbHelper.restoreNote(e.id)) Log.e(
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.restoreNote(e.id)) Log.e(
                     this.toString(),
                     "no row be restored in database"
                 )
-                dbHelper.finish()
                 e.isDeleted = false
                 task.result = index
             }
@@ -281,9 +277,8 @@ class CoreService : Service() {
         val index = c.indexNoteItem(oldItem)
         newItem.id = oldItem.id
         try {
-            DataBaseHelper(this).use { dbHelper ->
-                dbHelper.start()
-                if (0 == dbHelper.updateNote(newItem)) {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                if (0 == db.updateNote(newItem)) {
                     Log.i(this.toString(), "no item was updated")
                     task.result = -1
                 } else {
@@ -291,7 +286,6 @@ class CoreService : Service() {
                     oldItem.isEdited = true
                     task.result = index
                 }
-                dbHelper.finish()
             }
         } catch (exception: Exception) {
             Log.e(this.toString(), "Failed to update note item in database: $exception")

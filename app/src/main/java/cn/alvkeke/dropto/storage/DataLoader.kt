@@ -16,10 +16,8 @@ object DataLoader {
     fun loadCategories(context: Context): ArrayList<Category> {
 
         try {
-            DataBaseHelper(context).use { helper ->
-                helper.start()
-                helper.queryCategory(categories)
-                helper.finish()
+            DataBaseHelper(context).readableDatabase.use { db ->
+                db.queryCategory(categories)
             }
         } catch (_: Exception) {
             Log.e(this.toString(), "Failed to retrieve category data from database")
@@ -42,11 +40,9 @@ object DataLoader {
             return true
 
         try {
-            DataBaseHelper(context).use { helper ->
-                helper.start()
-                helper.queryNote(category.id, category.noteItems)
+            DataBaseHelper(context).readableDatabase.use { db ->
+                db.queryNote(category.id, category.noteItems)
                 category.isInitialized = true
-                helper.finish()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load notes for category, $e")

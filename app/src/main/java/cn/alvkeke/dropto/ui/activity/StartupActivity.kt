@@ -88,10 +88,8 @@ class StartupActivity : AppCompatActivity() {
         setContentView(initView)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            DataBaseHelper(this@StartupActivity).use { helper ->
-                helper.start()
+            DataBaseHelper(this@StartupActivity).writableDatabase.use {
                 // do nothing, just to trigger database creation / upgrade / downgrade
-                helper.finish()
             }
             FileHelper.folderInitAndMigrate(this@StartupActivity)
 

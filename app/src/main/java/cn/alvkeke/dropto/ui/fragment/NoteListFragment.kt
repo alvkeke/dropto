@@ -47,6 +47,7 @@ import cn.alvkeke.dropto.service.Task.Companion.createNote
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
@@ -653,10 +654,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
 
         rlNoteList.highLight(index)
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
-        DataBaseHelper(context).use {
-            it.start()
+        DataBaseHelper(context).writableDatabase.use {
             reactionView.setReactions(it.getReactionList())
-            it.finish()
         }
         reactionView.onReactionClick = { reaction ->
             if (noteItem.reactions.contains(reaction)) {
@@ -684,10 +683,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, Task.ResultListener
                 _reactionView = ReactionDialog(context).apply {
                     height = 64 * (resources.displayMetrics.density).toInt()
                     setMaxWidth(resources.displayMetrics.widthPixels  / 4)
-                    DataBaseHelper(context).use {
-                        it.start()
+                    DataBaseHelper(context).readableDatabase.use {
                         reactionList.addAll(it.getReactionList())
-                        it.finish()
                     }
                 }
             }
