@@ -17,6 +17,7 @@
     <color name="color_text_main">#222222</color>
     <color name="color_text_sub">#555555</color>
     <color name="ext_info_mask">#FFFFFF</color>
+    <color name="reaction_background">#4B98E8</color>
 
 
     <!--  common values without set in night  -->
@@ -29,5 +30,4 @@
     <color name="teal_200">#B2DFDB</color>
     <color name="teal_700">#009688</color>
     <color name="color_reaction">#F44336</color>
-    <color name="reaction_background">#99B4E0</color>
 </resources>

@@ -238,11 +238,9 @@ class NoteItemView @JvmOverloads constructor(
     }
     private val reactionBgPaint = Paint().apply {
         color = ContextCompat.getColor(context, R.color.reaction_background)
-        alpha = 0xAA
+        alpha =240
         isAntiAlias = true
     }
-//    private val reactionRect = RectF()
-//    private val reactionBgPath = Path()
     private val senderAvatarPaint = Paint().apply {
         isAntiAlias = true
     }
