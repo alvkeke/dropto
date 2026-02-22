@@ -13,131 +13,159 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 
 open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
-    private var timeDown: Long = 0
-    private var downRawX = 0f
-    private var downRawY = 0f
-    private var isSliding = false
-    private var isSlidable = false
-    private var isLongClickHold = false
-    private var isShortClick = false
+
 
     private val handler = Handler(Looper.getMainLooper())
-    private lateinit var longPressView: View
+
+    private val longClickTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+
+    private enum class GestureState {
+        IDLE,
+        STARTED,
+        DRAG_X,
+        DRAG_Y,
+        LONG_PRESS_HOLDING,   // long click is triggered, but not yet released
+    }
+
+    private var timeDown: Long = 0  // for move speed
+    private var downRawX = 0f       // for move distance
+    private var downRawY = 0f       // for move distance
+    private lateinit var longPressParentView: View
     private var longPressItemView: View? = null
 
     private var lastHoldItemIndex: Int = -1
     private var lastSlideOnStatus: Boolean = false
+    private var gestureState = GestureState.IDLE
 
-    private val longClickTimeout = ViewConfiguration.getLongPressTimeout().toLong()
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
         val recyclerView = view as RecyclerView
         val itemView: View?
-        val deltaRawX: Float
-        val deltaRawY: Float
+        var deltaRawX: Float
+        var deltaRawY: Float
         when (motionEvent.action) {
             MotionEvent.ACTION_DOWN -> {
                 downRawX = motionEvent.rawX
                 downRawY = motionEvent.rawY
                 timeDown = System.currentTimeMillis()
-                longPressView = view
-                longPressItemView =
-                    recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
+                longPressParentView = view
+                longPressItemView = recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                 if (longPressItemView != null) {
                     lastHoldItemIndex = recyclerView.getChildLayoutPosition(longPressItemView!!)
                     Log.v(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
                     handler.postDelayed(longPressRunnable, longClickTimeout)
                 }
-                isShortClick = true
-                isSlidable = true
+                gestureState = GestureState.STARTED
+                lastSlideOnStatus = false
             }
 
             MotionEvent.ACTION_MOVE -> {
                 deltaRawX = motionEvent.rawX - downRawX
                 deltaRawY = motionEvent.rawY - downRawY
-                if (deltaRawX * deltaRawX + deltaRawY * deltaRawY > touchSlop * touchSlop) {
-                    handler.removeCallbacks(longPressRunnable)
-                    isShortClick = false
-                }
-                if (isLongClickHold) {
-                    itemView =
-                        recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y) ?:
-                        return lastSlideOnStatus
-                    val index = recyclerView.getChildLayoutPosition(itemView)
-                    if (index == lastHoldItemIndex) {
-                        return lastSlideOnStatus
-                    }
-                    lastHoldItemIndex = index
-                    Log.v(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
-                    lastSlideOnStatus = onItemLongClickSlideOn(itemView, index)
-                    if (lastSlideOnStatus) {
-                        return true
-                    }
-                }
 
-                if (isSliding) {
-                    if (onSlideOnGoing(view, motionEvent, deltaRawX, deltaRawY)) {
-                        return true
+                when (gestureState) {
+                    GestureState.STARTED -> {
+                        if (abs(deltaRawY) > touchSlop) {
+                            gestureState = GestureState.DRAG_Y     // vertical move have higher priority
+                            handler.removeCallbacks(longPressRunnable)
+                            return onDraggingVertical(view, motionEvent, deltaRawY)
+                        } else if (abs(deltaRawX) > touchSlop) {
+                            gestureState = GestureState.DRAG_X
+                            handler.removeCallbacks(longPressRunnable)
+                            return onDraggingHorizontal(view, motionEvent, deltaRawX)
+                        }
                     }
-                }
-                if (abs(deltaRawY) > touchSlop) {
-                    isSlidable = false
-                }
-                if (isSlidable && deltaRawX > THRESHOLD_SLIDE) {
-                    isSliding = true
+                    GestureState.DRAG_X -> {
+                        return onDraggingHorizontal(view, motionEvent, deltaRawX)
+                    }
+                    GestureState.DRAG_Y -> {
+                        return onDraggingVertical(view, motionEvent, deltaRawY)
+                    }
+                    GestureState.LONG_PRESS_HOLDING -> {
+                        itemView = recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
+                            ?: return lastSlideOnStatus
+                        val index = recyclerView.getChildLayoutPosition(itemView)
+                        if (index != lastHoldItemIndex) {
+                            lastHoldItemIndex = index
+                            Log.v(this.toString(), "lastHoldSlideView set to $lastHoldItemIndex")
+                            lastSlideOnStatus = onItemLongClickSlideOn(itemView, index)
+                        }
+                        return lastSlideOnStatus
+                    }
+                    GestureState.IDLE -> {
+                        return false        // this should not happen, but just in case
+                    }
                 }
             }
 
-            MotionEvent.ACTION_UP -> {
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 handler.removeCallbacks(longPressRunnable)
-                itemView =
-                    recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
-                if (isLongClickHold) {
-                    if (itemView == null) {
-                        isLongClickHold = false
-                        return true
-                    }
-                    val index = recyclerView.getChildLayoutPosition(itemView)
-                    val ret = onItemLongClickRelease(itemView, index)
-                    isLongClickHold = false
-                    if (ret) return true
-                }
-                if (isShortClick && System.currentTimeMillis() - timeDown < TIME_THRESHOLD_CLICK) {
-                    isShortClick = false
-                    if (itemView != null) {
-                        if (handleItemClick(recyclerView, itemView, motionEvent)) {
+                itemView = recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
+                val state = gestureState
+                gestureState = GestureState.IDLE
+
+                when (state) {
+                    GestureState.IDLE -> return false
+                    GestureState.STARTED -> {
+                        // single click
+                        if (itemView != null) {
+                            if (handleItemClick(recyclerView, itemView, motionEvent)) {
+                                return true
+                            }
+                            if (handleItemClick(recyclerView, itemView, null)) {
+                                return true
+                            }
+                        }
+                        if (onClick(view, motionEvent)) {
                             return true
                         }
-                        if (handleItemClick(recyclerView, itemView, null)) {
+                    }
+                    GestureState.DRAG_X, -> {
+                        deltaRawX = motionEvent.rawX - downRawX
+                        val currentTime = System.currentTimeMillis()
+                        val speed = deltaRawX / (currentTime - timeDown)
+                        if (onDragHorizontalEnd(view, motionEvent, deltaRawX, speed)) {
                             return true
                         }
                     }
-                    if (onClick(view, motionEvent)) {
-                        return true
+                    GestureState.DRAG_Y -> {
+                        deltaRawY = motionEvent.rawY - downRawX
+                        val currentTime = System.currentTimeMillis()
+                        val speed = deltaRawY / (currentTime - timeDown)
+                        if (onDragVerticalEnd(view, motionEvent, deltaRawY, speed)) {
+                            return true
+                        }
+                    }
+                    GestureState.LONG_PRESS_HOLDING -> {
+                        if (itemView == null) {
+                            return true
+                        }
+                        val index = recyclerView.getChildLayoutPosition(itemView)
+                        val ret = onItemLongClickRelease(itemView, index)
+                        if (ret) return true
                     }
                 }
-                if (isSliding) {
-                    deltaRawX = motionEvent.rawX - downRawX
-                    deltaRawY = motionEvent.rawY - downRawY
-                    val currentTime = System.currentTimeMillis()
-                    val speed = deltaRawX / (currentTime - timeDown)
-                    isSliding = false
-                    if (onSlideEnd(view, motionEvent, deltaRawX, deltaRawY, speed)) {
-                        return true
-                    }
-                }
+
             }
         }
         return false
     }
 
-    open fun onSlideEnd(v: View, e: MotionEvent, deltaX: Float, deltaY: Float, speed: Float): Boolean {
+    open fun onDragHorizontalEnd(v: View, e: MotionEvent, delta: Float, speed: Float): Boolean {
         return false
     }
 
-    open fun onSlideOnGoing(v: View, e: MotionEvent, deltaX: Float, deltaY: Float): Boolean {
+    open fun onDraggingHorizontal(v: View, e: MotionEvent, delta: Float): Boolean {
+        return false
+    }
+
+    open fun onDragVerticalEnd(v: View, e: MotionEvent, delta: Float, speed: Float): Boolean {
+        return false
+    }
+
+    open fun onDraggingVertical(v: View, e: MotionEvent, delta: Float): Boolean {
         return false
     }
 
@@ -147,16 +175,18 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
 
     private val longPressRunnable: Runnable = object : Runnable {
         override fun run() {
+            if (gestureState != GestureState.STARTED) {
+                // if other gesture is already triggered, do not trigger long click
+                return
+            }
+            gestureState = GestureState.LONG_PRESS_HOLDING
             if (longPressItemView != null) {
-                if (handleItemLongClick(longPressView, longPressItemView!!)) {
-                    lastSlideOnStatus = true
-                    isLongClickHold = true
+                lastSlideOnStatus = true
+                if (handleItemLongClick(longPressParentView, longPressItemView!!)) {
                     return
                 }
             }
-            if (onLongClick(longPressView)) {
-                isLongClickHold = true
-            }
+            onLongClick(longPressParentView)
         }
     }
 
@@ -202,10 +232,4 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
         return false
     }
 
-    companion object {
-        private const val TIME_THRESHOLD_CLICK: Long = 200
-//        private const val TIME_THRESHOLD_LONG_CLICK: Long = 500
-        private const val THRESHOLD_SLIDE = 45
-//        private const val THRESHOLD_NO_MOVED = 20
-    }
 }

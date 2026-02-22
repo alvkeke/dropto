@@ -367,16 +367,15 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             return true
         }
 
-        override fun onSlideEnd(
+        override fun onDragHorizontalEnd(
             v: View,
             e: MotionEvent,
-            deltaX: Float,
-            deltaY: Float,
+            delta: Float,
             speed: Float,
         ): Boolean {
             val width = fragmentView.width
             val thresholdExit = width / 3
-            if (speed > 2 || deltaX > thresholdExit) {
+            if (speed > 2 || delta > thresholdExit) {
                 finish()
             } else {
                 resetPosition()
@@ -384,14 +383,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             return true
         }
 
-        override fun onSlideOnGoing(
+        override fun onDraggingHorizontal(
             v: View,
             e: MotionEvent,
-            deltaX: Float,
-            deltaY: Float
+            delta: Float,
         ): Boolean {
-            if (deltaX > 0) {
-                moveFragmentView(deltaX)
+            if (delta > 0) {
+                moveFragmentView(delta)
             } else {
                 moveFragmentView(0f)
             }

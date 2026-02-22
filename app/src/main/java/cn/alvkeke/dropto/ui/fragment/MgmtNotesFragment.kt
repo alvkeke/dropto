@@ -188,6 +188,37 @@ class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
             override fun onClick(v: View, e: MotionEvent): Boolean {
                 return true
             }
+//
+//            override fun onItemClickAt(v: View, index: Int, event: MotionEvent): Boolean {
+//                return true
+//            }
+//
+//            override fun onItemLongClickRelease(itemView: View, index: Int): Boolean {
+//                return true
+//            }
+//
+//            override fun onItemLongClickSlideOn(v: View, index: Int): Boolean {
+//                return true
+//            }
+//
+//            override fun onSlideEnd(
+//                v: View,
+//                e: MotionEvent,
+//                deltaX: Float,
+//                deltaY: Float,
+//                speed: Float
+//            ): Boolean {
+//                return true
+//            }
+//
+//            override fun onSlideOnGoing(
+//                v: View,
+//                e: MotionEvent,
+//                deltaX: Float,
+//                deltaY: Float
+//            ): Boolean {
+//                return true
+//            }
         }
 
     }
