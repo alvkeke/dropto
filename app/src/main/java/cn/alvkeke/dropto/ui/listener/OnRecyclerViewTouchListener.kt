@@ -99,8 +99,7 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                     }
                 }
             }
-
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 handler.removeCallbacks(longPressRunnable)
                 itemView = recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                 val state = gestureState
@@ -118,11 +117,16 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                                 return true
                             }
                         }
-                        if (onClick(view, motionEvent)) {
-                            return true
+                        val deltaRawX = motionEvent.rawX - downRawX
+                        val deltaRawY = motionEvent.rawY - downRawY
+                        if (abs(deltaRawX) < touchSlop && abs(deltaRawY) < touchSlop) {
+                            if (onClick(view, motionEvent)) {
+                                return true
+                            }
                         }
+                        return true
                     }
-                    GestureState.DRAG_X, -> {
+                    GestureState.DRAG_X -> {
                         deltaRawX = motionEvent.rawX - downRawX
                         val currentTime = System.currentTimeMillis()
                         val speed = deltaRawX / (currentTime - timeDown)
@@ -147,7 +151,10 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                         if (ret) return true
                     }
                 }
-
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                handler.removeCallbacks(longPressRunnable)
+                gestureState = GestureState.IDLE
             }
         }
         return false
