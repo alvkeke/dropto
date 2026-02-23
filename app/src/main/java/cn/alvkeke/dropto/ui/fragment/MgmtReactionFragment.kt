@@ -155,10 +155,9 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
                     if (selectedIndices.isEmpty()) {
                         return false
                     }
+                    val selectedItems = selectedIndices.map { adapter.reactionList[it] }
                     rlReaction.unSelectAllItems()
-                    selectedIndices.forEach {
-                        adapter.delItem(it)
-                    }
+                    selectedItems.forEach { adapter.delItem(it) }
                 }
                 R.id.mgmt_reaction_menu_select_all -> {
                     rlReaction.selectAllItems()
@@ -212,7 +211,7 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
     }
 
     private inner class ReactionListAdapter(
-        private val reactionList: MutableList<String>
+        val reactionList: MutableList<String>
     ): RecyclerView.Adapter<ReactionListAdapter.ViewHolder>() {
         private var itemTouchHelper: ItemTouchHelper? = null
         fun setItemTouchHelper(helper: ItemTouchHelper) {
@@ -327,9 +326,12 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
             notifyItemInserted(reactionList.size - 1)
         }
 
-        fun delItem(index: Int) {
-            reactionList.removeAt(index)
-            notifyItemRemoved(index)
+        fun delItem(item: String) {
+            val index = reactionList.indexOf(item)
+            if (index != -1) {
+                reactionList.removeAt(index)
+                notifyItemRemoved(index)
+            }
         }
     }
 
