@@ -162,7 +162,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     override fun onBackPressed(): Boolean {
         if (rlNoteList.isSelectMode) {
-            rlNoteList.clearSelectItems()
+            rlNoteList.unSelectAllItems()
         } else {
             finish()
         }
@@ -186,25 +186,25 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private fun handleMenuDelete() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
-        rlNoteList.clearSelectItems()
+        rlNoteList.unSelectAllItems()
         requestRemoveNotes(items)
     }
 
     private fun handleMenuCopy() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
-        rlNoteList.clearSelectItems()
+        rlNoteList.unSelectAllItems()
         handleCopyMultipleNotes(items)
     }
 
     private fun handleMenuShare() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
-        rlNoteList.clearSelectItems()
+        rlNoteList.unSelectAllItems()
         handleShareMultipleNotes(items)
     }
 
     private fun handleMenuForward() {
         val items: ArrayList<NoteItem> = getSelectedNoteItems()
-        rlNoteList.clearSelectItems()
+        rlNoteList.unSelectAllItems()
         handleForwardMultipleNotes(items)
     }
 

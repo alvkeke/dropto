@@ -20,8 +20,9 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_status_bar"
         android:background="?android:statusBarColor"
-        app:title="Reactions Management"
+        app:title="Reactions"
         app:navigationIcon="@drawable/icon_common_back"
+        app:menu="@menu/mgmt_reaction_toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
@@ -43,7 +44,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <androidx.recyclerview.widget.RecyclerView
+    <cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
         android:id="@+id/mgmt_reaction_list"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_btn_add"

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/mgmt_reaction_menu_unselect_all"
+        app:showAsAction="ifRoom"
+        android:visible="false"
+        android:icon="@drawable/icon_common_deselect"
+        android:title="@string/string_ok" />
+
+    <item
+        android:id="@+id/mgmt_reaction_menu_select_all"
+        app:showAsAction="always"
+        android:visible="false"
+        android:icon="@drawable/icon_common_select_all"
+        android:title="@string/string_ok" />
+
+    <item
+        android:id="@+id/mgmt_reaction_menu_item_delete"
+        app:showAsAction="always"
+        android:visible="false"
+        android:icon="@drawable/icon_common_remove"
+        android:title="@string/string_delete" />
+
+</menu>

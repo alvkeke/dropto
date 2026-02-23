@@ -256,9 +256,18 @@ class SelectableRecyclerView @JvmOverloads constructor(
         }
     }
 
-    fun clearSelectItems() {
+    fun unSelectAllItems() {
         selectedMap.filter { v -> v.value }.forEach { e ->
             unselectItem(e.key)
+        }
+    }
+
+    fun selectAllItems() {
+        val totalCount = adapter?.itemCount ?: 0
+        for (i in 0 until totalCount) {
+            if (!isItemSelected(i)) {
+                selectItem(i)
+            }
         }
     }
 

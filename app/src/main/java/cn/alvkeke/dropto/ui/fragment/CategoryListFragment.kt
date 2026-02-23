@@ -150,11 +150,11 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
                         return false
                     }
                     handleCategoryDetailShow(category)
-                    rlCategory.clearSelectItems()
+                    rlCategory.unSelectAllItems()
                 }
                 R.id.category_menu_item_remove -> {
                     val selected: ArrayList<Category> = getSelectedCategory()
-                    rlCategory.clearSelectItems()
+                    rlCategory.unSelectAllItems()
                     AlertDialog.Builder(context)
                         .setTitle(R.string.dialog_category_delete_selected_title)
                         .setMessage(R.string.dialog_category_delete_selected_message)

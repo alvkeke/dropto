@@ -1,8 +1,9 @@
 package cn.alvkeke.dropto.ui.fragment
 
 import android.annotation.SuppressLint
-import android.graphics.Color
+import android.content.Context
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +13,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.view.forEach
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -21,7 +23,9 @@ import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.storage.updateReactionList
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
+import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
+import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 
 class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
@@ -30,7 +34,7 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
     private lateinit var statusBar: View
     private lateinit var toolbar: MaterialToolbar
     private lateinit var navBar: View
-    private lateinit var rlReaction: RecyclerView
+    private lateinit var rlReaction: SelectableRecyclerView
     private lateinit var adapter: ReactionListAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
     private lateinit var btnAdd: Button
@@ -61,6 +65,7 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
         UserInterfaceHelper.setSystemBarHeight(view, statusBar, navBar)
 
         toolbar.setNavigationOnClickListener { finish() }
+        toolbar.setOnMenuItemClickListener(ReactionMenuItemClickListener())
 
         val reactionList = mutableListOf<String>()
         DataBaseHelper(requireContext()).writableDatabase.use {
@@ -122,6 +127,8 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
             }
         }
 
+        rlReaction.setOnTouchListener(ReactionListTouchListener(requireContext()))
+        rlReaction.setSelectListener(ReactionListSelectListener())
     }
 
     override fun onBackPressed(): Boolean {
@@ -138,7 +145,73 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
         )
     }
 
-    private class ReactionListAdapter(
+    private inner class ReactionMenuItemClickListener : androidx.appcompat.widget.Toolbar.OnMenuItemClickListener {
+        override fun onMenuItemClick(menuItem: android.view.MenuItem): Boolean {
+            val menuId = menuItem.itemId
+
+            when (menuId) {
+                R.id.mgmt_reaction_menu_item_delete -> {
+                    val selectedIndices = rlReaction.selectedIndexes
+                    if (selectedIndices.isEmpty()) {
+                        return false
+                    }
+                    rlReaction.unSelectAllItems()
+                    selectedIndices.forEach {
+                        adapter.delItem(it)
+                    }
+                }
+                R.id.mgmt_reaction_menu_select_all -> {
+                    rlReaction.selectAllItems()
+                }
+                R.id.mgmt_reaction_menu_unselect_all -> {
+                    rlReaction.unSelectAllItems()
+                }
+                else -> {
+                    return false
+                }
+            }
+
+            return true
+        }
+    }
+
+    private inner class ReactionListSelectListener: SelectableRecyclerView.SelectListener {
+
+        override fun onSelectEnter() {
+            toolbar.menu.forEach {
+                it.isVisible = true
+            }
+        }
+
+        override fun onSelectExit() {
+            toolbar.menu.forEach {
+                it.isVisible = false
+            }
+        }
+
+        override fun onSelect(index: Int) { }
+
+        override fun onUnSelect(index: Int) { }
+    }
+
+    private inner class ReactionListTouchListener(
+        context: Context
+    ): OnRecyclerViewTouchListener(context) {
+        override fun onItemLongClick(v: View, index: Int): Boolean {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            rlReaction.toggleSelectItems(index)
+            return true
+        }
+
+        override fun onItemClick(v: View, index: Int): Boolean {
+            if (rlReaction.isSelectMode) {
+                rlReaction.toggleSelectItems(index)
+            }
+            return true
+        }
+    }
+
+    private inner class ReactionListAdapter(
         private val reactionList: MutableList<String>
     ): RecyclerView.Adapter<ReactionListAdapter.ViewHolder>() {
         private var itemTouchHelper: ItemTouchHelper? = null
@@ -146,7 +219,7 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
             this.itemTouchHelper = helper
         }
 
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val textView: TextView
             val imageView: ImageView
             init {
@@ -231,8 +304,12 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
             val reaction = reactionList[position]
             holder.textView.text = reaction
             holder.imageView.setOnLongClickListener {
-                itemTouchHelper?.startDrag(holder)
-                true
+                if (rlReaction.isSelectMode) {
+                    false
+                } else {
+                    itemTouchHelper?.startDrag(holder)
+                    true
+                }
             }
         }
 
@@ -248,6 +325,11 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
         fun addItem(item: String) {
             reactionList.add(item)
             notifyItemInserted(reactionList.size - 1)
+        }
+
+        fun delItem(index: Int) {
+            reactionList.removeAt(index)
+            notifyItemRemoved(index)
         }
     }
 
