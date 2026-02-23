@@ -145,6 +145,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             noteItemAdapter.setList(category.noteItems)
         }
 
+        noteItemAdapter.showDeleted = false
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
 
@@ -163,6 +164,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     override fun onBackPressed(): Boolean {
         if (rlNoteList.isSelectMode) {
             rlNoteList.unSelectAllItems()
+        } else if (isFilteringReaction) {
+            cancelReactionFilter()
         } else {
             finish()
         }
@@ -251,16 +254,49 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         override fun onSelectExit() {
             setToolbarMenuBySelectedItems(0)
-            toolbar.setNavigationIcon(R.drawable.icon_common_back)
-            toolbar.title = category.title
+            if (isFilteringReaction) {
+                toolbar.setNavigationIcon(R.drawable.icon_common_cross)
+                toolbar.setTitle("Tag: $filteredReaction")
+            } else {
+                toolbar.setNavigationIcon(R.drawable.icon_common_back)
+                toolbar.title = category.title
+            }
         }
 
         override fun onSelect(index: Int) {
-            toolbar.title = "${rlNoteList.selectedCount}"
+            toolbar.title = if (isFilteringReaction) {
+                "Tag: $filteredReaction - ${rlNoteList.selectedCount}"
+            } else {
+                "${rlNoteList.selectedCount}"
+            }
         }
         override fun onUnSelect(index: Int) {
-            toolbar.title = "${rlNoteList.selectedCount}"
+            toolbar.title = if (isFilteringReaction) {
+                "Tag: $filteredReaction - ${rlNoteList.selectedCount}"
+            } else {
+                "${rlNoteList.selectedCount}"
+            }
         }
+    }
+
+    private var reactionFilter : ((NoteItem) -> Boolean)? = null
+    private lateinit var filteredReaction: String
+    private val isFilteringReaction: Boolean
+        get() = reactionFilter != null
+    private fun setReactionFilter(reaction: String) {
+        filteredReaction = reaction
+        reactionFilter = { e -> e.reactions.contains(filteredReaction) }
+        noteItemAdapter.addFilter(reactionFilter!!)
+        toolbar.setNavigationIcon(R.drawable.icon_common_cross)
+        toolbar.setTitle("Tag: $filteredReaction")
+    }
+    private fun cancelReactionFilter() {
+        reactionFilter?.let {
+            noteItemAdapter.removeFilter(it)
+        }
+        toolbar.setNavigationIcon(R.drawable.icon_common_back)
+        toolbar.setTitle(category.title)
+        reactionFilter = null
     }
 
     private inner class NoteListTouchListener : OnRecyclerViewTouchListener(context) {
@@ -328,7 +364,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
 
-            if (!rlNoteList.isSelectMode) {
+            if (!rlNoteList.isSelectMode && !isFilteringReaction) {
                 val location = IntArray(2)
                 v.getLocationOnScreen(location)
                 val localX = rawX - location[0]
@@ -337,8 +373,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 val content = (v as NoteItemView).checkClickedContent(localX, localY)
                 if (content.type == NoteItemView.ClickedContent.Type.REACTION) {
                     val reaction = noteItemAdapter.get(index).reactions[content.index]
-                    Log.e(TAG, "filter notes with reaction: $reaction, not implemented yet")
-//                     return true
+                    setReactionFilter(reaction)
+                    return true
                 }
             }
 

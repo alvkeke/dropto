@@ -10,7 +10,7 @@ import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.Category.Companion.typeToIconResource
 
-class CategoryListAdapter : SelectableListAdapter<Category, CategoryListAdapter.ViewHolder>() {
+class CategoryListAdapter : FilterableListAdapter<Category, CategoryListAdapter.ViewHolder>() {
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ivIcon: ImageView = itemView.findViewById(R.id.item_category_icon)
         private val tvTitle: TextView = itemView.findViewById(R.id.item_category_title)
