@@ -325,8 +325,23 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         private var moveToSelect = false
         private var firstHoldItem = -1
         private var lastHoldItem = -1
-        override fun onItemLongClick(v: View, index: Int): Boolean {
+        override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+
+            if (!rlNoteList.isSelectMode) {
+                val location = IntArray(2)
+                v.getLocationOnScreen(location)
+                val localX = rawX - location[0]
+                val localY = rawY - location[1]
+
+                val content = (v as NoteItemView).checkClickedContent(localX, localY)
+                if (content.type == NoteItemView.ClickedContent.Type.REACTION) {
+                    val reaction = noteItemAdapter.get(index).reactions[content.index]
+                    Log.e(TAG, "filter notes with reaction: $reaction, not implemented yet")
+//                     return true
+                }
+            }
+
             firstHoldItem = index
             lastHoldItem = index
             if (rlNoteList.isItemSelected(index)) {

@@ -233,7 +233,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
             return true
         }
 
-        override fun onItemLongClick(v: View, index: Int): Boolean {
+        override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             rlCategory.toggleSelectItems(index)
             return true

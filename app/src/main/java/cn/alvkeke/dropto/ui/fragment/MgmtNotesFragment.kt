@@ -169,7 +169,7 @@ class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
         }
 
         private inner class OnListTouchListener(context: Context) : OnRecyclerViewTouchListener(context) {
-            override fun onItemLongClick(v: View, index: Int): Boolean {
+            override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
                 v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 val item = adapter.get(index)
                 if (item.isDeleted) {

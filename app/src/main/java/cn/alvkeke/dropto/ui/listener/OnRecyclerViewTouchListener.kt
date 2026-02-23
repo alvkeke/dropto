@@ -182,7 +182,12 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
             gestureState = GestureState.LONG_PRESS_HOLDING
             if (longPressItemView != null) {
                 lastSlideOnStatus = true
-                if (handleItemLongClick(longPressParentView, longPressItemView!!)) {
+                if (handleItemLongClick(
+                        longPressParentView,
+                        longPressItemView!!,
+                    downRawX,
+                    downRawY
+                )) {
                     return
                 }
             }
@@ -194,11 +199,11 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
         return false
     }
 
-    private fun handleItemLongClick(parent: View, itemView: View): Boolean {
+    private fun handleItemLongClick(parent: View, itemView: View, rawX: Float, rawY: Float): Boolean {
         val recyclerView = parent as RecyclerView
         val index = recyclerView.getChildLayoutPosition(itemView)
         assert(index != -1)
-        return onItemLongClick(itemView, index)
+        return onItemLongClick(itemView, index, rawX, rawY)
     }
 
     private fun handleItemClick(parent: View, itemView: View, e: MotionEvent?): Boolean {
@@ -220,7 +225,7 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
         return false
     }
 
-    open fun onItemLongClick(v: View, index: Int): Boolean {
+    open fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
         return false
     }
 
