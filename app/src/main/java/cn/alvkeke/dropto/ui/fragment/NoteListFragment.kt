@@ -32,6 +32,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
+import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -79,6 +80,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private lateinit var fragmentParent: View
     private lateinit var fragmentView: View
     private lateinit var etInputText: EditText
+    private lateinit var btnCancelEdit: ImageButton
     private lateinit var btnAttachImage: CountableImageButton
     private lateinit var btnAttachFile: CountableImageButton
     private val btnAttachList: ArrayList<CountableImageButton> = ArrayList()
@@ -118,6 +120,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
         val btnAddNote = view.findViewById<ImageButton>(R.id.note_list_input_button)
+        btnCancelEdit = view.findViewById(R.id.note_list_input_edit_cancel_button)
         btnAttachImage = view.findViewById(R.id.note_list_input_attach_image)
         btnAttachFile = view.findViewById(R.id.note_list_input_attach_file)
         etInputText = view.findViewById(R.id.note_list_input_box)
@@ -149,6 +152,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
 
+        btnCancelEdit.setOnClickListener { exitEditMode() }
         btnAddNote.setOnClickListener(OnItemAddClick())
         btnAttachList.add(btnAttachFile)
         btnAttachList.add(btnAttachImage)
@@ -591,11 +595,25 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private inner class OnItemAddClick : OnClickListener {
         override fun onClick(v: View) {
             val content = etInputText.text.toString().trim { it <= ' ' }
-            val item = NoteItem(content)
-            item.categoryId = category.id
+            val item = if (isEditMode) {
+                val e = btnCancelEdit.tag as NoteItem
+                e.text = content
+                e
+            } else {
+                val e = NoteItem(content)
+                e.categoryId = category.id
+                e
+            }
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 if (attachments.isEmpty()) {
-                    if (content.isEmpty()) return@launch
+                    if (content.isEmpty()) {
+                        if (isEditMode) {
+                            v.performHapticFeedback(
+                                HapticFeedbackConstants.LONG_PRESS
+                            )
+                        }
+                        return@launch
+                    }
                 } else {
                     for (a in attachments) {
                         val folder = FileHelper.attachmentStorage
@@ -605,7 +623,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                         item.attachments.add(imageFile)
                     }
                 }
-                requestCreateNote(item)
+                if (isEditMode) {
+                    requestUpdateNote(item)
+                } else {
+                    requestCreateNote(item)
+                }
             }
         }
     }
@@ -638,7 +660,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 }
 
                 R.id.item_pop_m_edit -> {
-                    showNoteDetailFragment(note)
+                    setupEditMode(note)
                 }
 
                 R.id.item_pop_m_copy_text -> {
@@ -853,18 +875,48 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         forwardFragment.show(parentFragmentManager, null)
     }
 
-    private var pendingNoteItem: NoteItem? = null
-    private fun setPendingItem(item: NoteItem) {
-        pendingNoteItem = item
-    }
+    private var EditText.reqPendingItem : NoteItem?
+        get() = this.getTag(R.id.tag_note_req_pending_item) as? NoteItem
+        set(value) {
+            this.setTag(R.id.tag_note_req_pending_item, value)
+        }
 
-    private fun clearPendingItem() {
-        pendingNoteItem = null
+    private var EditText.savedTextBeforeEdit: String?
+        get() = this.getTag(R.id.tag_note_saved_text_for_edit) as? String
+        set(value) {
+            this.setTag(R.id.tag_note_saved_text_for_edit, value)
+        }
+
+    private val isEditMode: Boolean
+        get() = btnCancelEdit.isVisible
+    private fun setupEditMode(note: NoteItem) {
+        btnCancelEdit.visibility = View.VISIBLE
+        btnCancelEdit.tag = note
+        if (etInputText.text.isNotEmpty()) {
+            etInputText.savedTextBeforeEdit = etInputText.text.toString()
+        }
+        etInputText.setText(note.text)
+        etInputText.setSelection(note.text.length)
+    }
+    private fun exitEditMode() {
+        btnCancelEdit.visibility = View.GONE
+        btnCancelEdit.tag = null
+        if (etInputText.savedTextBeforeEdit != null) {
+            etInputText.setText(etInputText.savedTextBeforeEdit)
+            etInputText.savedTextBeforeEdit = null
+        } else {
+            etInputText.text.clear()
+        }
     }
 
     private fun requestCreateNote(item: NoteItem) {
-        setPendingItem(item)
+        etInputText.reqPendingItem = item  // pending item, will be cleared after created successfully
         app.service?.createNote(item)
+    }
+
+    private fun requestUpdateNote(item: NoteItem) {
+        etInputText.reqPendingItem = item  // pending item, will be cleared after updated successfully
+        app.service?.updateNote(item)
     }
 
     private fun requestRemoveNote(item: NoteItem) {
@@ -884,14 +936,20 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     override fun onNoteCreated(result: Int, noteItem: NoteItem) {
         noteItemAdapter.add(result, noteItem)
         rlNoteList.smoothScrollToPosition(0)
-        if (noteItem == pendingNoteItem) {
-            clearPendingItem()
+        if (noteItem == etInputText.reqPendingItem) {
+            etInputText.reqPendingItem = null
             etInputText.text.clear()
             clearAttachments()
         }
     }
 
     override fun onNoteUpdated(result: Int, noteItem: NoteItem) {
+        if (noteItem == etInputText.reqPendingItem) {
+            if (isEditMode) {
+                exitEditMode()
+            }
+            clearAttachments()
+        }
         noteItemAdapter.update(noteItem)
     }
 
