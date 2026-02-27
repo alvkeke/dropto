@@ -1205,6 +1205,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
         etInputText.setText(note.text)
         etInputText.setSelection(note.text.length)
+        btnSend.setImageResource(R.drawable.icon_common_check)
     }
     private fun exitEditMode() {
         isEditingMode = false
@@ -1214,6 +1215,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         } else {
             etInputText.text.clear()
         }
+        btnSend.setImageResource(R.drawable.img_btn_note_send)
     }
 
     private var reqPendingItem : NoteItem? = null
