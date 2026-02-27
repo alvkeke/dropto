@@ -634,26 +634,38 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             val layout = ConstraintLayout(parent.context)
             if (itemSize > 0) {
                 layout.layoutParams = RecyclerView.LayoutParams(
-                    itemSize,
-                    itemSize
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
             }
 
+            val height: Int
+            val width: Int
             val view = when (viewType) {
-                0 -> ImageView(parent.context).apply {
-                    scaleType = ImageView.ScaleType.CENTER_CROP
+                0 -> {
+                    height = itemSize
+                    width = itemSize
+                    ImageView(parent.context).apply {
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                    }
                 }
-                else -> TextView(parent.context).apply {
-                    setTextColor(ContextCompat.getColor(
-                        parent.context,
-                        R.color.color_text_main
-                    ))
-                    textAlignment = TextView.TEXT_ALIGNMENT_CENTER
+                else -> {
+                    height = itemSize
+                    width = itemSize * 2
+                    TextView(parent.context).apply {
+                        setTextColor(ContextCompat.getColor(
+                            parent.context,
+                            R.color.color_text_main
+                        ))
+                        setBackgroundResource(R.color.note_bubble_background)
+                        textAlignment = TextView.TEXT_ALIGNMENT_CENTER
+                        gravity = Gravity.CENTER
+                    }
                 }
             }.apply {
                 layoutParams = ConstraintLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    width,
+                    height
                 ).apply {
                     startToStart = layout.id
                     topToTop = layout.id
@@ -662,8 +674,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
             val overlay = OverlayView(parent.context).apply {
                 layoutParams = ConstraintLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    width,
+                    height
                 ).apply {
                     startToStart = layout.id
                     topToTop = layout.id
@@ -733,11 +745,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     }
                 }
             }
-            if (item.deleteMarked) {
-                holder.overlay.visibility = View.VISIBLE
-            } else {
-                holder.overlay.visibility = View.GONE
-            }
+            holder.overlay.isVisible = item.deleteMarked
         }
 
         override fun getItemViewType(position: Int): Int {
