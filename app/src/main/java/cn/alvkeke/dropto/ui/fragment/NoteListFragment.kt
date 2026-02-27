@@ -77,6 +77,7 @@ import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -597,6 +598,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     when (item.file.type) {
                         AttachmentFile.Type.MEDIA -> {
                             val imageView = holder.itemView as ImageView
+                            imageView.setImageBitmap(null)
                             ImageLoader.loadImageAsync(
                                 item.file.md5file,
                             ) { bitmap ->
@@ -616,6 +618,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     when (item.type) {
                         AttachmentFile.Type.MEDIA -> {
                             val imageView = holder.itemView as ImageView
+                            imageView.setImageBitmap(null)
                             scope.launch {
                                 try {
                                     val resolver = imageView.context.contentResolver
@@ -631,6 +634,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                                         }
                                     withContext(Dispatchers.Main) {
                                         imageView.setImageBitmap(bitmap ?: ImageLoader.errorBitmap)
+                                        val max = 30
+                                        val fMax = max.toFloat()
+                                        for (a in 0..max) {
+                                            imageView.alpha = a / fMax
+                                            delay(10)
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
