@@ -731,6 +731,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             val item = if (isEditMode) {
                 val e = btnCancelEdit.tag as NoteItem
                 e.text = content
+                e.attachments.clear()   // clear the previous items, prevent dup attachments
                 e
             } else {
                 val e = NoteItem(content)
@@ -1035,6 +1036,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         if (etInputText.text.isNotEmpty()) {
             etInputText.savedTextBeforeEdit = etInputText.text.toString()
         }
+        if (note.attachments.isNotEmpty()) {
+            note.attachments.forEach {
+                attachmentListAdapter.add(it)
+            }
+        }
         etInputText.setText(note.text)
         etInputText.setSelection(note.text.length)
     }
@@ -1047,6 +1053,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         } else {
             etInputText.text.clear()
         }
+        attachmentListAdapter.clear()
     }
 
     private fun requestCreateNote(item: NoteItem) {
