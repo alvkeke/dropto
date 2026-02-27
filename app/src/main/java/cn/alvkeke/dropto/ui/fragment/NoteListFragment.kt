@@ -97,8 +97,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private lateinit var etInputText: EditText
     private lateinit var rlAttachment: RecyclerView
     private lateinit var attachmentListAdapter: AttachmentListAdapter
-    private lateinit var btnCancelEdit: ImageButton
+    private lateinit var editIndicator: View
+    private lateinit var btnCancel: ImageButton
     private lateinit var btnAttach: CountableImageButton
+    private lateinit var btnSend: ImageButton
     private lateinit var contentContainer: ConstraintLayout
     private lateinit var naviBar: View
     private lateinit var toolbar: MaterialToolbar
@@ -134,11 +136,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
-        val btnAddNote = view.findViewById<ImageButton>(R.id.note_list_input_button)
-        btnCancelEdit = view.findViewById(R.id.note_list_input_edit_cancel_button)
+        btnSend = view.findViewById(R.id.note_list_input_button)
+        btnCancel = view.findViewById(R.id.note_list_input_cancel_button)
         btnAttach = view.findViewById(R.id.note_list_input_attach_attachment)
         rlAttachment = view.findViewById(R.id.note_list_input_attachment_list)
         etInputText = view.findViewById(R.id.note_list_input_box)
+        editIndicator = view.findViewById(R.id.note_list_input_edit_indicator)
         contentContainer = view.findViewById(R.id.note_list_content_container)
         val statusBar = view.findViewById<View>(R.id.note_list_status_bar)
         naviBar = view.findViewById(R.id.note_list_navigation_bar)
@@ -166,16 +169,16 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         noteItemAdapter.showDeleted = false
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
-
-        btnCancelEdit.setOnClickListener { exitEditMode() }
-        btnAddNote.setOnClickListener(OnItemAddClick())
-        val btnAttachListener = AttachmentButtonListener()
-        btnAttach.setOnClickListener(btnAttachListener)
-        btnAttach.setOnLongClickListener(btnAttachListener)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
 
         attachmentListAdapter = AttachmentListAdapter().apply {
             itemSize = 84 * context.resources.displayMetrics.density.toInt()
+        }
+        attachmentListAdapter.setDataChangeListener { count ->
+            if (count > 0) btnCancel.isVisible = true
+            // only show the button, the btnCancel will be hide:
+            // 1. create/update req done
+            // 2. click on the btnCancel
         }
         rlAttachment.adapter = attachmentListAdapter
         layoutManager = LinearLayoutManager(
@@ -198,6 +201,18 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             }
         })
         rlAttachment.setOnTouchListener(AttachmentListTouchListener())
+
+        btnCancel.setOnClickListener {
+            attachmentListAdapter.clear()
+            if (isEditingMode) {
+                exitEditMode()
+            }
+            btnCancel.isVisible = false
+        }
+        btnSend.setOnClickListener(SendButtonClickListener())
+        val btnAttachListener = AttachButtonListener()
+        btnAttach.setOnClickListener(btnAttachListener)
+        btnAttach.setOnLongClickListener(btnAttachListener)
     }
 
     override fun onBackPressed(): Boolean {
@@ -756,6 +771,14 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             return list.size
         }
 
+        fun interface DataChangeListener {
+            fun onChanged(count: Int)
+        }
+        private var dataChangeListener: DataChangeListener? = null
+        fun setDataChangeListener(listener: DataChangeListener) {
+            dataChangeListener = listener
+        }
+
         fun add(item: AttachmentItem) {
             if (!list.contains(item)) {
                 list.add(item)
@@ -767,6 +790,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 //                val index = list.indexOf(item)
 //                list[index].deleteMarked = false
 //                this.notifyItemChanged(index)
+                dataChangeListener?.onChanged(list.size)
             }
         }
 
@@ -788,12 +812,14 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         fun removeAt(index: Int) {
             list.removeAt(index)
             notifyItemRemoved(index)
+            dataChangeListener?.onChanged(list.size)
         }
 
         fun clear() {
             val size = list.size
             list.clear()
             notifyItemRangeRemoved(0, size)
+            dataChangeListener?.onChanged(list.size)
         }
     }
 
@@ -801,7 +827,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            if (isEditMode) {
+            if (isEditingMode) {
                 val isDeleted = attachmentListAdapter.allList[index].deleteMarked
                 attachmentListAdapter.markRemoved(index, !isDeleted)
             } else {
@@ -811,7 +837,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    private inner class AttachmentButtonListener() : OnClickListener, OnLongClickListener {
+    private inner class AttachButtonListener() : OnClickListener, OnLongClickListener {
 
         private var imagePicker = registerForActivityResult(
             // not going to limit the number of selected images/videos
@@ -839,12 +865,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    private inner class OnItemAddClick : OnClickListener {
+    private inner class SendButtonClickListener : OnClickListener {
         override fun onClick(v: View) {
             val content = etInputText.text.toString().trim { it <= ' ' }
 
             if (attachmentListAdapter.nonDeleteList.isEmpty() && content.isEmpty()) {
-                if (isEditMode) {
+                if (isEditingMode) {
                     // warning empty item after editing
                     v.performHapticFeedback(
                         HapticFeedbackConstants.LONG_PRESS
@@ -853,8 +879,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 return
             }
 
-            val item = if (isEditMode) {
-                val e = btnCancelEdit.tag as NoteItem
+            val item = if (isEditingMode) {
+                val e = editingItem!!
                 e.text = content
                 e.attachments.clear()   // clear the previous items, prevent dup attachments
                 e
@@ -880,7 +906,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     }
                 }
 
-                if (isEditMode) {
+                if (isEditingMode) {
                     requestUpdateNote(item)
                 } else {
                     requestCreateNote(item)
@@ -1132,26 +1158,47 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         forwardFragment.show(parentFragmentManager, null)
     }
 
-    private var EditText.reqPendingItem : NoteItem?
-        get() = this.getTag(R.id.tag_note_req_pending_item) as? NoteItem
-        set(value) {
-            this.setTag(R.id.tag_note_req_pending_item, value)
-        }
-
-    private var EditText.savedTextBeforeEdit: String?
-        get() = this.getTag(R.id.tag_note_saved_text_for_edit) as? String
-        set(value) {
+    private fun EditText.trySaveCurrentText() {
+        if (this.text.isNotEmpty()) {
+            val value = this.text.toString()
             this.setTag(R.id.tag_note_saved_text_for_edit, value)
         }
-
-    private val isEditMode: Boolean
-        get() = btnCancelEdit.isVisible
-    private fun setupEditMode(note: NoteItem) {
-        btnCancelEdit.visibility = View.VISIBLE
-        btnCancelEdit.tag = note
-        if (etInputText.text.isNotEmpty()) {
-            etInputText.savedTextBeforeEdit = etInputText.text.toString()
+    }
+    private fun EditText.restoreSavedText() {
+        val value = this.getTag(R.id.tag_note_saved_text_for_edit) as String?
+        value?.let { v ->
+            this.setText(v)
+            this.setTag(R.id.tag_note_saved_text_for_edit, null)
         }
+    }
+    private val EditText.haveSavedText: Boolean
+        get() {
+            val value = this.getTag(R.id.tag_note_saved_text_for_edit) as String?
+            return value != null
+        }
+
+    private var isEditingMode: Boolean
+        get() = editIndicator.isVisible
+        set(value) {
+            editIndicator.isVisible = value
+        }
+    private var editingItem: NoteItem?
+        get() = editIndicator.tag as NoteItem?
+        set(value) {
+            editIndicator.tag = value
+        }
+    private fun setupEditMode(note: NoteItem) {
+        btnCancel.isVisible = true
+        if (isEditingMode) {
+            // allow re-enter, replace the old one
+            attachmentListAdapter.clear()
+        } else {
+            etInputText.trySaveCurrentText()
+        }
+
+        isEditingMode = true
+        editingItem = note
+
         if (note.attachments.isNotEmpty()) {
             note.attachments.forEach {
                 attachmentListAdapter.add(it)
@@ -1161,24 +1208,24 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         etInputText.setSelection(note.text.length)
     }
     private fun exitEditMode() {
-        btnCancelEdit.visibility = View.GONE
-        btnCancelEdit.tag = null
-        if (etInputText.savedTextBeforeEdit != null) {
-            etInputText.setText(etInputText.savedTextBeforeEdit)
-            etInputText.savedTextBeforeEdit = null
+        isEditingMode = false
+        editingItem = null
+        if (etInputText.haveSavedText) {
+            etInputText.restoreSavedText()
         } else {
             etInputText.text.clear()
         }
-        attachmentListAdapter.clear()
     }
 
+    private var reqPendingItem : NoteItem? = null
+
     private fun requestCreateNote(item: NoteItem) {
-        etInputText.reqPendingItem = item  // pending item, will be cleared after created successfully
+        reqPendingItem = item  // pending item, will be cleared after created successfully
         app.service?.createNote(item)
     }
 
     private fun requestUpdateNote(item: NoteItem) {
-        etInputText.reqPendingItem = item  // pending item, will be cleared after updated successfully
+        reqPendingItem = item  // pending item, will be cleared after updated successfully
         app.service?.updateNote(item)
     }
 
@@ -1199,19 +1246,21 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     override fun onNoteCreated(result: Int, noteItem: NoteItem) {
         noteItemAdapter.add(result, noteItem)
         rlNoteList.smoothScrollToPosition(0)
-        if (noteItem == etInputText.reqPendingItem) {
-            etInputText.reqPendingItem = null
+        if (noteItem == reqPendingItem) {
+            reqPendingItem = null
             etInputText.text.clear()
             attachmentListAdapter.clear()
+            btnCancel.isVisible = false
         }
     }
 
     override fun onNoteUpdated(result: Int, noteItem: NoteItem) {
-        if (noteItem == etInputText.reqPendingItem) {
-            if (isEditMode) {
+        if (noteItem == reqPendingItem) {
+            if (isEditingMode) {
                 exitEditMode()
             }
             attachmentListAdapter.clear()
+            btnCancel.isVisible = false
         }
         noteItemAdapter.update(noteItem)
     }

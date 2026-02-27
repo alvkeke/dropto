@@ -30,4 +30,5 @@
     <color name="teal_200">#B2DFDB</color>
     <color name="teal_700">#009688</color>
     <color name="color_reaction">#F44336</color>
+    <color name="color_edit_indicator">#F44336</color>
 </resources>
