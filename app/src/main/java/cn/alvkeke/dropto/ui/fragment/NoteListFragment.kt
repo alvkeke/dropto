@@ -3,16 +3,14 @@ package cn.alvkeke.dropto.ui.fragment
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
-import android.app.AlertDialog.*
+import android.app.AlertDialog.Builder
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.Rect
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -709,18 +707,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                             scope.launch {
                                 try {
                                     val resolver = imageView.context.contentResolver
-                                    val bitmap =
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                            val source =
-                                                ImageDecoder.createSource(resolver, item.uri)
-                                            ImageDecoder.decodeBitmap(source)
-                                        } else {
-                                            resolver.openInputStream(item.uri)?.use { input ->
-                                                BitmapFactory.decodeStream(input)
-                                            }
-                                        }
+                                    val source = ImageDecoder.createSource(resolver, item.uri)
+                                    val bitmap = ImageDecoder.decodeBitmap(source)
                                     withContext(Dispatchers.Main) {
-                                        imageView.setImageBitmap(bitmap ?: ImageLoader.errorBitmap)
+                                        imageView.setImageBitmap(bitmap)
                                         val max = 30
                                         val fMax = max.toFloat()
                                         for (a in 0..max) {
