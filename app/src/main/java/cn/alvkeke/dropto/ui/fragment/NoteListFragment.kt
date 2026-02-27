@@ -825,6 +825,15 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             }
             return true
         }
+
+        override fun onItemClick(v: View, index: Int): Boolean {
+            if (isEditingMode) {
+                v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                val isDeleted = attachmentListAdapter.allList[index].deleteMarked
+                attachmentListAdapter.markRemoved(index, !isDeleted)
+            }
+            return true
+        }
     }
 
     private inner class AttachButtonListener() : OnClickListener, OnLongClickListener {
