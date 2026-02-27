@@ -6,7 +6,10 @@ import android.annotation.SuppressLint
 import android.app.AlertDialog.*
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ImageDecoder
+import android.graphics.Paint
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
@@ -194,6 +197,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 outRect.set(sizeHead, padding, padding, padding)
             }
         })
+        rlAttachment.setOnTouchListener(AttachmentListTouchListener())
     }
 
     override fun onBackPressed(): Boolean {
@@ -559,20 +563,69 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private class AttachmentListAdapter(
     ) : RecyclerView.Adapter<AttachmentListAdapter.ViewHolder>() {
 
-        sealed class AttachmentItem {
-            data class Attachment(val file: AttachmentFile): AttachmentItem()
-            data class Unhandled(val uri: Uri, val type: AttachmentFile.Type): AttachmentItem()
+        sealed class AttachmentItem(var deleteMarked: Boolean = false) {
+            data class Attachment(
+                val file: AttachmentFile,
+            ): AttachmentItem()
+            data class Unhandled(
+                val uri: Uri,
+                val type: AttachmentFile.Type,
+            ): AttachmentItem()
         }
         private val list = mutableListOf<AttachmentItem>()
-        val attachmentList : List<AttachmentItem> = list
+        val allList : List<AttachmentItem> = list
+        val nonDeleteList: List<AttachmentItem>
+            get() = list.filter { !it.deleteMarked }
         var itemSize = 0
 
-        class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+        class ViewHolder(
+            itemView: ConstraintLayout,
+            val mainView: View,
+            val overlay: View,
+        ) : RecyclerView.ViewHolder(itemView)
+
+        private class OverlayView(context: Context) : View(context) {
+            private val stripePaint = Paint().apply {
+                color = Color.RED
+                alpha = 100
+                strokeWidth = 8f
+                isAntiAlias = true
+                style = Paint.Style.STROKE
+            }
+
+            override fun onDraw(canvas: Canvas) {
+                super.onDraw(canvas)
+
+                val w = width.toFloat()
+                val h = height.toFloat()
+                val stripeSpacing = 20f
+
+                var i = 0f
+                while (i < w + h) {
+                    val startX = if (i < w) w - i else 0f
+                    val startY = if (i < w) 0f else i - w
+                    val endX = if (i < h) w else w - (i - h)
+                    val endY = if (i < h) i else h
+
+                    canvas.drawLine(startX, startY, endX, endY, stripePaint)
+
+                    i += stripeSpacing
+                }
+            }
+        }
 
         override fun onCreateViewHolder(
             parent: ViewGroup,
             viewType: Int
         ): ViewHolder {
+            val layout = ConstraintLayout(parent.context)
+            if (itemSize > 0) {
+                layout.layoutParams = RecyclerView.LayoutParams(
+                    itemSize,
+                    itemSize
+                )
+            }
+
             val view = when (viewType) {
                 0 -> ImageView(parent.context).apply {
                     scaleType = ImageView.ScaleType.CENTER_CROP
@@ -584,20 +637,39 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     ))
                     textAlignment = TextView.TEXT_ALIGNMENT_CENTER
                 }
+            }.apply {
+                layoutParams = ConstraintLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                ).apply {
+                    startToStart = layout.id
+                    topToTop = layout.id
+                }
             }
-            if (itemSize > 0) {
-                view.layoutParams = RecyclerView.LayoutParams(itemSize, itemSize)
+
+            val overlay = OverlayView(parent.context).apply {
+                layoutParams = ConstraintLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                ).apply {
+                    startToStart = layout.id
+                    topToTop = layout.id
+                }
             }
-            return ViewHolder(view)
+            layout.addView(view)
+            layout.addView(overlay)
+
+            return ViewHolder(layout, view, overlay)
         }
 
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            when (val item = list[position]) {
+            val item = list[position]
+            when (item) {
                 is AttachmentItem.Attachment -> {
                     when (item.file.type) {
                         AttachmentFile.Type.MEDIA -> {
-                            val imageView = holder.itemView as ImageView
+                            val imageView = holder.mainView as ImageView
                             imageView.setImageBitmap(null)
                             ImageLoader.loadImageAsync(
                                 item.file.md5file,
@@ -609,7 +681,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                             }
                         }
                         AttachmentFile.Type.FILE -> {
-                            val textView = holder.itemView as TextView
+                            val textView = holder.mainView as TextView
                             textView.text = item.file.name
                         }
                     }
@@ -617,7 +689,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 is AttachmentItem.Unhandled -> {
                     when (item.type) {
                         AttachmentFile.Type.MEDIA -> {
-                            val imageView = holder.itemView as ImageView
+                            val imageView = holder.mainView as ImageView
                             imageView.setImageBitmap(null)
                             scope.launch {
                                 try {
@@ -650,11 +722,16 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                             }
                         }
                         AttachmentFile.Type.FILE -> {
-                            val textView = holder.itemView as TextView
+                            val textView = holder.mainView as TextView
                             textView.text = FileHelper.getFileNameFromUri(textView.context, item.uri)
                         }
                     }
                 }
+            }
+            if (item.deleteMarked) {
+                holder.overlay.visibility = View.VISIBLE
+            } else {
+                holder.overlay.visibility = View.GONE
             }
         }
 
@@ -686,6 +763,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 if (index != -1) {
                     this.notifyItemInserted(index)
                 }
+//            } else {
+//                val index = list.indexOf(item)
+//                list[index].deleteMarked = false
+//                this.notifyItemChanged(index)
             }
         }
 
@@ -699,10 +780,34 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             add(newItem)
         }
 
+        fun markRemoved(index: Int, set: Boolean) {
+            list[index].deleteMarked = set
+            notifyItemChanged(index)
+        }
+
+        fun removeAt(index: Int) {
+            list.removeAt(index)
+            notifyItemRemoved(index)
+        }
+
         fun clear() {
             val size = list.size
             list.clear()
             notifyItemRangeRemoved(0, size)
+        }
+    }
+
+    private inner class AttachmentListTouchListener() : OnRecyclerViewTouchListener(context) {
+
+        override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            if (isEditMode) {
+                val isDeleted = attachmentListAdapter.allList[index].deleteMarked
+                attachmentListAdapter.markRemoved(index, !isDeleted)
+            } else {
+                attachmentListAdapter.removeAt(index)
+            }
+            return true
         }
     }
 
@@ -737,6 +842,17 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private inner class OnItemAddClick : OnClickListener {
         override fun onClick(v: View) {
             val content = etInputText.text.toString().trim { it <= ' ' }
+
+            if (attachmentListAdapter.nonDeleteList.isEmpty() && content.isEmpty()) {
+                if (isEditMode) {
+                    // warning empty item after editing
+                    v.performHapticFeedback(
+                        HapticFeedbackConstants.LONG_PRESS
+                    )
+                }
+                return
+            }
+
             val item = if (isEditMode) {
                 val e = btnCancelEdit.tag as NoteItem
                 e.text = content
@@ -747,18 +863,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 e.categoryId = category.id
                 e
             }
-            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                if (attachmentListAdapter.attachmentList.isEmpty() && content.isEmpty()) {
-                    if (isEditMode) {
-                        // warning empty item after editing
-                        v.performHapticFeedback(
-                            HapticFeedbackConstants.LONG_PRESS
-                        )
-                    }
-                    return@launch
-                }
 
-                attachmentListAdapter.attachmentList.forEach {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                attachmentListAdapter.nonDeleteList.forEach {
                     when (it) {
                         is AttachmentListAdapter.AttachmentItem.Attachment -> {
                             item.attachments.add(it.file)
