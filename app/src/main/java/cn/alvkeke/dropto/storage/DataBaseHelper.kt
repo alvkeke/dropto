@@ -74,8 +74,10 @@ class DataBaseHelper(private val context: Context) :
     }
 
     override fun onCreate(db: SQLiteDatabase) {
+        Log.e(TAG, "onCreate, creating tables")
         createCategoryTable(db)
         createNoteTable(db)
+        createReactionTable(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {

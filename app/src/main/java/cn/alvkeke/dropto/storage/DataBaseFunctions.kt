@@ -580,21 +580,25 @@ fun SQLiteDatabase.queryNoteIds(targetCategoryId: Long): ArrayList<Long> {
 
 fun SQLiteDatabase.getReactionList(): MutableList<String> {
     val reactions = mutableListOf<String>()
-    val cursor = this.query(
-        TABLE_REACTION, arrayOf(REACTION_COLUMN_TEXT),
-        null, null, null, null,
-        "$REACTION_COLUMN_SEQUENCE ASC"
-    )
-    while (cursor.moveToNext()) {
-        val idx: Int = cursor.getColumnIndex(REACTION_COLUMN_TEXT)
-        if (idx == -1) {
-            Log.e(TAG, "invalid idx for reaction text")
-            continue
+    try {
+        val cursor = this.query(
+            TABLE_REACTION, arrayOf(REACTION_COLUMN_TEXT),
+            null, null, null, null,
+            "$REACTION_COLUMN_SEQUENCE ASC"
+        )
+        while (cursor.moveToNext()) {
+            val idx: Int = cursor.getColumnIndex(REACTION_COLUMN_TEXT)
+            if (idx == -1) {
+                Log.e(TAG, "invalid idx for reaction text")
+                continue
+            }
+            val text = cursor.getString(idx)
+            reactions.add(text)
         }
-        val text = cursor.getString(idx)
-        reactions.add(text)
+        cursor.close()
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to get reaction list", e)
     }
-    cursor.close()
     return reactions
 }
 
@@ -609,7 +613,7 @@ fun SQLiteDatabase.updateReactionList(reactions: List<String>) {
                 insertOrThrow(TABLE_REACTION, null, values)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to update reaction list: $e")
+            Log.e(TAG, "Failed to update reaction list", e)
         }
     }
 }
