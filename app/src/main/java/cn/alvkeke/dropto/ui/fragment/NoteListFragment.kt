@@ -10,6 +10,7 @@ import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.Rect
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -696,12 +697,21 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                         AttachmentFile.Type.MEDIA -> {
                             val imageView = holder.mainView as ImageView
                             imageView.setImageBitmap(null)
-                            ImageLoader.loadImageAsync(
-                                item.file.md5file,
-                            ) { bitmap ->
-                                bitmap?.let {
-                                    imageView.setImageBitmap(it)
-                                    imageView.invalidate()
+                            if (item.file.isVideo) {
+                                ImageLoader.loadVideoThumbnailAsync(item.file.md5file) {
+                                    it?.let { thumb ->
+                                        imageView.setImageBitmap(thumb)
+                                        imageView.invalidate()
+                                    }
+                                }
+                            } else {
+                                ImageLoader.loadImageAsync(
+                                    item.file.md5file,
+                                ) { bitmap ->
+                                    bitmap?.let {
+                                        imageView.setImageBitmap(it)
+                                        imageView.invalidate()
+                                    }
                                 }
                             }
                         }
@@ -716,11 +726,24 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                         AttachmentFile.Type.MEDIA -> {
                             val imageView = holder.mainView as ImageView
                             imageView.setImageBitmap(null)
+                            val fileName = FileHelper.getFileNameFromUri(
+                                imageView.context, item.uri
+                            )
+                            val mimeType = FileHelper.mimeTypeFromFileName(fileName)
+                            val isVideo = mimeType.startsWith("video/")
                             scope.launch {
                                 try {
-                                    val resolver = imageView.context.contentResolver
-                                    val source = ImageDecoder.createSource(resolver, item.uri)
-                                    val bitmap = ImageDecoder.decodeBitmap(source)
+                                    val bitmap = if (isVideo) {
+                                        val retriever = MediaMetadataRetriever()
+                                        retriever.setDataSource(imageView.context, item.uri)
+                                        val thumbnail = retriever.frameAtTime // default is first frame, can specify time
+                                        retriever.release()
+                                        thumbnail
+                                    } else {
+                                        val resolver = imageView.context.contentResolver
+                                        val source = ImageDecoder.createSource(resolver, item.uri)
+                                        ImageDecoder.decodeBitmap(source)
+                                    }
                                     withContext(Dispatchers.Main) {
                                         imageView.setImageBitmap(bitmap)
                                         val max = 30
