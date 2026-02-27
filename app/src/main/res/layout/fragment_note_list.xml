@@ -65,14 +65,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
 
-                    <ScrollView
-                        android:id="@+id/note_list_input_attachment_scroll"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/note_list_input_attachment_list"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
                         app:layout_constraintEnd_toStartOf="@id/note_list_input_edit_cancel_button"
-                        android:visibility="gone"
+                        android:orientation="horizontal"
                         android:layout_width="0dp"
-                        android:layout_height="70dp" />
+                        android:layout_height="wrap_content" />
 
                     <ImageButton
                         android:id="@+id/note_list_input_edit_cancel_button"
@@ -84,42 +84,27 @@
                         android:src="@drawable/icon_common_cross"
                         android:scaleType="fitCenter"
                         android:background="@color/color_navigation_bar"
+                        android:contentDescription="Button to exit editing mode"
                         android:layout_width="32dp"
                         android:layout_height="32dp"/>
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
-                <GridLayout
-                    android:id="@+id/note_list_input_attach_box"
-                    app:layout_constraintStart_toStartOf="parent"
+                <cn.alvkeke.dropto.ui.comonent.CountableImageButton
+                    android:id="@+id/note_list_input_attach_attachment"
                     app:layout_constraintTop_toBottomOf="@id/note_list_input_detail_box"
+                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"
                     android:layout_margin="8dp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
-
-                    <cn.alvkeke.dropto.ui.comonent.CountableImageButton
-                        android:id="@+id/note_list_input_attach_image"
-                        android:src="@drawable/icon_btn_note_attach_image"
-                        android:background="@android:color/transparent"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/description_button_attach_image" />
-
-                    <cn.alvkeke.dropto.ui.comonent.CountableImageButton
-                        android:id="@+id/note_list_input_attach_file"
-                        android:layout_marginStart="8dp"
-                        android:src="@drawable/icon_btn_note_attach_file"
-                        android:background="@android:color/transparent"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@string/description_button_attach_file" />
-
-                </GridLayout>
+                    android:src="@drawable/icon_btn_note_attach_file"
+                    android:background="@android:color/transparent"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:contentDescription="@string/description_button_attach_file" />
 
                 <EditText
                     android:id="@+id/note_list_input_box"
-                    app:layout_constraintStart_toEndOf="@id/note_list_input_attach_box"
+                    app:layout_constraintStart_toEndOf="@id/note_list_input_attach_attachment"
                     app:layout_constraintTop_toBottomOf="@id/note_list_input_detail_box"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toStartOf="@id/note_list_input_button"

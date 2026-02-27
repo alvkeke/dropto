@@ -5,7 +5,11 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.AlertDialog.*
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.Rect
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -20,14 +24,16 @@ import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
@@ -38,6 +44,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -47,6 +54,7 @@ import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
@@ -66,8 +74,11 @@ import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 
@@ -80,10 +91,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private lateinit var fragmentParent: View
     private lateinit var fragmentView: View
     private lateinit var etInputText: EditText
+    private lateinit var rlAttachment: RecyclerView
+    private lateinit var attachmentListAdapter: AttachmentListAdapter
     private lateinit var btnCancelEdit: ImageButton
-    private lateinit var btnAttachImage: CountableImageButton
-    private lateinit var btnAttachFile: CountableImageButton
-    private val btnAttachList: ArrayList<CountableImageButton> = ArrayList()
+    private lateinit var btnAttach: CountableImageButton
     private lateinit var contentContainer: ConstraintLayout
     private lateinit var naviBar: View
     private lateinit var toolbar: MaterialToolbar
@@ -121,8 +132,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         rlNoteList = view.findViewById(R.id.note_list_listview)
         val btnAddNote = view.findViewById<ImageButton>(R.id.note_list_input_button)
         btnCancelEdit = view.findViewById(R.id.note_list_input_edit_cancel_button)
-        btnAttachImage = view.findViewById(R.id.note_list_input_attach_image)
-        btnAttachFile = view.findViewById(R.id.note_list_input_attach_file)
+        btnAttach = view.findViewById(R.id.note_list_input_attach_attachment)
+        rlAttachment = view.findViewById(R.id.note_list_input_attachment_list)
         etInputText = view.findViewById(R.id.note_list_input_box)
         contentContainer = view.findViewById(R.id.note_list_content_container)
         val statusBar = view.findViewById<View>(R.id.note_list_status_bar)
@@ -138,7 +149,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar)
         setToolbarMenuBySelectedItems(0)
 
-        val layoutManager = LinearLayoutManager(context)
+        var layoutManager = LinearLayoutManager(context)
         layoutManager.setReverseLayout(true)
         rlNoteList.setSelectListener(NoteListSelectListener())
 
@@ -154,15 +165,34 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         btnCancelEdit.setOnClickListener { exitEditMode() }
         btnAddNote.setOnClickListener(OnItemAddClick())
-        btnAttachList.add(btnAttachFile)
-        btnAttachList.add(btnAttachImage)
-        val btnAttachImageCallback = CountableButtonCallback(btnAttachImage)
-        val btnAttachFileCallback = CountableButtonCallback(btnAttachFile)
-        btnAttachImage.setOnClickListener(btnAttachImageCallback)
-        btnAttachImage.setOnLongClickListener(btnAttachImageCallback)
-        btnAttachFile.setOnClickListener(btnAttachFileCallback)
-        btnAttachFile.setOnLongClickListener(btnAttachFileCallback)
+        val btnAttachListener = AttachmentButtonListener()
+        btnAttach.setOnClickListener(btnAttachListener)
+        btnAttach.setOnLongClickListener(btnAttachListener)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
+
+        attachmentListAdapter = AttachmentListAdapter().apply {
+            itemSize = 84 * context.resources.displayMetrics.density.toInt()
+        }
+        rlAttachment.adapter = attachmentListAdapter
+        layoutManager = LinearLayoutManager(
+            context,
+            RecyclerView.HORIZONTAL,
+            false
+        )
+        rlAttachment.layoutManager = layoutManager
+        rlAttachment.addItemDecoration(object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(
+                outRect: Rect,
+                view: View,
+                parent: RecyclerView,
+                state: RecyclerView.State
+            ) {
+                val padding = 8 * context.resources.displayMetrics.density.toInt()
+                val pos = parent.getChildAdapterPosition(view)
+                val sizeHead = if (pos == 0) padding else 0
+                outRect.set(sizeHead, padding, padding, padding)
+            }
+        })
     }
 
     override fun onBackPressed(): Boolean {
@@ -525,69 +555,172 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             })
     }
 
-    private class TmpAttachment(val uri: Uri, val type: AttachmentFile.Type)
-    private val attachments = ArrayList<TmpAttachment>()
-    private fun ArrayList<TmpAttachment>.contains(uri: Uri): Boolean {
-        for (att in this) {
-            if (att.uri == uri) return true
+    private class AttachmentListAdapter(
+    ) : RecyclerView.Adapter<AttachmentListAdapter.ViewHolder>() {
+
+        sealed class AttachmentItem {
+            data class Attachment(val file: AttachmentFile): AttachmentItem()
+            data class Unhandled(val uri: Uri, val type: AttachmentFile.Type): AttachmentItem()
         }
-        return false
+        private val list = mutableListOf<AttachmentItem>()
+        val attachmentList : List<AttachmentItem> = list
+        var itemSize = 0
+
+        class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+
+        override fun onCreateViewHolder(
+            parent: ViewGroup,
+            viewType: Int
+        ): ViewHolder {
+            val view = when (viewType) {
+                0 -> ImageView(parent.context).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                }
+                else -> TextView(parent.context).apply {
+                    setTextColor(ContextCompat.getColor(
+                        parent.context,
+                        R.color.color_text_main
+                    ))
+                    textAlignment = TextView.TEXT_ALIGNMENT_CENTER
+                }
+            }
+            if (itemSize > 0) {
+                view.layoutParams = RecyclerView.LayoutParams(itemSize, itemSize)
+            }
+            return ViewHolder(view)
+        }
+
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            when (val item = list[position]) {
+                is AttachmentItem.Attachment -> {
+                    when (item.file.type) {
+                        AttachmentFile.Type.MEDIA -> {
+                            val imageView = holder.itemView as ImageView
+                            ImageLoader.loadImageAsync(
+                                item.file.md5file,
+                            ) { bitmap ->
+                                bitmap?.let {
+                                    imageView.setImageBitmap(it)
+                                    imageView.invalidate()
+                                }
+                            }
+                        }
+                        AttachmentFile.Type.FILE -> {
+                            val textView = holder.itemView as TextView
+                            textView.text = item.file.name
+                        }
+                    }
+                }
+                is AttachmentItem.Unhandled -> {
+                    when (item.type) {
+                        AttachmentFile.Type.MEDIA -> {
+                            val imageView = holder.itemView as ImageView
+                            scope.launch {
+                                try {
+                                    val resolver = imageView.context.contentResolver
+                                    val bitmap =
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                            val source =
+                                                ImageDecoder.createSource(resolver, item.uri)
+                                            ImageDecoder.decodeBitmap(source)
+                                        } else {
+                                            resolver.openInputStream(item.uri)?.use { input ->
+                                                BitmapFactory.decodeStream(input)
+                                            }
+                                        }
+                                    withContext(Dispatchers.Main) {
+                                        imageView.setImageBitmap(bitmap ?: ImageLoader.errorBitmap)
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        imageView.setImageBitmap(ImageLoader.errorBitmap)
+                                    }
+                                    Log.e(TAG, "Failed to load media", e)
+                                }
+                            }
+                        }
+                        AttachmentFile.Type.FILE -> {
+                            val textView = holder.itemView as TextView
+                            textView.text = FileHelper.getFileNameFromUri(textView.context, item.uri)
+                        }
+                    }
+                }
+            }
+        }
+
+        override fun getItemViewType(position: Int): Int {
+            return when (val e = list[position]) {
+                is AttachmentItem.Attachment -> {
+                    when (e.file.type) {
+                        AttachmentFile.Type.MEDIA -> 0
+                        AttachmentFile.Type.FILE -> 1
+                    }
+                }
+                is AttachmentItem.Unhandled -> {
+                    when (e.type) {
+                        AttachmentFile.Type.MEDIA -> 0
+                        AttachmentFile.Type.FILE -> 1
+                    }
+                }
+            }
+        }
+
+        override fun getItemCount(): Int {
+            return list.size
+        }
+
+        fun add(item: AttachmentItem) {
+            if (!list.contains(item)) {
+                list.add(item)
+                val index = list.indexOf(item)
+                if (index != -1) {
+                    this.notifyItemInserted(index)
+                }
+            }
+        }
+
+        fun add(attachment: AttachmentFile) {
+            val newItem = AttachmentItem.Attachment(attachment)
+            add(newItem)
+        }
+
+        fun add(uri: Uri, type: AttachmentFile.Type) {
+            val newItem = AttachmentItem.Unhandled(uri, type)
+            add(newItem)
+        }
+
+        fun clear() {
+            val size = list.size
+            list.clear()
+            notifyItemRangeRemoved(0, size)
+        }
     }
 
-    private fun addAttachments(btn: CountableImageButton, uris: List<Uri>) {
-        val type = when(btn) {
-            btnAttachImage -> AttachmentFile.Type.MEDIA
-            btnAttachFile -> AttachmentFile.Type.FILE
-            else -> error("Unknown attachment button clicked, not allowed")
-        }
-
-        var increasedCount = 0
-        for (uri in uris) {
-            if (attachments.contains(uri))
-                continue
-            attachments.add(TmpAttachment(uri, type))
-            increasedCount++
-        }
-        btn.count += increasedCount
-    }
-
-    private fun clearAttachments() {
-        attachments.clear()
-        for (btn in btnAttachList) {
-            btn.count = 0
-        }
-    }
-
-    private inner class CountableButtonCallback(private val btn: CountableImageButton) :
-        ActivityResultCallback<List<Uri>>, OnClickListener, OnLongClickListener {
+    private inner class AttachmentButtonListener() : OnClickListener, OnLongClickListener {
 
         private var imagePicker = registerForActivityResult(
             // not going to limit the number of selected images/videos
-        PickMultipleVisualMedia(99), this )
-        private var filePicker = registerForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments(), this)
-
-        override fun onActivityResult(result: List<Uri>) {
-            if (result.isEmpty()) {
-                Log.d(TAG, "No attachment is selected")
-                return
+        PickMultipleVisualMedia(99)) {
+            it.forEach { uri ->
+                attachmentListAdapter.add(uri, AttachmentFile.Type.MEDIA)
             }
-            // only try to update UI if the list is not empty
-            addAttachments(btn, result)
+        }
+        private var filePicker = registerForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()) {
+            it.forEach { uri ->
+                attachmentListAdapter.add(uri, AttachmentFile.Type.FILE)
+            }
         }
 
         override fun onClick(view: View) {
-            when (btn) {
-                btnAttachImage -> imagePicker.launch(PickVisualMediaRequest.Builder()
-                            .setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-                            .build())
-                btnAttachFile -> filePicker.launch(arrayOf("*/*"))
-                else -> error("Unknown attachment button clicked, not allowed")
-            }
+            imagePicker.launch(PickVisualMediaRequest.Builder()
+                .setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                .build())
         }
 
         override fun onLongClick(view: View): Boolean {
-            clearAttachments()
+            filePicker.launch(arrayOf("*/*"))
             return true
         }
     }
@@ -605,24 +738,31 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 e
             }
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                if (attachments.isEmpty()) {
-                    if (content.isEmpty()) {
-                        if (isEditMode) {
-                            v.performHapticFeedback(
-                                HapticFeedbackConstants.LONG_PRESS
-                            )
-                        }
-                        return@launch
+                if (attachmentListAdapter.attachmentList.isEmpty() && content.isEmpty()) {
+                    if (isEditMode) {
+                        // warning empty item after editing
+                        v.performHapticFeedback(
+                            HapticFeedbackConstants.LONG_PRESS
+                        )
                     }
-                } else {
-                    for (a in attachments) {
-                        val folder = FileHelper.attachmentStorage
-                        val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
-                        val imgName = FileHelper.getFileNameFromUri(context, a.uri)
-                        val imageFile = AttachmentFile.from(md5file!!, imgName, a.type)
-                        item.attachments.add(imageFile)
+                    return@launch
+                }
+
+                attachmentListAdapter.attachmentList.forEach {
+                    when (it) {
+                        is AttachmentListAdapter.AttachmentItem.Attachment -> {
+                            item.attachments.add(it.file)
+                        }
+                        is AttachmentListAdapter.AttachmentItem.Unhandled -> {
+                            val folder = FileHelper.attachmentStorage
+                            val md5file = FileHelper.saveUriToFile(context, it.uri, folder)
+                            val imgName = FileHelper.getFileNameFromUri(context, it.uri)
+                            val imageFile = AttachmentFile.from(md5file!!, imgName, it.type)
+                            item.attachments.add(imageFile)
+                        }
                     }
                 }
+
                 if (isEditMode) {
                     requestUpdateNote(item)
                 } else {
@@ -939,7 +1079,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         if (noteItem == etInputText.reqPendingItem) {
             etInputText.reqPendingItem = null
             etInputText.text.clear()
-            clearAttachments()
+            attachmentListAdapter.clear()
         }
     }
 
@@ -948,7 +1088,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             if (isEditMode) {
                 exitEditMode()
             }
-            clearAttachments()
+            attachmentListAdapter.clear()
         }
         noteItemAdapter.update(noteItem)
     }
