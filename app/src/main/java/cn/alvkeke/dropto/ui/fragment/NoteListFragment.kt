@@ -414,8 +414,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     }
 
                     NoteItemView.ClickedContent.Type.REACTION -> {
-                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        removeReaction(index, content.index)
+                        if (!isFilteringReaction) {
+                            // only allow to remove the reaction without reaction filter
+                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            removeReaction(index, content.index)
+                        }
                     }
                 }
             }
