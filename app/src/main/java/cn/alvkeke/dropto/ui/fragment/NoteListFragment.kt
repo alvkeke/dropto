@@ -5,11 +5,14 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.AlertDialog.Builder
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
@@ -628,6 +631,49 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             }
         }
 
+        private var videoIconDrawable: Drawable? = null
+        private inner class MediaView(
+            context: Context,
+        ) : androidx.appcompat.widget.AppCompatImageView(context) {
+
+            var isVideo = false
+
+            val rect = RectF()
+            val paint = Paint().apply {
+                color = ContextCompat.getColor(context, R.color.video_play_icon_background)
+            }
+            override fun onDraw(canvas: Canvas) {
+                super.onDraw(canvas)
+
+                if (!isVideo) return
+
+                val width2 = width/2f
+                val height2 = height/2f
+                rect.set(
+                    width2,
+                    height2,
+                    width.toFloat(),
+                    height.toFloat()
+                )
+
+                canvas.drawRect(rect, paint)
+                if (videoIconDrawable == null) {
+                    videoIconDrawable = ContextCompat.getDrawable(
+                        context, R.drawable.icon_common_video
+                    )
+                    videoIconDrawable?.setTint(
+                        ContextCompat.getColor(
+                            context, R.color.video_play_icon_foreground
+                        )
+                    )
+                }
+                videoIconDrawable?.setBounds(
+                    width2.toInt(), height2.toInt(), width, height
+                )
+                videoIconDrawable?.draw(canvas)
+            }
+        }
+
         override fun onCreateViewHolder(
             parent: ViewGroup,
             viewType: Int
@@ -646,7 +692,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 0 -> {
                     height = itemSize
                     width = itemSize
-                    ImageView(parent.context).apply {
+                    MediaView(parent.context).apply {
                         scaleType = ImageView.ScaleType.CENTER_CROP
                     }
                 }
@@ -695,7 +741,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 is AttachmentItem.Attachment -> {
                     when (item.file.type) {
                         AttachmentFile.Type.MEDIA -> {
-                            val imageView = holder.mainView as ImageView
+                            val imageView = holder.mainView as MediaView
                             imageView.setImageBitmap(null)
                             if (item.file.isVideo) {
                                 ImageLoader.loadVideoThumbnailAsync(item.file.md5file) {
@@ -704,6 +750,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                                         imageView.invalidate()
                                     }
                                 }
+                                imageView.isVideo = true
                             } else {
                                 ImageLoader.loadImageAsync(
                                     item.file.md5file,
@@ -713,6 +760,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                                         imageView.invalidate()
                                     }
                                 }
+                                imageView.isVideo = false
                             }
                         }
                         AttachmentFile.Type.FILE -> {
@@ -724,7 +772,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 is AttachmentItem.Unhandled -> {
                     when (item.type) {
                         AttachmentFile.Type.MEDIA -> {
-                            val imageView = holder.mainView as ImageView
+                            val imageView = holder.mainView as MediaView
                             imageView.setImageBitmap(null)
                             val fileName = FileHelper.getFileNameFromUri(
                                 imageView.context, item.uri
@@ -738,10 +786,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                                         retriever.setDataSource(imageView.context, item.uri)
                                         val thumbnail = retriever.frameAtTime // default is first frame, can specify time
                                         retriever.release()
+                                        imageView.isVideo = true
                                         thumbnail
                                     } else {
                                         val resolver = imageView.context.contentResolver
                                         val source = ImageDecoder.createSource(resolver, item.uri)
+                                        imageView.isVideo = false
                                         ImageDecoder.decodeBitmap(source)
                                     }
                                     withContext(Dispatchers.Main) {

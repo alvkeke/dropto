@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -115,7 +114,7 @@ object ImageLoader {
 
         iconFile = context.loadDrawable(R.drawable.icon_common_file)
 
-        iconVideoPlay = context.loadDrawable(R.drawable.icon_common_video_play)
+        iconVideoPlay = context.loadDrawable(R.drawable.icon_common_video_play_old)
 
         iconMore = context.loadDrawable(R.drawable.icon_common_more)
     }
