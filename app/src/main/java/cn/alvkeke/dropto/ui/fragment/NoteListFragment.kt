@@ -64,7 +64,8 @@ import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFileToExternal
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareAttachmentFileToExternal
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFilesToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showNoteDetailFragment
 import cn.alvkeke.dropto.ui.activity.MainViewModel
@@ -425,22 +426,42 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             return true
         }
 
+        private fun handleNonSelectModeItemLongClick(
+            v: View, index: Int, rawX: Float, rawY: Float
+        ) : Boolean {
+            val location = IntArray(2)
+            v.getLocationOnScreen(location)
+            val localX = rawX - location[0]
+            val localY = rawY - location[1]
+
+            val content = (v as NoteItemView).checkClickedContent(localX, localY)
+            when (content.type) {
+                NoteItemView.ClickedContent.Type.FILE,
+                NoteItemView.ClickedContent.Type.MEDIA -> {
+                    val attachment = noteItemAdapter.get(index).attachments[content.index]
+                    context.shareAttachmentFileToExternal(attachment)
+                    return true
+                }
+                NoteItemView.ClickedContent.Type.REACTION -> {
+                    if (!isFilteringReaction) {
+                        val reaction = noteItemAdapter.get(index).reactions[content.index]
+                        setReactionFilter(reaction)
+                        return true
+                    }
+                }
+                else -> return false
+            }
+
+            return false
+        }
         private var moveToSelect = false
         private var firstHoldItem = -1
         private var lastHoldItem = -1
         override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
 
-            if (!rlNoteList.isSelectMode && !isFilteringReaction) {
-                val location = IntArray(2)
-                v.getLocationOnScreen(location)
-                val localX = rawX - location[0]
-                val localY = rawY - location[1]
-
-                val content = (v as NoteItemView).checkClickedContent(localX, localY)
-                if (content.type == NoteItemView.ClickedContent.Type.REACTION) {
-                    val reaction = noteItemAdapter.get(index).reactions[content.index]
-                    setReactionFilter(reaction)
+            if (!rlNoteList.isSelectMode) {
+                if (handleNonSelectModeItemLongClick(v, index, rawX, rawY)) {
                     return true
                 }
             }
@@ -1220,7 +1241,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             }
         }
         typeMain += "/*"
-        context.shareFileToExternal(sb.toString(), typeMain, uris)
+        context.shareFilesToExternal(sb.toString(), typeMain, uris)
     }
 
     private fun handleNoteShare(item: NoteItem, index: Int = -1) {
@@ -1229,7 +1250,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             val uri = FileHelper.generateShareFile(context, attachment)
             val text = attachment.name
             val mimeType = attachment.mimeType
-            context.shareFileToExternal(text, mimeType, arrayListOf(uri))
+            context.shareFilesToExternal(text, mimeType, arrayListOf(uri))
 
             return
         }
@@ -1239,7 +1260,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         FileHelper.generateShareFiles(context, item, uris)
         val text = item.text
         val mimeType = item.getAttachmentMimeType()
-        context.shareFileToExternal(text, mimeType, uris)
+        context.shareFilesToExternal(text, mimeType, uris)
     }
 
     private fun handleNoteCopy(e: NoteItem) {

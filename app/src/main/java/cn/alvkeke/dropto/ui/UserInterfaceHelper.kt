@@ -27,7 +27,7 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment.Companion.TAG
 
 object UserInterfaceHelper {
 
-    fun Context.shareFileToExternal(text: String, type: String, uris: ArrayList<Uri>) {
+    fun Context.shareFilesToExternal(text: String, type: String, uris: ArrayList<Uri>) {
         val sendIntent = Intent(Intent.ACTION_SEND)
 
         sendIntent.type = type
@@ -51,6 +51,30 @@ object UserInterfaceHelper {
         } catch (e: Exception) {
             Log.e(this.toString(), "Failed to create share Intent: $e")
         }
+    }
+
+    fun Context.shareFileToExternal(text: String, type: String, uri: Uri) {
+
+        val sendIntent = Intent(Intent.ACTION_SEND)
+
+        sendIntent.type = type
+        sendIntent.putExtra(Intent.EXTRA_STREAM, uri)
+        sendIntent.putExtra(Intent.EXTRA_TEXT, text)
+
+        val shareIntent = Intent.createChooser(sendIntent, "Share to")
+        try {
+            this.startActivity(shareIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create share Intent: $e")
+        }
+    }
+
+    fun Context.shareAttachmentFileToExternal(attachment: AttachmentFile) {
+        val uri = FileHelper.generateShareFile(this, attachment)
+        val text = attachment.name
+        val mimeType = attachment.mimeType
+
+        shareFileToExternal(text, mimeType, uri)
     }
 
     fun Context.copyText(text: String) {

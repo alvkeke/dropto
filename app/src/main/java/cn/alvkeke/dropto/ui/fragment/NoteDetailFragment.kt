@@ -4,8 +4,6 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.DialogInterface
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -22,8 +20,8 @@ import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareAttachmentFileToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
 import cn.alvkeke.dropto.ui.comonent.AttachmentCard
 import com.google.android.material.appbar.MaterialToolbar
@@ -209,34 +207,11 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
         animator.start()
     }
 
-    private fun triggerShare(text: String, type: String, uri: Uri) {
-        val sendIntent = Intent(Intent.ACTION_SEND)
-
-        sendIntent.type = type
-
-        sendIntent.putExtra(Intent.EXTRA_STREAM, uri)
-
-        sendIntent.putExtra(Intent.EXTRA_TEXT, text)
-        Log.d(this.toString(), "no image, share text: $text")
-
-        val shareIntent = Intent.createChooser(sendIntent, "Share to")
-        try {
-            this.startActivity(shareIntent)
-        } catch (e: Exception) {
-            Log.e(this.toString(), "Failed to create share Intent: $e")
-        }
-    }
-
-
     override fun onShare(
         card: AttachmentCard,
         attachment: AttachmentFile
     ) {
-        val uri = FileHelper.generateShareFile(requireContext(), attachment)
-        val text = attachment.name
-        val mimeType = attachment.mimeType
-
-        triggerShare(text, mimeType, uri)
+        context?.shareAttachmentFileToExternal(attachment)
     }
 
     override fun onClick(card: AttachmentCard, attachment: AttachmentFile) {
@@ -245,13 +220,13 @@ class NoteDetailFragment : BottomSheetDialogFragment(), AttachmentCard.CardListe
                 this.showMediaFragment(attachment)
             }
             AttachmentFile.Type.FILE -> {
-                requireContext().openFileWithExternalApp(attachment)
+                context?.openFileWithExternalApp(attachment)
             }
         }
     }
 
     override fun onOpen(card: AttachmentCard, attachment: AttachmentFile) {
-        requireContext().openFileWithExternalApp(attachment)
+        context?.openFileWithExternalApp(attachment)
     }
 
     companion object {
