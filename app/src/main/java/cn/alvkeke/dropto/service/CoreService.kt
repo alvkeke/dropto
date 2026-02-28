@@ -32,6 +32,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CoreService : Service() {
     override fun onBind(intent: Intent): IBinder {
@@ -92,8 +93,6 @@ class CoreService : Service() {
     @JvmField
     var resultListener: CoreServiceListener? = null
 
-    private val handler = Handler(Looper.getMainLooper())
-
     private var _serviceScope : CoroutineScope? = null
     private val serviceScope : CoroutineScope
         get() {
@@ -103,7 +102,7 @@ class CoreService : Service() {
             return _serviceScope!!
         }
 
-    private fun handleTaskCategoryCreate(category: Category) {
+    private suspend fun handleTaskCategoryCreate(category: Category) {
 
         var result: Int
         try {
@@ -117,14 +116,16 @@ class CoreService : Service() {
             Log.e(TAG, "Failed to add new category to database")
             result = -1
         }
-        handler.post { resultListener?.onCategoryCreated(result, category) }
+        withContext(Dispatchers.Main) {
+            resultListener?.onCategoryCreated(result, category)
+        }
 
     }
     fun createCategory(category: Category) {
         serviceScope.launch { handleTaskCategoryCreate(category) }
     }
 
-    private fun handleTaskCategoryRemove(category: Category) {
+    private suspend fun handleTaskCategoryRemove(category: Category) {
         val categories: ArrayList<Category> = categories
 
         val index: Int
@@ -150,13 +151,15 @@ class CoreService : Service() {
                         category.id + ", exception: " + ex
             )
         }
-        handler.post { resultListener?.onCategoryRemoved(result, category) }
+        withContext(Dispatchers.Main) {
+            resultListener?.onCategoryRemoved(result, category)
+        }
     }
     fun removeCategory(category: Category) {
         serviceScope.launch { handleTaskCategoryRemove(category) }
     }
 
-    private fun handleTaskCategoryUpdate(category: Category) {
+    private suspend fun handleTaskCategoryUpdate(category: Category) {
         val categories: ArrayList<Category> = categories
 
         val index: Int
@@ -176,14 +179,17 @@ class CoreService : Service() {
         } catch (ex: Exception) {
             Log.e(TAG, "Failed to modify Category: $ex")
         }
-        handler.post { resultListener?.onCategoryUpdated(result, category) }
+
+        withContext(Dispatchers.Main) {
+            resultListener?.onCategoryUpdated(result, category)
+        }
     }
     fun updateCategory(category: Category) {
         serviceScope.launch { handleTaskCategoryUpdate(category) }
     }
 
 
-    private fun handleTaskNoteRemove(e: NoteItem) {
+    private suspend fun handleTaskNoteRemove(e: NoteItem) {
         val c = findCategory(e.categoryId)
         if (c == null) {
             Log.e(TAG, "Failed to find category with id " + e.categoryId)
@@ -206,13 +212,15 @@ class CoreService : Service() {
                         e.id + ", exception: " + e
             )
         }
-        handler.post { resultListener?.onNoteRemoved(result, e) }
+        withContext(Dispatchers.Main) {
+            resultListener?.onNoteRemoved(result, e)
+        }
     }
     fun removeNote(e: NoteItem) {
         serviceScope.launch { handleTaskNoteRemove(e) }
     }
 
-    private fun handleTaskNoteRestore(e: NoteItem) {
+    private suspend fun handleTaskNoteRestore(e: NoteItem) {
         val c = findCategory(e.categoryId)
         if (c == null) {
             Log.e(TAG, "Failed to find category with id " + e.categoryId)
@@ -238,13 +246,15 @@ class CoreService : Service() {
                         e.id + ", exception: " + e
             )
         }
-        handler.post { resultListener?.onNoteRestored(result, e) }
+        withContext(Dispatchers.Main) {
+            resultListener?.onNoteRestored(result, e)
+        }
     }
     fun restoreNote(e: NoteItem) {
         serviceScope.launch { handleTaskNoteRestore(e) }
     }
 
-    private fun handleTaskNoteUpdate(newItem: NoteItem) {
+    private suspend fun handleTaskNoteUpdate(newItem: NoteItem) {
         val c = findCategory(newItem.categoryId)
         if (c == null) {
             Log.e(TAG, "Failed to find category with id " + newItem.categoryId)
@@ -271,18 +281,22 @@ class CoreService : Service() {
         } catch (exception: Exception) {
             Log.e(TAG, "Failed to update note item in database: $exception")
         }
-        handler.post { resultListener?.onNoteUpdated(result, newItem) }
+        withContext(Dispatchers.Main) {
+            resultListener?.onNoteUpdated(result, newItem)
+        }
     }
     fun updateNote(newItem: NoteItem) {
         serviceScope.launch { handleTaskNoteUpdate(newItem) }
     }
 
-    private fun handleCreateNote(newItem: NoteItem) {
+    private suspend fun handleCreateNote(newItem: NoteItem) {
         val category = findCategory(newItem.categoryId)
         var result = -1
         if (category == null) {
             Log.e(TAG, "Failed to find category with id " + newItem.categoryId)
-            handler.post { resultListener?.onNoteCreated(result, newItem) }
+            withContext(Dispatchers.Main) {
+                resultListener?.onNoteCreated(result, newItem)
+            }
             return
         }
 
@@ -293,17 +307,23 @@ class CoreService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add new item to database!", e)
-            handler.post { resultListener?.onNoteCreated(result, newItem) }
+            withContext(Dispatchers.Main) {
+                resultListener?.onNoteCreated(result, newItem)
+            }
             return
         }
 
         if (!category.isInitialized) {
             Log.i(TAG, "category not initialized, not add new item in the list")
-            handler.post { resultListener?.onNoteCreated(result, newItem) }
+            withContext(Dispatchers.Main) {
+                resultListener?.onNoteCreated(result, newItem)
+            }
             return
         }
         result = category.addNoteItem(newItem)
-        handler.post { resultListener?.onNoteCreated(result, newItem) }
+        withContext(Dispatchers.Main) {
+            resultListener?.onNoteCreated(result, newItem)
+        }
     }
     fun createNote(newItem: NoteItem) {
         serviceScope.launch { handleCreateNote(newItem) }
