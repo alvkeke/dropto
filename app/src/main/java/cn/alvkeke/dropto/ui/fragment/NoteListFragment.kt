@@ -688,10 +688,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             parent: ViewGroup,
             viewType: Int
         ): ViewHolder {
-            val layout = ConstraintLayout(parent.context)
-            layout.id = View.generateViewId()
-            if (itemSize > 0) {
-                layout.layoutParams = RecyclerView.LayoutParams(
+            val layout = ConstraintLayout(parent.context).apply {
+                id = View.generateViewId()
+                layoutParams = RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
