@@ -732,11 +732,12 @@ class NoteItemView @JvmOverloads constructor(
         if (_medias.isEmpty()) return SizeF(0f, 0f)
 
         measureMediasHeight(contentMaxWidth)
-        val last = _medias.last().rect
+        val last = _medias.take(MAX_IMAGE_COUNT).last().rect
         val imageHeight = last.bottom
         val imageWidth = last.right
-        // FIXME: media > 10 will cause the size error
+
         if (imageHeight == 0f || imageWidth == 0f) {
+            // keep this check to prevent crash in feature
             Log.e(TAG, "got a wrong size of medias: $imageHeight, $imageWidth")
             return SizeF(0f, 0f)
         }
