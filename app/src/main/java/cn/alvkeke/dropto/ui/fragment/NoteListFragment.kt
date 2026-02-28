@@ -5,7 +5,6 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.AlertDialog.Builder
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ImageDecoder
@@ -210,6 +209,14 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 exitEditMode()
             }
             btnCancel.isVisible = false
+        }
+        btnCancel.setOnLongClickListener {
+            if (!isEditingMode) {
+                return@setOnLongClickListener true
+            }
+
+            attachmentListAdapter.markAllRemoved(!attachmentListAdapter.isAllMarkDeleted)
+            true
         }
         btnSend.setOnClickListener(SendButtonClickListener())
         val btnAttachListener = AttachButtonListener()
@@ -593,6 +600,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         val allList : List<AttachmentItem> = list
         val nonDeleteList: List<AttachmentItem>
             get() = list.filter { !it.deleteMarked }
+        val isAllMarkDeleted: Boolean
+            get() = list.isNotEmpty() && nonDeleteList.isEmpty()
         var itemSize = 0
 
         class ViewHolder(
@@ -878,6 +887,14 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         fun markRemoved(index: Int, set: Boolean) {
             list[index].deleteMarked = set
             notifyItemChanged(index)
+        }
+
+        fun markAllRemoved(set: Boolean) {
+            list.indices.forEach { index ->
+                val item = list[index]
+                item.deleteMarked = set
+                notifyItemChanged(index)
+            }
         }
 
         fun removeAt(index: Int) {
