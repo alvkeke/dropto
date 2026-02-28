@@ -752,24 +752,30 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                         AttachmentFile.Type.MEDIA -> {
                             val imageView = holder.mainView as MediaView
                             imageView.setImageBitmap(null)
+                            val key = item.file.md5file.absolutePath
+                            imageView.tag = key
                             if (item.file.isVideo) {
+                                imageView.isVideo = true
                                 ImageLoader.loadVideoThumbnailAsync(item.file.md5file) {
                                     it?.let { thumb ->
-                                        imageView.setImageBitmap(thumb)
-                                        imageView.invalidate()
+                                        if (imageView.tag == key) {
+                                            imageView.setImageBitmap(thumb)
+                                            imageView.invalidate()
+                                        }
                                     }
                                 }
-                                imageView.isVideo = true
                             } else {
+                                imageView.isVideo = false
                                 ImageLoader.loadImageAsync(
                                     item.file.md5file,
                                 ) { bitmap ->
                                     bitmap?.let {
-                                        imageView.setImageBitmap(it)
-                                        imageView.invalidate()
+                                        if (imageView.tag == key) {
+                                            imageView.setImageBitmap(it)
+                                            imageView.invalidate()
+                                        }
                                     }
                                 }
-                                imageView.isVideo = false
                             }
                         }
                         AttachmentFile.Type.FILE -> {
@@ -788,6 +794,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                             )
                             val mimeType = FileHelper.mimeTypeFromFileName(fileName)
                             val isVideo = mimeType.startsWith("video/")
+                            val key = item.uri.toString()
+                            imageView.tag = key
                             scope.launch {
                                 try {
                                     val bitmap = if (isVideo) {
@@ -795,26 +803,29 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                                         retriever.setDataSource(imageView.context, item.uri)
                                         val thumbnail = retriever.frameAtTime // default is first frame, can specify time
                                         retriever.release()
-                                        imageView.isVideo = true
                                         thumbnail
                                     } else {
                                         val resolver = imageView.context.contentResolver
                                         val source = ImageDecoder.createSource(resolver, item.uri)
-                                        imageView.isVideo = false
                                         ImageDecoder.decodeBitmap(source)
                                     }
                                     withContext(Dispatchers.Main) {
-                                        imageView.setImageBitmap(bitmap)
-                                        val max = 30
-                                        val fMax = max.toFloat()
-                                        for (a in 0..max) {
-                                            imageView.alpha = a / fMax
-                                            delay(10)
+                                        if (imageView.tag == key) {
+                                            imageView.isVideo = isVideo
+                                            imageView.setImageBitmap(bitmap)
+                                            val max = 30
+                                            val fMax = max.toFloat()
+                                            for (a in 0..max) {
+                                                imageView.alpha = a / fMax
+                                                delay(10)
+                                            }
                                         }
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
-                                        imageView.setImageBitmap(ImageLoader.errorBitmap)
+                                        if (imageView.tag == key) {
+                                            imageView.setImageBitmap(ImageLoader.errorBitmap)
+                                        }
                                     }
                                     Log.e(TAG, "Failed to load media", e)
                                 }
@@ -828,6 +839,15 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 }
             }
             holder.overlay.isVisible = item.deleteMarked
+        }
+
+        override fun onViewRecycled(holder: ViewHolder) {
+            super.onViewRecycled(holder)
+            if (holder.mainView is MediaView) {
+                val imageView = holder.mainView as MediaView
+                imageView.tag = null
+                imageView.setImageBitmap(null)
+            }
         }
 
         override fun getItemViewType(position: Int): Int {
