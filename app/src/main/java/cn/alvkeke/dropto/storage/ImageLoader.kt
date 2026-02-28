@@ -114,7 +114,7 @@ object ImageLoader {
 
         iconFile = context.loadDrawable(R.drawable.icon_common_file)
 
-        iconVideoPlay = context.loadDrawable(R.drawable.icon_common_video_play)
+        iconVideoPlay = context.loadDrawable(R.drawable.icon_common_video_play_old)
 
         iconMore = context.loadDrawable(R.drawable.icon_common_more)
     }

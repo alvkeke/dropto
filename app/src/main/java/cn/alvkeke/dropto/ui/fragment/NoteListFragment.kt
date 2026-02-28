@@ -3,8 +3,16 @@ package cn.alvkeke.dropto.ui.fragment
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
-import android.app.AlertDialog.*
+import android.app.AlertDialog.Builder
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.ImageDecoder
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.drawable.Drawable
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -20,23 +28,27 @@ import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
+import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -46,6 +58,7 @@ import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
@@ -65,8 +78,13 @@ import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 
@@ -79,9 +97,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private lateinit var fragmentParent: View
     private lateinit var fragmentView: View
     private lateinit var etInputText: EditText
-    private lateinit var btnAttachImage: CountableImageButton
-    private lateinit var btnAttachFile: CountableImageButton
-    private val btnAttachList: ArrayList<CountableImageButton> = ArrayList()
+    private lateinit var rlAttachment: RecyclerView
+    private lateinit var attachmentListAdapter: AttachmentListAdapter
+    private lateinit var editIndicator: View
+    private lateinit var btnCancel: ImageButton
+    private lateinit var btnAttach: CountableImageButton
+    private lateinit var btnSend: ImageButton
     private lateinit var contentContainer: ConstraintLayout
     private lateinit var naviBar: View
     private lateinit var toolbar: MaterialToolbar
@@ -117,10 +138,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
-        val btnAddNote = view.findViewById<ImageButton>(R.id.note_list_input_button)
-        btnAttachImage = view.findViewById(R.id.note_list_input_attach_image)
-        btnAttachFile = view.findViewById(R.id.note_list_input_attach_file)
+        btnSend = view.findViewById(R.id.note_list_input_button)
+        btnCancel = view.findViewById(R.id.note_list_input_cancel_button)
+        btnAttach = view.findViewById(R.id.note_list_input_attach_attachment)
+        rlAttachment = view.findViewById(R.id.note_list_input_attachment_list)
         etInputText = view.findViewById(R.id.note_list_input_box)
+        editIndicator = view.findViewById(R.id.note_list_input_edit_indicator)
         contentContainer = view.findViewById(R.id.note_list_content_container)
         val statusBar = view.findViewById<View>(R.id.note_list_status_bar)
         naviBar = view.findViewById(R.id.note_list_navigation_bar)
@@ -135,7 +158,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar)
         setToolbarMenuBySelectedItems(0)
 
-        val layoutManager = LinearLayoutManager(context)
+        var layoutManager = LinearLayoutManager(context)
         layoutManager.setReverseLayout(true)
         rlNoteList.setSelectListener(NoteListSelectListener())
 
@@ -148,17 +171,58 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         noteItemAdapter.showDeleted = false
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
-
-        btnAddNote.setOnClickListener(OnItemAddClick())
-        btnAttachList.add(btnAttachFile)
-        btnAttachList.add(btnAttachImage)
-        val btnAttachImageCallback = CountableButtonCallback(btnAttachImage)
-        val btnAttachFileCallback = CountableButtonCallback(btnAttachFile)
-        btnAttachImage.setOnClickListener(btnAttachImageCallback)
-        btnAttachImage.setOnLongClickListener(btnAttachImageCallback)
-        btnAttachFile.setOnClickListener(btnAttachFileCallback)
-        btnAttachFile.setOnLongClickListener(btnAttachFileCallback)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
+
+        attachmentListAdapter = AttachmentListAdapter().apply {
+            itemSize = (84 * context.resources.displayMetrics.density).toInt()
+        }
+        attachmentListAdapter.setDataChangeListener { count ->
+            if (count > 0) btnCancel.visibility = View.VISIBLE
+            // only show the button, the btnCancel will be hide:
+            // 1. create/update req done
+            // 2. click on the btnCancel
+        }
+        rlAttachment.adapter = attachmentListAdapter
+        layoutManager = LinearLayoutManager(
+            context,
+            RecyclerView.HORIZONTAL,
+            false
+        )
+        rlAttachment.layoutManager = layoutManager
+        rlAttachment.addItemDecoration(object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(
+                outRect: Rect,
+                view: View,
+                parent: RecyclerView,
+                state: RecyclerView.State
+            ) {
+                val padding = (8 * context.resources.displayMetrics.density).toInt()
+                val pos = parent.getChildAdapterPosition(view)
+                val sizeHead = if (pos == 0) padding else 0
+                outRect.set(sizeHead, padding, padding, padding)
+            }
+        })
+        rlAttachment.setOnTouchListener(AttachmentListTouchListener())
+
+        btnCancel.setOnClickListener {
+            attachmentListAdapter.clear()
+            if (isEditingMode) {
+                exitEditMode()
+            }
+            btnCancel.isVisible = false
+        }
+        btnCancel.setOnLongClickListener {
+            if (!isEditingMode) {
+                return@setOnLongClickListener true
+            }
+
+            attachmentListAdapter.markAllRemoved(!attachmentListAdapter.isAllMarkDeleted)
+            true
+        }
+        btnSend.setOnClickListener(SendButtonClickListener())
+        val btnAttachListener = AttachButtonListener()
+        btnAttach.setOnClickListener(btnAttachListener)
+        btnAttach.setOnLongClickListener(btnAttachListener)
     }
 
     override fun onBackPressed(): Boolean {
@@ -521,91 +585,463 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             })
     }
 
-    private class TmpAttachment(val uri: Uri, val type: AttachmentFile.Type)
-    private val attachments = ArrayList<TmpAttachment>()
-    private fun ArrayList<TmpAttachment>.contains(uri: Uri): Boolean {
-        for (att in this) {
-            if (att.uri == uri) return true
+    private class AttachmentListAdapter(
+    ) : RecyclerView.Adapter<AttachmentListAdapter.ViewHolder>() {
+
+        sealed class AttachmentItem(var deleteMarked: Boolean = false) {
+            data class Attachment(
+                val file: AttachmentFile,
+            ): AttachmentItem()
+            data class Unhandled(
+                val uri: Uri,
+                val type: AttachmentFile.Type,
+            ): AttachmentItem()
         }
-        return false
-    }
+        private val list = mutableListOf<AttachmentItem>()
+        val allList : List<AttachmentItem> = list
+        val nonDeleteList: List<AttachmentItem>
+            get() = list.filter { !it.deleteMarked }
+        val isAllMarkDeleted: Boolean
+            get() = list.isNotEmpty() && nonDeleteList.isEmpty()
+        var itemSize = 0
 
-    private fun addAttachments(btn: CountableImageButton, uris: List<Uri>) {
-        val type = when(btn) {
-            btnAttachImage -> AttachmentFile.Type.MEDIA
-            btnAttachFile -> AttachmentFile.Type.FILE
-            else -> error("Unknown attachment button clicked, not allowed")
-        }
+        class ViewHolder(
+            itemView: ConstraintLayout,
+            val mainView: View,
+            val overlay: View,
+        ) : RecyclerView.ViewHolder(itemView)
 
-        var increasedCount = 0
-        for (uri in uris) {
-            if (attachments.contains(uri))
-                continue
-            attachments.add(TmpAttachment(uri, type))
-            increasedCount++
-        }
-        btn.count += increasedCount
-    }
-
-    private fun clearAttachments() {
-        attachments.clear()
-        for (btn in btnAttachList) {
-            btn.count = 0
-        }
-    }
-
-    private inner class CountableButtonCallback(private val btn: CountableImageButton) :
-        ActivityResultCallback<List<Uri>>, OnClickListener, OnLongClickListener {
-
-        private var imagePicker = registerForActivityResult(
-            // not going to limit the number of selected images/videos
-        PickMultipleVisualMedia(99), this )
-        private var filePicker = registerForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments(), this)
-
-        override fun onActivityResult(result: List<Uri>) {
-            if (result.isEmpty()) {
-                Log.d(TAG, "No attachment is selected")
-                return
+        private class OverlayView(context: Context) : View(context) {
+            private val stripePaint = Paint().apply {
+                color = Color.RED
+                alpha = 100
+                strokeWidth = 8f
+                isAntiAlias = true
+                style = Paint.Style.STROKE
             }
-            // only try to update UI if the list is not empty
-            addAttachments(btn, result)
-        }
 
-        override fun onClick(view: View) {
-            when (btn) {
-                btnAttachImage -> imagePicker.launch(PickVisualMediaRequest.Builder()
-                            .setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-                            .build())
-                btnAttachFile -> filePicker.launch(arrayOf("*/*"))
-                else -> error("Unknown attachment button clicked, not allowed")
+            override fun onDraw(canvas: Canvas) {
+                super.onDraw(canvas)
+
+                val w = width.toFloat()
+                val h = height.toFloat()
+                val stripeSpacing = 20f
+
+                var i = 0f
+                while (i < w + h) {
+                    val startX = if (i < w) w - i else 0f
+                    val startY = if (i < w) 0f else i - w
+                    val endX = if (i < h) w else w - (i - h)
+                    val endY = if (i < h) i else h
+
+                    canvas.drawLine(startX, startY, endX, endY, stripePaint)
+
+                    i += stripeSpacing
+                }
             }
         }
 
-        override fun onLongClick(view: View): Boolean {
-            clearAttachments()
+        private var videoIconDrawable: Drawable? = null
+        private inner class MediaView(
+            context: Context,
+        ) : androidx.appcompat.widget.AppCompatImageView(context) {
+
+            var isVideo = false
+
+            val rect = RectF()
+            val paint = Paint().apply {
+                color = ContextCompat.getColor(context, R.color.video_play_icon_background)
+            }
+            override fun onDraw(canvas: Canvas) {
+                super.onDraw(canvas)
+
+                if (!isVideo) return
+
+                val width2 = width/2f
+                val height2 = height/2f
+                rect.set(
+                    width2,
+                    height2,
+                    width.toFloat(),
+                    height.toFloat()
+                )
+
+                canvas.drawRect(rect, paint)
+                if (videoIconDrawable == null) {
+                    videoIconDrawable = ContextCompat.getDrawable(
+                        context, R.drawable.icon_common_video
+                    )
+                    videoIconDrawable?.setTint(
+                        ContextCompat.getColor(
+                            context, R.color.video_play_icon_foreground
+                        )
+                    )
+                }
+                videoIconDrawable?.setBounds(
+                    width2.toInt(), height2.toInt(), width, height
+                )
+                videoIconDrawable?.draw(canvas)
+            }
+        }
+
+        override fun onCreateViewHolder(
+            parent: ViewGroup,
+            viewType: Int
+        ): ViewHolder {
+            val layout = ConstraintLayout(parent.context).apply {
+                id = View.generateViewId()
+                layoutParams = RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+            }
+
+            val height: Int
+            val width: Int
+            val view = when (viewType) {
+                0 -> {
+                    height = itemSize
+                    width = itemSize
+                    MediaView(parent.context).apply {
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                    }
+                }
+                else -> {
+                    height = itemSize
+                    width = itemSize * 2
+                    TextView(parent.context).apply {
+                        setTextColor(ContextCompat.getColor(
+                            parent.context,
+                            R.color.color_text_main
+                        ))
+                        setBackgroundResource(R.color.note_bubble_background)
+                        textAlignment = TextView.TEXT_ALIGNMENT_CENTER
+                        gravity = Gravity.CENTER
+                    }
+                }
+            }.apply {
+                layoutParams = ConstraintLayout.LayoutParams(
+                    width,
+                    height
+                ).apply {
+                    startToStart = layout.id
+                    topToTop = layout.id
+                }
+            }
+
+            val overlay = OverlayView(parent.context).apply {
+                layoutParams = ConstraintLayout.LayoutParams(
+                    width,
+                    height
+                ).apply {
+                    startToStart = layout.id
+                    topToTop = layout.id
+                }
+            }
+            layout.addView(view)
+            layout.addView(overlay)
+
+            return ViewHolder(layout, view, overlay)
+        }
+
+        private lateinit var scope : CoroutineScope
+        override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+            super.onAttachedToRecyclerView(recyclerView)
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        }
+        override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+            super.onDetachedFromRecyclerView(recyclerView)
+            scope.cancel()
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val item = list[position]
+            when (item) {
+                is AttachmentItem.Attachment -> {
+                    when (item.file.type) {
+                        AttachmentFile.Type.MEDIA -> {
+                            val imageView = holder.mainView as MediaView
+                            imageView.setImageBitmap(null)
+                            val key = item.file.md5file.absolutePath
+                            imageView.tag = key
+                            if (item.file.isVideo) {
+                                imageView.isVideo = true
+                                ImageLoader.loadVideoThumbnailAsync(item.file.md5file) {
+                                    it?.let { thumb ->
+                                        if (imageView.tag == key) {
+                                            imageView.setImageBitmap(thumb)
+                                            imageView.invalidate()
+                                        }
+                                    }
+                                }
+                            } else {
+                                imageView.isVideo = false
+                                ImageLoader.loadImageAsync(
+                                    item.file.md5file,
+                                ) { bitmap ->
+                                    bitmap?.let {
+                                        if (imageView.tag == key) {
+                                            imageView.setImageBitmap(it)
+                                            imageView.invalidate()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        AttachmentFile.Type.FILE -> {
+                            val textView = holder.mainView as TextView
+                            textView.text = item.file.name
+                        }
+                    }
+                }
+                is AttachmentItem.Unhandled -> {
+                    when (item.type) {
+                        AttachmentFile.Type.MEDIA -> {
+                            val imageView = holder.mainView as MediaView
+                            imageView.setImageBitmap(null)
+                            val fileName = FileHelper.getFileNameFromUri(
+                                imageView.context, item.uri
+                            )
+                            val mimeType = FileHelper.mimeTypeFromFileName(fileName)
+                            val isVideo = mimeType.startsWith("video/")
+                            val key = item.uri.toString()
+                            imageView.tag = key
+                            scope.launch {
+                                try {
+                                    val bitmap = if (isVideo) {
+                                        val retriever = MediaMetadataRetriever()
+                                        try {
+                                            retriever.setDataSource(imageView.context, item.uri)
+                                            val thumbnail =
+                                                retriever.frameAtTime // default is first frame, can specify time
+                                            thumbnail
+                                        } finally {
+                                            retriever.release()
+                                        }
+                                    } else {
+                                        val resolver = imageView.context.contentResolver
+                                        val source = ImageDecoder.createSource(resolver, item.uri)
+                                        ImageDecoder.decodeBitmap(source)
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        if (imageView.tag == key) {
+                                            imageView.isVideo = isVideo
+                                            imageView.setImageBitmap(bitmap)
+                                            val max = 30
+                                            val fMax = max.toFloat()
+                                            for (a in 0..max) {
+                                                imageView.alpha = a / fMax
+                                                delay(10)
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        if (imageView.tag == key) {
+                                            imageView.setImageBitmap(ImageLoader.errorBitmap)
+                                        }
+                                    }
+                                    Log.e(TAG, "Failed to load media", e)
+                                }
+                            }
+                        }
+                        AttachmentFile.Type.FILE -> {
+                            val textView = holder.mainView as TextView
+                            textView.text = FileHelper.getFileNameFromUri(textView.context, item.uri)
+                        }
+                    }
+                }
+            }
+            holder.overlay.isVisible = item.deleteMarked
+        }
+
+        override fun onViewRecycled(holder: ViewHolder) {
+            super.onViewRecycled(holder)
+            if (holder.mainView is MediaView) {
+                val imageView = holder.mainView
+                imageView.tag = null
+                imageView.setImageBitmap(null)
+            }
+        }
+
+        override fun getItemViewType(position: Int): Int {
+            return when (val e = list[position]) {
+                is AttachmentItem.Attachment -> {
+                    when (e.file.type) {
+                        AttachmentFile.Type.MEDIA -> 0
+                        AttachmentFile.Type.FILE -> 1
+                    }
+                }
+                is AttachmentItem.Unhandled -> {
+                    when (e.type) {
+                        AttachmentFile.Type.MEDIA -> 0
+                        AttachmentFile.Type.FILE -> 1
+                    }
+                }
+            }
+        }
+
+        override fun getItemCount(): Int {
+            return list.size
+        }
+
+        fun interface DataChangeListener {
+            fun onChanged(count: Int)
+        }
+        private var dataChangeListener: DataChangeListener? = null
+        fun setDataChangeListener(listener: DataChangeListener) {
+            dataChangeListener = listener
+        }
+
+        fun add(item: AttachmentItem) {
+            if (!list.contains(item)) {
+                list.add(item)
+                val index = list.indexOf(item)
+                if (index != -1) {
+                    this.notifyItemInserted(index)
+                }
+//            } else {
+//                val index = list.indexOf(item)
+//                list[index].deleteMarked = false
+//                this.notifyItemChanged(index)
+                dataChangeListener?.onChanged(list.size)
+            }
+        }
+
+        fun add(attachment: AttachmentFile) {
+            val newItem = AttachmentItem.Attachment(attachment)
+            add(newItem)
+        }
+
+        fun add(uri: Uri, type: AttachmentFile.Type) {
+            val newItem = AttachmentItem.Unhandled(uri, type)
+            add(newItem)
+        }
+
+        fun markRemoved(index: Int, set: Boolean) {
+            list[index].deleteMarked = set
+            notifyItemChanged(index)
+        }
+
+        fun markAllRemoved(set: Boolean) {
+            list.indices.forEach { index ->
+                val item = list[index]
+                item.deleteMarked = set
+                notifyItemChanged(index)
+            }
+        }
+
+        fun removeAt(index: Int) {
+            list.removeAt(index)
+            notifyItemRemoved(index)
+            dataChangeListener?.onChanged(list.size)
+        }
+
+        fun clear() {
+            val size = list.size
+            list.clear()
+            notifyItemRangeRemoved(0, size)
+            dataChangeListener?.onChanged(list.size)
+        }
+    }
+
+    private inner class AttachmentListTouchListener() : OnRecyclerViewTouchListener(context) {
+
+        override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            if (isEditingMode) {
+                val isDeleted = attachmentListAdapter.allList[index].deleteMarked
+                attachmentListAdapter.markRemoved(index, !isDeleted)
+            } else {
+                attachmentListAdapter.removeAt(index)
+            }
+            return true
+        }
+
+        override fun onItemClick(v: View, index: Int): Boolean {
+            if (isEditingMode) {
+                v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                val isDeleted = attachmentListAdapter.allList[index].deleteMarked
+                attachmentListAdapter.markRemoved(index, !isDeleted)
+            }
             return true
         }
     }
 
-    private inner class OnItemAddClick : OnClickListener {
+    private inner class AttachButtonListener() : OnClickListener, OnLongClickListener {
+
+        private var imagePicker = registerForActivityResult(
+            // not going to limit the number of selected images/videos
+        PickMultipleVisualMedia(99)) {
+            it.forEach { uri ->
+                attachmentListAdapter.add(uri, AttachmentFile.Type.MEDIA)
+            }
+        }
+        private var filePicker = registerForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()) {
+            it.forEach { uri ->
+                attachmentListAdapter.add(uri, AttachmentFile.Type.FILE)
+            }
+        }
+
+        override fun onClick(view: View) {
+            imagePicker.launch(PickVisualMediaRequest.Builder()
+                .setMediaType(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                .build())
+        }
+
+        override fun onLongClick(view: View): Boolean {
+            filePicker.launch(arrayOf("*/*"))
+            return true
+        }
+    }
+
+    private inner class SendButtonClickListener : OnClickListener {
         override fun onClick(v: View) {
             val content = etInputText.text.toString().trim { it <= ' ' }
-            val item = NoteItem(content)
-            item.categoryId = category.id
+
+            if (attachmentListAdapter.nonDeleteList.isEmpty() && content.isEmpty()) {
+                if (isEditingMode) {
+                    // warning empty item after editing
+                    v.performHapticFeedback(
+                        HapticFeedbackConstants.LONG_PRESS
+                    )
+                }
+                return
+            }
+
+            val item = if (isEditingMode) {
+                val e = editingItem!!
+                e.text = content
+                e.attachments.clear()   // clear the previous items, prevent dup attachments
+                e
+            } else {
+                val e = NoteItem(content)
+                e.categoryId = category.id
+                e
+            }
+
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                if (attachments.isEmpty()) {
-                    if (content.isEmpty()) return@launch
-                } else {
-                    for (a in attachments) {
-                        val folder = FileHelper.attachmentStorage
-                        val md5file = FileHelper.saveUriToFile(context, a.uri, folder)
-                        val imgName = FileHelper.getFileNameFromUri(context, a.uri)
-                        val imageFile = AttachmentFile.from(md5file!!, imgName, a.type)
-                        item.attachments.add(imageFile)
+                attachmentListAdapter.nonDeleteList.forEach {
+                    when (it) {
+                        is AttachmentListAdapter.AttachmentItem.Attachment -> {
+                            item.attachments.add(it.file)
+                        }
+                        is AttachmentListAdapter.AttachmentItem.Unhandled -> {
+                            val folder = FileHelper.attachmentStorage
+                            val md5file = FileHelper.saveUriToFile(context, it.uri, folder)
+                            val imgName = FileHelper.getFileNameFromUri(context, it.uri)
+                            val imageFile = AttachmentFile.from(md5file!!, imgName, it.type)
+                            item.attachments.add(imageFile)
+                        }
                     }
                 }
-                requestCreateNote(item)
+
+                if (isEditingMode) {
+                    requestUpdateNote(item)
+                } else {
+                    requestCreateNote(item)
+                }
             }
         }
     }
@@ -638,7 +1074,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 }
 
                 R.id.item_pop_m_edit -> {
-                    showNoteDetailFragment(note)
+                    setupEditMode(note)
                 }
 
                 R.id.item_pop_m_copy_text -> {
@@ -853,18 +1289,77 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         forwardFragment.show(parentFragmentManager, null)
     }
 
-    private var pendingNoteItem: NoteItem? = null
-    private fun setPendingItem(item: NoteItem) {
-        pendingNoteItem = item
+    private fun EditText.trySaveCurrentText() {
+        if (this.text.isNotEmpty()) {
+            val value = this.text.toString()
+            this.setTag(R.id.tag_note_saved_text_for_edit, value)
+        }
+    }
+    private fun EditText.restoreSavedText() {
+        val value = this.getTag(R.id.tag_note_saved_text_for_edit) as String?
+        value?.let { v ->
+            this.setText(v)
+            this.setTag(R.id.tag_note_saved_text_for_edit, null)
+        }
+    }
+    private val EditText.haveSavedText: Boolean
+        get() {
+            val value = this.getTag(R.id.tag_note_saved_text_for_edit) as String?
+            return value != null
+        }
+
+    private var isEditingMode: Boolean
+        get() = editIndicator.isVisible
+        set(value) {
+            editIndicator.isVisible = value
+        }
+    private var editingItem: NoteItem?
+        get() = editIndicator.tag as NoteItem?
+        set(value) {
+            editIndicator.tag = value
+        }
+    private fun setupEditMode(note: NoteItem) {
+        btnCancel.isVisible = true
+        if (isEditingMode) {
+            // allow re-enter, replace the old one
+            attachmentListAdapter.clear()
+        } else {
+            etInputText.trySaveCurrentText()
+        }
+
+        isEditingMode = true
+        editingItem = note
+
+        if (note.attachments.isNotEmpty()) {
+            note.attachments.forEach {
+                attachmentListAdapter.add(it)
+            }
+        }
+        etInputText.setText(note.text)
+        etInputText.setSelection(note.text.length)
+        btnSend.setImageResource(R.drawable.icon_common_check)
+    }
+    private fun exitEditMode() {
+        isEditingMode = false
+        editingItem = null
+        if (etInputText.haveSavedText) {
+            etInputText.restoreSavedText()
+        } else {
+            etInputText.text.clear()
+        }
+        btnSend.setImageResource(R.drawable.img_btn_note_send)
     }
 
-    private fun clearPendingItem() {
-        pendingNoteItem = null
-    }
+    private var reqPendingItem : NoteItem? = null
 
     private fun requestCreateNote(item: NoteItem) {
-        setPendingItem(item)
+        reqPendingItem = item  // pending item, will be cleared after created successfully
         app.service?.createNote(item)
+    }
+
+    private fun requestUpdateNote(item: NoteItem) {
+        reqPendingItem = item  // pending item, will be cleared after updated successfully
+        app.service?.updateNote(item)
     }
 
     private fun requestRemoveNote(item: NoteItem) {
@@ -884,14 +1379,23 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     override fun onNoteCreated(result: Int, noteItem: NoteItem) {
         noteItemAdapter.add(result, noteItem)
         rlNoteList.smoothScrollToPosition(0)
-        if (noteItem == pendingNoteItem) {
-            clearPendingItem()
+        if (noteItem == reqPendingItem) {
+            reqPendingItem = null
             etInputText.text.clear()
-            clearAttachments()
+            attachmentListAdapter.clear()
+            btnCancel.isVisible = false
         }
     }
 
     override fun onNoteUpdated(result: Int, noteItem: NoteItem) {
+        if (noteItem == reqPendingItem) {
+            reqPendingItem = null
+            if (isEditingMode) {
+                exitEditMode()
+            }
+            attachmentListAdapter.clear()
+            btnCancel.isVisible = false
+        }
         noteItemAdapter.update(noteItem)
     }
 
