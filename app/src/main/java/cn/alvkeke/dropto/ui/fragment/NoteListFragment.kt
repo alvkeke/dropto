@@ -81,6 +81,7 @@ import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -173,10 +174,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         rlNoteList.setOnTouchListener(NoteListTouchListener())
 
         attachmentListAdapter = AttachmentListAdapter().apply {
-            itemSize = 84 * context.resources.displayMetrics.density.toInt()
+            itemSize = (84 * context.resources.displayMetrics.density).toInt()
         }
         attachmentListAdapter.setDataChangeListener { count ->
-            if (count > 0) btnCancel.isVisible = true
+            if (count > 0) btnCancel.visibility = View.VISIBLE
             // only show the button, the btnCancel will be hide:
             // 1. create/update req done
             // 2. click on the btnCancel
@@ -195,7 +196,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 parent: RecyclerView,
                 state: RecyclerView.State
             ) {
-                val padding = 8 * context.resources.displayMetrics.density.toInt()
+                val padding = (8 * context.resources.displayMetrics.density).toInt()
                 val pos = parent.getChildAdapterPosition(view)
                 val sizeHead = if (pos == 0) padding else 0
                 outRect.set(sizeHead, padding, padding, padding)
@@ -688,6 +689,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             viewType: Int
         ): ViewHolder {
             val layout = ConstraintLayout(parent.context)
+            layout.id = View.generateViewId()
             if (itemSize > 0) {
                 layout.layoutParams = RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -743,7 +745,16 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             return ViewHolder(layout, view, overlay)
         }
 
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private lateinit var scope : CoroutineScope
+        override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+            super.onAttachedToRecyclerView(recyclerView)
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        }
+        override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+            super.onDetachedFromRecyclerView(recyclerView)
+            scope.cancel()
+        }
+
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = list[position]
             when (item) {
@@ -800,10 +811,14 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                                 try {
                                     val bitmap = if (isVideo) {
                                         val retriever = MediaMetadataRetriever()
-                                        retriever.setDataSource(imageView.context, item.uri)
-                                        val thumbnail = retriever.frameAtTime // default is first frame, can specify time
-                                        retriever.release()
-                                        thumbnail
+                                        try {
+                                            retriever.setDataSource(imageView.context, item.uri)
+                                            val thumbnail =
+                                                retriever.frameAtTime // default is first frame, can specify time
+                                            thumbnail
+                                        } finally {
+                                            retriever.release()
+                                        }
                                     } else {
                                         val resolver = imageView.context.contentResolver
                                         val source = ImageDecoder.createSource(resolver, item.uri)
@@ -844,7 +859,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         override fun onViewRecycled(holder: ViewHolder) {
             super.onViewRecycled(holder)
             if (holder.mainView is MediaView) {
-                val imageView = holder.mainView as MediaView
+                val imageView = holder.mainView
                 imageView.tag = null
                 imageView.setImageBitmap(null)
             }
@@ -1375,6 +1390,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     override fun onNoteUpdated(result: Int, noteItem: NoteItem) {
         if (noteItem == reqPendingItem) {
+            reqPendingItem = null
             if (isEditingMode) {
                 exitEditMode()
             }

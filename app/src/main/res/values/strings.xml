@@ -42,4 +42,5 @@
     <string name="title_item_pop_menu_restore">Restore</string>
     <string name="show_deleted_notes">Show deleted notes</string>
     <string name="hide_deleted_notes">Hide deleted notes</string>
+    <string name="description_button_cancel_editing_or_attach">Button to cancel editing or clear current attached files</string>
 </resources>

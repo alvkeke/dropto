@@ -94,7 +94,7 @@
                         android:src="@drawable/icon_common_cross"
                         android:scaleType="fitCenter"
                         android:background="@color/color_navigation_bar"
-                        android:contentDescription="Button to exit editing mode"
+                        android:contentDescription="@string/description_button_cancel_editing_or_attach"
                         android:layout_width="32dp"
                         android:layout_height="32dp"/>
 
