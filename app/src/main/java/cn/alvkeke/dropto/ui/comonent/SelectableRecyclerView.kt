@@ -198,6 +198,20 @@ class SelectableRecyclerView @JvmOverloads constructor(
         return selectedMap[index] ?: false
     }
 
+    fun swapSelectedItem(from: Int, to: Int) {
+        val fromSelected = isItemSelected(from)
+        val toSelected = isItemSelected(to)
+        if (fromSelected != toSelected) {
+            if (fromSelected) {
+                selectedMap[to] = true
+                selectedMap[from] = false
+            } else {
+                selectedMap[to] = false
+                selectedMap[from] = true
+            }
+        }
+    }
+
     fun selectItem(index: Int) {
         if (isItemSelected(index)) {
             return

@@ -61,6 +61,28 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         notifyItemRangeChanged(index, filteredElements.size - index)
     }
 
+    fun removeAt(index: Int): E {
+        val e = filteredElements[index]
+        if (filters.isEmpty()) {
+            elements.remove(e)
+        }
+        notifyItemRemoved(index)
+        notifyItemRangeChanged(index, filteredElements.size - index)
+        return e
+    }
+
+    fun moveItem(from: Int, to: Int) {
+        if (from == to) return
+        val item = filteredElements[from]
+        val oldIndex = elements.indexOf(item)
+        if (oldIndex == -1) return
+        elements.removeAt(oldIndex)
+        val targetItem = filteredElements.getOrNull(to)
+        val newIndex = if (targetItem != null) elements.indexOf(targetItem) else elements.size
+        elements.add(newIndex, item)
+        notifyItemMoved(from, to)
+    }
+
     fun clear() {
         notifyItemRangeRemoved(0, filteredElements.size)
         elements.clear()
@@ -81,7 +103,7 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         return filteredElements[index]
     }
 
-    private val filteredElements: List<E>
+    protected val filteredElements: List<E>
         get() = elements.filter {
                 filters.all { filter ->
                     filter(it)

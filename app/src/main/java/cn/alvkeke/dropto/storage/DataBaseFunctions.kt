@@ -14,6 +14,7 @@ import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_ID
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_NAME
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_PREVIEW
+import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_SEQUENCE
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_TYPE
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_ATTACHMENT_PREFIX_FILE
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_ATTACHMENT_PREFIX_IMAGE
@@ -115,7 +116,15 @@ fun SQLiteDatabase.queryCategory(
             args[i] = categories[i].id.toString()
         }
     }
-    val cursor = this.query(TABLE_CATEGORY, null, selection, args, null, null, null)
+    val cursor = this.query(
+        TABLE_CATEGORY,
+        null,
+        selection,
+        args,
+        null,
+        null,
+        "$CATEGORY_COLUMN_SEQUENCE ASC"
+    )
     val vv = Category.Type.entries.toTypedArray()
 
     var nCategory = 0
@@ -161,6 +170,18 @@ fun SQLiteDatabase.queryCategory(
     }
 
     cursor.close()
+}
+
+fun SQLiteDatabase.reorderCategories(categories: List<Category>) {
+    this.transaction {
+        for (i in categories.indices) {
+            val c = categories[i]
+            val values = ContentValues()
+            values.put(CATEGORY_COLUMN_SEQUENCE, i)
+            val args = arrayOf(c.id.toString())
+            this.update(TABLE_CATEGORY, values, CATEGORY_WHERE_CLAUSE_ID, args)
+        }
+    }
 }
 
 private fun NoteItem.generateAttachmentString(): String? {

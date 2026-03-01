@@ -7,9 +7,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Binder
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -23,6 +21,7 @@ import cn.alvkeke.dropto.storage.deleteNote
 import cn.alvkeke.dropto.storage.deleteNotes
 import cn.alvkeke.dropto.storage.insertCategory
 import cn.alvkeke.dropto.storage.insertNote
+import cn.alvkeke.dropto.storage.reorderCategories
 import cn.alvkeke.dropto.storage.restoreNote
 import cn.alvkeke.dropto.storage.updateCategory
 import cn.alvkeke.dropto.storage.updateNote
@@ -188,6 +187,21 @@ class CoreService : Service() {
         serviceScope.launch { handleTaskCategoryUpdate(category) }
     }
 
+    private suspend fun handleTaskCategoryReorder(categories: List<Category>) {
+
+        var result = -1
+        try {
+            DataBaseHelper(this).writableDatabase.use { db ->
+                db.reorderCategories(categories)
+                result = 1
+            }
+        } catch (ex: Exception) {
+            Log.e(TAG, "Failed to reorder categories: $ex")
+        }
+    }
+    fun reorderCategory(categories: List<Category>) {
+        serviceScope.launch { handleTaskCategoryReorder(categories) }
+    }
 
     private suspend fun handleTaskNoteRemove(e: NoteItem) {
         val c = findCategory(e.categoryId)

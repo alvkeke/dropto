@@ -1,19 +1,10 @@
 package cn.alvkeke.dropto.storage
 
-import android.content.ContentValues
 import android.content.Context
-import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
-import android.util.Base64
 import android.util.Log
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.NoteItem
 import java.io.File
-import androidx.core.database.sqlite.transaction
 
 
 class DataBaseHelper(private val context: Context) :
@@ -26,7 +17,7 @@ class DataBaseHelper(private val context: Context) :
         const val TAG = "DataBaseHelper"
 
         private const val DATABASE_NAME = "note.db"
-        private const val DATABASE_VERSION = 4
+        private const val DATABASE_VERSION = 5
 
         const val TABLE_CATEGORY = "category"
         const val CATEGORY_COLUMN_ID = "_id"
@@ -37,6 +28,8 @@ class DataBaseHelper(private val context: Context) :
         const val CATEGORY_COLUMN_PREVIEW_TYPE = "TEXT"
         const val CATEGORY_COLUMN_TYPE = "type"
         const val CATEGORY_COLUMN_TYPE_TYPE = "INTEGER"
+        const val CATEGORY_COLUMN_SEQUENCE = "sequence"
+        const val CATEGORY_COLUMN_SEQUENCE_TYPE = "INTEGER DEFAULT 0"
 
         const val TABLE_NOTE = "note"
         const val NOTE_COLUMN_ID = "_id"
@@ -86,13 +79,19 @@ class DataBaseHelper(private val context: Context) :
                 upgradeV1ToV2(db)
                 upgradeV2ToV3(db)
                 upgradeV3ToV4(db)
+                upgradeV4ToV5(db)
             }
             2 -> {
                 upgradeV2ToV3(db)
                 upgradeV3ToV4(db)
+                upgradeV4ToV5(db)
             }
             3 -> {
                 upgradeV3ToV4(db)
+                upgradeV4ToV5(db)
+            }
+            4 -> {
+                upgradeV4ToV5(db)
             }
         }
     }
@@ -148,6 +147,16 @@ class DataBaseHelper(private val context: Context) :
             Log.e(TAG, "Database upgraded successfully: 3 -> 4")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to upgrade database for reactions, maybe already exists, ignore and continue: $e")
+        }
+    }
+
+    private fun upgradeV4ToV5(db: SQLiteDatabase) {
+        Log.e(TAG, "Database upgrading: 4 -> 5, add new column for sequence in category table")
+        try {
+            db.execSQL("ALTER TABLE $TABLE_CATEGORY ADD COLUMN $CATEGORY_COLUMN_SEQUENCE $CATEGORY_COLUMN_SEQUENCE_TYPE;")
+            Log.e(TAG, "Database upgraded successfully: 4 -> 5")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to upgrade database for category seq, maybe already exists, ignore and continue: $e")
         }
     }
 
@@ -210,7 +219,8 @@ class DataBaseHelper(private val context: Context) :
                 TABLE_CATEGORY, CATEGORY_COLUMN_ID, CATEGORY_COLUMN_ID_TYPE,
                 CATEGORY_COLUMN_TYPE, CATEGORY_COLUMN_TYPE_TYPE,
                 CATEGORY_COLUMN_NAME, CATEGORY_COLUMN_NAME_TYPE,
-                CATEGORY_COLUMN_PREVIEW, CATEGORY_COLUMN_PREVIEW_TYPE
+                CATEGORY_COLUMN_PREVIEW, CATEGORY_COLUMN_PREVIEW_TYPE,
+                CATEGORY_COLUMN_SEQUENCE, CATEGORY_COLUMN_SEQUENCE_TYPE
             )
         )
     }

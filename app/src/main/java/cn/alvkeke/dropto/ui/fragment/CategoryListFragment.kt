@@ -16,7 +16,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.DroptoApplication
@@ -48,6 +48,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     private lateinit var viewModel: MainViewModel
     private lateinit var rlCategory: SelectableRecyclerView
     private lateinit var categoryListAdapter: CategoryListAdapter
+    private lateinit var itemTouchHelper: ItemTouchHelper
     private lateinit var toolbar: MaterialToolbar
 
     override fun onCreateView(
@@ -96,8 +97,49 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         rlCategory.setAdapter(categoryListAdapter)
         val layoutManager: RecyclerView.LayoutManager = LinearLayoutManager(context)
         rlCategory.setLayoutManager(layoutManager)
-        rlCategory.addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
         rlCategory.setOnTouchListener(OnListItemClickListener())
+
+        itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN,
+            0
+        ) {
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val from = viewHolder.adapterPosition
+                val to = target.adapterPosition
+                if (from == -1 || to == -1) {
+                    Log.e(TAG, "Invalid from/to position: $from -> $to")
+                    return false
+                }
+                rlCategory.swapSelectedItem(from, to)
+                categoryListAdapter.moveItem(from, to)
+                return true
+            }
+
+            override fun onMoved(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                fromPos: Int,
+                target: RecyclerView.ViewHolder,
+                toPos: Int,
+                x: Int,
+                y: Int
+            ) {
+                app.service?.reorderCategory(categoryListAdapter.categories)
+            }
+
+            override fun isLongPressDragEnabled(): Boolean {
+                return false
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) { }
+        })
+        itemTouchHelper.attachToRecyclerView(rlCategory)
+        categoryListAdapter.setItemTouchHelper(itemTouchHelper)
     }
 
     private var mgmtPageFragment: MgmtPageFragment? = null
@@ -210,8 +252,12 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     }
 
     private inner class CategorySelectListener : SelectListener {
-        override fun onSelectEnter() {}
-        override fun onSelectExit() {}
+        override fun onSelectEnter() {
+            categoryListAdapter.showDragHandler = true
+        }
+        override fun onSelectExit() {
+            categoryListAdapter.showDragHandler = false
+        }
 
         override fun onSelect(index: Int) {
             setMenuBySelectedCount()

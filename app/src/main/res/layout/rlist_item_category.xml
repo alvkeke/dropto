@@ -20,9 +20,11 @@
         android:id="@+id/item_category_title"
         app:layout_constraintStart_toEndOf="@id/item_category_icon"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/item_category_drag_handler"
         android:layout_margin="8dp"
         android:textColor="@color/colorMainTitle"
-        android:layout_width="wrap_content"
+        android:maxLines="1"
+        android:layout_width="0dp"
         android:layout_height="wrap_content" />
 
     <TextView
@@ -30,9 +32,22 @@
         app:layout_constraintStart_toEndOf="@id/item_category_icon"
         app:layout_constraintBottom_toBottomOf="@id/item_category_icon"
         app:layout_constraintStart_toStartOf="@id/item_category_title"
+        app:layout_constraintEnd_toStartOf="@id/item_category_drag_handler"
         android:layout_marginBottom="4dp"
+        android:layout_marginEnd="8dp"
         android:textSize="12sp"
         android:maxLines="1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content" />
+
+    <ImageView
+        android:id="@+id/item_category_drag_handler"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_margin="8dp"
+        android:src="@drawable/icon_common_menu"
+        android:contentDescription="@string/handler_to_reorder_categories"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
