@@ -72,6 +72,7 @@ import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
 import cn.alvkeke.dropto.ui.comonent.NoteItemView
+import cn.alvkeke.dropto.ui.comonent.PopupAttachmentCard
 import cn.alvkeke.dropto.ui.comonent.PopupMenu
 import cn.alvkeke.dropto.ui.comonent.ReactionDialog
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
@@ -439,7 +440,50 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 NoteItemView.ClickedContent.Type.FILE,
                 NoteItemView.ClickedContent.Type.MEDIA -> {
                     val attachment = noteItemAdapter.get(index).attachments[content.index]
-                    context.shareAttachmentFileToExternal(attachment)
+                    val screenWidth = context.resources.displayMetrics.widthPixels
+                    val card = PopupAttachmentCard(attachment, context)
+                    card.width = screenWidth / 2
+                    card.height = card.width
+                    // TODO: set the height to wrap_content, not available now
+                    val displayX = ((screenWidth - card.width) / 2)
+                        .coerceAtLeast(0)
+                    val displayY = (rawY - card.height).toInt()
+                    rlNoteList.highLight()
+                    card.setOnDismissListener {
+                        rlNoteList.clearHighLight()
+                    }
+                    card.setActionListener(object : PopupAttachmentCard.ActionListener{
+                        override fun onRemove(attachment: AttachmentFile) {
+                            val item = noteItemAdapter.get(index)
+                            if (
+                                item.text.isEmpty() &&
+                                item.attachments.size == 1 &&
+                                item.attachments.contains(attachment)
+                                ) {
+                                v.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                            } else {
+                                requestRemoveAttachment(item, attachment)
+                                card.dismiss()
+                            }
+                        }
+                        override fun onShare(attachment: AttachmentFile) {
+                            context.shareAttachmentFileToExternal(attachment)
+                            card.dismiss()
+                        }
+                        override fun onOpen(attachment: AttachmentFile) {
+                            context.openFileWithExternalApp(attachment)
+                            card.dismiss()
+                        }
+                        override fun onSave(attachment: AttachmentFile) {
+                            // TODO: implement this
+                            card.dismiss()
+                        }
+                    })
+                    card.showAtLocation(
+                        rlNoteList,
+                        Gravity.NO_GRAVITY,
+                        displayX, displayY
+                    )
                     return true
                 }
                 NoteItemView.ClickedContent.Type.REACTION -> {
@@ -1384,6 +1428,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private fun requestUpdateNote(item: NoteItem) {
         reqPendingItem = item  // pending item, will be cleared after updated successfully
         app.service?.updateNote(item)
+    }
+
+    private fun requestRemoveAttachment(item: NoteItem, attachment: AttachmentFile) {
+        item.attachments.remove(attachment)
+        requestUpdateNote(item)
     }
 
     private fun requestRemoveNote(item: NoteItem) {

@@ -19,4 +19,9 @@
     <color name="ext_info_mask">#000000</color>
     <color name="reaction_background">#4B98E8</color>
 
+    <color name="attachment_card_button_background">#CDFFFFFF</color>
+    <color name="attachment_card_button_background_shadow">#CD403E3E</color>
+    <color name="attachment_card_button_foreground_warn">#D51515</color>
+    <color name="attachment_card_button_foreground_normal">#1B1A1A</color>
+
 </resources>

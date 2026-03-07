@@ -20,6 +20,10 @@ class AttachmentFile(val md5file: File, var name: String, val type: Type) {
         get() {
             return mimeType.startsWith("video/")
         }
+    val isImage: Boolean
+        get() {
+            return mimeType.startsWith("image/")
+        }
 
     val mimeType: String
         get() = FileHelper.mimeTypeFromFileName(name)

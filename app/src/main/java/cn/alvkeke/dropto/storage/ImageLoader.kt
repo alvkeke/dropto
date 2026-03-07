@@ -334,6 +334,36 @@ object ImageLoader {
         return null
     }
 
+    fun getImageSize(file: File): Pair<Int, Int>? {
+        val options = BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+        BitmapFactory.decodeFile(file.absolutePath, options)
+        if (options.outWidth == -1 || options.outHeight == -1) {
+            Log.e(TAG, "Cannot decode image size of [${file.absolutePath}]")
+            return null
+        }
+        return Pair(options.outWidth, options.outHeight)
+    }
+
+    fun getVideoSize(file: File): Pair<Int, Int>? {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(file.absolutePath)
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+            if (width == null || height == null) {
+                Log.e(TAG, "Cannot decode video size of [${file.absolutePath}]")
+                return null
+            }
+            return Pair(width, height)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get video size: ${e.message}")
+            return null
+        } finally {
+            retriever.release()
+        }
+    }
+
     @JvmStatic
     @Suppress("unused")
     fun setImageTimeout(timeoutMs: Int) {

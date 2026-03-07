@@ -74,28 +74,41 @@ class SelectableRecyclerView @JvmOverloads constructor(
                 }
             }
 
-            if (highlightIndex == pos) {
-                canvas.withSave {
-                    highlightPaint.alpha = (50 * highlightRatio).toInt()
-                    highlightPath.reset()
+            if (highlightStatus is HighlightStatus.Highlighted) {
+                val highlightIndex = (highlightStatus as HighlightStatus.Highlighted).index
+                if (highlightIndex != -1 && highlightIndex == pos) {
+                    canvas.withSave {
+                        highlightPaint.alpha = (50 * highlightRatio).toInt()
+                        highlightPath.reset()
 
-                    if (child is HighlightAble) {
-                        val path = child.getHighlightArea()
-                        highlightPath.addPath(path)
-                        highlightPath.offset(child.left.toFloat(), child.top.toFloat())
-                    } else {
-                        highlightPath.addRect(
-                            child.left.toFloat(), child.top.toFloat(),
-                            child.right.toFloat(), child.bottom.toFloat(),
-                            Path.Direction.CW
+                        if (child is HighlightAble) {
+                            val path = child.getHighlightArea()
+                            highlightPath.addPath(path)
+                            highlightPath.offset(child.left.toFloat(), child.top.toFloat())
+                        } else {
+                            highlightPath.addRect(
+                                child.left.toFloat(), child.top.toFloat(),
+                                child.right.toFloat(), child.bottom.toFloat(),
+                                Path.Direction.CW
+                            )
+                        }
+                        canvas.clipOutPath(highlightPath)
+                        canvas.drawRect(
+                            0f, 0f,
+                            width.toFloat(), height.toFloat(),
+                            highlightPaint
                         )
                     }
-                    canvas.clipOutPath(highlightPath)
-                    canvas.drawRect(
-                        0f, 0f,
-                        width.toFloat(), height.toFloat(),
-                        highlightPaint
-                    )
+                } else if (highlightIndex == -1 && pos == 0) {
+                    // only draw once when highlightIndex is -1
+                    canvas.withSave {
+                        highlightPaint.alpha = (50 * highlightRatio).toInt()
+                        canvas.drawRect(
+                            0f, 0f,
+                            width.toFloat(), height.toFloat(),
+                            highlightPaint
+                        )
+                    }
                 }
             }
         }
@@ -298,7 +311,11 @@ class SelectableRecyclerView @JvmOverloads constructor(
         this.selectListener = selectListener
     }
 
-    private var highlightIndex = -1
+    private sealed class HighlightStatus {
+        object None : HighlightStatus()
+        data class Highlighted(val index: Int) : HighlightStatus()
+    }
+    private var highlightStatus: HighlightStatus = HighlightStatus.None
     private var highlightRatio = 0f
     private var highlightJob: Job? = null
     private var highlightAnimating = false
@@ -348,12 +365,12 @@ class SelectableRecyclerView @JvmOverloads constructor(
 
     fun clearHighLight() {
         animateHighlight(true) {
-            highlightIndex = -1
+            highlightStatus = HighlightStatus.None
         }
     }
 
-    fun highLight(index: Int) {
-        highlightIndex = index
+    fun highLight(index: Int = -1) {
+        highlightStatus = HighlightStatus.Highlighted(index)
         animateHighlight()
     }
 
