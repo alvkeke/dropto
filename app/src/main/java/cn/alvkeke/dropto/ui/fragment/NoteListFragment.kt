@@ -475,7 +475,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                             card.dismiss()
                         }
                         override fun onSave(attachment: AttachmentFile) {
-                            // TODO: implement this
+                            trySaveFile(attachment)
                             card.dismiss()
                         }
                     })
@@ -1257,6 +1257,23 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         context.openFileWithExternalApp(noteItem.attachments[fileIndex])
     }
 
+    private fun trySaveFile(attachment: AttachmentFile) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val uri = FileHelper.saveFileToDownload(context, attachment.md5file, attachment.name)
+            val resultMsg = if (uri != null) {
+                "Saved to Downloads: $uri"
+            } else {
+                "Failed to save file"
+            }
+            withContext(Dispatchers.Main) {
+                if (!isAdded) return@withContext
+                Toast.makeText(
+                    context, resultMsg, Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
     private fun removeReaction(index: Int, reactionIndex: Int) {
         val noteItem = noteItemAdapter.get(index)
         noteItem.reactions.removeAt(reactionIndex)
@@ -1489,3 +1506,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         private const val PROP_NAME = "translationX"
     }
 }
+
+
+

@@ -1,7 +1,10 @@
 package cn.alvkeke.dropto.storage
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -34,6 +37,116 @@ object FileHelper {
     }
     private const val ATTACHMENT_FOLDER = ATTACHMENT_FOLDER_NEW
     private const val ATTACHMENT_SHARE_FOLDER = "share"
+
+    private fun sanitizeFileName(rawName: String): String {
+        val normalized = rawName.trim()
+            .replace('/', '_')
+            .replace('\\', '_')
+        return normalized.ifBlank { "file_${System.currentTimeMillis()}" }
+    }
+
+    private val pathDownload = Environment.DIRECTORY_DOWNLOADS + "/DropTo/"
+    private val pathGallery = Environment.DIRECTORY_DCIM + "/DropTo/"
+
+    private fun saveToPathByMediaStore(
+        context: Context,
+        sourceFile: File,
+        path: String,
+        displayName: String,
+        mimeType: String
+    ): Uri? {
+        val resolver = context.contentResolver
+        val downloadsUri = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        val uniqueName = buildUniqueDisplayName(context, path, displayName)
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, uniqueName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, path)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+
+        val uri = resolver.insert(downloadsUri, values) ?: return null
+        return try {
+            resolver.openOutputStream(uri, "w")?.use { output ->
+                FileInputStream(sourceFile).use { input ->
+                    input.copyTo(output)
+                }
+            } ?: throw IOException("openOutputStream returned null")
+
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            uri
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save file to Downloads by MediaStore", e)
+            resolver.delete(uri, null, null)
+            null
+        }
+    }
+
+    private fun buildUniqueDisplayName(context: Context, relativePath: String, originalName: String): String {
+        val resolver = context.contentResolver
+        val baseName = originalName.substringBeforeLast('.', originalName)
+        val ext = originalName.substringAfterLast('.', "")
+        var index = 0
+        while (true) {
+            val candidate = if (index == 0) {
+                originalName
+            } else if (ext.isBlank()) {
+                "${baseName}_$index"
+            } else {
+                "${baseName}_$index.$ext"
+            }
+
+            val cursor = resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.MediaColumns._ID),
+                "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} = ?",
+                arrayOf(candidate, relativePath),
+                null
+            )
+            val exists = cursor?.use { it.moveToFirst() } == true
+            if (!exists) return candidate
+            index++
+        }
+    }
+
+    fun saveFileToDownload(context: Context, file: File, name: String): Uri? {
+        if (!file.exists() || !file.isFile) {
+            Log.e(TAG, "saveFileToDownload: source file invalid: ${file.absolutePath}")
+            return null
+        }
+
+        val displayName = sanitizeFileName(name.ifBlank { file.name })
+        val mimeType = mimeTypeFromFileName(displayName)
+
+        return saveToPathByMediaStore(
+            context,
+            file,
+            pathDownload,
+            displayName,
+            mimeType
+        )
+    }
+
+    fun saveFileToGallery(context: Context, file: File, name: String): Uri? {
+        if (!file.exists() || !file.isFile) {
+            Log.e(TAG, "saveFileToGallery: source file invalid: ${file.absolutePath}")
+            return null
+        }
+
+        val displayName = sanitizeFileName(name.ifBlank { file.name })
+        val mimeType = mimeTypeFromFileName(displayName)
+
+        return saveToPathByMediaStore(
+            context,
+            file,
+            pathGallery,
+            displayName,
+            mimeType
+        )
+    }
 
     private fun File.isValid(): Boolean {
         return this.exists() && this.isDirectory

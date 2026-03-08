@@ -40,7 +40,7 @@ class PopupAttachmentCard @JvmOverloads constructor(
         R.drawable.icon_common_remove,
         R.drawable.icon_common_share,
         R.drawable.icon_common_more,
-        R.drawable.icon_common_save_file,
+        R.drawable.icon_common_download,
     )
     private val btnColorIds = arrayOf(
         R.color.attachment_card_button_foreground_warn,
@@ -307,7 +307,7 @@ class PopupAttachmentCard @JvmOverloads constructor(
                                     R.drawable.icon_common_remove -> actionListener?.onRemove(attachment)
                                     R.drawable.icon_common_share -> actionListener?.onShare(attachment)
                                     R.drawable.icon_common_more -> actionListener?.onOpen(attachment)
-                                    R.drawable.icon_common_save_file -> actionListener?.onSave(attachment)
+                                    R.drawable.icon_common_download -> actionListener?.onSave(attachment)
                                 }
                                 break
                             }
