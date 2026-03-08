@@ -36,11 +36,11 @@ import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.TABLE_NOTE
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.TABLE_REACTION
 import cn.alvkeke.dropto.storage.DataBaseHelper.IterateCallback
 
-const val TAG = "DataBaseFunctions"
+private const val TAG = "DataBaseFunctions"
 
-const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
-const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
-const val NOTE_WHERE_CLAUSE_CATE_ID: String = "$NOTE_COLUMN_CATE_ID = ?"
+private const val CATEGORY_WHERE_CLAUSE_ID: String = "$CATEGORY_COLUMN_ID = ?"
+private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
+private const val NOTE_WHERE_CLAUSE_CATE_ID: String = "$NOTE_COLUMN_CATE_ID = ?"
 
 @Throws(SQLiteException::class)
 fun SQLiteDatabase.insertCategory(id: Long, title: String, type: Category.Type, preview: String?): Long {
