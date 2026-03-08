@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PorterDuff
@@ -55,13 +56,14 @@ class NoteItemView @JvmOverloads constructor(
     var asyncImageLoad: Boolean = true
     var asyncVideoLoad: Boolean = true
 
-    private class AttachmentList(
+    class AttachmentList(
         private val backingList: MutableList<AttachmentInfo>
     ) : MutableList<AttachmentFile> {
 
         class AttachmentInfo(
             var file: AttachmentFile,
             var rect: RectF = RectF(),
+            var selected: Boolean = false,
         ) {
             var cachedBitmap: Bitmap? = null
                 get() {
@@ -173,6 +175,7 @@ class NoteItemView @JvmOverloads constructor(
     val medias: MutableList<AttachmentFile> = AttachmentList(_medias)
     private val _files: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
     val files: MutableList<AttachmentFile> = AttachmentList(_files)
+    val attachments: List<AttachmentList.AttachmentInfo> get() = _medias + _files
 
     private var bubbleRect: RectF = RectF()
     private var bubblePaint: Paint = Paint().apply {
@@ -873,7 +876,7 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private fun getVideoBitmap(info: AttachmentList.AttachmentInfo): Bitmap {
+    private fun getVideoBitmap(info: AttachmentList.AttachmentInfo): Bitmap? {
         val file = info.file.md5file
         return if (asyncVideoLoad) {
             if (info.cachedBitmap != null) {
@@ -884,14 +887,14 @@ class NoteItemView @JvmOverloads constructor(
                     info.cachedBitmap = b ?: ImageLoader.errorBitmap
                     this@NoteItemView.invalidate()
                 }
-                ImageLoader.loadingBitmap
+                null
             }
         } else {
             ImageLoader.loadImage(file) ?: ImageLoader.errorBitmap
         }
     }
 
-    private fun getImageBitmap(info: AttachmentList.AttachmentInfo): Bitmap {
+    private fun getImageBitmap(info: AttachmentList.AttachmentInfo): Bitmap? {
         val file = info.file.md5file
         return if (asyncImageLoad) {
             if (info.cachedBitmap != null) {
@@ -902,7 +905,7 @@ class NoteItemView @JvmOverloads constructor(
                     info.cachedBitmap = b ?: ImageLoader.errorBitmap
                     this@NoteItemView.invalidate()
                 }
-                ImageLoader.loadingBitmap
+                null
             }
         } else {
             ImageLoader.loadImage(file) ?: ImageLoader.errorBitmap
@@ -911,7 +914,8 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun Canvas.drawMediaFile(info: AttachmentList.AttachmentInfo, dst: RectF, paint: Paint) {
         val isVideo = info.file.isVideo
-        val bitmap = if (isVideo) getVideoBitmap(info) else getImageBitmap(info)
+        val bitmapTry = if (isVideo) getVideoBitmap(info) else getImageBitmap(info)
+        val bitmap = bitmapTry ?: return
 
         val ratioBitmap = bitmap.width.toFloat() / bitmap.height.toFloat()
         val ratioDst = dst.width() / dst.height()
@@ -1002,6 +1006,21 @@ class NoteItemView @JvmOverloads constructor(
             // Set xfermode to only draw bitmap where the rounded rect was drawn
             mediaPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
             drawMediaFile(info, mediaRect, mediaPaint)
+            if (info.selected) {
+                Log.e(TAG, "drawMedias: media is selected, draw check icon")
+                val drawable = ContextCompat.getDrawable(
+                    context, R.drawable.icon_common_circle_check
+                )!!
+                drawable.setTint(Color.GREEN)
+                val iconSize = 32.dp()
+                drawable.setBounds(
+                    mediaRect.right.toInt() - iconSize,
+                    mediaRect.top.toInt(),
+                    mediaRect.right.toInt(),
+                    mediaRect.top.toInt() + iconSize
+                )
+                drawable.draw(this)
+            }
 
             // Reset xfermode
             mediaPaint.xfermode = null
