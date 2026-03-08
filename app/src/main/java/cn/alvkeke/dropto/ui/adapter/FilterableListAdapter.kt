@@ -28,7 +28,6 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         }
         val index = filteredElements.indexOf(e)
         notifyItemInserted(index)
-        notifyItemRangeChanged(index, filteredElements.size - index)
         return index
     }
 
@@ -43,7 +42,6 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         val insertIndex = if (filters.isEmpty()) index else elements.indexOf(filteredElements.getOrNull(index))
         elements.add(if (insertIndex == -1) elements.size else insertIndex, e)
         notifyItemInserted(index)
-        notifyItemRangeChanged(index, filteredElements.size - index)
         return true
     }
 
@@ -58,7 +56,6 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
             elements.remove(e)
         }
         notifyItemRemoved(index)
-        notifyItemRangeChanged(index, filteredElements.size - index)
     }
 
     fun removeAt(index: Int): E {
@@ -67,7 +64,6 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
             elements.remove(e)
         }
         notifyItemRemoved(index)
-        notifyItemRangeChanged(index, filteredElements.size - index)
         return e
     }
 
