@@ -1009,7 +1009,7 @@ class NoteItemView @JvmOverloads constructor(
             if (info.selected) {
                 Log.e(TAG, "drawMedias: media is selected, draw check icon")
                 val drawable = ContextCompat.getDrawable(
-                    context, R.drawable.icon_common_circle_check
+                    context, R.drawable.icon_common_check
                 )!!
                 drawable.setTint(Color.GREEN)
                 val iconSize = 32.dp()
