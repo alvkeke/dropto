@@ -11,8 +11,8 @@ import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
+import cn.alvkeke.dropto.ui.activity.MainActivity
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.comonent.MgmtItemView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -29,7 +29,6 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
     private lateinit var context: Context
     private lateinit var viewModel: MainViewModel
     private lateinit var fragmentParent: View
-    private lateinit var fragmentView: View
     private lateinit var toolbar: MaterialToolbar
 
     private lateinit var itemStorage: MgmtItemView
@@ -56,7 +55,6 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         context = requireContext()
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
 
-        fragmentView = view.findViewById(R.id.mgmt_page_container)
         toolbar = view.findViewById(R.id.mgmt_page_toolbar)
         itemStorage = view.findViewById(R.id.mgmt_page_item_storage)
         itemNotes = view.findViewById(R.id.mgmt_page_item_notes)
@@ -75,11 +73,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
             if (storageFragment == null) {
                 storageFragment = MgmtStorageFragment()
             }
-            parentFragmentManager.startFragmentAnime(
-                storageFragment!!,
-                R.id.main_container,
-                false
-            )
+            openMgmtPage(storageFragment!!)
         }
         itemNotes.setTitle("Manage Notes")
         itemNotes.setIcon(R.drawable.icon_mgmt_storage)
@@ -87,11 +81,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
             if (noteFragment == null) {
                 noteFragment = MgmtNotesFragment()
             }
-            parentFragmentManager.startFragmentAnime(
-                noteFragment!!,
-                R.id.main_container,
-                false
-            )
+            openMgmtPage(noteFragment!!)
         }
         itemReactions.setTitle("Manage Reactions")
         itemReactions.setIcon(R.drawable.icon_mgmt_storage)
@@ -99,16 +89,20 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
             if (reactionFragment == null) {
                 reactionFragment = MgmtReactionFragment()
             }
-            parentFragmentManager.startFragmentAnime(
-                reactionFragment!!,
-                R.id.main_container,
-                false
-            )
+            openMgmtPage(reactionFragment!!)
         }
 
+    }
 
-
-
+    private fun openMgmtPage(fragment: Fragment) {
+        if (fragment.isAdded) return
+        // close the drawer and open the page full-screen
+        (activity as? MainActivity)?.closeMgmtDrawer()
+        parentFragmentManager.startFragmentAnime(
+            fragment,
+            R.id.main_container,
+            false
+        )
     }
 
     override fun onBackPressed(): Boolean {
@@ -116,9 +110,8 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         return true
     }
 
-    @JvmOverloads
-    fun finish(duration: Long = 200) {
-        animateRemoveFromParent(fragmentView, duration = duration, closeToRight = false)
+    fun finish() {
+        (activity as? MainActivity)?.closeMgmtDrawer()
     }
 
 }

@@ -8,12 +8,15 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.storage.DataLoader.loadCategories
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
+import cn.alvkeke.dropto.ui.fragment.MgmtPageFragment
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 
 class MainActivity : AppCompatActivity() {
@@ -30,6 +33,19 @@ class MainActivity : AppCompatActivity() {
             _categoryListFragment = value
         }
 
+    private lateinit var drawerLayout: DrawerLayout
+
+    private var _mgmtPageFragment: MgmtPageFragment? = null
+    private var mgmtPageFragment: MgmtPageFragment
+        get() {
+            if (_mgmtPageFragment == null) {
+                _mgmtPageFragment = MgmtPageFragment()
+            }
+            return _mgmtPageFragment!!
+        }
+        set(value) {
+            _mgmtPageFragment = value
+        }
     private val viewModel: MainViewModel by lazy {
         ViewModelProvider(this)[MainViewModel::class.java]
     }
@@ -38,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         this.enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+        drawerLayout = findViewById(R.id.main_drawer_layout)
 
         window.setFlags(
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -49,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         for (f in supportFragmentManager.fragments) {
             when (f) {
                 is CategoryListFragment -> categoryListFragment = f
+                is MgmtPageFragment -> mgmtPageFragment = f
             }
         }
 
@@ -91,8 +109,30 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
+    fun openMgmtDrawer() {
+        if (!mgmtPageFragment.isAdded) {
+            supportFragmentManager.beginTransaction()
+                .add(R.id.mgmt_drawer_container, mgmtPageFragment, null)
+                .commit()
+        }
+        drawerLayout.openDrawer(GravityCompat.START)
+    }
+
+    fun closeMgmtDrawer() {
+        drawerLayout.closeDrawer(GravityCompat.START)
+    }
+
     internal inner class OnFragmentBackPressed(enabled: Boolean) : OnBackPressedCallback(enabled) {
         override fun handleOnBackPressed() {
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                val drawerFragment = supportFragmentManager.findFragmentById(R.id.mgmt_drawer_container)
+                if (drawerFragment is FragmentOnBackListener) {
+                    val ret = (drawerFragment as FragmentOnBackListener).onBackPressed()
+                    if (ret) return
+                }
+                drawerLayout.closeDrawer(GravityCompat.START)
+                return
+            }
             val fragment = supportFragmentManager.findFragmentById(R.id.main_container)
             var ret = false
             if (fragment is FragmentOnBackListener) {

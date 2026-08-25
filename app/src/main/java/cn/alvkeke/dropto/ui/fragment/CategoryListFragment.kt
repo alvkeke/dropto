@@ -30,6 +30,7 @@ import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
+import cn.alvkeke.dropto.ui.activity.MainActivity
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
@@ -142,17 +143,9 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         categoryListAdapter.setItemTouchHelper(itemTouchHelper)
     }
 
-    private var mgmtPageFragment: MgmtPageFragment? = null
     private inner class OnCategoryListMenuClick : View.OnClickListener {
         override fun onClick(view: View) {
-            if (mgmtPageFragment == null) {
-                mgmtPageFragment = MgmtPageFragment()
-            }
-            parentFragmentManager.startFragmentAnime(
-                mgmtPageFragment!!,
-                R.id.main_container,
-                false
-            )
+            (activity as? MainActivity)?.openMgmtDrawer()
         }
     }
 
