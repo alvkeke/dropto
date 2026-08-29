@@ -215,7 +215,7 @@ class DataBaseHelper(private val context: Context) :
     private fun createCategoryTable(db: SQLiteDatabase) {
         db.execSQL(
             String.format(
-                "CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s)",
+                "CREATE TABLE IF NOT EXISTS %s (%s %s, %s %s, %s %s, %s %s, %s %s)",
                 TABLE_CATEGORY, CATEGORY_COLUMN_ID, CATEGORY_COLUMN_ID_TYPE,
                 CATEGORY_COLUMN_TYPE, CATEGORY_COLUMN_TYPE_TYPE,
                 CATEGORY_COLUMN_NAME, CATEGORY_COLUMN_NAME_TYPE,
