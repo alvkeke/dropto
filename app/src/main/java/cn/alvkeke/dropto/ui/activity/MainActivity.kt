@@ -167,12 +167,12 @@ class MainActivity : AppCompatActivity() {
         mgmtPanelWidth > 0 &&
             categoryLeftX() >= mgmtPanelWidth - REVEAL_EPS
 
-    fun openMgmtReveal() {
-        animateRevealTo(open = true)
+    fun openMgmtReveal(velocityPxPerMs: Float? = null) {
+        animateRevealTo(open = true, velocityPxPerMs = velocityPxPerMs)
     }
 
-    fun closeMgmtReveal() {
-        animateRevealTo(open = false)
+    fun closeMgmtReveal(velocityPxPerMs: Float? = null) {
+        animateRevealTo(open = false, velocityPxPerMs = velocityPxPerMs)
     }
 
     fun toggleMgmtReveal() {
@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity() {
         movementGate.isVisible = moving
     }
 
-    private fun animateRevealTo(open: Boolean) {
+    private fun animateRevealTo(open: Boolean, velocityPxPerMs: Float? = null) {
         if (mgmtPanelWidth <= 0) return
         val targetX = if (open) mgmtPanelWidth.toFloat() else 0f
         val view = categoryListFragment.view ?: return
@@ -226,7 +226,10 @@ class MainActivity : AppCompatActivity() {
         val anim = ObjectAnimator.ofFloat(
             view, PROP_TRANSLATION_X, view.translationX, targetX
         ).apply {
-            duration = REVEAL_DURATION
+            duration = revealDurationFor(
+                velocityPxPerMs,
+                kotlin.math.abs(targetX - view.translationX),
+            )
             addUpdateListener {
                 onMgmtRevealProgress(animatedValue as Float)
             }
@@ -240,6 +243,19 @@ class MainActivity : AppCompatActivity() {
         }
         revealAnimation = anim
         anim.start()
+    }
+
+    private fun revealDurationFor(
+        velocityPxPerMs: Float?,
+        distancePx: Float,
+    ): Long {
+        if (velocityPxPerMs == null || velocityPxPerMs == 0f ||
+            distancePx <= 0f
+        ) {
+            return REVEAL_DURATION
+        }
+        val ms = (distancePx / kotlin.math.abs(velocityPxPerMs)).toLong()
+        return ms
     }
 
     internal inner class OnFragmentBackPressed(enabled: Boolean) : OnBackPressedCallback(enabled) {

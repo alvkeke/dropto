@@ -347,9 +347,9 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
                 !(speed < -REVEAL_FLING_SPEED || delta < -halfWidth)
             }
             if (open) {
-                mainActivity.openMgmtReveal()
+                mainActivity.openMgmtReveal(speed)
             } else {
-                mainActivity.closeMgmtReveal()
+                mainActivity.closeMgmtReveal(speed)
             }
             return true
         }

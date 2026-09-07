@@ -566,7 +566,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             val width = fragmentView.width
             val thresholdExit = width / 3
             if (speed > 2 || delta > thresholdExit) {
-                finish()
+                finish(closeDurationFor(speed))
             } else {
                 resetPosition()
             }
@@ -606,8 +606,18 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         fragmentView.translationX = targetX
     }
 
+    private fun closeDurationFor(speedPxPerMs: Float): Long {
+        val distance = (fragmentView.width - fragmentView.translationX)
+            .coerceAtLeast(0f)
+        if (speedPxPerMs <= 0f || distance <= 0f) {
+            return CLOSE_DURATION_DEFAULT
+        }
+        val ms = (distance / speedPxPerMs).toLong()
+        return ms
+    }
+
     @JvmOverloads
-    fun finish(duration: Long = 200) {
+    fun finish(duration: Long = CLOSE_DURATION_DEFAULT) {
         animateRemoveFromParent(fragmentView, duration, closeToRight = true) { valueAnimator: ValueAnimator ->
             val width = fragmentView.width.toFloat()
             val deltaX = valueAnimator.animatedValue as Float
@@ -1508,6 +1518,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     companion object {
         const val TAG: String = "NoteListFragment"
         private const val PROP_NAME = "translationX"
+        private const val CLOSE_DURATION_DEFAULT = 200L
     }
 }
 
