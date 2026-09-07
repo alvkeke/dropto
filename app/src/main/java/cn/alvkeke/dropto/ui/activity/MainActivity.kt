@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
         // px tolerance used to treat the reveal as fully open / fully closed
         private const val REVEAL_EPS = 1f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
-        private const val MGMT_SCALE_MIN = 0.97f
+        private const val MGMT_SCALE_MIN = 0.9f
         private const val CATEGORY_SHADOW_WIDTH_DP = 8
     }
 }
