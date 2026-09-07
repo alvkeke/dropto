@@ -12,13 +12,6 @@
         android:layout_height="match_parent"
         android:layout_gravity="start" />
 
-    <View
-        android:id="@+id/category_edge_shadow"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:background="@drawable/category_edge_shadow"
-        android:visibility="gone" />
-
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/main_container"
         android:layout_width="match_parent"

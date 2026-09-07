@@ -50,9 +50,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var rootLayout: View
     private lateinit var mgmtContainer: View
-    private lateinit var categoryEdgeShadow: View
     private lateinit var movementGate: View
-    private var categoryShadowWidth = 0
+    private var categoryElevationPx = 0f
 
     private val mgmtWidthRatio = 3f / 4f
     private var mgmtPanelWidth = 0
@@ -69,12 +68,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         rootLayout = findViewById(R.id.main_root)
         mgmtContainer = findViewById(R.id.mgmt_container)
-        categoryEdgeShadow = findViewById(R.id.category_edge_shadow)
         movementGate = findViewById(R.id.movement_gate)
-        categoryShadowWidth =
-            (CATEGORY_SHADOW_WIDTH_DP * resources.displayMetrics.density).toInt()
-        categoryEdgeShadow.layoutParams =
-            categoryEdgeShadow.layoutParams.apply { width = categoryShadowWidth }
+        categoryElevationPx = resources.getDimension(R.dimen.elevation_category_page)
 
         window.setFlags(
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -196,6 +191,8 @@ class MainActivity : AppCompatActivity() {
         val ratio = (categoryListLeft / panel).coerceIn(0f, 1f)
 
         categoryListFragment.setContentAlpha(ratio)
+        categoryListFragment.view?.elevation =
+            if (categoryListLeft > REVEAL_EPS) categoryElevationPx else 0f
         mgmtPageFragment.view?.let { v ->
             v.pivotX = v.width / 2f
             v.pivotY = v.height / 2f
@@ -203,9 +200,6 @@ class MainActivity : AppCompatActivity() {
             v.scaleX = scale
             v.scaleY = scale
         }
-
-        categoryEdgeShadow.isVisible = categoryListLeft > 0f
-        categoryEdgeShadow.translationX = categoryListLeft - categoryShadowWidth
 
         val moving = ratio > 0f && ratio < 1f
         movementGate.isVisible = moving
@@ -283,6 +277,5 @@ class MainActivity : AppCompatActivity() {
         private const val REVEAL_EPS = 1f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
         private const val MGMT_SCALE_MIN = 0.9f
-        private const val CATEGORY_SHADOW_WIDTH_DP = 8
     }
 }

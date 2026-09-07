@@ -3,4 +3,6 @@
     <dimen name="width_note_img">64dp</dimen>
     <dimen name="margin_note_items">8dp</dimen>
     <dimen name="size_image_guide_point">4dp</dimen>
+    <dimen name="elevation_category_page">8dp</dimen>
+    <dimen name="elevation_note_page">@dimen/elevation_category_page</dimen>
 </resources>

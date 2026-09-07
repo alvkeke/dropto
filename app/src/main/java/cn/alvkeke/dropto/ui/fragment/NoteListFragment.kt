@@ -587,14 +587,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    private fun setMaskTransparent(offsetRatio: Float) {
-        fragmentParent.background.alpha = (offsetRatio * 255 / 2).toInt()
-    }
-
     internal var animateProcedure: ((Float) -> Unit)? = null
 
     private fun applyAnimeRate(ratio: Float) {
-        setMaskTransparent(ratio)
         animateProcedure?.invoke(ratio)
     }
 
