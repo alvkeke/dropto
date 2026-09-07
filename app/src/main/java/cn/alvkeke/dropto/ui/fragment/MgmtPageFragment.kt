@@ -65,7 +65,6 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         UserInterfaceHelper.setSystemBarHeight(view, statusBar, navigationBar)
 
         toolbar.setTitle("Management")
-        toolbar.setNavigationOnClickListener { finish() }
 
         itemStorage.setTitle("Manage Storage")
         itemStorage.setIcon(R.drawable.icon_mgmt_storage)
@@ -96,8 +95,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
 
     private fun openMgmtPage(fragment: Fragment) {
         if (fragment.isAdded) return
-        // close the drawer and open the page full-screen
-        (activity as? MainActivity)?.closeMgmtDrawer()
+        (activity as? MainActivity)?.closeMgmtReveal()
         parentFragmentManager.startFragmentAnime(
             fragment,
             R.id.main_container,
@@ -111,7 +109,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
     }
 
     fun finish() {
-        (activity as? MainActivity)?.closeMgmtDrawer()
+        (activity as? MainActivity)?.closeMgmtReveal()
     }
 
 }

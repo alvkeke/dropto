@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main_drawer_layout"
+    android:id="@+id/main_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/mgmt_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="start" />
+
+    <View
+        android:id="@+id/category_edge_shadow"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/category_edge_shadow"
+        android:visibility="gone" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/main_container"
@@ -11,17 +24,12 @@
         android:layout_height="match_parent"
         tools:context=".ui.activity.MainActivity" />
 
-    <FrameLayout
-        android:id="@+id/mgmt_drawer"
-        android:layout_width="320dp"
+    <View
+        android:id="@+id/movement_gate"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:background="@color/color_background">
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
 
-        <androidx.fragment.app.FragmentContainerView
-            android:id="@+id/mgmt_drawer_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </FrameLayout>
-
-</androidx.drawerlayout.widget.DrawerLayout>
+</FrameLayout>

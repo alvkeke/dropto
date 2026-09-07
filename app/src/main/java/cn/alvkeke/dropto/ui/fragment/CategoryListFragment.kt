@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -41,6 +42,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 class CategoryListFragment : Fragment(), CoreServiceListener {
     private val app: DroptoApplication
@@ -51,6 +53,8 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     private lateinit var categoryListAdapter: CategoryListAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
     private lateinit var toolbar: MaterialToolbar
+    private lateinit var fragmentRoot: View
+    private lateinit var contentContainer: View
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -75,6 +79,8 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
+        fragmentRoot = view
+        contentContainer = view.findViewById(R.id.category_list_content)
 
         rlCategory = view.findViewById(R.id.category_list_listview)
         toolbar = view.findViewById(R.id.category_list_toolbar)
@@ -145,7 +151,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
 
     private inner class OnCategoryListMenuClick : View.OnClickListener {
         override fun onClick(view: View) {
-            (activity as? MainActivity)?.openMgmtDrawer()
+            (activity as? MainActivity)?.toggleMgmtReveal()
         }
     }
 
@@ -263,6 +269,10 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
 
     private inner class OnListItemClickListener : OnRecyclerViewTouchListener(context) {
         override fun onItemClick(v: View, index: Int): Boolean {
+            if (getMainActivity()?.isMgmtRevealed() == true) {
+                getMainActivity()?.closeMgmtReveal()
+                return true
+            }
             if (rlCategory.isSelectMode) {
                 rlCategory.toggleSelectItems(index)
                 return true
@@ -273,8 +283,74 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         }
 
         override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
+            if (getMainActivity()?.isMgmtRevealed() == true) {
+                getMainActivity()?.closeMgmtReveal()
+                return true
+            }
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             rlCategory.toggleSelectItems(index)
+            return true
+        }
+
+        override fun onClick(v: View, e: MotionEvent): Boolean {
+            // a tap on the empty area of the list also closes the reveal
+            if (getMainActivity()?.isMgmtRevealed() == true) {
+                getMainActivity()?.closeMgmtReveal()
+                return true
+            }
+            return false
+        }
+
+        private fun getMainActivity(): MainActivity? =
+            activity as? MainActivity
+
+        private var dragGestureActive = false
+        private var dragBaseX = 0f
+        private var dragBaseDelta = 0f
+
+        override fun onDraggingHorizontal(
+            v: View,
+            e: MotionEvent,
+            delta: Float,
+        ): Boolean {
+            val mainActivity = activity as? MainActivity ?: return true
+            if (!dragGestureActive) {
+                dragGestureActive = true
+                dragBaseX = fragmentRoot.translationX
+                dragBaseDelta = delta
+                mainActivity.onMgmtDragStarted()
+            }
+            val panelWidth = mainActivity.getMgmtPanelWidth()
+            if (panelWidth <= 0) return true
+            val newX = (dragBaseX + delta - dragBaseDelta)
+                .coerceIn(0f, panelWidth.toFloat())
+            fragmentRoot.translationX = newX
+            mainActivity.onMgmtRevealProgress(newX)
+            return true
+        }
+
+        override fun onDragHorizontalEnd(
+            v: View,
+            e: MotionEvent,
+            delta: Float,
+            speed: Float,
+        ): Boolean {
+            dragGestureActive = false
+            val mainActivity = activity as? MainActivity ?: return true
+            val panelWidth = mainActivity.getMgmtPanelWidth()
+            if (panelWidth <= 0) return true
+
+            val halfWidth = panelWidth / 2f
+            val open: Boolean = if (dragBaseX < halfWidth) {
+                speed > REVEAL_FLING_SPEED || delta > halfWidth
+            } else {
+                !(speed < -REVEAL_FLING_SPEED || delta < -halfWidth)
+            }
+            if (open) {
+                mainActivity.openMgmtReveal()
+            } else {
+                mainActivity.closeMgmtReveal()
+            }
             return true
         }
     }
@@ -282,6 +358,13 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     private val noteListFragment: NoteListFragment by lazy {
         NoteListFragment()
     }
+
+    fun setContentAlpha(revealRatio: Float) {
+        if (!::contentContainer.isInitialized) return
+        val ratio = revealRatio.coerceIn(0f, 1f)
+        contentContainer.alpha = 1f - ratio * (1f - CONTENT_FADE_MIN_ALPHA)
+    }
+
     fun handleCategoryExpand(category: Category) {
         val ret = DataLoader.loadCategoryNotes(context, category)
         if (!ret) {
@@ -317,7 +400,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         app.service?.createCategory(Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV))
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            delay(1000)
+            delay(1000.milliseconds)
             val imgFolder = FileHelper.attachmentStorage
             val imgFiles = tryExtractResImages(context, imgFolder) ?: return@launch
             val categories: ArrayList<Category> = DataLoader.categories
@@ -374,5 +457,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
 
     companion object {
         const val TAG = "CategoryListFragment"
+        private const val CONTENT_FADE_MIN_ALPHA = 0.3f
+        const val REVEAL_FLING_SPEED = 2f
     }
 }
