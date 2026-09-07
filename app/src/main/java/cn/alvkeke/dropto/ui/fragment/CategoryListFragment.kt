@@ -365,16 +365,41 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         contentContainer.alpha = 1f - ratio * (1f - CONTENT_FADE_MIN_ALPHA)
     }
 
+    internal fun applyNoteCoverRate(rate: Float) {
+        if (!::contentContainer.isInitialized) return
+        val ratio = rate.coerceIn(0f, 1f)
+        contentContainer.pivotX = contentContainer.width / 2f
+        contentContainer.pivotY = contentContainer.height / 2f
+        contentContainer.animate().cancel()
+        val scale = NOTE_COVER_SCALE_MIN + (1f - NOTE_COVER_SCALE_MIN) * (1f - ratio)
+        contentContainer.scaleX = scale
+        contentContainer.scaleY = scale
+    }
+
+    private fun shrinkForNoteOpen() {
+        if (!::contentContainer.isInitialized) return
+        contentContainer.pivotX = contentContainer.width / 2f
+        contentContainer.pivotY = contentContainer.height / 2f
+        contentContainer.animate().cancel()
+        contentContainer.animate()
+            .scaleX(NOTE_COVER_SCALE_MIN)
+            .scaleY(NOTE_COVER_SCALE_MIN)
+            .setDuration(NOTE_COVER_ANIM_DURATION)
+            .start()
+    }
+
     fun handleCategoryExpand(category: Category) {
         val ret = DataLoader.loadCategoryNotes(context, category)
         if (!ret) {
             Log.e(this.toString(), "Failed to get noteList from database")
         }
         viewModel.setCategory(category)
+        noteListFragment.animateProcedure = { applyNoteCoverRate(it) }
         parentFragmentManager.startFragmentAnime(
             noteListFragment,
             R.id.main_container,
         )
+        shrinkForNoteOpen()
     }
 
     private val categoryDetailFragment: CategoryDetailFragment by lazy {
@@ -458,6 +483,8 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     companion object {
         const val TAG = "CategoryListFragment"
         private const val CONTENT_FADE_MIN_ALPHA = 0.3f
+        private const val NOTE_COVER_SCALE_MIN = 0.9f
+        private const val NOTE_COVER_ANIM_DURATION = 200L
         const val REVEAL_FLING_SPEED = 2f
     }
 }

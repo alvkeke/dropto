@@ -227,6 +227,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         btnAttach.setOnLongClickListener(btnAttachListener)
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        if (isRemoving) {
+            applyAnimeRate(0f)
+        }
+    }
+
     override fun onBackPressed(): Boolean {
         if (rlNoteList.isSelectMode) {
             rlNoteList.unSelectAllItems()
@@ -584,21 +591,18 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         fragmentParent.background.alpha = (offsetRatio * 255 / 2).toInt()
     }
 
-    private fun moveUpperFragmentView(offsetRatio: Float) {
+    internal var animateProcedure: ((Float) -> Unit)? = null
 
-        val upperView = parentFragmentManager
-                .fragments[parentFragmentManager.fragments.size - 2].view ?: return
-        val parWidth = upperView.width.toFloat()
-        val totalOffset = (parWidth * 2f / 3f)
-        upperView.translationX = -totalOffset * offsetRatio
+    private fun applyAnimeRate(ratio: Float) {
+        setMaskTransparent(ratio)
+        animateProcedure?.invoke(ratio)
     }
 
     private fun moveFragmentView(targetX: Float) {
         val width = fragmentView.width.toFloat()
         val ratio = (width - targetX) / width
 
-        setMaskTransparent(ratio)
-        moveUpperFragmentView(ratio)
+        applyAnimeRate(ratio)
         fragmentView.translationX = targetX
     }
 
@@ -608,14 +612,14 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             val width = fragmentView.width.toFloat()
             val deltaX = valueAnimator.animatedValue as Float
             val ratio = (width - deltaX) / width
-            setMaskTransparent(ratio)
-            moveUpperFragmentView(ratio)
+            applyAnimeRate(ratio)
         }
     }
 
     fun resetPosition() {
         val startX = fragmentView.translationX
         if (startX == 0f) return
+        applyAnimeRate(1f)
         ObjectAnimator.ofFloat(
             fragmentView,
             PROP_NAME, startX, 0f
