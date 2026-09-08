@@ -223,7 +223,7 @@ class MainActivity : AppCompatActivity() {
             duration = revealDurationFor(
                 velocityPxPerMs,
                 kotlin.math.abs(targetX - view.translationX),
-            )
+            ).coerceAtMost(200)
             addUpdateListener {
                 onMgmtRevealProgress(animatedValue as Float)
             }

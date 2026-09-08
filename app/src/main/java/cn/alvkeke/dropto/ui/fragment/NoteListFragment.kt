@@ -613,6 +613,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     @JvmOverloads
     fun finish(duration: Long = CLOSE_DURATION_DEFAULT) {
+        val duration = duration.coerceAtMost(CLOSE_DURATION_DEFAULT)
         animateRemoveFromParent(fragmentView, duration, closeToRight = true) { valueAnimator: ValueAnimator ->
             val width = fragmentView.width.toFloat()
             val deltaX = valueAnimator.animatedValue as Float
