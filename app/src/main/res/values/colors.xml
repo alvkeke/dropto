@@ -19,6 +19,11 @@
     <color name="ext_info_mask">#FFFFFF</color>
     <color name="reaction_background">#4B98E8</color>
 
+    <!-- File attachment card: background / border / blue link file name. -->
+    <color name="file_card_background">#F2F3F5</color>
+    <color name="file_card_border">#D5D6D8</color>
+    <color name="file_link">#006CE7</color>
+
     <color name="attachment_card_button_background">#CD000000</color>
     <color name="attachment_card_button_background_shadow">#CDFFFFFF</color>
     <color name="attachment_card_button_foreground_warn">#D51515</color>

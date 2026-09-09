@@ -2,1312 +2,214 @@ package cn.alvkeke.dropto.ui.comonent
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Path
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
 import android.graphics.RectF
-import android.text.Layout
-import android.text.StaticLayout
-import android.text.TextPaint
-import android.text.TextUtils
 import android.util.AttributeSet
-import android.util.Log
-import android.util.Size
-import android.util.SizeF
-import android.view.View
-import androidx.core.content.ContextCompat
+import android.widget.FrameLayout
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.withSave
-import androidx.core.graphics.withTranslation
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
-
+/**
+ * NoteItemView - the note item of the note list, rendered with Jetpack Compose in a
+ * discord-like style:
+ *
+ *  ```
+ *  (avatar) Sender name     HH:mm  [status icons]
+ *  (avatar) message text, full width, no bubble
+ *  (avatar) [ media strip: one horizontally scrollable row showing every media tile ]
+ *  (avatar) [ file attachment rows ]
+ *  (avatar) [ reaction pills ]
+ *  ```
+ *
+ * This view is a thin Android container ([FrameLayout] hosting a [ComposeView]) that
+ * plugs into the existing RecyclerView architecture unchanged: the RecyclerView level
+ * touch listener resolves taps through [checkClickedContent], so the surrounding
+ * gesture handling (scroll / long press / slide select / popup cards) keeps working.
+ * The compose content is intentionally non-interactive except for the horizontal media
+ * strip (it scrolls on horizontal drags; vertical drags and taps still reach the list).
+ *
+ * The adapter binds data by setting these fields (all Compose state, so a bind
+ * immediately recomposes the content):
+ *  ```
+ *  view.text = note.text; view.sender = note.sender; ...
+ *  view.reactionList.clear()/addAll(...)
+ *  view.medias.clear()/addAll(...); view.files.clear()/addAll(...)
+ *  ```
+ *
+ * Tap-target bookkeeping: every interactive region reports its bounds (in item-local
+ * coordinates) into [mediaRects] / [fileRects] / [reactionRects] / [avatarRect] during
+ * layout, which keeps [checkClickedContent] accurate even while the list scrolls.
+ */
 class NoteItemView @JvmOverloads constructor(
-    context: Context, attrs: AttributeSet? = null
-) : View(context, attrs), SelectableRecyclerView.HighlightAble {
+    context: Context,
+    attrs: AttributeSet? = null,
+) : FrameLayout(context, attrs), SelectableRecyclerView.HighlightAble {
 
-    private val density = context.resources.displayMetrics.density
-    private fun Int.dp(): Int = (this * density).toInt()
-
+    /** RecyclerView adapter position, useful for debugging. */
     var index: Int = -1
-    var text: String = ""
-    var createTime: Long = 0L
-    var isEdited: Boolean = false
-    var isDeleted: Boolean = false
-    var isSynced: Boolean = false
 
-    var sender: String? = null
+    var text: String by mutableStateOf("")
+    var createTime: Long by mutableLongStateOf(0L)
+    var isEdited: Boolean by mutableStateOf(false)
+    var isDeleted: Boolean by mutableStateOf(false)
+    var isSynced: Boolean by mutableStateOf(false)
+    var sender: String? by mutableStateOf(null)
 
-    val reactionList = mutableListOf<String>()
-    val reactionRectList = mutableListOf<RectF>()
+    val reactionList: MutableList<String> = mutableStateListOf()
+    val medias: MutableList<AttachmentFile> = mutableStateListOf()
+    val files: MutableList<AttachmentFile> = mutableStateListOf()
 
-    @JvmField
-    var asyncImageLoad: Boolean = true
-    var asyncVideoLoad: Boolean = true
+    // ---- geometry bookkeeping (filled by Compose during layout, used by hit testing) ----
 
-    class AttachmentList(
-        private val backingList: MutableList<AttachmentInfo>
-    ) : MutableList<AttachmentFile> {
+    /** Tap rects of the visible media tiles, in item-local coordinates. */
+    internal val mediaRects: MutableList<RectF> = ArrayList()
 
-        class AttachmentInfo(
-            var file: AttachmentFile,
-            var rect: RectF = RectF(),
-            var selected: Boolean = false,
-        ) {
-            var cachedBitmap: Bitmap? = null
-                get() {
-                    if (field == null) {
-                        return null
-                    }
-                    if (field!!.isRecycled) {
-                        field = null
-                    }
-                    return field
-                }
-        }
+    /** Tap rects of the visible file rows, in item-local coordinates. */
+    internal val fileRects: MutableList<RectF> = ArrayList()
 
-        override val size: Int get() = backingList.size
+    /** Tap rects of the reaction pills, in item-local coordinates. */
+    internal val reactionRects: MutableList<RectF> = ArrayList()
 
-        override fun contains(element: AttachmentFile): Boolean {
-            return backingList.any { it.file == element }
-        }
+    /** Tap rect of the sender avatar, in item-local coordinates (empty when no sender). */
+    internal val avatarRect: RectF = RectF()
 
-        override fun containsAll(elements: Collection<AttachmentFile>): Boolean {
-            return elements.all { contains(it) }
-        }
+    /** Layout coordinates of the root content box, used to translate window coords to local. */
+    internal var rootCoordinates: LayoutCoordinates? = null
 
-        override fun get(index: Int): AttachmentFile {
-            return backingList[index].file
-        }
-
-        override fun indexOf(element: AttachmentFile): Int {
-            return backingList.indexOfFirst { it.file == element }
-        }
-
-        override fun isEmpty(): Boolean = backingList.isEmpty()
-
-        override fun iterator(): MutableIterator<AttachmentFile> {
-            return backingList.map { it.file }.toMutableList().iterator()
-        }
-
-        override fun lastIndexOf(element: AttachmentFile): Int {
-            return backingList.indexOfLast { it.file == element }
-        }
-
-        override fun add(element: AttachmentFile): Boolean {
-            return backingList.add(AttachmentInfo(element))
-        }
-
-        override fun add(index: Int, element: AttachmentFile) {
-            backingList.add(index, AttachmentInfo(element))
-        }
-
-        override fun addAll(index: Int, elements: Collection<AttachmentFile>): Boolean {
-            return backingList.addAll(index, elements.map { AttachmentInfo(it) })
-        }
-
-        override fun addAll(elements: Collection<AttachmentFile>): Boolean {
-            return backingList.addAll(elements.map { AttachmentInfo(it) })
-        }
-
-        override fun clear() {
-            backingList.clear()
-        }
-
-        override fun listIterator(): MutableListIterator<AttachmentFile> {
-            return backingList.map { it.file }.toMutableList().listIterator()
-        }
-
-        override fun listIterator(index: Int): MutableListIterator<AttachmentFile> {
-            return backingList.map { it.file }.toMutableList().listIterator(index)
-        }
-
-        override fun remove(element: AttachmentFile): Boolean {
-            val index = indexOf(element)
-            if (index != -1) {
-                backingList.removeAt(index)
-                return true
-            }
-            return false
-        }
-
-        override fun removeAll(elements: Collection<AttachmentFile>): Boolean {
-            var modified = false
-            elements.forEach {
-                if (remove(it)) modified = true
-            }
-            return modified
-        }
-
-        override fun removeAt(index: Int): AttachmentFile {
-            val info = backingList.removeAt(index)
-            return info.file
-        }
-
-        override fun retainAll(elements: Collection<AttachmentFile>): Boolean {
-            val toRemove = backingList.filter { it.file !in elements }
-            return backingList.retainAll(toRemove.map { it })
-        }
-
-        override fun set(index: Int, element: AttachmentFile): AttachmentFile {
-            val old = backingList[index].file
-            backingList[index] = AttachmentInfo(element)
-            return old
-        }
-
-        override fun subList(fromIndex: Int, toIndex: Int): MutableList<AttachmentFile> {
-            return backingList.subList(fromIndex, toIndex).map { it.file }.toMutableList()
-        }
+    private val composeContent: ComposeView = ComposeView(context).apply {
+        // Recreate the composition when the RecyclerView releases/repools this item,
+        // so fast scrolling never reuses stale remember/async-load state across notes.
+        setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool
+        )
+        setContent { NoteItemContent(this@NoteItemView) }
     }
 
-    private val _medias: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
-    val medias: MutableList<AttachmentFile> = AttachmentList(_medias)
-    private val _files: MutableList<AttachmentList.AttachmentInfo> = mutableListOf()
-    val files: MutableList<AttachmentFile> = AttachmentList(_files)
-    val attachments: List<AttachmentList.AttachmentInfo> get() = _medias + _files
-
-    private var bubbleRect: RectF = RectF()
-    private var bubblePaint: Paint = Paint().apply {
-        color = ContextCompat.getColor(context, R.color.note_bubble_background)
-        style = Paint.Style.FILL
-        setShadowLayer(
-            4f,
-            0f,
-            0f,
-            ContextCompat.getColor(context, R.color.note_bubble_shadow)
+    init {
+        addView(
+            composeContent,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.WRAP_CONTENT,
+            ),
         )
     }
 
-    private var mediaRect: RectF = RectF()
-    private val mediaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val mediaPath = Path()
-    private val videoPlayIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
-    }
-    private val videoPlayIconPath = Path()
-    private val moreMediaOverlayRect = RectF()
-    private val moreMediaOverlayBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.more_media_overlay_background)
-        style = Paint.Style.FILL
-    }
-    private val moreMediaOverlayTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.more_media_overlay_text)
-    }
-
-    private val fileIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, R.color.file_icon_background)
-    }
-    private val fileNamePaint = TextPaint().apply {
-        color = ContextCompat.getColor(context, R.color.color_text_main)
-        textSize = TEXT_SIZE_FILENAME
-        isAntiAlias = true
-    }
-
-    private lateinit var textLayout: StaticLayout
-    private val textPaint = TextPaint().apply {
-        color = ContextCompat.getColor(context, R.color.color_text_main)
-        textSize = TEXT_SIZE_CONTENT
-        isAntiAlias = true
-    }
-    private lateinit var timeLayout: StaticLayout
-    private val timePaint: TextPaint = TextPaint().apply {
-        color = ContextCompat.getColor(context, R.color.color_text_sub)
-        textSize = TEXT_SIZE_TIME
-        isAntiAlias = true
-    }
-    private val iconPaint = Paint().apply {
-        color = ContextCompat.getColor(context, R.color.color_text_sub)
-        isAntiAlias = true
-    }
-    private val extInfoBackgroundPaint = Paint().apply {
-        color = ContextCompat.getColor(context, R.color.ext_info_mask)
-        alpha = 200
-    }
-    private val reactionPaint = TextPaint().apply {
-        color = ContextCompat.getColor(context, R.color.color_text_main)
-        textSize = TEXT_SIZE_REACTION
-        isAntiAlias = true
-    }
-    private val reactionBgPaint = Paint().apply {
-        color = ContextCompat.getColor(context, R.color.reaction_background)
-        alpha =240
-        isAntiAlias = true
-    }
-    private val senderAvatarPaint = Paint().apply {
-        isAntiAlias = true
-    }
-    private val senderAvatarRect = RectF()
-    private val senderAvatarPath = Path()
-
-    private val avatarBitmap = createBitmap(AVATAR_SIZE.dp(), AVATAR_SIZE.dp())
-    private var avatarBitmapSetName: String? = null
-    private fun getSenderIcon(sender: String) : Bitmap {
-        if (avatarBitmapSetName != null && avatarBitmapSetName == sender) {
-            return avatarBitmap
-        }
-        try {
-            val drawable = context.packageManager.getApplicationIcon(sender)
-            val drawableWidth = AVATAR_SIZE.dp()
-            val drawableHeight = AVATAR_SIZE.dp()
-            val canvas = Canvas(avatarBitmap)
-            drawable.setBounds(0, 0, drawableWidth, drawableHeight)
-            drawable.draw(canvas)
-            avatarBitmapSetName = sender
-            return avatarBitmap
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to get sender icon for $sender, use default avatar, error: $e")
-            return ImageLoader.errorBitmap
-        }
-    }
-
-    /*
-    group the images with specific layout
-    2: A | B
-
-    3:   | B
-       A | -
-         | C
-
-    4:   | B
-       A | C
-         | D
-
-    5: A | B
-       -----
-       C D E
-
-    6: A B C
-       D E F
-
-    7:  A B
-       C D E
-        F G
-
-    8: A B C
-       D E F
-        G H
-
-    9: A B C
-       D E F
-       G H I
-
-    9+:  A B C
-        D E F G
-         H I J/+
+    /**
+     * Map a tap position (relative to this view) to the content under it.
+     * Semantics are identical to the old canvas-drawn implementation.
      */
-
-    private fun getFirstMediaSize(contentWidth: Int) : Size {
-        val a = _medias[0]
-        val f = a.file.md5file
-        if (!f.exists()) {
-            Log.e(TAG, "measureImageHeight: image file not exists: ${f.absolutePath}")
-            return Size(contentWidth, contentWidth)
-        }
-
-        if (a.file.isVideo) {
-            // decode video size is time consuming,
-            // set to 3:4 ratio directly to improve performance
-            return Size(contentWidth, contentWidth * 3 / 4)
-        } else {
-            val option = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            BitmapFactory.decodeFile(f.absolutePath, option)
-            return Size(option.outWidth, option.outHeight)
-        }
-    }
-
-    private fun measureMediasHeight(contentWidth: Int): Int {
-        val maxHeight = contentWidth * 3 / 2
-
-        var desiredHeight = 0
-        when (_medias.size) {
-            0 -> return 0
-            1 -> {
-                val e = getFirstMediaSize(contentWidth)
-
-                val imageHeight = (e.height * contentWidth / e.width).coerceAtMost(maxHeight)
-                val imageWidth = (e.width * imageHeight / e.height)
-                val info = _medias[0]
-                info.rect.set(
-                    0F,
-                    0F,
-                    imageWidth.toFloat(),
-                    imageHeight.toFloat()
-                )
-                desiredHeight += imageHeight + MARGIN_IMAGE
-            }
-            2 -> {
-                val height = contentWidth * 3 / 4f
-                val width = (contentWidth - MARGIN_IMAGE) / 2f
-
-                var info = _medias[0]
-                info.rect.set(0F, 0F, width, height)
-
-                val offsetX = (width + MARGIN_IMAGE)
-                info = _medias[1]
-                info.rect.set(offsetX, 0F, (offsetX + width), height)
-
-                desiredHeight += (height + MARGIN_IMAGE).toInt()
-            }
-            3 -> {
-                val width = (contentWidth - MARGIN_IMAGE) / 2f
-                val heightRight = width * 4 / 3
-                val heightLeft = heightRight * 2 + MARGIN_IMAGE
-
-                var info = _medias[0]
-                info.rect.set(0F, 0F, width, heightLeft)
-
-                info = _medias[1]
-                val offsetX = width + MARGIN_IMAGE
-                info.rect.set(offsetX, 0f, (offsetX + width), heightRight)
-
-                val offsetY = heightRight + MARGIN_IMAGE
-                info = _medias[2]
-                info.rect.set(
-                    offsetX,
-                    offsetY,
-                    (offsetX + width),
-                    (offsetY + heightRight)
-                )
-
-                desiredHeight += (heightLeft + MARGIN_IMAGE).toInt()
-            }
-            4 -> {
-                val side = (contentWidth - MARGIN_IMAGE) / 2f
-                val heightLeft = side * 3 + MARGIN_IMAGE * 2
-
-                var info = _medias[0]
-                info.rect.set(0f, 0f, side, heightLeft)
-
-                val offsetX = side + MARGIN_IMAGE
-                info = _medias[1]
-                info.rect.set(offsetX, 0f, (offsetX + side), side)
-
-                var offsetY = side + MARGIN_IMAGE
-                info = _medias[2]
-                info.rect.set(offsetX, offsetY, (offsetX + side), (offsetY + side))
-
-                offsetY += side + MARGIN_IMAGE
-                info = _medias[3]
-                info.rect.set(offsetX, offsetY, (offsetX + side), (offsetY + side))
-
-                desiredHeight += (heightLeft + MARGIN_IMAGE).toInt()
-            }
-            5 -> {
-                val widthTop = (contentWidth - MARGIN_IMAGE) / 2
-                val widthBottom = (contentWidth - MARGIN_IMAGE * 2) / 3
-                val heightTop = widthTop * 4 / 5
-                val heightBottom = widthBottom * 5 / 4
-
-                for (i in 0..1) {
-                    val offsetX = i * (widthTop + MARGIN_IMAGE)
-                    val info = _medias[i]
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        0f,
-                        (offsetX + widthTop).toFloat(),
-                        heightTop.toFloat()
-                    )
-                }
-
-                val offsetY = heightTop + MARGIN_IMAGE
-                for (i in 2..4) {
-                    val offsetX = (i-2) * (widthBottom + MARGIN_IMAGE)
-                    val info = _medias[i]
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + widthBottom).toFloat(),
-                        (offsetY + heightBottom).toFloat()
-                    )
-                }
-
-                desiredHeight += heightTop + MARGIN_IMAGE + heightBottom + MARGIN_IMAGE
-            }
-            6 -> {
-                val width = (contentWidth - MARGIN_IMAGE * 2) / 3
-                val height = width * 5 / 4
-
-                var offsetX: Int
-                var offsetY: Int
-                for (i in 0 until 6) {
-                    val info = _medias[i]
-                    offsetX = (i % 3) * (width + MARGIN_IMAGE)
-                    offsetY = if (i >= 3) height + MARGIN_IMAGE else 0
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + width).toFloat(),
-                        (offsetY + height).toFloat(),
-                    )
-                }
-
-                desiredHeight += (height + MARGIN_IMAGE) * 2
-            }
-            7 -> {
-                val width2 = (contentWidth - MARGIN_IMAGE) / 2
-                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
-
-                val height2 = width2 * 4 / 5
-                val height3 = width3 * 5 / 4
-
-                var offsetX: Int
-                for (i in 0..1) {
-                    val info = _medias[i]
-                    offsetX = i * (width2 + MARGIN_IMAGE)
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        0f,
-                        (offsetX + width2).toFloat(),
-                        height2.toFloat()
-                    )
-                }
-                var offsetY: Int = height2 + MARGIN_IMAGE
-                for (i in 2..4) {
-                    val info = _medias[i]
-                    offsetX = (i - 2) * (width3 + MARGIN_IMAGE)
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + width3).toFloat(),
-                        (offsetY + height3).toFloat(),
-                    )
-                }
-                offsetY += height3 + MARGIN_IMAGE
-                for (i in 5..6) {
-                    val info = _medias[i]
-                    offsetX = (i - 5) * (width2 + MARGIN_IMAGE)
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + width2).toFloat(),
-                        (offsetY + height2).toFloat(),
-                    )
-                }
-
-                desiredHeight += height2 * 2 + height3 + MARGIN_IMAGE * 3
-            }
-            8 -> {
-                val width2 = (contentWidth - MARGIN_IMAGE) / 2
-                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
-
-                val height2 = width2 * 4 / 5
-                val height3 = width3 * 4 / 5
-
-                for (i in 0..1) {
-                    val info = _medias[i]
-                    val offsetX = i * (width2 + MARGIN_IMAGE)
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        0f,
-                        (offsetX + width2).toFloat(),
-                        height2.toFloat()
-                    )
-                }
-                var offsetY = height2 + MARGIN_IMAGE
-                for (i in 2..7) {
-                    val info = _medias[i]
-                    val idx = i - 2
-                    val offsetX = (idx % 3) * (width3 + MARGIN_IMAGE)
-                    if (i == 5) {
-                        offsetY += height3 + MARGIN_IMAGE
-                    }
-
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + width3).toFloat(),
-                        (offsetY + height3).toFloat()
-                    )
-                }
-
-                desiredHeight += height2 + height3 * 2 + MARGIN_IMAGE * 3
-            }
-            9 -> {
-                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
-                val height3 = width3 * 5 / 4
-
-                var offsetY = 0
-                for (i in 0..8) {
-                    val offsetX = (i % 3) * (width3 + MARGIN_IMAGE)
-                    val info = _medias[i]
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + width3).toFloat(),
-                        (offsetY + height3).toFloat()
-                    )
-                    if (((i + 1) % 3) == 0) {
-                        offsetY += height3 + MARGIN_IMAGE
-                    }
-                }
-
-                desiredHeight += height3 * 3 + MARGIN_IMAGE * 3
-            }
-            // if images have 10 or 10+, then display 10 images only, but show +n indicator on the last image
-            else -> {
-                val width3 = (contentWidth - MARGIN_IMAGE * 2) / 3
-                val height3 = width3 * 5 / 4
-                val width4 = (contentWidth - MARGIN_IMAGE * 3) / 4
-                val height4 = width4 * 5 / 4
-                for (i in 0..2) {
-                    val info = _medias[i]
-                    val offsetX = i * (width3 + MARGIN_IMAGE)
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        0f,
-                        (offsetX + width3).toFloat(),
-                        height3.toFloat()
-                    )
-                }
-                var offsetY = height3 + MARGIN_IMAGE
-                for (i in 3..6) {
-                    val info = _medias[i]
-                    val offsetX = (i-3) * (width4 + MARGIN_IMAGE)
-
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + width4).toFloat(),
-                        (offsetY + height4).toFloat()
-                    )
-                }
-                offsetY += height4 + MARGIN_IMAGE
-                for (i in 7..9) {
-                    val offsetX = (i - 7) * (width3 + MARGIN_IMAGE)
-                    val info = _medias[i]
-
-                    info.rect.set(
-                        offsetX.toFloat(),
-                        offsetY.toFloat(),
-                        (offsetX + width3).toFloat(),
-                        (offsetY + height3).toFloat()
-                    )
-                }
-                desiredHeight += height3 * 2 + height4 + MARGIN_IMAGE * 3
+    fun checkClickedContent(x: Float, y: Float): ClickedContent {
+        sender?.let {
+            if (!avatarRect.isEmpty && avatarRect.contains(x, y)) {
+                return ClickedContent(ClickedContent.Type.SENDER_ICON)
             }
         }
-        return desiredHeight
-    }
-
-    private fun measureFilesHeight(contentWidth: Int, baseHeight: Int): Int {
-        if (_files.isEmpty()) return 0
-
-        // display max 4 files, if more then 4, then the item 4 for showing the detail fragment
-        val fileCount = _files.size.coerceAtMost(MAX_FILE_COUNT)
-        for (i in 0 until fileCount) {
-            val f = _files[i]
-            val top = (MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()) * i.toFloat() + baseHeight
-            f.rect.set(
-                0F,
-                top,
-                contentWidth.toFloat(),
-                top + MARGIN_FILE * 2 + FILE_ICON_SIZE.dp()
-            )
-        }
-        return fileCount * (FILE_ICON_SIZE.dp() + MARGIN_FILE * 2)
-    }
-
-
-    private class MultiLinesSize(var width: Float, var height: Float, var lastLineWidth: Float)
-    private fun measureTextSize(contentMaxWidth: Int): MultiLinesSize {
-        if (text.isEmpty()) return MultiLinesSize(0f, 0f, 0f)
-
-        textLayout = StaticLayout.Builder
-            .obtain(
-                text, 0, text.length, textPaint,
-                contentMaxWidth - (MARGIN_TEXT * 2)
-            )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
-
-        var maxWidth = 0f
-        for (i in 0 until textLayout.lineCount) {
-            maxWidth = maxOf(maxWidth, textLayout.getLineWidth(i))
-        }
-        val textWidth = maxWidth + MARGIN_TEXT * 2
-        val textHeight = textLayout.height + MARGIN_TEXT * 2f
-
-        return MultiLinesSize(
-            textWidth,
-            textHeight,
-            textLayout.getLineWidth(textLayout.lineCount - 1)
-        )
-    }
-
-    private fun measureIconWidth(size: Int): Int {
-        var totalWidth = MARGIN_ICON
-
-        if (isEdited) totalWidth += size + MARGIN_ICON
-        if (isDeleted) totalWidth += size + MARGIN_ICON
-        if (!isSynced) totalWidth += size + MARGIN_ICON
-
-        return totalWidth - MARGIN_ICON
-    }
-
-    private fun measureReactions(contentMaxWidth: Int, afterText: Boolean) : MultiLinesSize? {
-        if (reactionList.isEmpty()) return null
-
-        var maxWidth = 0f
-        var currentLine = 0
-
-        /*
-         *  reaction layout: | margin_BG | margin_text_x | text | margin_text_x | margin_bg |
-         *                               |       background                     |
-         */
-        var currentLineWidth = MARGIN_REACTION_BG.toFloat()
-        for (reaction in reactionList) {
-            val reactionWidth = MARGIN_REACTION_TEXT_X * 2 + reactionPaint.measureText(reaction) + MARGIN_REACTION_BG
-            if (currentLineWidth + reactionWidth > contentMaxWidth) {
-                currentLine++
-                maxWidth = maxOf(maxWidth, currentLineWidth)
-                currentLineWidth = MARGIN_REACTION_BG.toFloat()
-            }
-            currentLineWidth += reactionWidth
-        }
-
-        val lastLineWidth = currentLineWidth
-        maxWidth = maxOf(maxWidth, currentLineWidth)
-        currentLine ++
-
-        val topMargin = if (afterText) 0 else MARGIN_REACTION_BG
-        val totalHeight = currentLine *
-                (MARGIN_REACTION_TEXT_Y * 2 + TEXT_SIZE_REACTION + MARGIN_REACTION_BG) +
-                topMargin
-
-        return MultiLinesSize(maxWidth, totalHeight, lastLineWidth)
-    }
-
-    private fun fixContentSizeWithExtInfo(
-        contentMaxWidth: Int,
-        textSize: MultiLinesSize,
-        reactionSize: MultiLinesSize?
-    ): SizeF {
-        val combinedLines = MultiLinesSize(
-            maxOf(textSize.width, reactionSize?.width ?: 0f),
-            textSize.height + (reactionSize?.height ?: 0f),
-           reactionSize?.lastLineWidth ?: textSize.lastLineWidth
-        )
-
-        val timeText = createTime.format()
-        timeLayout = StaticLayout.Builder
-            .obtain(
-                timeText, 0, timeText.length, timePaint,
-                contentMaxWidth - (MARGIN_TIME * 2)
-            )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(false)
-            .build()
-
-        val extInfoWidth = measureIconWidth(timeLayout.height) + timeLayout.getLineWidth(0) + MARGIN_TIME
-        val combinedWidth = combinedLines.lastLineWidth + MARGIN_TEXT + extInfoWidth + MARGIN_TIME * 2
-        val isFit = combinedWidth <= contentMaxWidth
-
-        val resultHeight: Float
-        var resultWidth: Float
-        if (isFit) {
-            resultHeight = combinedLines.height
-            resultWidth = maxOf(combinedLines.width, combinedWidth)
-        } else {
-            resultHeight = combinedLines.height + timeLayout.height + MARGIN_TIME
-            resultWidth = maxOf(combinedLines.width, extInfoWidth + MARGIN_TIME * 2)
-        }
-
-        return SizeF(resultWidth, resultHeight)
-    }
-
-    private fun measureMediaSize(contentMaxWidth: Int, minWidth: Float): SizeF {
-        if (_medias.isEmpty()) return SizeF(0f, 0f)
-
-        measureMediasHeight(contentMaxWidth)
-        val last = _medias.take(MAX_IMAGE_COUNT).last().rect
-        val imageHeight = last.bottom
-        val imageWidth = last.right
-
-        if (imageHeight == 0f || imageWidth == 0f) {
-            // keep this check to prevent crash in feature
-            Log.e(TAG, "got a wrong size of medias: $imageHeight, $imageWidth")
-            return SizeF(0f, 0f)
-        }
-
-        if (imageWidth < minWidth) {
-            val scale = minWidth / imageWidth
-            for (info in _medias) {
-                info.rect.set(
-                    info.rect.left * scale,
-                    info.rect.top * scale,
-                    info.rect.right * scale,
-                    info.rect.bottom * scale
-                )
-            }
-            return SizeF(minWidth, (imageHeight * scale))
-        }
-
-        return SizeF(imageWidth, imageHeight)
-    }
-
-    private fun measureFileSize(contentMaxWidth: Int, baseHeight: Float): SizeF {
-        if (_files.isEmpty()) return SizeF(0f, 0f)
-
-        // must invoke measureFilesHeight to set the file rect for checking click
-        val fileHeight = measureFilesHeight(contentMaxWidth, baseHeight.toInt())
-        val fileWidth = contentMaxWidth.toFloat()
-
-        return SizeF(fileWidth, fileHeight.toFloat())
-    }
-
-    private fun measureBubble(bubbleMaxWidth: Int) : Int {
-        val contentMaxWidth = bubbleMaxWidth - MARGIN_BORDER * 2
-
-        val textSize = measureTextSize(contentMaxWidth)
-        val reactionSize = measureReactions(contentMaxWidth, textSize.height > 0)
-        val fixLineSize = fixContentSizeWithExtInfo(contentMaxWidth, textSize, reactionSize)
-        val mediaSize = measureMediaSize(contentMaxWidth, fixLineSize.width)
-        val fileSize = measureFileSize(contentMaxWidth, mediaSize.height)
-
-        val bubbleWidth = maxOf(
-            mediaSize.width,
-            fileSize.width,
-            fixLineSize.width
-        ) + MARGIN_BORDER * 2
-        val bubbleHeight = MARGIN_BORDER * 2 + mediaSize.height + fileSize.height + fixLineSize.height
-
-        bubbleRect.set(
-            0f, 0f,
-            bubbleWidth,
-            bubbleHeight
-        )
-
-        if (_files.isEmpty() && text.isEmpty() && reactionList.isEmpty()) {
-            extInfoNeedBackground = true
-        }
-
-        return bubbleHeight.toInt()
-    }
-
-    private var extInfoNeedBackground = false
-    private fun measureHeight(width: Int) : Int {
-        extInfoNeedBackground = false
-
-
-        // unify the max size of the bubble to have a better look
-        val bubbleMaxWidth = width - MARGIN_BUBBLE_END.dp() - MARGIN_BUBBLE_HAVE_SENDER.dp()
-
-        val bubbleHeight = measureBubble(bubbleMaxWidth)
-
-        var noteHeight = bubbleHeight + MARGIN_BUBBLE_Y.dp() * 2
-
-        if (sender == null) {
-            val offX = width - bubbleRect.width() - MARGIN_BUBBLE_NULL_SENDER.dp()
-            bubbleRect.offset(
-                offX,
-                MARGIN_BUBBLE_Y.dp().toFloat()
-            )
-        } else {
-            val avatarHeight = AVATAR_SIZE.dp() + MARGIN_BUBBLE_Y.dp() * 2
-            val diff = (avatarHeight - noteHeight).coerceAtLeast(0)
-            bubbleRect.offset(
-                MARGIN_BUBBLE_HAVE_SENDER.dp().toFloat(),
-                MARGIN_BUBBLE_Y.dp().toFloat() + diff
-            )
-            noteHeight += diff
-        }
-
-        return noteHeight
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        Log.v(TAG, "onMeasure: $index")
-        val widthMode = MeasureSpec.getMode(widthMeasureSpec)
-        val widthSize = MeasureSpec.getSize(widthMeasureSpec)
-        Log.v(TAG, "onMeasure: widthMode=$widthMode, widthSize=$widthSize")
-        val desiredWidth = 200
-        val width: Int = when (widthMode) {
-            MeasureSpec.AT_MOST -> desiredWidth.coerceAtMost(widthSize)
-            MeasureSpec.UNSPECIFIED -> desiredWidth
-            MeasureSpec.EXACTLY -> widthSize
-            else -> {
-                Log.e(TAG, "onMeasure: no widthMode got, return 0")
-                0
+        for (i in mediaRects.indices) {
+            if (mediaRects[i].contains(x, y)) {
+                val media = medias.getOrNull(i) ?: break
+                return ClickedContent(ClickedContent.Type.MEDIA, media, i)
             }
         }
-
-        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
-        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
-        Log.v(TAG, "onMeasure: heightMode=$heightMode, heightSize=$heightSize")
-        val height: Int = when (heightMode) {
-            MeasureSpec.AT_MOST -> measureHeight(width).coerceAtMost(heightSize)
-            MeasureSpec.UNSPECIFIED -> measureHeight(width)
-            MeasureSpec.EXACTLY -> heightSize
-            else -> {
-                Log.e(TAG, "onMeasure: no heightMode got, return 0")
-                0
+        for (i in fileRects.indices) {
+            if (fileRects[i].contains(x, y)) {
+                val file = files.getOrNull(i) ?: break
+                return ClickedContent(ClickedContent.Type.FILE, file, medias.size + i)
             }
         }
-
-        Log.v(TAG, "onMeasure: width=$width, height=$height")
-        setMeasuredDimension(width, height)
-
-
-    }
-
-    private fun Canvas.drawBitmapNullable(bitmap: Bitmap?, src: Rect?, dst: RectF, paint: Paint) {
-        if (bitmap == null) {
-            Log.v(TAG, "drawBitmapNullable: bitmap is null, draw error bitmap")
-            this.drawBitmap(ImageLoader.errorBitmap, src, dst, paint)
-        } else {
-            Log.v(TAG, "drawBitmapNullable: bitmap is valid, draw it: $bitmap")
-            this.drawBitmap(bitmap, src, dst, paint)
-        }
-    }
-
-    private fun getVideoBitmap(info: AttachmentList.AttachmentInfo): Bitmap? {
-        val file = info.file.md5file
-        return if (asyncVideoLoad) {
-            if (info.cachedBitmap != null) {
-                info.cachedBitmap!!
-            } else {
-                ImageLoader.loadVideoThumbnailAsync(file) { b->
-                    Log.v(TAG, "getVideoBitmap: async thumb loaded callback: $b for file=${file.absolutePath}")
-                    info.cachedBitmap = b ?: ImageLoader.errorBitmap
-                    this@NoteItemView.invalidate()
-                }
-                null
-            }
-        } else {
-            ImageLoader.loadImage(file) ?: ImageLoader.errorBitmap
-        }
-    }
-
-    private fun getImageBitmap(info: AttachmentList.AttachmentInfo): Bitmap? {
-        val file = info.file.md5file
-        return if (asyncImageLoad) {
-            if (info.cachedBitmap != null) {
-                info.cachedBitmap!!
-            } else {
-                ImageLoader.loadImageAsync(file) { b->
-                    Log.v(TAG, "getFileBitmap: async image loaded callback: $b for file=${file.absolutePath}")
-                    info.cachedBitmap = b ?: ImageLoader.errorBitmap
-                    this@NoteItemView.invalidate()
-                }
-                null
-            }
-        } else {
-            ImageLoader.loadImage(file) ?: ImageLoader.errorBitmap
-        }
-    }
-
-    private fun Canvas.drawMediaFile(info: AttachmentList.AttachmentInfo, dst: RectF, paint: Paint) {
-        val isVideo = info.file.isVideo
-        val bitmapTry = if (isVideo) getVideoBitmap(info) else getImageBitmap(info)
-        val bitmap = bitmapTry ?: return
-
-        val ratioBitmap = bitmap.width.toFloat() / bitmap.height.toFloat()
-        val ratioDst = dst.width() / dst.height()
-
-        // Calculate src rect with same ratio as dst, matching bitmap's width or height
-        val src = Rect()
-        if (ratioBitmap > ratioDst) {
-            // Bitmap is wider - use full height, crop width
-            val srcWidth = (bitmap.height * ratioDst).toInt()
-            val srcLeft = (bitmap.width - srcWidth) / 2
-            src.set(srcLeft, 0, srcLeft + srcWidth, bitmap.height)
-        } else {
-            // Bitmap is taller - use full width, crop height
-            val srcHeight = (bitmap.width / ratioDst).toInt()
-            val srcTop = (bitmap.height - srcHeight) / 2
-            src.set(0, srcTop, bitmap.width, srcTop + srcHeight)
-        }
-
-        drawBitmapNullable(bitmap, src, dst, paint)
-
-        if (isVideo && bitmap != ImageLoader.errorBitmap && bitmap != ImageLoader.loadingBitmap) {
-            // draw play icon at center
-            val iconSize = (dst.height() / 3).toInt().coerceAtMost(40.dp())
-
-            val iconLeft = dst.left + (dst.width() - iconSize) / 2
-            val iconTop = dst.top + (dst.height() - iconSize) / 2
-            val iconRect = RectF(
-                iconLeft,
-                iconTop,
-                iconLeft + iconSize,
-                iconTop + iconSize
-            )
-            val radius = iconSize / 2f
-            val cx = iconRect.centerX()
-            val cy = iconRect.centerY()
-            videoPlayIconPaint.style = Paint.Style.FILL
-            videoPlayIconPaint.color = ContextCompat.getColor(context, R.color.video_play_icon_background)
-            this.drawCircle(cx, cy, radius, videoPlayIconPaint)
-
-            videoPlayIconPaint.style = Paint.Style.STROKE
-            videoPlayIconPaint.alpha = 255
-            videoPlayIconPaint.color = ContextCompat.getColor(context, R.color.video_play_icon_foreground)
-            videoPlayIconPaint.strokeWidth = (iconSize / 6f).coerceAtMost(6f)
-            this.drawCircle(cx, cy, radius, videoPlayIconPaint)
-            videoPlayIconPaint.style = Paint.Style.FILL
-
-            val side = radius
-            videoPlayIconPath.reset()
-            videoPlayIconPath.moveTo(cx - side / 3f, cy - side / 2f)
-            videoPlayIconPath.lineTo(cx - side / 3f, cy + side / 2f)
-            videoPlayIconPath.lineTo(cx + side * 2f / 3f, cy)
-            videoPlayIconPath.close()
-            this.drawPath(videoPlayIconPath, videoPlayIconPaint)
-        }
-    }
-
-    private fun Canvas.drawMedias(contentWidth: Int): Float {
-        Log.v(TAG, "drawMedias: total size: ${_medias.size}")
-
-        if (_medias.isEmpty()) return 0f
-
-        if (_medias[0].rect.isEmpty) {
-            Log.w(TAG, "drawMedias: media rect is empty, need to measure again")
-            measureMediasHeight(contentWidth)
-        }
-
-        var offsetY: Float
-        for (info in _medias.take(MAX_IMAGE_COUNT)) {
-            if (info.rect.isEmpty) {
-                Log.e(TAG, "drawing image without setting the image rect is not allowed")
-                continue
-            }
-            mediaRect.set(info.rect)
-
-            // Draw bitmap with rounded corners
-            val saveCount = saveLayer(mediaRect, null)
-
-            // Draw rounded rect as mask
-            mediaPath.reset()
-            mediaPath.addRoundRect(
-                mediaRect,
-                IMAGE_RADIUS.toFloat(),
-                IMAGE_RADIUS.toFloat(),
-                Path.Direction.CW
-            )
-            drawPath(mediaPath, mediaPaint)
-
-            // Set xfermode to only draw bitmap where the rounded rect was drawn
-            mediaPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-            drawMediaFile(info, mediaRect, mediaPaint)
-            if (info.selected) {
-                Log.e(TAG, "drawMedias: media is selected, draw check icon")
-                val drawable = ContextCompat.getDrawable(
-                    context, R.drawable.icon_common_check
-                )!!
-                drawable.setTint(Color.GREEN)
-                val iconSize = 32.dp()
-                drawable.setBounds(
-                    mediaRect.right.toInt() - iconSize,
-                    mediaRect.top.toInt(),
-                    mediaRect.right.toInt(),
-                    mediaRect.top.toInt() + iconSize
-                )
-                drawable.draw(this)
-            }
-
-            // Reset xfermode
-            mediaPaint.xfermode = null
-            restoreToCount(saveCount)
-        }
-
-        if (_medias.size > MAX_IMAGE_COUNT) {
-            val restCount = _medias.size - 9
-            val info = _medias[9]
-            moreMediaOverlayRect.set(info.rect)
-            // draw the overlay background
-            drawRect(moreMediaOverlayRect, moreMediaOverlayBackgroundPaint)
-
-            val overlayText = "+$restCount"
-            moreMediaOverlayTextPaint.textSize = (moreMediaOverlayRect.height() / 4)
-
-            val textWidth = moreMediaOverlayTextPaint.measureText(overlayText)
-            val textX =
-                moreMediaOverlayRect.left + (moreMediaOverlayRect.width() - textWidth) / 2
-            val textY =
-                moreMediaOverlayRect.top + (moreMediaOverlayRect.height() + moreMediaOverlayTextPaint.textSize) / 2 - moreMediaOverlayTextPaint.descent()
-
-            drawText(overlayText, textX, textY, moreMediaOverlayTextPaint)
-
-            offsetY =  _medias[9].rect.bottom + MARGIN_IMAGE
-        } else {
-            offsetY = _medias.last().rect.bottom + MARGIN_IMAGE
-        }
-        return offsetY
-    }
-
-    private fun Canvas.drawFiles(contentWidth: Int): Float {
-        var offsetY: Float = MARGIN_FILE.toFloat()
-
-        if (_files.isEmpty()) return 0f
-        for (info in _files.take(MAX_FILE_COUNT)) {
-            val file = info.file
-            Log.v(TAG, "drawFiles: file=${file.name}, md5=${file.md5}")
-            val moreFiles = _files.size > MAX_FILE_COUNT && _files.indexOf(info) == MAX_FILE_COUNT - 1
-
-            val rect = RectF(
-                MARGIN_FILE.toFloat(),
-                offsetY,
-                (MARGIN_FILE + FILE_ICON_SIZE.dp()).toFloat(),
-                offsetY + FILE_ICON_SIZE.dp()
-            )
-            drawRoundRect(
-                rect,
-                FILE_ICON_RADIUS.toFloat(),
-                FILE_ICON_RADIUS.toFloat(),
-                fileIconPaint
-            )
-
-            drawBitmap(
-                if (moreFiles) ImageLoader.iconMore else ImageLoader.iconFile,
-                null,
-                rect,
-                fileIconPaint
-            )
-
-            // Calculate max lines based on icon height and text size
-            val maxLines = ((FILE_ICON_SIZE.dp() - MARGIN_FILENAME * 2) / TEXT_SIZE_FILENAME)
-                .toInt().coerceAtLeast(1)
-
-            // draw filename
-            val alignment: Layout.Alignment = Layout.Alignment.ALIGN_NORMAL
-            val sourceText: String = if (moreFiles) {
-                "+${_files.size - MAX_FILE_COUNT + 1} files"
-            } else {
-                file.name
-            }
-
-            val fileNameLayout = StaticLayout.Builder
-                .obtain(
-                    sourceText, 0, sourceText.length, fileNamePaint,
-                    contentWidth - MARGIN_FILE * 2 - MARGIN_FILENAME - FILE_ICON_SIZE.dp()
-                )
-                .setAlignment(alignment)
-                .setLineSpacing(0f, 1f)
-                .setIncludePad(false)
-                .setMaxLines(maxLines)
-                .setEllipsize(TextUtils.TruncateAt.END)
-                .build()
-
-            withTranslation(
-                (MARGIN_FILE + MARGIN_FILENAME + FILE_ICON_SIZE.dp()).toFloat(),
-                offsetY + MARGIN_FILENAME
-            ) {
-                fileNameLayout.draw(this)
-            }
-
-            offsetY += FILE_ICON_SIZE.dp() + MARGIN_FILE * 2
-        }
-
-        return offsetY
-    }
-
-    private fun Canvas.drawIcons(size: Float): Float {
-        var offsetX = 0f
-        // TODO: cache the images?
-        if (isDeleted) {
-            drawBitmap(
-                ImageLoader.loadDrawable(context, R.drawable.icon_common_remove,
-                    ContextCompat.getColor(context, R.color.color_text_sub)
-                    ),
-                null,
-                RectF(
-                    offsetX, 0f,
-                    offsetX + size, size
-                ),
-                iconPaint
-            )
-            offsetX += size + MARGIN_ICON
-        }
-        if (!isSynced) {
-            drawBitmap(
-                ImageLoader.loadDrawable(context, R.drawable.icon_common_not_sync,
-                    ContextCompat.getColor(context, R.color.color_text_sub)
-                ),
-                null,
-                RectF(
-                    offsetX, 0f,
-                    offsetX + size, size
-                ),
-                iconPaint
-            )
-            offsetX += size + MARGIN_ICON
-        }
-        if (isEdited) {
-            drawBitmap(
-                ImageLoader.loadDrawable(context, R.drawable.icon_common_edit,
-                    ContextCompat.getColor(context, R.color.color_text_sub)
-                ),
-                null,
-                RectF(
-                    offsetX, 0f,
-                    offsetX + size, size
-                ),
-                iconPaint
-            )
-            offsetX += size + MARGIN_ICON
-        }
-        return offsetX
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        Log.v(TAG, "onDraw: $index")
-
-        canvas.drawRoundRect(
-            bubbleRect,
-            BUBBLE_RADIUS.toFloat(),
-            BUBBLE_RADIUS.toFloat(),
-            bubblePaint
-        )
-
-        val offX = bubbleRect.left + MARGIN_BORDER
-        var offY = bubbleRect.top + MARGIN_BORDER
-
-        val contentWidth: Int = (bubbleRect.width() - MARGIN_BORDER * 2).toInt()
-        canvas.withTranslation(offX, offY) {
-            offY += drawMedias(contentWidth)
-        }
-        canvas.withTranslation(offX, offY) {
-            offY += drawFiles(contentWidth)
-        }
-
-        if (!text.isEmpty()) {
-            offY += MARGIN_TEXT
-            canvas.withTranslation(offX + MARGIN_TEXT, offY) {
-                textLayout.draw(canvas)
-            }
-            offY += textLayout.height + MARGIN_TEXT
-        }
-
-        if (reactionList.isNotEmpty()) {
-            if (text.isEmpty()) {   // if reaction after text, no extra margin is needed
-                offY += MARGIN_REACTION_BG
-            }
-            var currentOffY = 0f
-
-            canvas.withSave {
-                var lineOffX = MARGIN_REACTION_BG.toFloat()
-
-                var idx = 0
-                reactionList.forEach { reaction ->
-                    val reactionWidth = MARGIN_REACTION_TEXT_X * 2 + reactionPaint.measureText(reaction)
-                    val reactionHeight = TEXT_SIZE_REACTION + MARGIN_REACTION_TEXT_Y * 2
-                    if (lineOffX + reactionWidth > contentWidth) {
-                        currentOffY += TEXT_SIZE_REACTION + MARGIN_REACTION_TEXT_Y * 2 + MARGIN_REACTION_BG
-                        lineOffX = MARGIN_REACTION_BG.toFloat()
-                    }
-
-                    val reactionRect = reactionRectList.getOrElse(idx++) {
-                        RectF().also { reactionRectList.add(it) }
-                    }
-                    reactionRect.set(
-                        offX + lineOffX,
-                        offY + currentOffY,
-                        offX + lineOffX + reactionWidth,
-                        offY + currentOffY + reactionHeight
-                    )
-
-                    val radius = REACTION_BG_RADIUS.dp().toFloat()
-                    drawRoundRect(
-                        reactionRect,
-                        radius,
-                        radius,
-                        reactionBgPaint
-                    )
-
-                    drawText(
-                        reaction,
-                        offX + lineOffX + MARGIN_REACTION_TEXT_X,
-                        offY + currentOffY + MARGIN_REACTION_TEXT_Y - reactionPaint.ascent(),
-                        reactionPaint
-                    )
-
-                    lineOffX += reactionWidth + MARGIN_REACTION_BG
-                }
-            }
-            // offY += currentOffY  // include this if there still something after reaction
-        }
-
-        val timeX = bubbleRect.right - MARGIN_BORDER - MARGIN_TIME - timeLayout.getLineWidth(0)
-        val timeY = bubbleRect.bottom - MARGIN_BORDER - MARGIN_TIME - timeLayout.height
-        val iconX = timeX - measureIconWidth(timeLayout.height)
-        if (extInfoNeedBackground) {
-            canvas.drawRoundRect(
-                iconX - MARGIN_TIME, timeY - MARGIN_TIME,
-                bubbleRect.right - MARGIN_BORDER,
-                bubbleRect.bottom - MARGIN_BORDER,
-                IMAGE_RADIUS.toFloat(), IMAGE_RADIUS.toFloat(),
-                extInfoBackgroundPaint
-            )
-        }
-
-        canvas.withTranslation(timeX, timeY) {
-            timeLayout.draw(this)
-        }
-        canvas.withTranslation(iconX, timeY) {
-            drawIcons(timeLayout.height.toFloat())
-        }
-
-        canvas.withSave {
-            sender?.let {
-                val offX = MARGIN_BUBBLE_SENDER_AVATAR.dp().toFloat()
-                val offY = height - MARGIN_BUBBLE_SENDER_AVATAR.dp() - AVATAR_SIZE.dp().toFloat()
-                senderAvatarRect.set(
-                    offX, offY,
-                    (offX + AVATAR_SIZE.dp()),
-                    (offY + AVATAR_SIZE.dp())
-                )
-                senderAvatarPath.addCircle(
-                    senderAvatarRect.centerX(),
-                    senderAvatarRect.centerY(),
-                    AVATAR_SIZE.dp() / 2.1f,    // 2.1 to avoid straight line on the edge
-                    Path.Direction.CW
-                )
-                val bitmap = when (sender) {
-                    ShareRecvActivity.UNKNOWN_SENDER_PACKAGE -> ImageLoader.errorBitmap
-                    else -> getSenderIcon(it)
-                }
-
-                canvas.clipPath(senderAvatarPath)
-                canvas.drawBitmap(
-                    bitmap, null,
-                    senderAvatarRect,
-                    senderAvatarPaint
-                )
+        for (i in reactionRects.indices) {
+            if (reactionRects[i].contains(x, y)) {
+                return ClickedContent(ClickedContent.Type.REACTION, null, i)
             }
         }
+        return ClickedContent(ClickedContent.Type.BACKGROUND)
     }
 
     private val highlightPath = Path()
+
     override fun getHighlightArea(): Path {
         highlightPath.reset()
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return highlightPath
+        val radius = resources.displayMetrics.density * HIGHLIGHT_RADIUS_DP
         highlightPath.addRoundRect(
-            bubbleRect,
-            BUBBLE_RADIUS.toFloat(),
-            BUBBLE_RADIUS.toFloat(),
-            Path.Direction.CW
+            0f, 0f, w, h,
+            radius, radius,
+            Path.Direction.CW,
         )
         return highlightPath
     }
 
-    class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
+    /** Mirror of the legacy ClickedContent, so the fragment touch handler keeps working. */
+    class ClickedContent(
+        val type: Type,
+        val data: AttachmentFile? = null,
+        val index: Int = -1,
+    ) {
         enum class Type {
             BACKGROUND,
             SENDER_ICON,
@@ -1317,124 +219,611 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private val checkRect = RectF()
-    fun checkClickedContent(x: Float, y: Float): ClickedContent {
-        Log.v(TAG, "index-$index, checkClickedItem: x=$x, y=$y")
-
-        sender?.let {
-            checkRect.set(senderAvatarRect)
-            if (checkRect.contains(x, y)) {
-                Log.v(TAG, "checkClickedItem: sender icon clicked")
-                return ClickedContent(ClickedContent.Type.SENDER_ICON)
-            }
-        }
-
-        val attachments = (_medias + _files)
-        attachments.iterator().forEach { info ->
-            checkRect.set(
-                info.rect.left + bubbleRect.left + MARGIN_BORDER,
-                info.rect.top + MARGIN_BUBBLE_Y + MARGIN_BORDER,
-                info.rect.right + bubbleRect.left + MARGIN_BORDER,
-                info.rect.bottom + MARGIN_BUBBLE_Y + MARGIN_BORDER
-            )
-            if (checkRect.contains(x, y)) {
-                Log.v(TAG, "checkClickedItem: attachment $info clicked")
-                val attachment = info.file
-                val type = when (attachment.type) {
-                    AttachmentFile.Type.MEDIA -> ClickedContent.Type.MEDIA
-                    AttachmentFile.Type.FILE -> ClickedContent.Type.FILE
-                }
-                return ClickedContent(
-                    type,
-                    attachment,
-                    attachments.indexOf(info)
-                )
-            }
-        }
-
-        for (i in reactionList.indices) {
-            val reactionRect = reactionRectList.getOrNull(i) ?: continue
-            checkRect.set(reactionRect)
-            // offset is no need for reaction, since the rects of them are set without bubbleRect offset,
-            // so check them directly here
-
-            if (checkRect.contains(x, y)) {
-                Log.v(TAG, "checkClickedItem: reaction ${reactionList[i]} clicked")
-                return ClickedContent(
-                    ClickedContent.Type.REACTION,
-                    null,
-                    i
-                )
-            }
-        }
-
-        return ClickedContent(ClickedContent.Type.BACKGROUND)
-    }
-
-    private fun Long.format(): String {
-        val noteDate = Date(this)
-        val now = Date()
-        val calNote = java.util.Calendar.getInstance().apply { time = noteDate }
-        val calNow = java.util.Calendar.getInstance().apply { time = now }
-
-        val sameYear = calNote.get(java.util.Calendar.YEAR) == calNow.get(java.util.Calendar.YEAR)
-        val dayOfYearNote = calNote.get(java.util.Calendar.DAY_OF_YEAR)
-        val dayOfYearNow = calNow.get(java.util.Calendar.DAY_OF_YEAR)
-        val diffDays = dayOfYearNow - dayOfYearNote
-
-        return when {
-            sameYear && diffDays == 0 -> dataFormatToday.format(noteDate) // Today
-            sameYear && diffDays == 1 -> "Yesterday " + dataFormatToday.format(noteDate)
-            sameYear && diffDays in 2..6 -> dataFormatWeekly.format(noteDate)
-            else -> dataFormatCommon.format(noteDate)
-        }
-    }
-
-    private val marginReactionBg : Float by lazy { 16.dp().toFloat() }
-    private val marginReactionTextX: Float by lazy { 8.dp().toFloat() }
-    private val marginReactionTextY: Float by lazy { 16.dp().toFloat() }
-    private val reactionBgRadius: Float by lazy { 16.dp().toFloat() }
-
     companion object {
-        const val TAG: String = "NoteItemView"
-
-        const val MARGIN_BUBBLE_Y = 4
-        const val MARGIN_BUBBLE_NULL_SENDER = 8 // in dp
-        const val MARGIN_BUBBLE_HAVE_SENDER = 52   // in dp, enough for avatar and margin
-        const val MARGIN_BUBBLE_SENDER_AVATAR = 4   // in dp
-        const val AVATAR_SIZE = MARGIN_BUBBLE_HAVE_SENDER - MARGIN_BUBBLE_SENDER_AVATAR * 2   // in dp
-        const val MARGIN_BUBBLE_END = 48    // in dp
-        const val BUBBLE_RADIUS = 16
-
-        const val MARGIN_BORDER = 8
-        const val MARGIN_IMAGE = 8
-        const val IMAGE_RADIUS = 14
-        const val MAX_IMAGE_COUNT = 10
-
-        const val MARGIN_FILE = 8
-        const val FILE_ICON_SIZE = 48  // in dp
-        const val FILE_ICON_RADIUS = 36
-        const val MARGIN_FILENAME = 16
-        const val TEXT_SIZE_FILENAME = 40f
+        /** Maximum number of file rows rendered; the extra ones are counted on the "+n files" row. */
         const val MAX_FILE_COUNT = 4
 
-        const val MARGIN_ICON = 8
+        /** Highlight corner radius (dp). */
+        private const val HIGHLIGHT_RADIUS_DP = 8f
+    }
+}
 
-        const val MARGIN_TEXT = 16
-        const val MARGIN_TIME = 8
-        const val MARGIN_REACTION_BG = 16
-        const val MARGIN_REACTION_TEXT_Y = 16
-        const val MARGIN_REACTION_TEXT_X = 32
-        const val REACTION_BG_RADIUS = 16
+// ============================================================================================
+//  Compose content
+// ============================================================================================
 
-        const val TEXT_SIZE_CONTENT = 48f
-        const val TEXT_SIZE_TIME = 30f
-        const val TEXT_SIZE_REACTION = 48f
+/**
+ * The root Compose content of [NoteItemView].
+ * The content is intentionally non-interactive: all taps are still resolved by the
+ * RecyclerView level touch listener through [NoteItemView.checkClickedContent], so the
+ * surrounding gesture handling (scroll / long press / slide select) keeps working.
+ */
+@Composable
+private fun NoteItemContent(view: NoteItemView) {
+    val context = LocalContext.current
+    val palette = neoPalette()
 
-        val dataFormatCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
-        val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
-        val dataFormatWeekly: SimpleDateFormat = SimpleDateFormat("EEE HH:mm", Locale.CHINESE)
+    // read the bind data to subscribe to it; geometry lists are kept in sync below
+    val text = view.text
+    val isDeleted = view.isDeleted
+    val reactions = view.reactionList
+    val files = view.files
+    val medias = view.medias
 
+    ensureRectCount(view.mediaRects, medias.size)
+    ensureRectCount(view.fileRects, files.size.coerceAtMost(NoteItemView.MAX_FILE_COUNT))
+    ensureRectCount(view.reactionRects, reactions.size)
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { view.rootCoordinates = it },
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = ITEM_PADDING_H,
+                    top = ITEM_PADDING_V,
+                    end = ITEM_PADDING_H,
+                    bottom = ITEM_PADDING_V,
+                ),
+            verticalAlignment = Alignment.Top,
+        ) {
+            AvatarBox(view, palette)
+            Spacer(Modifier.width(AVATAR_GAP))
+            Column(Modifier.weight(1f)) {
+                HeaderRow(view, palette, context)
+
+                if (text.isNotEmpty()) {
+                    Text(
+                        text = text,
+                        color = if (isDeleted) {
+                            palette.textMain.copy(alpha = 0.4f)
+                        } else {
+                            palette.textMain
+                        },
+                        fontSize = CONTENT_TEXT_SIZE,
+                        lineHeight = CONTENT_LINE_HEIGHT,
+                        textDecoration = if (isDeleted) TextDecoration.LineThrough else null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = CONTENT_TOP_PADDING),
+                    )
+                }
+
+                MediaGallery(view, palette)
+                FileList(view, palette)
+                ReactionBar(view, palette)
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------------------
+// header: avatar is separate, this is the name + time + status row
+// --------------------------------------------------------------------------------------------
+
+@Composable
+private fun HeaderRow(view: NoteItemView, palette: NeoPalette, context: Context) {
+    val sender = view.sender
+    val name = remember(sender, context) { resolveSenderLabel(context, sender) }
+    val nameColor = if (sender == null) palette.textMain else palette.senderName
+    val isDeleted = view.isDeleted
+
+    val icons = remember(view.isDeleted, view.isSynced, view.isEdited, palette, context) {
+        val color = palette.textSub.toArgb()
+        buildList {
+            if (view.isDeleted) {
+                add(ImageLoader.loadDrawable(context, R.drawable.icon_common_remove, color))
+            }
+            if (!view.isSynced) {
+                add(ImageLoader.loadDrawable(context, R.drawable.icon_common_not_sync, color))
+            }
+            if (view.isEdited) {
+                add(ImageLoader.loadDrawable(context, R.drawable.icon_common_edit, color))
+            }
+        }
     }
 
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = name,
+            color = if (isDeleted) nameColor.copy(alpha = 0.4f) else nameColor,
+            fontSize = NAME_TEXT_SIZE,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Spacer(Modifier.width(NAME_TIME_GAP))
+        Text(
+            text = formatNoteTime(view.createTime),
+            color = if (isDeleted) palette.textSub.copy(alpha = 0.4f) else palette.textSub,
+            fontSize = TIME_TEXT_SIZE,
+            maxLines = 1,
+        )
+        if (icons.isNotEmpty()) {
+            Spacer(Modifier.width(TIME_ICON_GAP))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                icons.forEach { icon ->
+                    Image(
+                        bitmap = icon.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = STATUS_ICON_GAP)
+                            .size(STATUS_ICON_SIZE),
+                    )
+                }
+            }
+        }
+    }
 }
+
+@Composable
+private fun AvatarBox(view: NoteItemView, palette: NeoPalette) {
+    val sender = view.sender
+    val avatar = rememberSenderAvatar(sender)
+    Box(
+        modifier = Modifier
+            .size(AVATAR_SIZE)
+            .clip(CircleShape)
+            .background(palette.avatarBackground)
+            .onGloballyPositioned { coords ->
+                if (sender != null) {
+                    view.updateRectFrom(coords, view.avatarRect)
+                } else {
+                    view.avatarRect.setEmpty()
+                }
+            },
+    ) {
+        Image(
+            bitmap = avatar.asImageBitmap(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+// --------------------------------------------------------------------------------------------
+// media strip: every media in one horizontally scrollable row of fixed-height tiles
+// --------------------------------------------------------------------------------------------
+
+@Composable
+private fun MediaGallery(view: NoteItemView, palette: NeoPalette) {
+    val medias = view.medias
+    if (medias.isEmpty()) return
+
+    val scrollState = rememberScrollState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scrollState)
+            .padding(top = SECTION_TOP_PADDING),
+        horizontalArrangement = Arrangement.spacedBy(MEDIA_GAP),
+    ) {
+        medias.forEachIndexed { index, media ->
+            MediaTile(
+                file = media,
+                index = index,
+                view = view,
+                palette = palette,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MediaTile(
+    file: AttachmentFile,
+    index: Int,
+    view: NoteItemView,
+    palette: NeoPalette,
+) {
+    val thumbnail = rememberAttachmentThumb(file)
+    val tileWidth = remember(file.md5) { mediaTileWidth(file) }
+    Box(
+        modifier = Modifier
+            .width(tileWidth)
+            .height(MEDIA_HEIGHT)
+            .clip(RoundedCornerShape(MEDIA_RADIUS))
+            .background(palette.tilePlaceholder)
+            .onGloballyPositioned { coords ->
+                view.updateRectFrom(coords, view.mediaRects[index])
+            },
+    ) {
+        if (thumbnail != null) {
+            Image(
+                bitmap = thumbnail.asImageBitmap(),
+                contentDescription = file.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (file.isVideo &&
+                thumbnail !== ImageLoader.errorBitmap &&
+                thumbnail !== ImageLoader.loadingBitmap
+            ) {
+                VideoGlyph(palette)
+            }
+        }
+    }
+}
+
+/** Video play glyph (translucent circle + triangle), placed over the loaded thumbnail. */
+@Composable
+private fun VideoGlyph(palette: NeoPalette) {
+    Canvas(Modifier.fillMaxSize()) {
+        val side = minOf(size.width, size.height)
+        val radius = side * 0.30f
+        val strokeWidth = (side * 0.03f).coerceAtLeast(2f)
+        val center = Offset(size.width / 2f, size.height / 2f)
+        drawCircle(palette.videoScrim, radius = radius, center = center)
+        drawCircle(
+            palette.onVideoScrim,
+            radius = radius,
+            center = center,
+            style = Stroke(width = strokeWidth),
+        )
+        val triHalf = radius * 0.45f
+        val triHeight = radius * 1.1f
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(center.x - triHalf * 0.7f, center.y - triHeight / 2f)
+            lineTo(center.x + triHalf * 0.9f, center.y)
+            lineTo(center.x - triHalf * 0.7f, center.y + triHeight / 2f)
+            close()
+        }
+        drawPath(path, palette.onVideoScrim)
+    }
+}
+
+// --------------------------------------------------------------------------------------------
+// file attachments
+// --------------------------------------------------------------------------------------------
+
+@Composable
+private fun FileList(view: NoteItemView, palette: NeoPalette) {
+    val files = view.files
+    if (files.isEmpty()) return
+
+    val maxFiles = NoteItemView.MAX_FILE_COUNT
+    val shown = files.take(maxFiles)
+    val extraFiles = files.size - shown.size
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = SECTION_TOP_PADDING),
+        verticalArrangement = Arrangement.spacedBy(FILE_ROW_GAP),
+    ) {
+        shown.forEachIndexed { index, file ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coords ->
+                        view.updateRectFrom(coords, view.fileRects[index])
+                    }
+                    .background(
+                        palette.fileCardBackground,
+                        RoundedCornerShape(FILE_CARD_RADIUS),
+                    )
+                    .border(FILE_CARD_BORDER, palette.fileCardBorder, RoundedCornerShape(FILE_CARD_RADIUS))
+                    .padding(FILE_CARD_PADDING),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(FILE_CARD_ICON_SIZE)
+                        .clip(RoundedCornerShape(FILE_CARD_ICON_RADIUS))
+                        .background(palette.reactionBackground),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "↗",
+                        color = palette.onReaction,
+                        fontSize = FILE_CARD_ICON_TEXT_SIZE,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.width(FILE_TEXT_GAP))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = file.name,
+                        color = palette.fileLink,
+                        fontSize = FILE_NAME_TEXT_SIZE,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (file.mimeType.isNotEmpty()) {
+                        Text(
+                            text = file.mimeType,
+                            color = palette.textSub,
+                            fontSize = FILE_MIME_TEXT_SIZE,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (index == shown.lastIndex && extraFiles > 0) {
+                    Text(
+                        text = "+$extraFiles",
+                        color = palette.textSub,
+                        fontSize = FILE_EXTRA_TEXT_SIZE,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------------------
+// reactions
+// --------------------------------------------------------------------------------------------
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReactionBar(view: NoteItemView, palette: NeoPalette) {
+    val reactions = view.reactionList
+    if (reactions.isEmpty()) return
+
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = REACTION_TOP_PADDING),
+        horizontalArrangement = Arrangement.spacedBy(REACTION_GAP),
+        verticalArrangement = Arrangement.spacedBy(REACTION_GAP),
+    ) {
+        reactions.forEachIndexed { index, reaction ->
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(REACTION_RADIUS))
+                    .background(palette.reactionBackground)
+                    .onGloballyPositioned { coords ->
+                        view.updateRectFrom(coords, view.reactionRects[index])
+                    }
+                    .padding(
+                        horizontal = REACTION_PADDING_H,
+                        vertical = REACTION_PADDING_V,
+                    ),
+            ) {
+                Text(
+                    text = reaction,
+                    color = palette.onReaction,
+                    fontSize = REACTION_TEXT_SIZE,
+                )
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------------------
+// helpers
+// --------------------------------------------------------------------------------------------
+
+/** Theme-resolved colors shared by the whole note item. */
+@Immutable
+private data class NeoPalette(
+    val textMain: Color,
+    val textSub: Color,
+    val senderName: Color,
+    val avatarBackground: Color,
+    val tilePlaceholder: Color,
+    val fileCardBackground: Color,
+    val fileCardBorder: Color,
+    val fileLink: Color,
+    val reactionBackground: Color,
+    val onReaction: Color,
+    val videoScrim: Color,
+    val onVideoScrim: Color,
+)
+
+/**
+ * Build the palette from theme resources.
+ *
+ * Called on every composition (not cached with `remember`) so colors are re-read when the
+ * composition re-evaluates after a configuration change: the app declares
+ * `android:configChanges="uiMode"`, so toggling night mode does not recreate the activity
+ * and a `ContextCompat.getColor` snapshot taken once would stay stale.
+ */
+@Composable
+private fun neoPalette(): NeoPalette = NeoPalette(
+    textMain = colorResource(R.color.color_text_main),
+    textSub = colorResource(R.color.color_text_sub),
+    senderName = colorResource(R.color.reaction_background),
+    avatarBackground = colorResource(R.color.file_icon_background),
+    tilePlaceholder = colorResource(R.color.note_bubble_background),
+    fileCardBackground = colorResource(R.color.file_card_background),
+    fileCardBorder = colorResource(R.color.file_card_border),
+    fileLink = colorResource(R.color.file_link),
+    reactionBackground = colorResource(R.color.reaction_background),
+    onReaction = colorResource(R.color.more_media_overlay_text),
+    videoScrim = colorResource(R.color.video_play_icon_background),
+    onVideoScrim = colorResource(R.color.video_play_icon_foreground),
+)
+
+/** Load a thumbnail (image or video) for an attachment; null while loading / on failure. */
+@Composable
+private fun rememberAttachmentThumb(file: AttachmentFile): Bitmap? {
+    var bitmap by remember(file.md5) { mutableStateOf<Bitmap?>(null) }
+    DisposableEffect(file.md5) {
+        var active = true
+        fun accept(loaded: Bitmap?) {
+            if (!active) return
+            bitmap = if (loaded == null || loaded.isRecycled) ImageLoader.errorBitmap else loaded
+        }
+        val cached = if (file.isVideo) {
+            ImageLoader.loadVideoThumbnailAsync(file.md5file, false) { accept(it) }
+        } else {
+            ImageLoader.loadImageAsync(file.md5file, false) { accept(it) }
+        }
+        if (cached != null) accept(cached)
+        onDispose { active = false }
+    }
+    return bitmap
+}
+
+/** Aspect ratio (width / height) of a single media file, used to size the media strip tiles.
+ * No cap is applied here: the final tile width is clamped in [mediaTileWidth],
+ * so extreme aspect ratios can only widen a tile up to MEDIA_MAX_WIDTH.
+ */
+private fun mediaNaturalAspect(file: AttachmentFile): Float {
+    if (file.isVideo) {
+        // decoding video dimensions is slow, use a fixed ratio (like the old view)
+        return MEDIA_MAX_WIDTH / MEDIA_HEIGHT
+    }
+    val size = ImageLoader.getImageSize(file.md5file) ?: return 1f
+    if (size.first <= 0 || size.second <= 0) return 1f
+    return size.first.toFloat() / size.second
+}
+
+/** Width of a media strip tile: the fixed tile height scaled by the natural aspect ratio,
+ * clamped to [MEDIA_MIN_WIDTH, MEDIA_MAX_WIDTH] so very tall images never render as
+ * thin slivers and very wide ones never exceed the 3:4 height/width maximum.
+ */
+private fun mediaTileWidth(file: AttachmentFile): Dp {
+    val ratio = mediaNaturalAspect(file)
+    return (MEDIA_HEIGHT * ratio).coerceIn(MEDIA_MIN_WIDTH, MEDIA_MAX_WIDTH)
+}
+
+/** Load the sender avatar: app icon of the sending package, own app icon for local notes. */
+@Composable
+private fun rememberSenderAvatar(sender: String?): Bitmap {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    return remember(sender, density) {
+        if (sender == ShareRecvActivity.UNKNOWN_SENDER_PACKAGE) {
+            return@remember ImageLoader.errorBitmap
+        }
+        try {
+            val drawable = if (sender == null) {
+                context.packageManager.getApplicationIcon(context.packageName)
+            } else {
+                context.packageManager.getApplicationIcon(sender)
+            }
+            val px = with(density) { AVATAR_SIZE.toPx() }.roundToInt()
+            val bitmap = createBitmap(px, px)
+            val canvas = AndroidCanvas(bitmap)
+            drawable.setBounds(0, 0, px, px)
+            drawable.draw(canvas)
+            bitmap
+        } catch (_: Exception) {
+            ImageLoader.errorBitmap
+        }
+    }
+}
+
+/** Resolve the display name of a sender package (falls back to the package name). */
+private fun resolveSenderLabel(context: Context, sender: String?): String = when (sender) {
+    null -> LOCAL_SENDER_LABEL
+    ShareRecvActivity.UNKNOWN_SENDER_PACKAGE -> UNKNOWN_SENDER_LABEL
+    else -> {
+        val label = try {
+            val info = context.packageManager.getApplicationInfo(sender, 0)
+            context.packageManager.getApplicationLabel(info).toString()
+        } catch (_: Exception) {
+            null
+        }
+        label ?: sender
+    }
+}
+
+/**
+ * Resize [rects] to [size], filling new entries with empty rects.
+ * Called during composition so the tap-rect lists always match the bound data.
+ */
+private fun ensureRectCount(rects: MutableList<RectF>, size: Int) {
+    while (rects.size < size) rects.add(RectF())
+    while (rects.size > size) rects.removeAt(rects.lastIndex)
+}
+
+/**
+ * Translate the window bounds of [coords] into coordinates local to this view
+ * and write them into [out]. Used by hit-testing in checkClickedContent.
+ */
+private fun NoteItemView.updateRectFrom(coords: LayoutCoordinates, out: RectF) {
+    val root = rootCoordinates ?: return
+    if (root === coords) return
+    val child = coords.boundsInWindow()
+    val base = root.boundsInWindow()
+    out.set(
+        child.left - base.left,
+        child.top - base.top,
+        child.right - base.left,
+        child.bottom - base.top,
+    )
+}
+
+/** Format a note create time the same way as the old NoteItemView. */
+private fun formatNoteTime(createTime: Long): String {
+    if (createTime <= 0L) return ""
+    val noteDate = Date(createTime)
+    val now = Date()
+    val calNote = Calendar.getInstance().apply { time = noteDate }
+    val calNow = Calendar.getInstance().apply { time = now }
+
+    val sameYear = calNote.get(Calendar.YEAR) == calNow.get(Calendar.YEAR)
+    val dayOfYearNote = calNote.get(Calendar.DAY_OF_YEAR)
+    val dayOfYearNow = calNow.get(Calendar.DAY_OF_YEAR)
+    val diffDays = dayOfYearNow - dayOfYearNote
+
+    return when {
+        sameYear && diffDays == 0 -> fmtToday.format(noteDate)
+        sameYear && diffDays == 1 -> "Yesterday " + fmtToday.format(noteDate)
+        sameYear && diffDays in 2..6 -> fmtWeekly.format(noteDate)
+        else -> fmtCommon.format(noteDate)
+    }
+}
+
+// --------------------------------------------------------------------------------------------
+// metrics & constants
+// --------------------------------------------------------------------------------------------
+
+private val AVATAR_SIZE = 40.dp
+private val AVATAR_GAP = 10.dp
+private val ITEM_PADDING_H = 10.dp
+private val ITEM_PADDING_V = 6.dp
+
+private val STATUS_ICON_SIZE = 14.dp
+private val STATUS_ICON_GAP = 4.dp
+private val NAME_TIME_GAP = 8.dp
+private val TIME_ICON_GAP = 8.dp
+private val NAME_TEXT_SIZE = 15.sp
+private val TIME_TEXT_SIZE = 11.sp
+
+private val CONTENT_TEXT_SIZE = 15.sp
+private val CONTENT_LINE_HEIGHT = 21.sp
+private val CONTENT_TOP_PADDING = 4.dp
+
+private val SECTION_TOP_PADDING = 8.dp
+private val MEDIA_GAP = 6.dp
+private val MEDIA_RADIUS = 8.dp
+private val MEDIA_HEIGHT = 180.dp
+private val MEDIA_MIN_WIDTH = 100.dp
+private val MEDIA_MAX_WIDTH = MEDIA_HEIGHT * 4f / 3f
+
+private val FILE_ROW_GAP = 6.dp
+private val FILE_CARD_RADIUS = 8.dp
+private val FILE_CARD_BORDER = 1.dp
+private val FILE_CARD_PADDING = 10.dp
+private val FILE_CARD_ICON_SIZE = 36.dp
+private val FILE_CARD_ICON_RADIUS = 6.dp
+private val FILE_CARD_ICON_TEXT_SIZE = 18.sp
+private val FILE_TEXT_GAP = 10.dp
+private val FILE_NAME_TEXT_SIZE = 14.sp
+private val FILE_MIME_TEXT_SIZE = 11.sp
+private val FILE_EXTRA_TEXT_SIZE = 13.sp
+
+private val REACTION_TOP_PADDING = 6.dp
+private val REACTION_GAP = 6.dp
+private val REACTION_RADIUS = 12.dp
+private val REACTION_PADDING_H = 10.dp
+private val REACTION_PADDING_V = 4.dp
+private val REACTION_TEXT_SIZE = 13.sp
+
+private const val LOCAL_SENDER_LABEL = "Me"
+private const val UNKNOWN_SENDER_LABEL = "Unknown app"
+
+private val fmtToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
+private val fmtWeekly: SimpleDateFormat = SimpleDateFormat("EEE HH:mm", Locale.CHINESE)
+private val fmtCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)

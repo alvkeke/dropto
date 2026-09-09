@@ -403,13 +403,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     }
 
                     NoteItemView.ClickedContent.Type.MEDIA -> {
-                        if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
-                            content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
-                        ) {
-                            showNoteDetail(index)
-                        } else {
-                            showMediaView(index, content.index)
-                        }
+                        showMediaView(index, content.index)
                     }
 
                     NoteItemView.ClickedContent.Type.FILE -> {
