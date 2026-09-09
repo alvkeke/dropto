@@ -51,6 +51,15 @@ class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.medias.addAll(note.medias)
         view.files.clear()
         view.files.addAll(note.files)
+        view.settleContentLayout()
+    }
+
+    override fun onViewRecycled(holder: ViewHolder) {
+        super.onViewRecycled(holder)
+        // Drop the composition so the next bind composes from scratch on attach, giving
+        // RecyclerView the correct WRAP_CONTENT height on the first measure (kept-alive
+        // compositions would lag one frame behind and make fast scrolling jump).
+        (holder.itemView as NoteItemView).releaseContentComposition()
     }
 
 }

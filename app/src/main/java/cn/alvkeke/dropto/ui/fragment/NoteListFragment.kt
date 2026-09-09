@@ -140,6 +140,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
+        // Disable the edge stretch/glow overscroll effect on the note list.
+        rlNoteList.overScrollMode = View.OVER_SCROLL_NEVER
         btnSend = view.findViewById(R.id.note_list_input_button)
         btnCancel = view.findViewById(R.id.note_list_input_cancel_button)
         btnAttach = view.findViewById(R.id.note_list_input_attach_attachment)
