@@ -374,63 +374,63 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private inner class NoteListTouchListener : OnRecyclerViewTouchListener(context) {
         override fun onItemClickAt(v: View, index: Int, event: MotionEvent): Boolean {
-            if (rlNoteList.isSelectMode) {
-                rlNoteList.toggleSelectItems(index)
-            } else {
-                val x = event.rawX.toInt()
-                val y = event.rawY.toInt()
-
-                val itemView = v as NoteItemView
-                Log.v(TAG, "clicked item-$index, view index: ${itemView.index}")
-
-                // Translate RecyclerView coordinates to itemView coordinates
-                val localX = event.x - itemView.left
-                val localY = event.y - itemView.top
-                Log.v(TAG, "localX: $localX, localY: $localY")
-
-                val content = itemView.checkClickedContent(localX, localY)
-
-                when (content.type) {
-                    NoteItemView.ClickedContent.Type.BACKGROUND -> {
-                        showItemPopMenu(index, v, x, y)
-                    }
-                    NoteItemView.ClickedContent.Type.SENDER_ICON -> {
-                        Builder(context)
-                            .setTitle("Sender Package")
-                            .setMessage("Sender: ${itemView.sender}")
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show()
-                    }
-
-                    NoteItemView.ClickedContent.Type.MEDIA -> {
-                        if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
-                            content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
-                        ) {
-                            showNoteDetail(index)
-                        } else {
-                            showMediaView(index, content.index)
-                        }
-                    }
-
-                    NoteItemView.ClickedContent.Type.FILE -> {
-                        if (itemView.files.size > NoteItemView.MAX_FILE_COUNT &&
-                            content.index >= itemView.medias.size + NoteItemView.MAX_FILE_COUNT - 1
-                        ) {
-                            showNoteDetail(index)
-                        } else {
-                            tryOpenFile(index, content.index)
-                        }
-                    }
-
-                    NoteItemView.ClickedContent.Type.REACTION -> {
-                        if (!isFilteringReaction) {
-                            // only allow to remove the reaction without reaction filter
-                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                            removeReaction(index, content.index)
-                        }
-                    }
-                }
-            }
+//            if (rlNoteList.isSelectMode) {
+//                rlNoteList.toggleSelectItems(index)
+//            } else {
+//                val x = event.rawX.toInt()
+//                val y = event.rawY.toInt()
+//
+//                val itemView = v as NoteItemView
+//                Log.v(TAG, "clicked item-$index, view index: ${itemView.index}")
+//
+//                // Translate RecyclerView coordinates to itemView coordinates
+//                val localX = event.x - itemView.left
+//                val localY = event.y - itemView.top
+//                Log.v(TAG, "localX: $localX, localY: $localY")
+//
+//                val content = itemView.checkClickedContent(localX, localY)
+//
+//                when (content.type) {
+//                    NoteItemView.ClickedContent.Type.BACKGROUND -> {
+//                        showItemPopMenu(index, v, x, y)
+//                    }
+//                    NoteItemView.ClickedContent.Type.SENDER_ICON -> {
+//                        Builder(context)
+//                            .setTitle("Sender Package")
+//                            .setMessage("Sender: ${itemView.sender}")
+//                            .setPositiveButton(android.R.string.ok, null)
+//                            .show()
+//                    }
+//
+//                    NoteItemView.ClickedContent.Type.MEDIA -> {
+//                        if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
+//                            content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
+//                        ) {
+//                            showNoteDetail(index)
+//                        } else {
+//                            showMediaView(index, content.index)
+//                        }
+//                    }
+//
+//                    NoteItemView.ClickedContent.Type.FILE -> {
+//                        if (itemView.files.size > NoteItemView.MAX_FILE_COUNT &&
+//                            content.index >= itemView.medias.size + NoteItemView.MAX_FILE_COUNT - 1
+//                        ) {
+//                            showNoteDetail(index)
+//                        } else {
+//                            tryOpenFile(index, content.index)
+//                        }
+//                    }
+//
+//                    NoteItemView.ClickedContent.Type.REACTION -> {
+//                        if (!isFilteringReaction) {
+//                            // only allow to remove the reaction without reaction filter
+//                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+//                            removeReaction(index, content.index)
+//                        }
+//                    }
+//                }
+//            }
             return true
         }
 
@@ -442,66 +442,66 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             val localX = rawX - location[0]
             val localY = rawY - location[1]
 
-            val content = (v as NoteItemView).checkClickedContent(localX, localY)
-            when (content.type) {
-                NoteItemView.ClickedContent.Type.FILE,
-                NoteItemView.ClickedContent.Type.MEDIA -> {
-                    val attachment = noteItemAdapter.get(index).attachments[content.index]
-                    val screenWidth = context.resources.displayMetrics.widthPixels
-                    val card = PopupAttachmentCard(attachment, context)
-                    card.width = screenWidth / 2
-                    card.height = card.width
-                    // TODO: set the height to wrap_content, not available now
-                    val displayX = ((screenWidth - card.width) / 2)
-                        .coerceAtLeast(0)
-                    val displayY = (rawY - card.height).toInt()
-                    rlNoteList.highLight()
-                    card.setOnDismissListener {
-                        rlNoteList.clearHighLight()
-                    }
-                    card.setActionListener(object : PopupAttachmentCard.ActionListener{
-                        override fun onRemove(attachment: AttachmentFile) {
-                            val item = noteItemAdapter.get(index)
-                            if (
-                                item.text.isEmpty() &&
-                                item.attachments.size == 1 &&
-                                item.attachments.contains(attachment)
-                                ) {
-                                v.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                            } else {
-                                requestRemoveAttachment(item, attachment)
-                                card.dismiss()
-                            }
-                        }
-                        override fun onShare(attachment: AttachmentFile) {
-                            context.shareAttachmentFileToExternal(attachment)
-                            card.dismiss()
-                        }
-                        override fun onOpen(attachment: AttachmentFile) {
-                            context.openFileWithExternalApp(attachment)
-                            card.dismiss()
-                        }
-                        override fun onSave(attachment: AttachmentFile) {
-                            trySaveFile(attachment)
-                            card.dismiss()
-                        }
-                    })
-                    card.showAtLocation(
-                        rlNoteList,
-                        Gravity.NO_GRAVITY,
-                        displayX, displayY
-                    )
-                    return true
-                }
-                NoteItemView.ClickedContent.Type.REACTION -> {
-                    if (!isFilteringReaction) {
-                        val reaction = noteItemAdapter.get(index).reactions[content.index]
-                        setReactionFilter(reaction)
-                        return true
-                    }
-                }
-                else -> return false
-            }
+//            val content = (v as NoteItemView).checkClickedContent(localX, localY)
+//            when (content.type) {
+//                NoteItemView.ClickedContent.Type.FILE,
+//                NoteItemView.ClickedContent.Type.MEDIA -> {
+//                    val attachment = noteItemAdapter.get(index).attachments[content.index]
+//                    val screenWidth = context.resources.displayMetrics.widthPixels
+//                    val card = PopupAttachmentCard(attachment, context)
+//                    card.width = screenWidth / 2
+//                    card.height = card.width
+//                    // TODO: set the height to wrap_content, not available now
+//                    val displayX = ((screenWidth - card.width) / 2)
+//                        .coerceAtLeast(0)
+//                    val displayY = (rawY - card.height).toInt()
+//                    rlNoteList.highLight()
+//                    card.setOnDismissListener {
+//                        rlNoteList.clearHighLight()
+//                    }
+//                    card.setActionListener(object : PopupAttachmentCard.ActionListener{
+//                        override fun onRemove(attachment: AttachmentFile) {
+//                            val item = noteItemAdapter.get(index)
+//                            if (
+//                                item.text.isEmpty() &&
+//                                item.attachments.size == 1 &&
+//                                item.attachments.contains(attachment)
+//                                ) {
+//                                v.performHapticFeedback(HapticFeedbackConstants.REJECT)
+//                            } else {
+//                                requestRemoveAttachment(item, attachment)
+//                                card.dismiss()
+//                            }
+//                        }
+//                        override fun onShare(attachment: AttachmentFile) {
+//                            context.shareAttachmentFileToExternal(attachment)
+//                            card.dismiss()
+//                        }
+//                        override fun onOpen(attachment: AttachmentFile) {
+//                            context.openFileWithExternalApp(attachment)
+//                            card.dismiss()
+//                        }
+//                        override fun onSave(attachment: AttachmentFile) {
+//                            trySaveFile(attachment)
+//                            card.dismiss()
+//                        }
+//                    })
+//                    card.showAtLocation(
+//                        rlNoteList,
+//                        Gravity.NO_GRAVITY,
+//                        displayX, displayY
+//                    )
+//                    return true
+//                }
+//                NoteItemView.ClickedContent.Type.REACTION -> {
+//                    if (!isFilteringReaction) {
+//                        val reaction = noteItemAdapter.get(index).reactions[content.index]
+//                        setReactionFilter(reaction)
+//                        return true
+//                    }
+//                }
+//                else -> return false
+//            }
 
             return false
         }
