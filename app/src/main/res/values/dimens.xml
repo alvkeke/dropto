@@ -5,4 +5,26 @@
     <dimen name="size_image_guide_point">4dp</dimen>
     <dimen name="elevation_category_page">8dp</dimen>
     <dimen name="elevation_note_page">@dimen/elevation_category_page</dimen>
+    <!-- the width of an attachment follows its ratio, the height is fixed -->
+    <dimen name="size_note_item_media_height">150dp</dimen>
+    <dimen name="size_note_item_media_min_width">100dp</dimen>
+    <dimen name="size_note_item_media_max_width">200dp</dimen>
+    <!-- the width used until the size of the attachment is known -->
+    <dimen name="size_note_item_media_default_width">@dimen/size_note_item_media_height</dimen>
+    <dimen name="size_note_item_media_play_icon">36dp</dimen>
+    <dimen name="radius_note_item_media">8dp</dimen>
+
+    <dimen name="size_note_item_file_icon">40dp</dimen>
+    <dimen name="radius_note_item_file_icon">8dp</dimen>
+    <dimen name="padding_note_item_file_icon">4dp</dimen>
+    <!-- the card of a file attachment: corner, inner padding and gap between the cards -->
+    <dimen name="radius_note_item_file">8dp</dimen>
+    <dimen name="padding_note_item_file">8dp</dimen>
+    <dimen name="margin_note_item_file">4dp</dimen>
+
+    <dimen name="size_note_item_reaction_height">28dp</dimen>
+    <dimen name="padding_note_item_reaction">12dp</dimen>
+
+    <!-- gap between the elements of a note item -->
+    <dimen name="margin_note_item_element">8dp</dimen>
 </resources>

@@ -9,6 +9,18 @@
         android:name="android.permission.REQUEST_INSTALL_PACKAGES"
         tools:ignore="ProtectedPermissions,RequestInstallPackagesPermission,RequestInstallPackagesPolicy" />
 
+    <!-- to read the icon and the name of an application a note was received from -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
+        </intent>
+    </queries>
+
     <application
         android:name=".DroptoApplication"
         android:allowBackup="true"

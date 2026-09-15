@@ -44,4 +44,11 @@
     <string name="hide_deleted_notes">Hide deleted notes</string>
     <string name="description_button_cancel_editing_or_attach">Button to cancel editing or clear current attached files</string>
     <string name="handler_to_reorder_categories">Handler to reorder categories</string>
+    <string name="string_note_sender_you">You</string>
+    <string name="string_note_sender_unknown">Unknown</string>
+    <string name="content_description_note_item_sender_avatar">Application icon of the sender of the note</string>
+    <string name="content_description_note_item_media_play_icon">This attachment is a video</string>
+    <string name="description_note_item_deleted_icon">Icon to show this item was deleted</string>
+    <string name="description_note_item_not_synced_icon">Icon to show this item was not synced</string>
+    <string name="description_of_note_item_file_icon">Icon of a file attachment of the note</string>
 </resources>

@@ -67,7 +67,6 @@ import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareAttachmentFileToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFilesToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.showNoteDetailFragment
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
@@ -112,6 +111,34 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private lateinit var category: Category
     private var noteItemAdapter: NoteListAdapter = NoteListAdapter()
+
+    private val mediaActionListener: NoteListAdapter.MediaActionListener =
+        object : NoteListAdapter.MediaActionListener {
+            override fun onMediaClick(itemIndex: Int, mediaIndex: Int) {
+                if (rlNoteList.isSelectMode) {
+                    rlNoteList.toggleSelectItems(itemIndex)
+                } else {
+                    showMediaView(itemIndex, mediaIndex)
+                }
+            }
+
+            override fun onMediaLongClick(itemIndex: Int, mediaIndex: Int, rawY: Float) {
+                if (rlNoteList.isSelectMode) {
+                    rlNoteList.toggleSelectItems(itemIndex)
+                    return
+                }
+                val media = noteItemAdapter.get(itemIndex).medias.getOrNull(mediaIndex) ?: return
+                showAttachmentCard(itemIndex, media, rawY)
+            }
+
+            override fun onMediaDragToClose(deltaX: Float) {
+                dragToClose(deltaX)
+            }
+
+            override fun onMediaDragToCloseEnd(deltaX: Float, speed: Float) {
+                endDragToClose(deltaX, speed)
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -171,6 +198,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
 
         noteItemAdapter.showDeleted = false
+        noteItemAdapter.mediaActionListener = mediaActionListener
         rlNoteList.setAdapter(noteItemAdapter)
         rlNoteList.setLayoutManager(layoutManager)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
@@ -403,23 +431,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                     }
 
                     NoteItemView.ClickedContent.Type.MEDIA -> {
-                        if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
-                            content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
-                        ) {
-                            showNoteDetail(index)
-                        } else {
-                            showMediaView(index, content.index)
-                        }
+                        showMediaView(index, content.index)
                     }
 
                     NoteItemView.ClickedContent.Type.FILE -> {
-                        if (itemView.files.size > NoteItemView.MAX_FILE_COUNT &&
-                            content.index >= itemView.medias.size + NoteItemView.MAX_FILE_COUNT - 1
-                        ) {
-                            showNoteDetail(index)
-                        } else {
-                            tryOpenFile(index, content.index)
-                        }
+                        tryOpenFile(index, content.index)
                     }
 
                     NoteItemView.ClickedContent.Type.REACTION -> {
@@ -447,50 +463,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 NoteItemView.ClickedContent.Type.FILE,
                 NoteItemView.ClickedContent.Type.MEDIA -> {
                     val attachment = noteItemAdapter.get(index).attachments[content.index]
-                    val screenWidth = context.resources.displayMetrics.widthPixels
-                    val card = PopupAttachmentCard(attachment, context)
-                    card.width = screenWidth / 2
-                    card.height = card.width
-                    // TODO: set the height to wrap_content, not available now
-                    val displayX = ((screenWidth - card.width) / 2)
-                        .coerceAtLeast(0)
-                    val displayY = (rawY - card.height).toInt()
-                    rlNoteList.highLight()
-                    card.setOnDismissListener {
-                        rlNoteList.clearHighLight()
-                    }
-                    card.setActionListener(object : PopupAttachmentCard.ActionListener{
-                        override fun onRemove(attachment: AttachmentFile) {
-                            val item = noteItemAdapter.get(index)
-                            if (
-                                item.text.isEmpty() &&
-                                item.attachments.size == 1 &&
-                                item.attachments.contains(attachment)
-                                ) {
-                                v.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                            } else {
-                                requestRemoveAttachment(item, attachment)
-                                card.dismiss()
-                            }
-                        }
-                        override fun onShare(attachment: AttachmentFile) {
-                            context.shareAttachmentFileToExternal(attachment)
-                            card.dismiss()
-                        }
-                        override fun onOpen(attachment: AttachmentFile) {
-                            context.openFileWithExternalApp(attachment)
-                            card.dismiss()
-                        }
-                        override fun onSave(attachment: AttachmentFile) {
-                            trySaveFile(attachment)
-                            card.dismiss()
-                        }
-                    })
-                    card.showAtLocation(
-                        rlNoteList,
-                        Gravity.NO_GRAVITY,
-                        displayX, displayY
-                    )
+                    showAttachmentCard(index, attachment, rawY)
                     return true
                 }
                 NoteItemView.ClickedContent.Type.REACTION -> {
@@ -563,13 +536,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             delta: Float,
             speed: Float,
         ): Boolean {
-            val width = fragmentView.width
-            val thresholdExit = width / 3
-            if (speed > 2 || delta > thresholdExit) {
-                finish(closeDurationFor(speed))
-            } else {
-                resetPosition()
-            }
+            endDragToClose(delta, speed)
             return true
         }
 
@@ -578,11 +545,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             e: MotionEvent,
             delta: Float,
         ): Boolean {
-            if (delta > 0) {
-                moveFragmentView(delta)
-            } else {
-                moveFragmentView(0f)
-            }
+            dragToClose(delta)
             return true
         }
     }
@@ -599,6 +562,24 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         applyAnimeRate(ratio)
         fragmentView.translationX = targetX
+    }
+
+    private fun dragToClose(deltaX: Float) {
+        if (deltaX > 0) {
+            moveFragmentView(deltaX)
+        } else {
+            moveFragmentView(0f)
+        }
+    }
+
+    private fun endDragToClose(deltaX: Float, speedPxPerMs: Float) {
+        val width = fragmentView.width
+        val thresholdExit = width / 3
+        if (speedPxPerMs > 2 || deltaX > thresholdExit) {
+            finish(closeDurationFor(speedPxPerMs))
+        } else {
+            resetPosition()
+        }
     }
 
     private fun closeDurationFor(speedPxPerMs: Float): Long {
@@ -1251,15 +1232,53 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             }
             return _reactionView!!
         }
-
-    private fun showNoteDetail(index: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        showNoteDetailFragment(noteItem)
-    }
-
     private fun showMediaView(index: Int, attachmentIndex: Int) {
         val noteItem = noteItemAdapter.get(index)
         this.showMediaFragment(noteItem.attachments[attachmentIndex])
+    }
+
+    private fun showAttachmentCard(index: Int, attachment: AttachmentFile, rawY: Float) {
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val card = PopupAttachmentCard(attachment, context)
+        card.width = screenWidth / 2
+        card.height = card.width
+        // TODO: set the height to wrap_content, not available now
+        val displayX = ((screenWidth - card.width) / 2).coerceAtLeast(0)
+        val displayY = (rawY - card.height).toInt()
+        rlNoteList.highLight()
+        card.setOnDismissListener {
+            rlNoteList.clearHighLight()
+        }
+        card.setActionListener(object : PopupAttachmentCard.ActionListener {
+            override fun onRemove(attachment: AttachmentFile) {
+                val item = noteItemAdapter.get(index)
+                val isLastAttachment = item.text.isEmpty() &&
+                        item.attachments.size == 1 &&
+                        item.attachments.contains(attachment)
+                if (isLastAttachment) {
+                    rlNoteList.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                } else {
+                    requestRemoveAttachment(item, attachment)
+                    card.dismiss()
+                }
+            }
+
+            override fun onShare(attachment: AttachmentFile) {
+                context.shareAttachmentFileToExternal(attachment)
+                card.dismiss()
+            }
+
+            override fun onOpen(attachment: AttachmentFile) {
+                context.openFileWithExternalApp(attachment)
+                card.dismiss()
+            }
+
+            override fun onSave(attachment: AttachmentFile) {
+                trySaveFile(attachment)
+                card.dismiss()
+            }
+        })
+        card.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, displayX, displayY)
     }
 
     private fun tryOpenFile(index: Int, fileIndex: Int) {
