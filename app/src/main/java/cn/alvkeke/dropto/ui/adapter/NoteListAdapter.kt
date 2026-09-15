@@ -9,14 +9,7 @@ import cn.alvkeke.dropto.ui.comonent.NoteItemView
 
 class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHolder>() {
 
-    interface MediaActionListener {
-        fun onMediaClick(itemIndex: Int, mediaIndex: Int)
-        fun onMediaLongClick(itemIndex: Int, mediaIndex: Int, rawY: Float)
-        fun onMediaDragToClose(deltaX: Float)
-        fun onMediaDragToCloseEnd(deltaX: Float, speed: Float)
-    }
-
-    var mediaActionListener: MediaActionListener? = null
+    var eventListener: NoteItemView.EventListener? = null
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
@@ -26,18 +19,6 @@ class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHold
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            onMediaClick = { mediaIndex: Int ->
-                mediaActionListener?.onMediaClick(index, mediaIndex)
-            }
-            onMediaLongClick = { mediaIndex: Int, rawY: Float ->
-                mediaActionListener?.onMediaLongClick(index, mediaIndex, rawY)
-            }
-            onMediaDragToClose = { deltaX: Float ->
-                mediaActionListener?.onMediaDragToClose(deltaX)
-            }
-            onMediaDragToCloseEnd = { deltaX: Float, speed: Float ->
-                mediaActionListener?.onMediaDragToCloseEnd(deltaX, speed)
-            }
         }
         return ViewHolder(view)
     }
@@ -60,6 +41,7 @@ class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHold
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val note = this.get(position)
         val view = holder.itemView as NoteItemView
+        view.eventListener = eventListener
         view.index = position
         view.text = note.text
         view.createTime = note.createTime

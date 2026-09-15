@@ -117,6 +117,7 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                         } else if (abs(deltaRawX) > touchSlop) {
                             gestureState = GestureState.DRAG_X
                             handler.removeCallbacks(longPressRunnable)
+                            onDragHorizontalStart(view, motionEvent, deltaRawX)
                             return onDraggingHorizontal(view, motionEvent, deltaRawX)
                         }
                     }
@@ -200,6 +201,9 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
             }
         }
         return false
+    }
+
+    open fun onDragHorizontalStart(v: View, e: MotionEvent, delta: Float) {
     }
 
     open fun onDragHorizontalEnd(v: View, e: MotionEvent, delta: Float, speed: Float): Boolean {

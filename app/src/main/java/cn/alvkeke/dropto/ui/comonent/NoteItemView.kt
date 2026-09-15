@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.util.Log
@@ -123,7 +122,6 @@ class NoteItemView @JvmOverloads constructor(
     val reactionList: MutableList<String> =
         NotifiableList(ArrayList()) { rebuildReactions() }
 
-    /** the avatar is only clickable when the note comes from another application */
     private fun bindSender(sender: String?) {
         if (sender == null) {
             avatarView.setImageDrawable(appIcon)
@@ -141,14 +139,7 @@ class NoteItemView @JvmOverloads constructor(
         statusContainer.isVisible = isEdited || isDeleted || !isSynced
     }
 
-    /** the attachments sit in their own scroll container, so their clicks are reported here */
-    var onMediaClick: ((mediaIndex: Int) -> Unit)? = null
-    var onMediaLongClick: ((mediaIndex: Int, rawY: Float) -> Unit)? = null
-
-    /** called while the attachments are dragged to the right and are already at their start */
-    var onMediaDragToClose: ((deltaX: Float) -> Unit)? = null
-    /** called when such a dragging ends, with the speed of the release in pixels per ms */
-    var onMediaDragToCloseEnd: ((deltaX: Float, speed: Float) -> Unit)? = null
+    var eventListener: EventListener? = null
 
     private fun rebuildMedias() {
         mediaScroll.scrollTo(0, 0)
@@ -162,24 +153,8 @@ class NoteItemView @JvmOverloads constructor(
                 ).apply {
                     marginEnd = dimenPx(R.dimen.margin_note_item_element)
                 }
-                tag = ClickedContent(ClickedContent.Type.MEDIA, file, position)
                 isVideo = file.isVideo
-
-                setOnClickListener { view: View ->
-                    (view.tag as? ClickedContent)?.let { onMediaClick?.invoke(it.index) }
-                }
-                setOnLongClickListener { view: View ->
-                    (view.tag as? ClickedContent)?.let { content ->
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        onMediaLongClick?.invoke(content.index, mediaCellScreenY(view))
-                    }
-                    true
-                }
-                @SuppressLint("ClickableViewAccessibility")
-                setOnTouchListener { view: View, event: MotionEvent ->
-                    handleMediaDrag(view, event)
-                }
-
+                tag = ClickedContent(ClickedContent.Type.MEDIA, file, position)
                 mediaSizeCache[file.md5file.absolutePath]?.let {
                     setMediaCellWidth(this, mediaCellWidth(it))
                 }
@@ -190,88 +165,291 @@ class NoteItemView @JvmOverloads constructor(
         mediaScroll.isVisible = medias.isNotEmpty()
     }
 
-    private fun mediaCellScreenY(cell: View): Float {
-        val location = IntArray(2)
-        cell.getLocationOnScreen(location)
-        return (location[1] + cell.height / 2).toFloat()
+    private val touchSlop: Int by lazy { ViewConfiguration.get(context).scaledTouchSlop }
+    private val longPressTimeout: Long by lazy {
+        ViewConfiguration.getLongPressTimeout().toLong()
     }
 
-    private val mediaDragSlop: Int by lazy { ViewConfiguration.get(context).scaledTouchSlop }
-    private var mediaDragStartX = 0f
-    private var mediaDragStartY = 0f
-    private var mediaDragDecided = false
-    private var mediaDragActive = false
-    private var mediaDragTracker: VelocityTracker? = null
+    private var downRawX = 0f
+    private var downRawY = 0f
+    private var lastRawX = 0f
+    private var lastRawY = 0f
+    private var lastMoveX = 0f
+    private var axis = TouchAxis.NONE
+    private var draggingMedias = false
+    private var draggingPage = false
+    private var pageDraggingAccepted = false
+    private var longPressHandled = false
+    private var longPressSliding = false
+    private var pressedContent = ClickedContent(ClickedContent.Type.NONE)
+    private var pressedInMedias = false                 // the finger is on the attachments strip
+    private var longPressRunnable: Runnable? = null
+    private var velocityTracker: VelocityTracker? = null
 
-    /**
-     * The attachments are scrolled by [mediaScroll], the page which contains the item can
-     * only be dragged with them when they are already scrolled to their start.
-     * @return true if the dragging was given to the page, false to let the attachments handle it
-     */
-    private fun handleMediaDrag(cell: View, event: MotionEvent): Boolean {
+    private enum class TouchAxis { NONE, HORIZONTAL, VERTICAL }
+
+    /** the item itself owns every touch of its own area, the children never take one */
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean = true
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                mediaDragStartX = event.rawX
-                mediaDragStartY = event.rawY
-                mediaDragDecided = false
-                mediaDragActive = false
-                mediaDragTracker?.recycle()
-                mediaDragTracker = VelocityTracker.obtain().apply { addMovement(event) }
-                // hold the gesture until it is clear whether the page needs it
-                mediaScroll.requestDisallowInterceptTouchEvent(true)
-            }
-
-            MotionEvent.ACTION_MOVE -> {
-                mediaDragTracker?.addMovement(event)
-                val deltaX = event.rawX - mediaDragStartX
-                val deltaY = event.rawY - mediaDragStartY
-
-                if (!mediaDragDecided) {
-                    if (abs(deltaX) <= mediaDragSlop && abs(deltaY) <= mediaDragSlop) {
-                        return false
-                    }
-                    mediaDragDecided = true
-                    // a dragging is not a long press, the view must not fire it after the timeout
-                    cell.cancelLongPress()
-                    cell.isPressed = false
-
-                    val toPage = deltaX > abs(deltaY) && mediaScroll.scrollX <= 0
-                    if (!toPage) {
-                        mediaScroll.requestDisallowInterceptTouchEvent(false)
-                        return false
-                    }
-                    mediaDragActive = true
-                }
-                if (!mediaDragActive) {
-                    return false
-                }
-
-                onMediaDragToClose?.invoke(deltaX)
+                startTouch(event)
                 return true
             }
-
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                val wasActive = mediaDragActive
-                mediaDragActive = false
-                mediaDragDecided = false
-                if (wasActive) {
-                    onMediaDragToCloseEnd?.invoke(
-                        event.rawX - mediaDragStartX,
-                        releaseSpeed()
-                    )
-                }
-                mediaDragTracker?.recycle()
-                mediaDragTracker = null
-                return wasActive
+            MotionEvent.ACTION_MOVE -> return moveTouch(event)
+            MotionEvent.ACTION_UP -> {
+                endTouch(false)
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                endTouch(true)
+                return true
             }
         }
-        return false
+        return super.onTouchEvent(event)
     }
 
-    private fun releaseSpeed(): Float {
-        val tracker = mediaDragTracker ?: return 0f
-        tracker.computeCurrentVelocity(1000)
-        return tracker.xVelocity / 1000f
+    private fun startTouch(event: MotionEvent) {
+        downRawX = event.rawX
+        downRawY = event.rawY
+        lastRawX = downRawX
+        lastRawY = downRawY
+        lastMoveX = downRawX
+        pressedContent = findClickedContent(event.x, event.y)
+        axis = TouchAxis.NONE
+        draggingMedias = false
+        draggingPage = false
+        pageDraggingAccepted = false
+        longPressHandled = false
+        longPressSliding = false
+
+        velocityTracker?.recycle()
+        velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
+
+        val runnable = Runnable {
+            longPressRunnable = null
+            if (axis != TouchAxis.NONE || longPressHandled) {
+                return@Runnable
+            }
+
+            longPressHandled = true
+            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            // the list must not scroll while the notes are selected by the sliding
+            parent?.requestDisallowInterceptTouchEvent(true)
+            longPressSliding = dispatchLongClick()
+        }
+        longPressRunnable = runnable
+        postDelayed(runnable, longPressTimeout)
+    }
+
+    private fun resetTouch() {
+        cancelLongPress()
+        axis = TouchAxis.NONE
+        draggingMedias = false
+        draggingPage = false
+        pageDraggingAccepted = false
+        longPressHandled = false
+        longPressSliding = false
+        velocityTracker?.recycle()
+        velocityTracker = null
+    }
+
+    private fun moveTouch(event: MotionEvent): Boolean {
+        velocityTracker?.addMovement(event)
+        lastRawX = event.rawX
+        lastRawY = event.rawY
+
+        if (longPressHandled) {
+            if (longPressSliding) {
+                eventListener?.onLongPressDrag(index, lastRawX.toInt(), lastRawY.toInt())
+            }
+            return true
+        }
+
+        val deltaX = lastRawX - downRawX
+        val deltaY = lastRawY - downRawY
+
+        if (axis == TouchAxis.NONE) {
+            if (abs(deltaX) <= touchSlop && abs(deltaY) <= touchSlop) {
+                return true
+            }
+            cancelLongPress()
+
+            if (abs(deltaY) > abs(deltaX)) {
+                // the list owns the vertical scrolling, it can take the gesture over
+                axis = TouchAxis.VERTICAL
+                return false
+            }
+
+            axis = TouchAxis.HORIZONTAL
+            // the list must not take the gesture while the contents are dragged
+            parent?.requestDisallowInterceptTouchEvent(true)
+
+            draggingMedias = pressedInMedias && canScrollMedias(-deltaX.toInt())
+            draggingPage = !draggingMedias
+            if (draggingPage) {
+                pageDraggingAccepted = eventListener?.onDragStart(
+                    downRawX.toInt(), downRawY.toInt()
+                ) ?: false
+            }
+        }
+
+        if (axis == TouchAxis.VERTICAL) {
+            return false
+        }
+
+        if (draggingMedias) {
+            val step = (lastRawX - lastMoveX).toInt()
+            lastMoveX = lastRawX
+            mediaScroll.scrollBy(-step, 0)
+            return true
+        }
+
+        if (draggingPage && pageDraggingAccepted) {
+            eventListener?.onDragging(lastRawX.toInt(), lastRawY.toInt())
+        }
+        return true
+    }
+
+
+    private fun endTouch(cancelled: Boolean) {
+        velocityTracker?.computeCurrentVelocity(1000)
+        val speedX = (velocityTracker?.xVelocity ?: 0f) / 1000f
+        val speedY = (velocityTracker?.yVelocity ?: 0f) / 1000f
+
+        if (longPressHandled) {
+            longPressHandled = false
+            if (longPressSliding) eventListener?.onLongPressRelease(index)
+        } else if (axis == TouchAxis.NONE && !cancelled) {
+            dispatchClick()
+        } else if (axis == TouchAxis.HORIZONTAL) {
+            if (draggingMedias) {
+                if (!cancelled) {
+                    mediaScroll.fling(-(speedX * 1000).toInt())
+                }
+            } else if (draggingPage && pageDraggingAccepted) {
+                eventListener?.onDragEnd(lastRawX.toInt(), lastRawY.toInt(), speedX, speedY)
+            }
+        }
+
+        resetTouch()
+    }
+
+
+    /** what a content of the item is, the tags of the children are [ClickedContent] */
+    private class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
+        enum class Type {
+            NONE,
+            SENDER_ICON,
+            MEDIA,
+            FILE,
+            REACTION,
+        }
+    }
+
+    private val clickedContent = ClickedContent(ClickedContent.Type.NONE)
+
+    private fun findClickedContent(x: Float, y: Float): ClickedContent {
+        var view: View? = findHitView(this, x, y)
+        var content: ClickedContent? = null
+        pressedInMedias = false
+
+        while (view != null && view !== this) {
+            if (view === mediaScroll) pressedInMedias = true
+            if (content == null) content = view.tag as? ClickedContent
+            view = view.parent as? View
+        }
+        return content ?: clickedContent
+    }
+
+    private fun findHitView(group: ViewGroup, x: Float, y: Float): View? {
+        for (i in group.childCount - 1 downTo 0) {
+            val child = group.getChildAt(i)
+            if (child.visibility != View.VISIBLE) continue
+
+            val childX = x + group.scrollX - child.left
+            val childY = y + group.scrollY - child.top
+            if (childX < 0f || childY < 0f ||
+                childX >= child.width.toFloat() || childY >= child.height.toFloat()
+            ) {
+                continue
+            }
+
+            if (child is ViewGroup) {
+                return findHitView(child, childX, childY) ?: child
+            }
+            return child
+        }
+        return null
+    }
+
+    /** the click of the content which was hit by [startTouch] */
+    private fun dispatchClick() {
+        val listener = eventListener ?: return
+        val content = pressedContent
+        val anchorY = lastRawY.toInt()
+        when (content.type) {
+            ClickedContent.Type.SENDER_ICON -> listener.onSenderClick(index, sender)
+            ClickedContent.Type.MEDIA -> content.data?.let { listener.onMediaClick(index, it) }
+            ClickedContent.Type.FILE -> content.data?.let { listener.onFileClick(index, it) }
+            ClickedContent.Type.REACTION -> {
+                listener.onReactionClick(index, reactionOf(content.index))
+            }
+            else -> listener.onBackgroundClick(index, anchorY)
+        }
+    }
+
+    /**
+     * The long press of the content which was hit by [startTouch].
+     * @return true when the sliding which follows has to be reported, the contents which
+     *         open something (a card, a filter) do not want the selection to start
+     */
+    private fun dispatchLongClick(): Boolean {
+        val listener = eventListener ?: return false
+        val content = pressedContent
+        val anchorY = lastRawY.toInt()
+        return when (content.type) {
+            ClickedContent.Type.MEDIA -> {
+                content.data?.let { listener.onMediaLongClick(index, it, anchorY) }
+                false
+            }
+            ClickedContent.Type.FILE -> {
+                content.data?.let { listener.onFileLongClick(index, it, anchorY) }
+                false
+            }
+            ClickedContent.Type.REACTION -> {
+                listener.onReactionLongClick(index, reactionOf(content.index))
+                false
+            }
+            else -> {
+                listener.onItemLongPress(index, anchorY)
+                true
+            }
+        }
+    }
+
+    private fun reactionOf(position: Int): String = reactionList.getOrNull(position) ?: ""
+
+    private fun canScrollMedias(delta: Int): Boolean {
+        if (mediaScroll.visibility != View.VISIBLE) return false
+
+        val max = (mediaContainer.width - mediaScroll.width).coerceAtLeast(0)
+        val target = mediaScroll.scrollX + delta
+        return target in 0..max && target != mediaScroll.scrollX
+    }
+
+    override fun cancelLongPress() {
+        longPressRunnable?.let { removeCallbacks(it) }
+        longPressRunnable = null
+    }
+
+    override fun onDetachedFromWindow() {
+        cancelLongPress()
+        velocityTracker?.recycle()
+        velocityTracker = null
+        super.onDetachedFromWindow()
     }
 
 
@@ -285,7 +463,9 @@ class NoteItemView @JvmOverloads constructor(
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
                 fileName = file.name
-                tag = ClickedContent(ClickedContent.Type.FILE, file, medias.size + position)
+                tag = ClickedContent(
+                    ClickedContent.Type.FILE, file, medias.size + position
+                )
             }
             fileContainer.addView(row)
         }
@@ -303,7 +483,6 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun createReactionChip(reaction: String, position: Int): Chip {
         return Chip(context).apply {
-            // must not consume the touch, it is handled by the note item itself
             isClickable = false
             isLongClickable = false
             isCheckable = false
@@ -436,54 +615,6 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    class ClickedContent(val type: Type, val data: AttachmentFile? = null, val index: Int = -1) {
-        enum class Type {
-            BACKGROUND,
-            SENDER_ICON,
-            MEDIA,
-            FILE,
-            REACTION,
-        }
-    }
-
-    /** Check what is displayed at the given point, in the coordinate of this view. */
-    fun checkClickedContent(x: Float, y: Float): ClickedContent {
-        Log.v(TAG, "index-$index, checkClickedContent: x=$x, y=$y")
-
-        var view: View? = findHitView(this, x, y)
-        while (view != null && view !== this) {
-            val tag = view.tag
-            if (tag is ClickedContent) {
-                Log.v(TAG, "checkClickedContent: got $tag")
-                return tag
-            }
-            view = view.parent as? View
-        }
-
-        Log.v(TAG, "checkClickedContent: nothing hit, background")
-        return ClickedContent(ClickedContent.Type.BACKGROUND)
-    }
-
-    private fun findHitView(group: ViewGroup, x: Float, y: Float): View? {
-        for (i in group.childCount - 1 downTo 0) {
-            val child = group.getChildAt(i)
-            if (child.visibility != View.VISIBLE) continue
-
-            val childX = x + group.scrollX - child.left
-            val childY = y + group.scrollY - child.top
-            if (childX < 0f || childY < 0f ||
-                childX >= child.width.toFloat() || childY >= child.height.toFloat()
-            ) {
-                continue
-            }
-
-            if (child is ViewGroup) {
-                return findHitView(child, childX, childY) ?: child
-            }
-            return child
-        }
-        return null
-    }
     private class NotifiableList<T>(
         private val backing: MutableList<T>,
         private val onChanged: () -> Unit,
@@ -583,6 +714,27 @@ class NoteItemView @JvmOverloads constructor(
         val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
         val dataFormatWeekly: SimpleDateFormat = SimpleDateFormat("EEE HH:mm", Locale.CHINESE)
 
+    }
+
+
+    interface EventListener {
+        fun onSenderClick(itemIndex: Int, sender: String?)
+        fun onBackgroundClick(itemIndex: Int, anchorY: Int)
+        fun onMediaClick(itemIndex: Int, file: AttachmentFile)
+        fun onMediaLongClick(itemIndex: Int, file: AttachmentFile, anchorY: Int)
+        fun onFileClick(itemIndex: Int, file: AttachmentFile)
+        fun onFileLongClick(itemIndex: Int, file: AttachmentFile, anchorY: Int)
+        fun onReactionClick(itemIndex: Int, reaction: String)
+        fun onReactionLongClick(itemIndex: Int, reaction: String)
+
+        fun onItemLongPress(itemIndex: Int, anchorY: Int)
+        fun onLongPressDrag(itemIndex: Int, currentX: Int, currentY: Int)
+        fun onLongPressRelease(itemIndex: Int)
+
+        fun onDragStart(downX: Int, downY: Int): Boolean
+        fun onDragging(currentX: Int, currentY: Int): Boolean
+
+        fun onDragEnd(currentX: Int, currentY: Int, speedX: Float, speedY: Float)
     }
 
 }
