@@ -49,6 +49,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SimpleItemAnimator
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -275,6 +276,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         noteItemAdapter.showDeleted = false
         noteItemAdapter.eventListener = this
         rlNoteList.setAdapter(noteItemAdapter)
+        (rlNoteList.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
         rlNoteList.setLayoutManager(layoutManager)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
 
