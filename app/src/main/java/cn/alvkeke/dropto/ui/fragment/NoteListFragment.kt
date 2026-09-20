@@ -86,7 +86,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.abs
+
 
 
 class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener,
@@ -185,46 +185,18 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     }
 
     override fun onItemLongPress(note: NoteItem, anchorY: Int) {
-        // the long press selects the item, the sliding which follows selects the ones
-        // it goes through
         val itemIndex = positionOf(note)
-        firstHoldItem = itemIndex
-        lastHoldItem = itemIndex
         if (rlNoteList.isItemSelected(itemIndex)) {
-            moveToSelect = false
             rlNoteList.unselectItem(itemIndex)
         } else {
-            moveToSelect = true
             rlNoteList.selectItem(itemIndex)
         }
     }
 
-    // TODO: check if these parameters enough or not
     override fun onLongPressDrag(currentX: Int, currentY: Int) {
-        val location = IntArray(2)
-        rlNoteList.getLocationOnScreen(location)
-        val itemView = rlNoteList.findChildViewUnder(
-            (currentX - location[0]).toFloat(),
-            (currentY - location[1]).toFloat()
-        ) ?: return
-
-        val position = rlNoteList.getChildLayoutPosition(itemView)
-        if (position == lastHoldItem) return
-
-        itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-        val lastRange = abs(lastHoldItem - firstHoldItem)
-        val curRange = abs(position - firstHoldItem)
-        if (curRange > lastRange) {
-            applyHoldSelection(position)
-        } else if (curRange < lastRange) {
-            revertHoldSelection(lastHoldItem)
-        }
-        lastHoldItem = position
     }
 
     override fun onLongPressRelease() {
-        firstHoldItem = -1
-        lastHoldItem = -1
     }
 
     override fun onDragStart(downX: Int, downY: Int): Boolean {
@@ -242,13 +214,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         endDragToClose((currentX - dragDownX).toFloat(), speedX)
     }
 
-    private fun applyHoldSelection(index: Int) {
-        if (moveToSelect) rlNoteList.selectItem(index) else rlNoteList.unselectItem(index)
-    }
-
-    private fun revertHoldSelection(index: Int) {
-        if (moveToSelect) rlNoteList.unselectItem(index) else rlNoteList.selectItem(index)
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -514,9 +479,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         reactionFilter = null
     }
 
-    private var moveToSelect = false
-    private var firstHoldItem = -1
-    private var lastHoldItem = -1
     private var dragDownX = 0
     private var dragDownY = 0
 
