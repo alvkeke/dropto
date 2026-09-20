@@ -28,6 +28,7 @@ import com.google.android.material.imageview.ShapeableImageView
 import androidx.compose.ui.graphics.asImageBitmap
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
+import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
 import cn.alvkeke.dropto.ui.comonent.NoteItemChild.FileItemView
@@ -72,55 +73,26 @@ class NoteItemView @JvmOverloads constructor(
         reactionContainer = findViewById(R.id.note_item_reaction_container)
     }
 
-    var index: Int = -1
-    var text: String = ""
+    var note: NoteItem? = null
         set(value) {
             field = value
-            textView.text = value
-            textView.isVisible = value.isNotEmpty()
+            bindNote(value)
         }
 
-    var createTime: Long = 0L
-        set(value) {
-            field = value
-            timeView.text = value.format()
-        }
-
-    var isEdited: Boolean = false
-        set(value) {
-            field = value
-            editedView.isVisible = value
-            updateStatusContainer()
-        }
-
-    var isDeleted: Boolean = false
-        set(value) {
-            field = value
-            deletedView.isVisible = value
-            updateStatusContainer()
-        }
-
-    var isSynced: Boolean = false
-        set(value) {
-            field = value
-            unsyncedView.isVisible = !value
-            updateStatusContainer()
-        }
-
-    var sender: String? = null
-        set(value) {
-            field = value
-            bindSender(value)
-        }
-
-    val medias: MutableList<AttachmentFile> =
-        NotifiableList(ArrayList()) { rebuildMedias() }
-
-    val files: MutableList<AttachmentFile> =
-        NotifiableList(ArrayList()) { rebuildFiles() }
-
-    val reactionList: MutableList<String> =
-        NotifiableList(ArrayList()) { rebuildReactions() }
+    private fun bindNote(note: NoteItem?) {
+        textView.text = note?.text.orEmpty()
+        textView.isVisible = !note?.text.isNullOrEmpty()
+        timeView.text = note?.createTime?.format().orEmpty()
+        editedView.isVisible = note?.isEdited == true
+        deletedView.isVisible = note?.isDeleted == true
+        unsyncedView.isVisible = note?.isSynced == false
+        statusContainer.isVisible = note != null &&
+                (note.isEdited || note.isDeleted || !note.isSynced)
+        bindSender(note?.sender)
+        rebuildMedias(note?.medias.orEmpty())
+        rebuildFiles(note?.files.orEmpty(), note?.medias?.size ?: 0)
+        rebuildReactions(note?.reactions.orEmpty())
+    }
 
     private fun bindSender(sender: String?) {
         if (sender == null) {
@@ -135,13 +107,9 @@ class NoteItemView @JvmOverloads constructor(
         avatarView.tag = ClickedContent(ClickedContent.Type.SENDER_ICON)
     }
 
-    private fun updateStatusContainer() {
-        statusContainer.isVisible = isEdited || isDeleted || !isSynced
-    }
-
     var eventListener: EventListener? = null
 
-    private fun rebuildMedias() {
+    private fun rebuildMedias(medias: List<AttachmentFile>) {
         mediaScroll.scrollTo(0, 0)
         mediaContainer.removeAllViews()
 
@@ -230,7 +198,7 @@ class NoteItemView @JvmOverloads constructor(
 
         val runnable = Runnable {
             longPressRunnable = null
-            if (axis != TouchAxis.NONE || longPressHandled) {
+            if (axis != TouchAxis.NONE || longPressHandled || note == null) {
                 return@Runnable
             }
 
@@ -263,7 +231,7 @@ class NoteItemView @JvmOverloads constructor(
 
         if (longPressHandled) {
             if (longPressSliding) {
-                eventListener?.onLongPressDrag(index, lastRawX.toInt(), lastRawY.toInt())
+                eventListener?.onLongPressDrag(lastRawX.toInt(), lastRawY.toInt())
             }
             return true
         }
@@ -321,7 +289,7 @@ class NoteItemView @JvmOverloads constructor(
 
         if (longPressHandled) {
             longPressHandled = false
-            if (longPressSliding) eventListener?.onLongPressRelease(index)
+            if (longPressSliding) eventListener?.onLongPressRelease()
         } else if (axis == TouchAxis.NONE && !cancelled) {
             dispatchClick()
         } else if (axis == TouchAxis.HORIZONTAL) {
@@ -388,16 +356,17 @@ class NoteItemView @JvmOverloads constructor(
     /** the click of the content which was hit by [startTouch] */
     private fun dispatchClick() {
         val listener = eventListener ?: return
+        val note = this.note ?: return
         val content = pressedContent
         val anchorY = lastRawY.toInt()
         when (content.type) {
-            ClickedContent.Type.SENDER_ICON -> listener.onSenderClick(index, sender)
-            ClickedContent.Type.MEDIA -> content.data?.let { listener.onMediaClick(index, it) }
-            ClickedContent.Type.FILE -> content.data?.let { listener.onFileClick(index, it) }
+            ClickedContent.Type.SENDER_ICON -> listener.onSenderClick(note)
+            ClickedContent.Type.MEDIA -> content.data?.let { listener.onMediaClick(note, it) }
+            ClickedContent.Type.FILE -> content.data?.let { listener.onFileClick(note, it) }
             ClickedContent.Type.REACTION -> {
-                listener.onReactionClick(index, reactionOf(content.index))
+                listener.onReactionClick(note, reactionOf(content.index))
             }
-            else -> listener.onBackgroundClick(index, anchorY)
+            else -> listener.onBackgroundClick(note, anchorY)
         }
     }
 
@@ -408,29 +377,31 @@ class NoteItemView @JvmOverloads constructor(
      */
     private fun dispatchLongClick(): Boolean {
         val listener = eventListener ?: return false
+        val note = this.note ?: return false
         val content = pressedContent
         val anchorY = lastRawY.toInt()
         return when (content.type) {
             ClickedContent.Type.MEDIA -> {
-                content.data?.let { listener.onMediaLongClick(index, it, anchorY) }
+                content.data?.let { listener.onMediaLongClick(note, it, anchorY) }
                 false
             }
             ClickedContent.Type.FILE -> {
-                content.data?.let { listener.onFileLongClick(index, it, anchorY) }
+                content.data?.let { listener.onFileLongClick(note, it, anchorY) }
                 false
             }
             ClickedContent.Type.REACTION -> {
-                listener.onReactionLongClick(index, reactionOf(content.index))
+                listener.onReactionLongClick(note, reactionOf(content.index))
                 false
             }
             else -> {
-                listener.onItemLongPress(index, anchorY)
+                listener.onItemLongPress(note, anchorY)
                 true
             }
         }
     }
 
-    private fun reactionOf(position: Int): String = reactionList.getOrNull(position) ?: ""
+    private fun reactionOf(position: Int): String =
+        this.note?.reactions?.getOrNull(position) ?: ""
 
     private fun canScrollMedias(delta: Int): Boolean {
         if (mediaScroll.visibility != View.VISIBLE) return false
@@ -453,7 +424,7 @@ class NoteItemView @JvmOverloads constructor(
     }
 
 
-    private fun rebuildFiles() {
+    private fun rebuildFiles(files: List<AttachmentFile>, mediaCount: Int) {
         fileContainer.removeAllViews()
 
         files.forEachIndexed { position, file ->
@@ -464,7 +435,7 @@ class NoteItemView @JvmOverloads constructor(
                 )
                 fileName = file.name
                 tag = ClickedContent(
-                    ClickedContent.Type.FILE, file, medias.size + position
+                    ClickedContent.Type.FILE, file, mediaCount + position
                 )
             }
             fileContainer.addView(row)
@@ -472,13 +443,13 @@ class NoteItemView @JvmOverloads constructor(
         fileContainer.isVisible = files.isNotEmpty()
     }
 
-    private fun rebuildReactions() {
+    private fun rebuildReactions(reactions: List<String>) {
         reactionContainer.removeAllViews()
 
-        reactionList.forEachIndexed { position, reaction ->
+        reactions.forEachIndexed { position, reaction ->
             reactionContainer.addView(createReactionChip(reaction, position))
         }
-        reactionContainer.isVisible = reactionList.isNotEmpty()
+        reactionContainer.isVisible = reactions.isNotEmpty()
     }
 
     private fun createReactionChip(reaction: String, position: Int): Chip {
@@ -615,70 +586,6 @@ class NoteItemView @JvmOverloads constructor(
         }
     }
 
-    private class NotifiableList<T>(
-        private val backing: MutableList<T>,
-        private val onChanged: () -> Unit,
-    ) : MutableList<T> {
-
-        override val size: Int get() = backing.size
-
-        override fun contains(element: T): Boolean = backing.contains(element)
-
-        override fun containsAll(elements: Collection<T>): Boolean = backing.containsAll(elements)
-
-        override fun get(index: Int): T = backing[index]
-
-        override fun indexOf(element: T): Int = backing.indexOf(element)
-
-        override fun isEmpty(): Boolean = backing.isEmpty()
-
-        override fun iterator(): MutableIterator<T> = backing.iterator()
-
-        override fun lastIndexOf(element: T): Int = backing.lastIndexOf(element)
-
-        override fun listIterator(): MutableListIterator<T> = backing.listIterator()
-
-        override fun listIterator(index: Int): MutableListIterator<T> = backing.listIterator(index)
-
-        override fun subList(fromIndex: Int, toIndex: Int): MutableList<T> =
-            backing.subList(fromIndex, toIndex)
-
-        override fun add(element: T): Boolean =
-            backing.add(element).also { if (it) onChanged() }
-
-        override fun add(index: Int, element: T) {
-            backing.add(index, element)
-            onChanged()
-        }
-
-        override fun addAll(elements: Collection<T>): Boolean =
-            backing.addAll(elements).also { if (it) onChanged() }
-
-        override fun addAll(index: Int, elements: Collection<T>): Boolean =
-            backing.addAll(index, elements).also { if (it) onChanged() }
-
-        override fun clear() {
-            if (backing.isEmpty()) return
-            backing.clear()
-            onChanged()
-        }
-
-        override fun remove(element: T): Boolean =
-            backing.remove(element).also { if (it) onChanged() }
-
-        override fun removeAll(elements: Collection<T>): Boolean =
-            backing.removeAll(elements.toSet()).also { if (it) onChanged() }
-
-        override fun removeAt(index: Int): T =
-            backing.removeAt(index).also { onChanged() }
-
-        override fun retainAll(elements: Collection<T>): Boolean =
-            backing.retainAll(elements.toSet()).also { if (it) onChanged() }
-
-        override fun set(index: Int, element: T): T =
-            backing.set(index, element).also { onChanged() }
-    }
-
     private fun Long.format(): String {
         val noteDate = Date(this)
         val now = Date()
@@ -718,18 +625,18 @@ class NoteItemView @JvmOverloads constructor(
 
 
     interface EventListener {
-        fun onSenderClick(itemIndex: Int, sender: String?)
-        fun onBackgroundClick(itemIndex: Int, anchorY: Int)
-        fun onMediaClick(itemIndex: Int, file: AttachmentFile)
-        fun onMediaLongClick(itemIndex: Int, file: AttachmentFile, anchorY: Int)
-        fun onFileClick(itemIndex: Int, file: AttachmentFile)
-        fun onFileLongClick(itemIndex: Int, file: AttachmentFile, anchorY: Int)
-        fun onReactionClick(itemIndex: Int, reaction: String)
-        fun onReactionLongClick(itemIndex: Int, reaction: String)
+        fun onSenderClick(note: NoteItem)
+        fun onBackgroundClick(note: NoteItem, anchorY: Int)
+        fun onMediaClick(note: NoteItem, file: AttachmentFile)
+        fun onMediaLongClick(note: NoteItem, file: AttachmentFile, anchorY: Int)
+        fun onFileClick(note: NoteItem, file: AttachmentFile)
+        fun onFileLongClick(note: NoteItem, file: AttachmentFile, anchorY: Int)
+        fun onReactionClick(note: NoteItem, reaction: String)
+        fun onReactionLongClick(note: NoteItem, reaction: String)
 
-        fun onItemLongPress(itemIndex: Int, anchorY: Int)
-        fun onLongPressDrag(itemIndex: Int, currentX: Int, currentY: Int)
-        fun onLongPressRelease(itemIndex: Int)
+        fun onItemLongPress(note: NoteItem, anchorY: Int)
+        fun onLongPressDrag(currentX: Int, currentY: Int)
+        fun onLongPressRelease()
 
         fun onDragStart(downX: Int, downY: Int): Boolean
         fun onDragging(currentX: Int, currentY: Int): Boolean
