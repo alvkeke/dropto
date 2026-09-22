@@ -99,6 +99,10 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         return filteredElements[index]
     }
 
+    fun indexOf(e: E): Int {
+        return filteredElements.indexOf(e)
+    }
+
     protected val filteredElements: List<E>
         get() = elements.filter {
                 filters.all { filter ->

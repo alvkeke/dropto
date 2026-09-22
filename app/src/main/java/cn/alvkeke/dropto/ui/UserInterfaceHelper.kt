@@ -19,10 +19,8 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment
-import cn.alvkeke.dropto.ui.fragment.NoteDetailFragment
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment.Companion.TAG
 
 object UserInterfaceHelper {
@@ -136,16 +134,6 @@ object UserInterfaceHelper {
             imageViewerFragment.setImage(mediaFile.md5file)
             imageViewerFragment.show(parentFragmentManager, null)
         }
-    }
-
-    private val noteDetailFragment: NoteDetailFragment by lazy {
-        NoteDetailFragment()
-    }
-    fun Fragment.showNoteDetailFragment(item: NoteItem) {
-        noteDetailFragment.setNoteItem(item)
-        parentFragmentManager.beginTransaction()
-            .add(noteDetailFragment, null)
-            .commit()
     }
 
     fun setSystemBarHeight(parent: View, status: View, navi: View) {

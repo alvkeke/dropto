@@ -8,6 +8,9 @@ import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.ui.comonent.NoteItemView
 
 class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHolder>() {
+
+    var eventListener: NoteItemView.EventListener? = null
+
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -36,21 +39,9 @@ class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHold
 
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val note = this.get(position)
         val view = holder.itemView as NoteItemView
-        view.index = position
-        view.text = note.text
-        view.createTime = note.createTime
-        view.isEdited = note.isEdited
-        view.isDeleted = note.isDeleted
-        view.isSynced = note.isSynced
-        view.sender = note.sender
-        view.reactionList.clear()
-        view.reactionList.addAll(note.reactions)
-        view.medias.clear()
-        view.medias.addAll(note.medias)
-        view.files.clear()
-        view.files.addAll(note.files)
+        view.eventListener = eventListener
+        view.note = this.get(position)
     }
 
 }

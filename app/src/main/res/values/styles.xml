@@ -33,4 +33,9 @@
         <item name="android:windowExitAnimation">@anim/menu_popup_exit</item>
     </style>
 
+    <!-- shape of the avatar of a note item -->
+    <style name="ShapeAppearanceOverlay.DropTo.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>

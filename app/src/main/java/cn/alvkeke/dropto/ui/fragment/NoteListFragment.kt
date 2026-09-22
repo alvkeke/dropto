@@ -49,6 +49,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SimpleItemAnimator
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
@@ -67,7 +68,6 @@ import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareAttachmentFileToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFilesToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.showNoteDetailFragment
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.comonent.CountableImageButton
@@ -87,10 +87,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.abs
 
 
-class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener {
+
+class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener,
+    NoteItemView.EventListener {
     private val app: DroptoApplication
         get() = requireActivity().application as DroptoApplication
 
@@ -112,6 +113,108 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private lateinit var category: Category
     private var noteItemAdapter: NoteListAdapter = NoteListAdapter()
+
+    // ------------------------------------------------------------- item touch events
+    // the items hit test their own area and report what was touched here: every touch ends
+    // up in this class, the list listener only reports the dragging of the empty space
+
+    override fun onSenderClick(note: NoteItem) {
+        Builder(context)
+            .setTitle("Sender Package")
+            .setMessage("Sender: ${note.sender}")
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    override fun onBackgroundClick(note: NoteItem, anchorY: Int) {
+        if (rlNoteList.isSelectMode) {
+            rlNoteList.toggleSelectItems(positionOf(note))
+            return
+        }
+        showItemPopMenu(note, anchorY)
+    }
+
+    override fun onMediaClick(note: NoteItem, file: AttachmentFile) {
+        if (rlNoteList.isSelectMode) {
+            rlNoteList.toggleSelectItems(positionOf(note))
+            return
+        }
+        this.showMediaFragment(file)
+    }
+
+    override fun onMediaLongClick(note: NoteItem, file: AttachmentFile, anchorY: Int) {
+        if (rlNoteList.isSelectMode) {
+            rlNoteList.toggleSelectItems(positionOf(note))
+            return
+        }
+        showAttachmentCard(note, file, anchorY)
+    }
+
+    override fun onFileClick(note: NoteItem, file: AttachmentFile) {
+        if (rlNoteList.isSelectMode) {
+            rlNoteList.toggleSelectItems(positionOf(note))
+            return
+        }
+        context.openFileWithExternalApp(file)
+    }
+
+    override fun onFileLongClick(note: NoteItem, file: AttachmentFile, anchorY: Int) {
+        onMediaLongClick(note, file, anchorY)
+    }
+
+    override fun onReactionClick(note: NoteItem, reaction: String) {
+        if (rlNoteList.isSelectMode) {
+            rlNoteList.toggleSelectItems(positionOf(note))
+            return
+        }
+        // only allow to remove the reaction without reaction filter
+        if (isFilteringReaction) {
+            return
+        }
+        rlNoteList.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        removeReaction(note, reaction)
+    }
+
+    override fun onReactionLongClick(note: NoteItem, reaction: String) {
+        if (rlNoteList.isSelectMode) {
+            rlNoteList.toggleSelectItems(positionOf(note))
+            return
+        }
+        if (!isFilteringReaction) {
+            setReactionFilter(reaction)
+        }
+    }
+
+    override fun onItemLongPress(note: NoteItem, anchorY: Int) {
+        val itemIndex = positionOf(note)
+        if (rlNoteList.isItemSelected(itemIndex)) {
+            rlNoteList.unselectItem(itemIndex)
+        } else {
+            rlNoteList.selectItem(itemIndex)
+        }
+    }
+
+    override fun onLongPressDrag(currentX: Int, currentY: Int) {
+    }
+
+    override fun onLongPressRelease() {
+    }
+
+    override fun onDragStart(downX: Int, downY: Int): Boolean {
+        dragDownX = downX
+        dragDownY = downY
+        return true
+    }
+
+    override fun onDragging(currentX: Int, currentY: Int): Boolean {
+        dragToClose((currentX - dragDownX).toFloat())
+        return true
+    }
+
+    override fun onDragEnd(currentX: Int, currentY: Int, speedX: Float, speedY: Float) {
+        endDragToClose((currentX - dragDownX).toFloat(), speedX)
+    }
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -171,7 +274,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
 
         noteItemAdapter.showDeleted = false
+        noteItemAdapter.eventListener = this
         rlNoteList.setAdapter(noteItemAdapter)
+        (rlNoteList.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
         rlNoteList.setLayoutManager(layoutManager)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
 
@@ -250,6 +355,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             onBackPressed()
             // TODO: pop the fragment from stack instead of finish directly
         }
+    }
+
+    private fun positionOf(note: NoteItem): Int {
+        return noteItemAdapter.indexOf(note)
     }
 
     private fun getSelectedNoteItems(): ArrayList<NoteItem> {
@@ -372,189 +481,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         reactionFilter = null
     }
 
+    private var dragDownX = 0
+    private var dragDownY = 0
+
     private inner class NoteListTouchListener : OnRecyclerViewTouchListener(context) {
-        override fun onItemClickAt(v: View, index: Int, event: MotionEvent): Boolean {
-            if (rlNoteList.isSelectMode) {
-                rlNoteList.toggleSelectItems(index)
-            } else {
-                val x = event.rawX.toInt()
-                val y = event.rawY.toInt()
-
-                val itemView = v as NoteItemView
-                Log.v(TAG, "clicked item-$index, view index: ${itemView.index}")
-
-                // Translate RecyclerView coordinates to itemView coordinates
-                val localX = event.x - itemView.left
-                val localY = event.y - itemView.top
-                Log.v(TAG, "localX: $localX, localY: $localY")
-
-                val content = itemView.checkClickedContent(localX, localY)
-
-                when (content.type) {
-                    NoteItemView.ClickedContent.Type.BACKGROUND -> {
-                        showItemPopMenu(index, v, x, y)
-                    }
-                    NoteItemView.ClickedContent.Type.SENDER_ICON -> {
-                        Builder(context)
-                            .setTitle("Sender Package")
-                            .setMessage("Sender: ${itemView.sender}")
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show()
-                    }
-
-                    NoteItemView.ClickedContent.Type.MEDIA -> {
-                        if (itemView.medias.size > NoteItemView.MAX_IMAGE_COUNT &&
-                            content.index >= NoteItemView.MAX_IMAGE_COUNT - 1
-                        ) {
-                            showNoteDetail(index)
-                        } else {
-                            showMediaView(index, content.index)
-                        }
-                    }
-
-                    NoteItemView.ClickedContent.Type.FILE -> {
-                        if (itemView.files.size > NoteItemView.MAX_FILE_COUNT &&
-                            content.index >= itemView.medias.size + NoteItemView.MAX_FILE_COUNT - 1
-                        ) {
-                            showNoteDetail(index)
-                        } else {
-                            tryOpenFile(index, content.index)
-                        }
-                    }
-
-                    NoteItemView.ClickedContent.Type.REACTION -> {
-                        if (!isFilteringReaction) {
-                            // only allow to remove the reaction without reaction filter
-                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                            removeReaction(index, content.index)
-                        }
-                    }
-                }
-            }
-            return true
-        }
-
-        private fun handleNonSelectModeItemLongClick(
-            v: View, index: Int, rawX: Float, rawY: Float
-        ) : Boolean {
-            val location = IntArray(2)
-            v.getLocationOnScreen(location)
-            val localX = rawX - location[0]
-            val localY = rawY - location[1]
-
-            val content = (v as NoteItemView).checkClickedContent(localX, localY)
-            when (content.type) {
-                NoteItemView.ClickedContent.Type.FILE,
-                NoteItemView.ClickedContent.Type.MEDIA -> {
-                    val attachment = noteItemAdapter.get(index).attachments[content.index]
-                    val screenWidth = context.resources.displayMetrics.widthPixels
-                    val card = PopupAttachmentCard(attachment, context)
-                    card.width = screenWidth / 2
-                    card.height = card.width
-                    // TODO: set the height to wrap_content, not available now
-                    val displayX = ((screenWidth - card.width) / 2)
-                        .coerceAtLeast(0)
-                    val displayY = (rawY - card.height).toInt()
-                    rlNoteList.highLight()
-                    card.setOnDismissListener {
-                        rlNoteList.clearHighLight()
-                    }
-                    card.setActionListener(object : PopupAttachmentCard.ActionListener{
-                        override fun onRemove(attachment: AttachmentFile) {
-                            val item = noteItemAdapter.get(index)
-                            if (
-                                item.text.isEmpty() &&
-                                item.attachments.size == 1 &&
-                                item.attachments.contains(attachment)
-                                ) {
-                                v.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                            } else {
-                                requestRemoveAttachment(item, attachment)
-                                card.dismiss()
-                            }
-                        }
-                        override fun onShare(attachment: AttachmentFile) {
-                            context.shareAttachmentFileToExternal(attachment)
-                            card.dismiss()
-                        }
-                        override fun onOpen(attachment: AttachmentFile) {
-                            context.openFileWithExternalApp(attachment)
-                            card.dismiss()
-                        }
-                        override fun onSave(attachment: AttachmentFile) {
-                            trySaveFile(attachment)
-                            card.dismiss()
-                        }
-                    })
-                    card.showAtLocation(
-                        rlNoteList,
-                        Gravity.NO_GRAVITY,
-                        displayX, displayY
-                    )
-                    return true
-                }
-                NoteItemView.ClickedContent.Type.REACTION -> {
-                    if (!isFilteringReaction) {
-                        val reaction = noteItemAdapter.get(index).reactions[content.index]
-                        setReactionFilter(reaction)
-                        return true
-                    }
-                }
-                else -> return false
-            }
-
-            return false
-        }
-        private var moveToSelect = false
-        private var firstHoldItem = -1
-        private var lastHoldItem = -1
-        override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
-            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-
-            if (!rlNoteList.isSelectMode) {
-                if (handleNonSelectModeItemLongClick(v, index, rawX, rawY)) {
-                    return true
-                }
-            }
-
-            firstHoldItem = index
-            lastHoldItem = index
-            if (rlNoteList.isItemSelected(index)) {
-                moveToSelect = false
-                rlNoteList.unselectItem(index)
-            } else {
-                moveToSelect = true
-                rlNoteList.selectItem(index)
-            }
-            return true
-        }
-
-        private fun opFun(index: Int) {
-            if (moveToSelect)
-                rlNoteList.selectItem(index)
-            else
-                rlNoteList.unselectItem(index)
-        }
-        private fun opFunNeg(index: Int) {
-            if (moveToSelect)
-                rlNoteList.unselectItem(index)
-            else
-                rlNoteList.selectItem(index)
-        }
-        override fun onItemLongClickSlideOn(v: View, index: Int): Boolean {
-            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-
-            val lastRange = abs(lastHoldItem - firstHoldItem)
-            val curRange = abs(index - firstHoldItem)
-
-            if (curRange > lastRange) {
-                opFun(index)
-            } else if (curRange < lastRange) {
-                opFunNeg(lastHoldItem)
-            }
-
-            lastHoldItem = index
-            return true
+        override fun onDragHorizontalStart(v: View, e: MotionEvent, delta: Float) {
+            onDragStart((e.rawX - delta).toInt(), e.rawY.toInt())
         }
 
         override fun onDragHorizontalEnd(
@@ -563,13 +495,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             delta: Float,
             speed: Float,
         ): Boolean {
-            val width = fragmentView.width
-            val thresholdExit = width / 3
-            if (speed > 2 || delta > thresholdExit) {
-                finish(closeDurationFor(speed))
-            } else {
-                resetPosition()
-            }
+            onDragEnd(e.rawX.toInt(), e.rawY.toInt(), speed, 0f)
             return true
         }
 
@@ -578,12 +504,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             e: MotionEvent,
             delta: Float,
         ): Boolean {
-            if (delta > 0) {
-                moveFragmentView(delta)
-            } else {
-                moveFragmentView(0f)
-            }
-            return true
+            return onDragging(e.rawX.toInt(), e.rawY.toInt())
         }
     }
 
@@ -599,6 +520,24 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         applyAnimeRate(ratio)
         fragmentView.translationX = targetX
+    }
+
+    private fun dragToClose(deltaX: Float) {
+        if (deltaX > 0) {
+            moveFragmentView(deltaX)
+        } else {
+            moveFragmentView(0f)
+        }
+    }
+
+    private fun endDragToClose(deltaX: Float, speedPxPerMs: Float) {
+        val width = fragmentView.width
+        val thresholdExit = width / 3
+        if (speedPxPerMs > 2 || deltaX > thresholdExit) {
+            finish(closeDurationFor(speedPxPerMs))
+        } else {
+            resetPosition()
+        }
     }
 
     private fun closeDurationFor(speedPxPerMs: Float): Long {
@@ -1179,8 +1118,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private lateinit var popupMenu: PopupMenu
     @SuppressLint("RestrictedApi")
-    private fun showItemPopMenu(index: Int, v: View, x: Int, y: Int) {
-        val noteItem = noteItemAdapter.get(index)
+    private fun showItemPopMenu(note: NoteItem, anchorY: Int) {
         if (!::popupMenu.isInitialized) {
             popupMenu = PopupMenu(context)
             val menu = MenuBuilder(context)
@@ -1192,15 +1130,15 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 rlNoteList.clearHighLight()
             }
         }
-        Log.v(TAG, "show popup menu for item-$index at x:$x, y:$y")
-        noteItemForMenu = noteItem
-        val isDeleted = noteItem.isDeleted
+        Log.v(TAG, "show popup menu for note-${note.id} at y:$anchorY")
+        noteItemForMenu = note
+        val isDeleted = note.isDeleted
         popupMenu.setMenuItemVisible(R.id.item_pop_m_restore, isDeleted)
         popupMenu.setMenuItemVisible(R.id.item_pop_m_delete, !isDeleted)
 
-        val targetTop = y - popupMenu.height / 3
+        val targetTop = anchorY - popupMenu.height / 3
         val targetBottom = targetTop + popupMenu.height
-        val xShow = v.width / 5
+        val xShow = rlNoteList.width / 5
         var yShow = targetTop
 
         val location = IntArray(2)
@@ -1214,19 +1152,19 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             yShow = bottomLimit - popupMenu.height
         }
 
-        rlNoteList.highLight(index)
+        rlNoteList.highLight(positionOf(note))
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
         DataBaseHelper(context).writableDatabase.use {
             reactionView.setReactions(it.getReactionList())
         }
         reactionView.onReactionClick = { reaction ->
-            if (noteItem.reactions.contains(reaction)) {
-                noteItem.reactions.remove(reaction)
+            if (note.reactions.contains(reaction)) {
+                note.reactions.remove(reaction)
             } else {
-                noteItem.reactions.add(reaction)
+                note.reactions.add(reaction)
             }
-            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            app.service?.updateNote(noteItem)
+            rlNoteList.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            app.service?.updateNote(note)
             popupMenu.dismiss()
         }
         reactionView.showAtLocation(
@@ -1251,20 +1189,48 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             }
             return _reactionView!!
         }
+    //TODO: implement a better look for this
+    private fun showAttachmentCard(note: NoteItem, attachment: AttachmentFile, anchorY: Int) {
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val card = PopupAttachmentCard(attachment, context)
+        card.width = screenWidth / 2
+        card.height = card.width
+        // TODO: set the height to wrap_content, not available now
+        val displayX = ((screenWidth - card.width) / 2).coerceAtLeast(0)
+        val displayY = anchorY - card.height
+        rlNoteList.highLight()
+        card.setOnDismissListener {
+            rlNoteList.clearHighLight()
+        }
+        card.setActionListener(object : PopupAttachmentCard.ActionListener {
+            override fun onRemove(attachment: AttachmentFile) {
+                val isLastAttachment = note.text.isEmpty() &&
+                        note.attachments.size == 1 &&
+                        note.attachments.contains(attachment)
+                if (isLastAttachment) {
+                    rlNoteList.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                } else {
+                    requestRemoveAttachment(note, attachment)
+                    card.dismiss()
+                }
+            }
 
-    private fun showNoteDetail(index: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        showNoteDetailFragment(noteItem)
-    }
+            override fun onShare(attachment: AttachmentFile) {
+                context.shareAttachmentFileToExternal(attachment)
+                card.dismiss()
+            }
 
-    private fun showMediaView(index: Int, attachmentIndex: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        this.showMediaFragment(noteItem.attachments[attachmentIndex])
-    }
+            override fun onOpen(attachment: AttachmentFile) {
+                context.openFileWithExternalApp(attachment)
+                card.dismiss()
+            }
 
-    private fun tryOpenFile(index: Int, fileIndex: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        context.openFileWithExternalApp(noteItem.attachments[fileIndex])
+            override fun onSave(attachment: AttachmentFile) {
+                trySaveFile(attachment)
+                card.dismiss()
+            }
+        })
+        card.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, displayX, displayY)
     }
 
     private fun trySaveFile(attachment: AttachmentFile) {
@@ -1284,10 +1250,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    private fun removeReaction(index: Int, reactionIndex: Int) {
-        val noteItem = noteItemAdapter.get(index)
-        noteItem.reactions.removeAt(reactionIndex)
-        app.service?.updateNote(noteItem)
+    private fun removeReaction(note: NoteItem, reaction: String) {
+        note.reactions.remove(reaction)
+        app.service?.updateNote(note)
     }
 
     private fun handleShareMultipleNotes(items: ArrayList<NoteItem>) {
