@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui.comonent.NoteItemChild
+package cn.alvkeke.dropto.ui.component.NoteItemChild
 
 import android.content.Context
 import android.util.AttributeSet

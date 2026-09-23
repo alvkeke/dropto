@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui.comonent
+package cn.alvkeke.dropto.ui.component
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -31,8 +31,8 @@ import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
-import cn.alvkeke.dropto.ui.comonent.NoteItemChild.FileItemView
-import cn.alvkeke.dropto.ui.comonent.NoteItemChild.MediaItemView
+import cn.alvkeke.dropto.ui.component.NoteItemChild.FileItemView
+import cn.alvkeke.dropto.ui.component.NoteItemChild.MediaItemView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

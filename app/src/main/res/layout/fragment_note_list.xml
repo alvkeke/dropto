@@ -38,7 +38,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp">
 
-            <cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
+            <cn.alvkeke.dropto.ui.component.SelectableRecyclerView
                 android:id="@+id/note_list_listview"
                 android:scrollbars="vertical"
                 app:layout_constraintTop_toTopOf="parent"
@@ -101,7 +101,7 @@
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
-                <cn.alvkeke.dropto.ui.comonent.CountableImageButton
+                <cn.alvkeke.dropto.ui.component.CountableImageButton
                     android:id="@+id/note_list_input_attach_attachment"
                     app:layout_constraintTop_toBottomOf="@id/note_list_input_detail_box"
                     app:layout_constraintStart_toStartOf="parent"

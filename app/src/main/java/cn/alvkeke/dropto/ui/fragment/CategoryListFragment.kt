@@ -34,8 +34,8 @@ import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
 import cn.alvkeke.dropto.ui.activity.MainActivity
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
-import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
-import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
+import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
+import cn.alvkeke.dropto.ui.component.SelectableRecyclerView.SelectListener
 import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar

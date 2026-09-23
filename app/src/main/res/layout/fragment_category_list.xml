@@ -25,7 +25,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
-        <cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
+        <cn.alvkeke.dropto.ui.component.SelectableRecyclerView
             android:id="@+id/category_list_listview"
             android:layout_width="match_parent"
             android:layout_height="0dp"

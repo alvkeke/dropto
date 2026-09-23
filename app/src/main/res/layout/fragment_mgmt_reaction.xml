@@ -44,7 +44,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
+    <cn.alvkeke.dropto.ui.component.SelectableRecyclerView
         android:id="@+id/mgmt_reaction_list"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/mgmt_reaction_btn_add"

@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui.comonent
+package cn.alvkeke.dropto.ui.component
 
 import android.content.Context
 import android.graphics.drawable.GradientDrawable

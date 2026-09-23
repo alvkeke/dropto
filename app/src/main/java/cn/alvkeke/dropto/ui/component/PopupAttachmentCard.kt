@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui.comonent
+package cn.alvkeke.dropto.ui.component
 
 import android.annotation.SuppressLint
 import android.content.Context

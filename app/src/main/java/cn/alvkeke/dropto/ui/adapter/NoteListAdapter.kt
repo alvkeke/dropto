@@ -5,7 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.ui.comonent.NoteItemView
+import cn.alvkeke.dropto.ui.component.NoteItemView
 
 class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHolder>() {
 

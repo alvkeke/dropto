@@ -17,7 +17,7 @@ import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
 import cn.alvkeke.dropto.ui.activity.MainActivity
 import cn.alvkeke.dropto.ui.activity.MainViewModel
-import cn.alvkeke.dropto.ui.comonent.MgmtItemView
+import cn.alvkeke.dropto.ui.component.MgmtItemView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
 import cn.alvkeke.dropto.ui.listener.ReleaseVelocitySampler

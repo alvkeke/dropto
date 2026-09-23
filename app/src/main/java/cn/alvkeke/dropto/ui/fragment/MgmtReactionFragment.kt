@@ -23,7 +23,7 @@ import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.storage.updateReactionList
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
-import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
+import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
