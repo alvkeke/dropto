@@ -13,7 +13,6 @@ import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 
 
-private const val RELEASE_SPEED_WINDOW_MS = 60L
 open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
 
 
@@ -32,54 +31,13 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
 
     private var downRawX = 0f       // for move distance
     private var downRawY = 0f       // for move distance
-    private val moveTimes = ArrayList<Long>()
-    private val moveXs = ArrayList<Float>()
-    private val moveYs = ArrayList<Float>()
+    private val velocitySampler = ReleaseVelocitySampler()
     private lateinit var longPressParentView: View
     private var longPressItemView: View? = null
 
     private var lastHoldItemIndex: Int = -1
     private var lastSlideOnStatus: Boolean = false
     private var gestureState = GestureState.IDLE
-
-
-    private fun clearMoveSample() {
-        moveTimes.clear()
-        moveXs.clear()
-        moveYs.clear()
-    }
-    private fun addMoveSample(rawX: Float, rawY: Float) {
-        val now = System.currentTimeMillis()
-        moveTimes.add(now)
-        moveXs.add(rawX)
-        moveYs.add(rawY)
-        while (moveTimes.size > 1 &&
-            now - moveTimes[0] > RELEASE_SPEED_WINDOW_MS
-        ) {
-            moveTimes.removeAt(0)
-            moveXs.removeAt(0)
-            moveYs.removeAt(0)
-        }
-    }
-
-    private fun recentReleaseVelocity(): Pair<Float, Float> {
-        val n = moveTimes.size
-        if (n < 2) return 0f to 0f
-        val last = n - 1
-        val tEnd = moveTimes[last]
-        val xEnd = moveXs[last]
-        val yEnd = moveYs[last]
-        var start = 0
-        while (start < last &&
-            tEnd - moveTimes[start] > RELEASE_SPEED_WINDOW_MS
-        ) {
-            start++
-        }
-        val dt = tEnd - moveTimes[start]
-        if (dt <= 0L) return 0f to 0f
-        return ((xEnd - moveXs[start]) / dt) to
-            ((yEnd - moveYs[start]) / dt)
-    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
@@ -91,7 +49,7 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
             MotionEvent.ACTION_DOWN -> {
                 downRawX = motionEvent.rawX
                 downRawY = motionEvent.rawY
-                clearMoveSample()
+                velocitySampler.clear()
                 longPressParentView = view
                 longPressItemView = recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                 if (longPressItemView != null) {
@@ -104,7 +62,7 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
             }
 
             MotionEvent.ACTION_MOVE -> {
-                addMoveSample(motionEvent.rawX, motionEvent.rawY)
+                velocitySampler.add(motionEvent.rawX, motionEvent.rawY)
                 deltaRawX = motionEvent.rawX - downRawX
                 deltaRawY = motionEvent.rawY - downRawY
 
@@ -144,7 +102,7 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                 }
             }
             MotionEvent.ACTION_UP -> {
-                addMoveSample(motionEvent.rawX, motionEvent.rawY)
+                velocitySampler.add(motionEvent.rawX, motionEvent.rawY)
                 handler.removeCallbacks(longPressRunnable)
                 itemView = recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
                 val state = gestureState
@@ -173,14 +131,14 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                     }
                     GestureState.DRAG_X -> {
                         deltaRawX = motionEvent.rawX - downRawX
-                        val (vx, _) = recentReleaseVelocity()
+                        val (vx, _) = velocitySampler.recentReleaseVelocity()
                         if (onDragHorizontalEnd(view, motionEvent, deltaRawX, vx)) {
                             return true
                         }
                     }
                     GestureState.DRAG_Y -> {
                         deltaRawY = motionEvent.rawY - downRawY
-                        val (_, vy) = recentReleaseVelocity()
+                        val (_, vy) = velocitySampler.recentReleaseVelocity()
                         if (onDragVerticalEnd(view, motionEvent, deltaRawY, vy)) {
                             return true
                         }
