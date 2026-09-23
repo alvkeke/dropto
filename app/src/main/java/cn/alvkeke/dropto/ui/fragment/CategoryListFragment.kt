@@ -36,6 +36,7 @@ import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.comonent.SelectableRecyclerView.SelectListener
+import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
@@ -53,8 +54,9 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     private lateinit var categoryListAdapter: CategoryListAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
     private lateinit var toolbar: MaterialToolbar
-    private lateinit var fragmentRoot: View
     private lateinit var contentContainer: View
+
+    var revealGestureListener: HorizontalDragListener? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -79,7 +81,6 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
-        fragmentRoot = view
         contentContainer = view.findViewById(R.id.category_list_content)
 
         rlCategory = view.findViewById(R.id.category_list_listview)
@@ -304,28 +305,16 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         private fun getMainActivity(): MainActivity? =
             activity as? MainActivity
 
-        private var dragGestureActive = false
-        private var dragBaseX = 0f
-        private var dragBaseDelta = 0f
+        override fun onDragHorizontalStart(v: View, e: MotionEvent, delta: Float) {
+            revealGestureListener?.onDragStart(delta)
+        }
 
         override fun onDraggingHorizontal(
             v: View,
             e: MotionEvent,
             delta: Float,
         ): Boolean {
-            val mainActivity = activity as? MainActivity ?: return true
-            if (!dragGestureActive) {
-                dragGestureActive = true
-                dragBaseX = fragmentRoot.translationX
-                dragBaseDelta = delta
-                mainActivity.onMgmtDragStarted()
-            }
-            val panelWidth = mainActivity.getMgmtPanelWidth()
-            if (panelWidth <= 0) return true
-            val newX = (dragBaseX + delta - dragBaseDelta)
-                .coerceIn(0f, panelWidth.toFloat())
-            fragmentRoot.translationX = newX
-            mainActivity.onMgmtRevealProgress(newX)
+            revealGestureListener?.onDragging(delta)
             return true
         }
 
@@ -335,22 +324,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
             delta: Float,
             speed: Float,
         ): Boolean {
-            dragGestureActive = false
-            val mainActivity = activity as? MainActivity ?: return true
-            val panelWidth = mainActivity.getMgmtPanelWidth()
-            if (panelWidth <= 0) return true
-
-            val halfWidth = panelWidth / 2f
-            val open: Boolean = if (dragBaseX < halfWidth) {
-                speed > REVEAL_FLING_SPEED || delta > halfWidth
-            } else {
-                !(speed < -REVEAL_FLING_SPEED || delta < -halfWidth)
-            }
-            if (open) {
-                mainActivity.openMgmtReveal(speed)
-            } else {
-                mainActivity.closeMgmtReveal(speed)
-            }
+            revealGestureListener?.onDragEnd(delta, speed)
             return true
         }
     }
@@ -485,6 +459,5 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         private const val CONTENT_FADE_MIN_ALPHA = 0.3f
         private const val NOTE_COVER_SCALE_MIN = 0.9f
         private const val NOTE_COVER_ANIM_DURATION = 200L
-        const val REVEAL_FLING_SPEED = 2f
     }
 }

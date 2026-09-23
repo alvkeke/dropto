@@ -21,8 +21,9 @@ import cn.alvkeke.dropto.storage.DataLoader.loadCategories
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.MgmtPageFragment
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
+import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), HorizontalDragListener {
 
     private var _categoryListFragment: CategoryListFragment? = null
     private var categoryListFragment: CategoryListFragment
@@ -55,6 +56,9 @@ class MainActivity : AppCompatActivity() {
 
     private val mgmtWidthRatio = 3f / 4f
     private var mgmtPanelWidth = 0
+
+    private var dragBaseLeft = 0f
+    private var dragStartDelta = 0f
 
     private val viewModel: MainViewModel by lazy {
         ViewModelProvider(this)[MainViewModel::class.java]
@@ -93,6 +97,9 @@ class MainActivity : AppCompatActivity() {
         if (!categoryListFragment.isAdded) {
             startFragment(categoryListFragment)
         }
+
+        categoryListFragment.revealGestureListener = this
+        mgmtPageFragment.revealGestureListener = this
 
         rootLayout.post {
             updateMgmtContainerWidth()
@@ -153,7 +160,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    internal fun getMgmtPanelWidth(): Int = mgmtPanelWidth
+    private fun moveMgmtRevealTo(left: Float) {
+        val panel = mgmtPanelWidth
+        if (panel <= 0) return
+        val target = left.coerceIn(0f, panel.toFloat())
+        categoryListFragment.view?.translationX = target
+        onMgmtRevealProgress(target)
+    }
 
     private fun categoryLeftX(): Float =
         categoryListFragment.view?.translationX ?: 0f
@@ -178,14 +191,44 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    internal fun onMgmtDragStarted() {
+    override fun onDragStart(deltaX: Float) {
         revealAnimation?.let {
             revealAnimation = null
             it.cancel()
         }
+        dragBaseLeft = categoryLeftX()
+        dragStartDelta = deltaX
     }
 
-    internal fun onMgmtRevealProgress(categoryListLeft: Float) {
+    override fun onDragging(deltaX: Float) {
+        moveMgmtRevealTo(dragBaseLeft + deltaX - dragStartDelta)
+    }
+
+    override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
+        settleMgmtReveal(dragBaseLeft, deltaX - dragStartDelta, velocityPxPerMs)
+    }
+
+    private fun settleMgmtReveal(
+        dragStartLeft: Float,
+        deltaX: Float,
+        velocityPxPerMs: Float,
+    ) {
+        val panel = mgmtPanelWidth
+        if (panel <= 0) return
+        val half = panel / 2f
+        val open = if (dragStartLeft < half) {
+            velocityPxPerMs > REVEAL_FLING_SPEED || deltaX > half
+        } else {
+            !(velocityPxPerMs < -REVEAL_FLING_SPEED || deltaX < -half)
+        }
+        if (open) {
+            openMgmtReveal(velocityPxPerMs)
+        } else {
+            closeMgmtReveal(velocityPxPerMs)
+        }
+    }
+
+    private fun onMgmtRevealProgress(categoryListLeft: Float) {
         val panel = mgmtPanelWidth
         if (panel <= 0) return
         val ratio = (categoryListLeft / panel).coerceIn(0f, 1f)
@@ -275,6 +318,7 @@ class MainActivity : AppCompatActivity() {
         private const val REVEAL_DURATION = 200L
         // px tolerance used to treat the reveal as fully open / fully closed
         private const val REVEAL_EPS = 1f
+        private const val REVEAL_FLING_SPEED = 2f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
         private const val MGMT_SCALE_MIN = 0.9f
     }
