@@ -6,28 +6,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <View
-        android:id="@+id/mgmt_note_status_bar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:background="?android:statusBarColor"
-        android:layout_width="match_parent"
-        android:layout_height="20dp" />
-
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/mgmt_note_toolbar"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/mgmt_note_status_bar"
+        app:layout_constraintTop_toTopOf="parent"
         android:background="?android:statusBarColor"
         app:title="Notes Management"
-        app:navigationIcon="@drawable/icon_common_back"
+        app:navigationIcon="@drawable/icon_common_cross"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/mgmt_note_toolbar"
-        app:layout_constraintBottom_toTopOf="@id/mgmt_note_navigation_bar"
+        app:layout_constraintBottom_toBottomOf="parent"
         android:background="@color/color_background"
         android:layout_width="match_parent"
         android:layout_height="0dp">
@@ -51,13 +43,5 @@
             app:layout_constraintEnd_toEndOf="parent"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <View
-        android:id="@+id/mgmt_note_navigation_bar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:background="?android:navigationBarColor"
-        android:layout_width="match_parent"
-        android:layout_height="20dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

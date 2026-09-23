@@ -19,8 +19,6 @@ import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataLoader
-import cn.alvkeke.dropto.ui.UserInterfaceHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -29,12 +27,9 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 
-class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
+class MgmtNotesFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
 
-    private lateinit var fragmentView: View
-    private lateinit var statusBar: View
     private lateinit var toolbar: MaterialToolbar
-    private lateinit var navBar: View
     private lateinit var viewPager: ViewPager2
     private lateinit var pagerAdapter: NoteCategoryPagerAdapter
     private lateinit var tabLayout: TabLayout
@@ -45,21 +40,15 @@ class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        fragmentView = inflater.inflate(
+        return inflater.inflate(
             R.layout.fragment_mgmt_notes, container, false
         )
-        return fragmentView
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        statusBar = view.findViewById(R.id.mgmt_note_status_bar)
         toolbar = view.findViewById(R.id.mgmt_note_toolbar)
-        navBar = view.findViewById(R.id.mgmt_note_navigation_bar)
-
-        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navBar)
-
         toolbar.setNavigationOnClickListener { finish() }
 
         tabLayout = view.findViewById(R.id.mgmt_note_tab)
@@ -83,15 +72,6 @@ class MgmtNotesFragment: Fragment(), FragmentOnBackListener {
     override fun onBackPressed(): Boolean {
         finish()
         return true
-    }
-
-    @JvmOverloads
-    fun finish(duration: Long = 200) {
-        this.animateRemoveFromParent(
-            fragmentView,
-            duration,
-            false
-        )
     }
 
     private class NoteCategoryPagerAdapter(

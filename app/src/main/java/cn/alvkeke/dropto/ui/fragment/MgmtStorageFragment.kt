@@ -13,7 +13,6 @@ import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -22,8 +21,6 @@ import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.FileHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.AttachmentListAdapter
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -34,10 +31,9 @@ import java.io.File
 import java.io.IOException
 import java.util.LinkedList
 
-class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
+class MgmtStorageFragment : MgmtBottomSheetFragment(), FragmentOnBackListener {
 
     private lateinit var viewModel: MainViewModel
-    private lateinit var fragmentView: View
     private lateinit var toolbar: MaterialToolbar
     private lateinit var cbAttachment: CheckBox
     private lateinit var cbCache: CheckBox
@@ -50,8 +46,7 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        fragmentView = inflater.inflate(R.layout.fragment_mgmt_storage, container, false)
-        return fragmentView
+        return inflater.inflate(R.layout.fragment_mgmt_storage, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -65,11 +60,6 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
         buttonClear = view.findViewById(R.id.mgmt_storage_btn_clear)
         buttonExportDb = view.findViewById(R.id.mgmt_storage_btn_export_db)
         val listFilename = view.findViewById<RecyclerView>(R.id.mgmt_storage_list_files)
-        val statusBar:View = view.findViewById(R.id.mgmt_storage_status_bar)
-        val navBar: View= view.findViewById(R.id.mgmt_storage_nav_bar)
-
-        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navBar)
-
 
         val context = requireContext()
         val layoutManager = LinearLayoutManager(context)
@@ -151,12 +141,6 @@ class MgmtStorageFragment : Fragment(), FragmentOnBackListener {
         finish()
         return true
     }
-
-    @JvmOverloads
-    fun finish(duration: Long = 200) {
-        animateRemoveFromParent(fragmentView, duration = duration, closeToRight = false)
-    }
-
 
     lateinit var attachmentFolder: File
     lateinit var cacheFolder: File

@@ -13,8 +13,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.ui.UserInterfaceHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
 import cn.alvkeke.dropto.ui.activity.MainActivity
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.component.MgmtItemView
@@ -38,11 +36,8 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
     private lateinit var toolbar: MaterialToolbar
 
     private lateinit var itemStorage: MgmtItemView
-    private var storageFragment: MgmtStorageFragment? = null
     private lateinit var itemNotes: MgmtItemView
-    private var noteFragment: MgmtNotesFragment? = null
     private lateinit var itemReactions: MgmtItemView
-    private var reactionFragment: MgmtReactionFragment? = null
 
     var revealGestureListener: HorizontalDragListener? = null
 
@@ -75,35 +70,22 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         itemNotes.setOnTouchListener(dragListener)
         itemReactions.setOnTouchListener(dragListener)
 
-        val statusBar = view.findViewById<View>(R.id.mgmt_page_status_bar)
-        val navigationBar = view.findViewById<View>(R.id.mgmt_page_navigation_bar)
-        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navigationBar)
-
         toolbar.setTitle("Management")
 
         itemStorage.setTitle("Manage Storage")
         itemStorage.setIcon(R.drawable.icon_mgmt_storage)
         itemStorage.setOnClickListener {
-            if (storageFragment == null) {
-                storageFragment = MgmtStorageFragment()
-            }
-            openMgmtPage(storageFragment!!)
+            openMgmtPage(MgmtStorageFragment())
         }
         itemNotes.setTitle("Manage Notes")
         itemNotes.setIcon(R.drawable.icon_mgmt_storage)
         itemNotes.setOnClickListener {
-            if (noteFragment == null) {
-                noteFragment = MgmtNotesFragment()
-            }
-            openMgmtPage(noteFragment!!)
+            openMgmtPage(MgmtNotesFragment())
         }
         itemReactions.setTitle("Manage Reactions")
         itemReactions.setIcon(R.drawable.icon_mgmt_storage)
         itemReactions.setOnClickListener {
-            if (reactionFragment == null) {
-                reactionFragment = MgmtReactionFragment()
-            }
-            openMgmtPage(reactionFragment!!)
+            openMgmtPage(MgmtReactionFragment())
         }
 
     }
@@ -162,14 +144,10 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         }
     }
 
-    private fun openMgmtPage(fragment: Fragment) {
-        if (fragment.isAdded) return
-        (activity as? MainActivity)?.closeMgmtReveal()
-        parentFragmentManager.startFragmentAnime(
-            fragment,
-            R.id.main_container,
-            false
-        )
+    private fun openMgmtPage(fragment: MgmtBottomSheetFragment) {
+        val manager = parentFragmentManager
+        if (manager.isStateSaved) return
+        fragment.show(manager, fragment.javaClass.simpleName)
     }
 
     override fun onBackPressed(): Boolean {

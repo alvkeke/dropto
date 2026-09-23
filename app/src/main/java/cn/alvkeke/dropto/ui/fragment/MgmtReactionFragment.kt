@@ -14,26 +14,20 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.forEach
-import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.storage.DataBaseHelper
 import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.storage.updateReactionList
-import cn.alvkeke.dropto.ui.UserInterfaceHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 
-class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
+class MgmtReactionFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
 
-    private lateinit var fragmentView: View
-    private lateinit var statusBar: View
     private lateinit var toolbar: MaterialToolbar
-    private lateinit var navBar: View
     private lateinit var rlReaction: SelectableRecyclerView
     private lateinit var adapter: ReactionListAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
@@ -45,24 +39,19 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        fragmentView = inflater.inflate(
+        return inflater.inflate(
             R.layout.fragment_mgmt_reaction, container, false
         )
-        return fragmentView
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        statusBar = view.findViewById(R.id.mgmt_reaction_status_bar)
         toolbar = view.findViewById(R.id.mgmt_reaction_toolbar)
-        navBar = view.findViewById(R.id.mgmt_reaction_nav_bar)
         rlReaction = view.findViewById(R.id.mgmt_reaction_list)
         btnAdd = view.findViewById(R.id.mgmt_reaction_btn_add)
         btnSave = view.findViewById(R.id.mgmt_reaction_btn_save)
-
-        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navBar)
 
         toolbar.setNavigationOnClickListener { finish() }
         toolbar.setOnMenuItemClickListener(ReactionMenuItemClickListener())
@@ -134,15 +123,6 @@ class MgmtReactionFragment: Fragment(), FragmentOnBackListener {
     override fun onBackPressed(): Boolean {
         finish()
         return true
-    }
-
-    @JvmOverloads
-    fun finish(duration: Long = 200) {
-        this.animateRemoveFromParent(
-            fragmentView,
-            duration,
-            false
-        )
     }
 
     private inner class ReactionMenuItemClickListener : androidx.appcompat.widget.Toolbar.OnMenuItemClickListener {
