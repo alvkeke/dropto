@@ -31,6 +31,10 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
 
     private var downRawX = 0f       // for move distance
     private var downRawY = 0f       // for move distance
+    // drag deltas are rebased to the point where the gesture was recognized, so
+    // listeners never see the touch-slop overshoot on the first frame
+    private var dragStartDeltaX = 0f
+    private var dragStartDeltaY = 0f
     private val velocitySampler = ReleaseVelocitySampler()
     private lateinit var longPressParentView: View
     private var longPressItemView: View? = null
@@ -70,20 +74,22 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                     GestureState.STARTED -> {
                         if (abs(deltaRawY) > touchSlop) {
                             gestureState = GestureState.DRAG_Y     // vertical move have higher priority
+                            dragStartDeltaY = deltaRawY
                             handler.removeCallbacks(longPressRunnable)
-                            return onDraggingVertical(view, motionEvent, deltaRawY)
+                            return onDraggingVertical(view, motionEvent, deltaRawY - dragStartDeltaY)
                         } else if (abs(deltaRawX) > touchSlop) {
                             gestureState = GestureState.DRAG_X
+                            dragStartDeltaX = deltaRawX
                             handler.removeCallbacks(longPressRunnable)
-                            onDragHorizontalStart(view, motionEvent, deltaRawX)
-                            return onDraggingHorizontal(view, motionEvent, deltaRawX)
+                            onDragHorizontalStart(view, motionEvent)
+                            return onDraggingHorizontal(view, motionEvent, deltaRawX - dragStartDeltaX)
                         }
                     }
                     GestureState.DRAG_X -> {
-                        return onDraggingHorizontal(view, motionEvent, deltaRawX)
+                        return onDraggingHorizontal(view, motionEvent, deltaRawX - dragStartDeltaX)
                     }
                     GestureState.DRAG_Y -> {
-                        return onDraggingVertical(view, motionEvent, deltaRawY)
+                        return onDraggingVertical(view, motionEvent, deltaRawY - dragStartDeltaY)
                     }
                     GestureState.LONG_PRESS_HOLDING -> {
                         itemView = recyclerView.findChildViewUnder(motionEvent.x, motionEvent.y)
@@ -132,14 +138,14 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
                     GestureState.DRAG_X -> {
                         deltaRawX = motionEvent.rawX - downRawX
                         val (vx, _) = velocitySampler.recentReleaseVelocity()
-                        if (onDragHorizontalEnd(view, motionEvent, deltaRawX, vx)) {
+                        if (onDragHorizontalEnd(view, motionEvent, deltaRawX - dragStartDeltaX, vx)) {
                             return true
                         }
                     }
                     GestureState.DRAG_Y -> {
                         deltaRawY = motionEvent.rawY - downRawY
                         val (_, vy) = velocitySampler.recentReleaseVelocity()
-                        if (onDragVerticalEnd(view, motionEvent, deltaRawY, vy)) {
+                        if (onDragVerticalEnd(view, motionEvent, deltaRawY - dragStartDeltaY, vy)) {
                             return true
                         }
                     }
@@ -161,7 +167,7 @@ open class OnRecyclerViewTouchListener(val context: Context) : OnTouchListener {
         return false
     }
 
-    open fun onDragHorizontalStart(v: View, e: MotionEvent, delta: Float) {
+    open fun onDragHorizontalStart(v: View, e: MotionEvent) {
     }
 
     open fun onDragHorizontalEnd(v: View, e: MotionEvent, delta: Float, speed: Float): Boolean {

@@ -1,7 +1,5 @@
 package cn.alvkeke.dropto.ui.fragment
 
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.AlertDialog.Builder
 import android.content.Context
@@ -62,7 +60,6 @@ import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.animateRemoveFromParent
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareAttachmentFileToExternal
@@ -78,6 +75,7 @@ import cn.alvkeke.dropto.ui.component.ReactionDialog
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView.SelectListener
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
+import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
@@ -92,13 +90,16 @@ import kotlinx.coroutines.withContext
 
 class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener,
     NoteItemView.EventListener {
+    interface EventListener {
+        fun onNoteListClose()
+    }
+
     private val app: DroptoApplication
         get() = requireActivity().application as DroptoApplication
 
     private lateinit var context: Context
     private lateinit var viewModel: MainViewModel
     private lateinit var fragmentParent: View
-    private lateinit var fragmentView: View
     private lateinit var etInputText: EditText
     private lateinit var rlAttachment: RecyclerView
     private lateinit var attachmentListAdapter: AttachmentListAdapter
@@ -111,8 +112,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private lateinit var toolbar: MaterialToolbar
     private lateinit var rlNoteList: SelectableRecyclerView
 
-    private lateinit var category: Category
+    private var category: Category? = null
     private var noteItemAdapter: NoteListAdapter = NoteListAdapter()
+
+    var horizontalDragListener: HorizontalDragListener? = null
+    var eventListener: EventListener? = null
 
     // ------------------------------------------------------------- item touch events
     // the items hit test their own area and report what was touched here: every touch ends
@@ -194,25 +198,26 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    override fun onLongPressDrag(currentX: Int, currentY: Int) {
-    }
+    override fun onLongPressDrag(currentX: Int, currentY: Int) { }
 
-    override fun onLongPressRelease() {
-    }
+    override fun onLongPressRelease() { }
 
-    override fun onDragStart(downX: Int, downY: Int): Boolean {
-        dragDownX = downX
-        dragDownY = downY
+    override fun onDragStart(startX: Int, startY: Int): Boolean {
+        dragStartX = startX
+        dragStartY = startY
+        horizontalDragListener?.onDragStart()
         return true
     }
 
     override fun onDragging(currentX: Int, currentY: Int): Boolean {
-        dragToClose((currentX - dragDownX).toFloat())
+        val deltaX = currentX - dragStartX
+        horizontalDragListener?.onDragging(deltaX.toFloat())
         return true
     }
 
     override fun onDragEnd(currentX: Int, currentY: Int, speedX: Float, speedY: Float) {
-        endDragToClose((currentX - dragDownX).toFloat(), speedX)
+        val deltaX = currentX - dragStartX
+        horizontalDragListener?.onDragEnd(deltaX.toFloat(), speedX)
     }
 
 
@@ -241,7 +246,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         context = requireContext()
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
 
-        fragmentView = view.findViewById(R.id.note_list_fragment_container)
         rlNoteList = view.findViewById(R.id.note_list_listview)
         btnSend = view.findViewById(R.id.note_list_input_button)
         btnCancel = view.findViewById(R.id.note_list_input_cancel_button)
@@ -258,7 +262,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         setIMEViewChange(view)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_back)
-        toolbar.setNavigationOnClickListener(OnNavigationIconClick())
+        toolbar.setNavigationOnClickListener { eventListener?.onNoteListClose() }
         toolbar.setOnMenuItemClickListener(NoteListMenuListener())
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar)
         setToolbarMenuBySelectedItems(0)
@@ -268,6 +272,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         rlNoteList.setSelectListener(NoteListSelectListener())
 
         viewModel.category.observe(viewLifecycleOwner) { category ->
+            if (this.category == category) return@observe
             this.category = category
             toolbar.setTitle(category.title)
             noteItemAdapter.setList(category.noteItems)
@@ -332,12 +337,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         btnAttach.setOnLongClickListener(btnAttachListener)
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        if (isRemoving) {
-            applyAnimeRate(0f)
-        }
-    }
 
     override fun onBackPressed(): Boolean {
         if (rlNoteList.isSelectMode) {
@@ -345,16 +344,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         } else if (isFilteringReaction) {
             cancelReactionFilter()
         } else {
-            finish()
+            return false
         }
         return true
-    }
-
-    private inner class OnNavigationIconClick : OnClickListener {
-        override fun onClick(view: View) {
-            onBackPressed()
-            // TODO: pop the fragment from stack instead of finish directly
-        }
     }
 
     private fun positionOf(note: NoteItem): Int {
@@ -441,7 +433,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 toolbar.setTitle("Tag: $filteredReaction")
             } else {
                 toolbar.setNavigationIcon(R.drawable.icon_common_back)
-                toolbar.title = category.title
+                toolbar.title = category?.title
             }
         }
 
@@ -477,16 +469,16 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             noteItemAdapter.removeFilter(it)
         }
         toolbar.setNavigationIcon(R.drawable.icon_common_back)
-        toolbar.setTitle(category.title)
+        toolbar.setTitle(category?.title)
         reactionFilter = null
     }
 
-    private var dragDownX = 0
-    private var dragDownY = 0
+    private var dragStartX = 0
+    private var dragStartY = 0
 
     private inner class NoteListTouchListener : OnRecyclerViewTouchListener(context) {
-        override fun onDragHorizontalStart(v: View, e: MotionEvent, delta: Float) {
-            onDragStart((e.rawX - delta).toInt(), e.rawY.toInt())
+        override fun onDragHorizontalStart(v: View, e: MotionEvent) {
+            onDragStart(e.rawX.toInt(), e.rawY.toInt())
         }
 
         override fun onDragHorizontalEnd(
@@ -506,69 +498,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         ): Boolean {
             return onDragging(e.rawX.toInt(), e.rawY.toInt())
         }
-    }
-
-    internal var animateProcedure: ((Float) -> Unit)? = null
-
-    private fun applyAnimeRate(ratio: Float) {
-        animateProcedure?.invoke(ratio)
-    }
-
-    private fun moveFragmentView(targetX: Float) {
-        val width = fragmentView.width.toFloat()
-        val ratio = (width - targetX) / width
-
-        applyAnimeRate(ratio)
-        fragmentView.translationX = targetX
-    }
-
-    private fun dragToClose(deltaX: Float) {
-        if (deltaX > 0) {
-            moveFragmentView(deltaX)
-        } else {
-            moveFragmentView(0f)
-        }
-    }
-
-    private fun endDragToClose(deltaX: Float, speedPxPerMs: Float) {
-        val width = fragmentView.width
-        val thresholdExit = width / 3
-        if (speedPxPerMs > 2 || deltaX > thresholdExit) {
-            finish(closeDurationFor(speedPxPerMs))
-        } else {
-            resetPosition()
-        }
-    }
-
-    private fun closeDurationFor(speedPxPerMs: Float): Long {
-        val distance = (fragmentView.width - fragmentView.translationX)
-            .coerceAtLeast(0f)
-        if (speedPxPerMs <= 0f || distance <= 0f) {
-            return CLOSE_DURATION_DEFAULT
-        }
-        val ms = (distance / speedPxPerMs).toLong()
-        return ms
-    }
-
-    @JvmOverloads
-    fun finish(duration: Long = CLOSE_DURATION_DEFAULT) {
-        val duration = duration.coerceAtMost(CLOSE_DURATION_DEFAULT)
-        animateRemoveFromParent(fragmentView, duration, closeToRight = true) { valueAnimator: ValueAnimator ->
-            val width = fragmentView.width.toFloat()
-            val deltaX = valueAnimator.animatedValue as Float
-            val ratio = (width - deltaX) / width
-            applyAnimeRate(ratio)
-        }
-    }
-
-    fun resetPosition() {
-        val startX = fragmentView.translationX
-        if (startX == 0f) return
-        applyAnimeRate(1f)
-        ObjectAnimator.ofFloat(
-            fragmentView,
-            PROP_NAME, startX, 0f
-        ).setDuration(100).start()
     }
 
     private fun setIMEViewChange(view: View) {
@@ -1033,8 +962,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 e.attachments.clear()   // clear the previous items, prevent dup attachments
                 e
             } else {
+                if (category == null) return
                 val e = NoteItem(content)
-                e.categoryId = category.id
+                e.categoryId = category!!.id
                 e
             }
 
@@ -1478,8 +1408,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     companion object {
         const val TAG: String = "NoteListFragment"
-        private const val PROP_NAME = "translationX"
-        private const val CLOSE_DURATION_DEFAULT = 200L
     }
 }
 

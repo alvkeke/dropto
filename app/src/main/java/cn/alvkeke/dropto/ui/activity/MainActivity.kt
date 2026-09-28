@@ -3,10 +3,14 @@ package cn.alvkeke.dropto.ui.activity
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
+import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -14,43 +18,43 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.storage.DataLoader.loadCategories
+import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.MgmtPageFragment
+import cn.alvkeke.dropto.ui.fragment.NoteListFragment
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
+import cn.alvkeke.dropto.ui.listener.ReleaseVelocitySampler
+import kotlin.math.abs
 
-class MainActivity : AppCompatActivity(), HorizontalDragListener {
+class MainActivity : AppCompatActivity(),
+    CategoryListFragment.EventListener,
+    NoteListFragment.EventListener {
 
     private var _categoryListFragment: CategoryListFragment? = null
     private var categoryListFragment: CategoryListFragment
-        get() {
-            if (_categoryListFragment == null) {
-                _categoryListFragment = CategoryListFragment()
-            }
-            return _categoryListFragment!!
-        }
-        set(value) {
-            _categoryListFragment = value
-        }
+        get() = _categoryListFragment ?: CategoryListFragment().also { _categoryListFragment = it }
+        set(value) { _categoryListFragment = value }
 
     private var _mgmtPageFragment: MgmtPageFragment? = null
     private var mgmtPageFragment: MgmtPageFragment
-        get() {
-            if (_mgmtPageFragment == null) {
-                _mgmtPageFragment = MgmtPageFragment()
-            }
-            return _mgmtPageFragment!!
-        }
-        set(value) {
-            _mgmtPageFragment = value
-        }
+        get() = _mgmtPageFragment ?: MgmtPageFragment().also { _mgmtPageFragment = it }
+        set(value) { _mgmtPageFragment = value }
 
-    private lateinit var rootLayout: View
-    private lateinit var mgmtContainer: View
+    private var _noteListFragment: NoteListFragment? = null
+    private var noteListFragment: NoteListFragment
+        get() = _noteListFragment ?: NoteListFragment().also { _noteListFragment = it }
+        set(value) { _noteListFragment = value }
+
+    private lateinit var rootLayout: ViewGroup
+    private lateinit var mgmtContainer: FragmentContainerView
+    private lateinit var cateContainer: FragmentContainerView
+    private lateinit var noteContainer: FragmentContainerView
+
     private lateinit var movementGate: View
     private var categoryElevationPx = 0f
 
@@ -58,13 +62,14 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
     private var mgmtPanelWidth = 0
 
     private var dragBaseLeft = 0f
-    private var dragStartDelta = 0f
 
     private val viewModel: MainViewModel by lazy {
         ViewModelProvider(this)[MainViewModel::class.java]
     }
 
     private var revealAnimation: ObjectAnimator? = null
+    private var noteAnimation: ObjectAnimator? = null
+    private var noteDragBase = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,6 +77,8 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
         setContentView(R.layout.activity_main)
         rootLayout = findViewById(R.id.main_root)
         mgmtContainer = findViewById(R.id.mgmt_container)
+        cateContainer = findViewById(R.id.category_container)
+        noteContainer = findViewById(R.id.note_container)
         movementGate = findViewById(R.id.movement_gate)
         categoryElevationPx = resources.getDimension(R.dimen.elevation_category_page)
 
@@ -86,24 +93,35 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
             when (f) {
                 is CategoryListFragment -> categoryListFragment = f
                 is MgmtPageFragment -> mgmtPageFragment = f
+                is NoteListFragment -> noteListFragment = f
             }
         }
 
         if (!mgmtPageFragment.isAdded) {
-            supportFragmentManager.beginTransaction()
-                .add(R.id.mgmt_container, mgmtPageFragment, null)
-                .commit()
+            bindFragment(R.id.mgmt_container, mgmtPageFragment)
         }
         if (!categoryListFragment.isAdded) {
-            startFragment(categoryListFragment)
+            bindFragment(R.id.category_container, categoryListFragment)
+        }
+        if (!noteListFragment.isAdded) {
+            bindFragment(R.id.note_container, noteListFragment)
         }
 
-        categoryListFragment.revealGestureListener = this
-        mgmtPageFragment.revealGestureListener = this
+        categoryListFragment.eventListener = this
+        noteListFragment.eventListener = this
+        categoryListFragment.horizontalDragListener = mgmtDragListener
+        mgmtPageFragment.horizontalDragListener = mgmtDragListener
+        noteListFragment.horizontalDragListener = noteDragListener
+        movementGate.setOnClickListener { animateCloseMgmt() }
+        movementGate.setOnTouchListener(GateDragListener())
 
+        val noteListOpened = savedInstanceState?.getBoolean(STATE_NOTE_LIST_OPEN) == true
         rootLayout.post {
             updateMgmtContainerWidth()
-            onMgmtRevealProgress(categoryListFragment.view?.translationX ?: 0f)
+            onMgmtRevealProgress(cateContainer.translationX)
+            if (noteListOpened) {
+                noteContainer.isVisible = true
+            }
         }
         rootLayout.addOnLayoutChangeListener { _, left, top, right, bottom,
                                                oldLeft, oldTop, oldRight, oldBottom ->
@@ -116,15 +134,22 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
 
         if (savedInstanceState == null) {
             Log.v(TAG, "onCreate: fresh start")
-            val categories: ArrayList<Category> = loadCategories(this)
+            val categories: ArrayList<Category> = DataLoader.loadCategories(this)
             viewModel.setCategoriesList(categories)
         } else {
             Log.v(TAG, "onCreate: restore from savedInstanceState")
         }
     }
 
+    private fun bindFragment(viewId: Int, fragment: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .add(viewId, fragment, null)
+            .commit()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+        outState.putBoolean(STATE_NOTE_LIST_OPEN, isNoteListOpen())
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -142,13 +167,6 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
         recreate()
     }
 
-    private fun startFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .add(R.id.main_container, fragment, null)
-            .addToBackStack(fragment.javaClass.simpleName)
-            .commit()
-    }
-
     private fun updateMgmtContainerWidth() {
         val rootWidth = rootLayout.width
         if (rootWidth <= 0) return
@@ -160,71 +178,11 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
         }
     }
 
-    private fun moveMgmtRevealTo(left: Float) {
-        val panel = mgmtPanelWidth
-        if (panel <= 0) return
-        val target = left.coerceIn(0f, panel.toFloat())
-        categoryListFragment.view?.translationX = target
-        onMgmtRevealProgress(target)
-    }
-
-    private fun categoryLeftX(): Float =
-        categoryListFragment.view?.translationX ?: 0f
-
-    internal fun isMgmtRevealed(): Boolean =
-        mgmtPanelWidth > 0 &&
-            categoryLeftX() >= mgmtPanelWidth - REVEAL_EPS
-
-    fun openMgmtReveal(velocityPxPerMs: Float? = null) {
-        animateRevealTo(open = true, velocityPxPerMs = velocityPxPerMs)
-    }
-
-    fun closeMgmtReveal(velocityPxPerMs: Float? = null) {
-        animateRevealTo(open = false, velocityPxPerMs = velocityPxPerMs)
-    }
-
-    fun toggleMgmtReveal() {
-        if (categoryLeftX() > REVEAL_EPS) {
-            closeMgmtReveal()
+    private fun toggleMgmtReveal() {
+        if (cateContainer.translationX > REVEAL_EPS) {
+            animateCloseMgmt()
         } else {
-            openMgmtReveal()
-        }
-    }
-
-    override fun onDragStart(deltaX: Float) {
-        revealAnimation?.let {
-            revealAnimation = null
-            it.cancel()
-        }
-        dragBaseLeft = categoryLeftX()
-        dragStartDelta = deltaX
-    }
-
-    override fun onDragging(deltaX: Float) {
-        moveMgmtRevealTo(dragBaseLeft + deltaX - dragStartDelta)
-    }
-
-    override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
-        settleMgmtReveal(dragBaseLeft, deltaX - dragStartDelta, velocityPxPerMs)
-    }
-
-    private fun settleMgmtReveal(
-        dragStartLeft: Float,
-        deltaX: Float,
-        velocityPxPerMs: Float,
-    ) {
-        val panel = mgmtPanelWidth
-        if (panel <= 0) return
-        val half = panel / 2f
-        val open = if (dragStartLeft < half) {
-            velocityPxPerMs > REVEAL_FLING_SPEED || deltaX > half
-        } else {
-            !(velocityPxPerMs < -REVEAL_FLING_SPEED || deltaX < -half)
-        }
-        if (open) {
-            openMgmtReveal(velocityPxPerMs)
-        } else {
-            closeMgmtReveal(velocityPxPerMs)
+            animateOpenMgmt()
         }
     }
 
@@ -244,15 +202,15 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
             v.scaleY = scale
         }
 
-        val moving = ratio > 0f && ratio < 1f
-        movementGate.isVisible = moving
+        movementGate.translationX = categoryListLeft
+        movementGate.isVisible = ratio > 0f
     }
 
     private fun animateRevealTo(open: Boolean, velocityPxPerMs: Float? = null) {
         if (mgmtPanelWidth <= 0) return
         val targetX = if (open) mgmtPanelWidth.toFloat() else 0f
-        val view = categoryListFragment.view ?: return
-        if (view.translationX == targetX) {
+        val startX = cateContainer.translationX
+        if (startX == targetX) {
             revealAnimation = null
             onMgmtRevealProgress(targetX)
             return
@@ -261,12 +219,12 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
         revealAnimation = null
 
         val anim = ObjectAnimator.ofFloat(
-            view, PROP_TRANSLATION_X, view.translationX, targetX
+            cateContainer, PROP_TRANSLATION_X, startX, targetX
         ).apply {
-            duration = revealDurationFor(
+            duration = calcDuration(
                 velocityPxPerMs,
-                kotlin.math.abs(targetX - view.translationX),
-            ).coerceAtMost(200)
+                abs(targetX - startX),
+            ).coerceAtMost(MAX_DURATION_FRAGMENT_ANIME)
             addUpdateListener {
                 onMgmtRevealProgress(animatedValue as Float)
             }
@@ -282,26 +240,244 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
         anim.start()
     }
 
-    private fun revealDurationFor(
+    private fun animateOpenMgmt(velocityPxPerMs: Float? = null) {
+        animateRevealTo(open = true, velocityPxPerMs = velocityPxPerMs)
+    }
+
+    private fun animateCloseMgmt(velocityPxPerMs: Float? = null) {
+        animateRevealTo(open = false, velocityPxPerMs = velocityPxPerMs)
+    }
+
+    private fun translateCategoryFragment(left: Float) {
+        val panel = mgmtPanelWidth
+        if (panel <= 0) return
+        val target = left.coerceIn(0f, panel.toFloat())
+        cateContainer.translationX = target
+        onMgmtRevealProgress(target)
+    }
+
+    private val mgmtDragListener = object : HorizontalDragListener {
+        override fun onDragStart() {
+            revealAnimation?.let {
+                revealAnimation = null
+                it.cancel()
+            }
+            dragBaseLeft = cateContainer.translationX
+        }
+
+        override fun onDragging(deltaX: Float) {
+            translateCategoryFragment(dragBaseLeft + deltaX)
+        }
+
+        override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
+            val left = dragBaseLeft + deltaX
+            val open = if (abs(velocityPxPerMs) > REVEAL_FLING_SPEED) {
+                velocityPxPerMs > 0f
+            } else {
+                left > mgmtPanelWidth / 2f
+            }
+            if (open) {
+                animateOpenMgmt(velocityPxPerMs)
+            } else {
+                animateCloseMgmt(velocityPxPerMs)
+            }
+        }
+    }
+
+    private inner class GateDragListener : View.OnTouchListener {
+        private val touchSlop = ViewConfiguration.get(this@MainActivity).scaledTouchSlop
+        private val velocitySampler = ReleaseVelocitySampler()
+
+        private var downX = 0f
+        private var downY = 0f
+        private var dragging = false
+        private var dragStartDeltaX = 0f
+
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouch(v: View, event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX
+                    downY = event.rawY
+                    dragging = false
+                    velocitySampler.clear()
+                    velocitySampler.add(event.rawX, event.rawY)
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    velocitySampler.add(event.rawX, event.rawY)
+                    val deltaX = event.rawX - downX
+                    val deltaY = event.rawY - downY
+                    if (!dragging) {
+                        if (abs(deltaX) > touchSlop && abs(deltaX) > abs(deltaY)) {
+                            dragging = true
+                            dragStartDeltaX = deltaX
+                            mgmtDragListener.onDragStart()
+                            v.isPressed = false
+                        } else if (abs(deltaY) > touchSlop) {
+                            return false
+                        }
+                    }
+                    if (dragging) {
+                        mgmtDragListener.onDragging(deltaX - dragStartDeltaX)
+                        return true
+                    }
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    velocitySampler.add(event.rawX, event.rawY)
+                    if (dragging) {
+                        dragging = false
+                        val velocity = velocitySampler.recentReleaseVelocity().first
+                        mgmtDragListener.onDragEnd(
+                            event.rawX - downX - dragStartDeltaX,
+                            velocity,
+                        )
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+    }
+
+    private fun calcDuration(
         velocityPxPerMs: Float?,
         distancePx: Float,
     ): Long {
         if (velocityPxPerMs == null || velocityPxPerMs == 0f ||
             distancePx <= 0f
         ) {
-            return REVEAL_DURATION
+            return MAX_DURATION_FRAGMENT_ANIME
         }
-        val ms = (distancePx / kotlin.math.abs(velocityPxPerMs)).toLong()
+        val ms = (distancePx / abs(velocityPxPerMs)).toLong()
         return ms
+    }
+
+    private fun animateNoteListTo(
+        targetX: Float,
+        velocityPxPerMs: Float?,
+        hideOnEnd: Boolean,
+    ) {
+        val startX = noteContainer.translationX
+        if (startX == targetX) {
+            if (hideOnEnd) {
+                noteContainer.isVisible = false
+            }
+            return
+        }
+        cancelNoteAnimation()
+        val anim = ObjectAnimator.ofFloat(
+            noteContainer, PROP_TRANSLATION_X, startX, targetX
+        ).apply {
+            duration = calcDuration(
+                velocityPxPerMs,
+                abs(targetX - startX),
+            ).coerceAtMost(MAX_DURATION_FRAGMENT_ANIME)
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (noteAnimation !== animation) return
+                    noteAnimation = null
+                    if (hideOnEnd) {
+                        noteContainer.isVisible = false
+                    }
+                }
+            })
+        }
+        noteAnimation = anim
+        anim.start()
+    }
+
+    private fun animateOpenNoteList(velocityPxPerMs: Float? = null) {
+        val width = rootLayout.width
+        if (width <= 0) return
+        cancelNoteAnimation()
+        if (!noteContainer.isVisible) {
+            noteContainer.isVisible = true
+            noteContainer.translationX = width.toFloat()
+        }
+        animateNoteListTo(0f, velocityPxPerMs, hideOnEnd = false)
+    }
+
+    private fun animateCloseNoteList(velocityPxPerMs: Float? = null) {
+        if (!noteContainer.isVisible) return
+        val width = rootLayout.width
+        if (width <= 0) {
+            noteContainer.isVisible = false
+            return
+        }
+        animateNoteListTo(width.toFloat(), velocityPxPerMs, hideOnEnd = true)
+    }
+
+    private fun cancelNoteAnimation() {
+        noteAnimation?.let {
+            noteAnimation = null
+            it.cancel()
+        }
+    }
+
+    private fun isNoteListOpen(): Boolean = noteContainer.isVisible
+
+    private fun translateNoteFragment(left: Float) {
+        val width = rootLayout.width
+        if (width <= 0) return
+        noteContainer.translationX = left.coerceIn(0f, width.toFloat())
+    }
+
+    private val noteDragListener = object : HorizontalDragListener {
+        override fun onDragStart() {
+            cancelNoteAnimation()
+            noteDragBase = noteContainer.translationX
+        }
+
+        override fun onDragging(deltaX: Float) {
+            translateNoteFragment(noteDragBase + deltaX)
+        }
+
+        override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
+            val left = noteDragBase + deltaX
+            val open = if (abs(velocityPxPerMs) > REVEAL_FLING_SPEED) {
+                velocityPxPerMs < 0f
+            } else {
+                left < rootLayout.width / 3f
+            }
+            if (open) {
+                animateOpenNoteList(velocityPxPerMs)
+            } else {
+                animateCloseNoteList(velocityPxPerMs)
+            }
+        }
+    }
+
+    override fun onCategoryShow(category: Category) {
+        if (!DataLoader.loadCategoryNotes(this, category)) {
+            Log.e(TAG, "Failed to get noteList from database")
+        }
+        viewModel.setCategory(category)
+        animateOpenNoteList()
+    }
+
+    override fun onNavigationClick() {
+        toggleMgmtReveal()
+    }
+
+    override fun onNoteListClose() {
+        animateCloseNoteList()
     }
 
     internal inner class OnFragmentBackPressed(enabled: Boolean) : OnBackPressedCallback(enabled) {
         override fun handleOnBackPressed() {
-            if (categoryLeftX() > REVEAL_EPS) {
-                closeMgmtReveal()
+            if (cateContainer.translationX > REVEAL_EPS) {
+                animateCloseMgmt()
                 return
             }
-            val fragment = supportFragmentManager.findFragmentById(R.id.main_container)
+            if (isNoteListOpen()) {
+                if (!noteListFragment.onBackPressed()) {
+                    animateCloseNoteList()
+                }
+                return
+            }
+            val fragment = supportFragmentManager.findFragmentById(R.id.category_container)
             var ret = false
             if (fragment is FragmentOnBackListener) {
                 ret = (fragment as FragmentOnBackListener).onBackPressed()
@@ -315,11 +491,12 @@ class MainActivity : AppCompatActivity(), HorizontalDragListener {
     companion object {
         const val TAG: String = "MainActivity"
         private const val PROP_TRANSLATION_X = "translationX"
-        private const val REVEAL_DURATION = 200L
+        private const val MAX_DURATION_FRAGMENT_ANIME = 200L
         // px tolerance used to treat the reveal as fully open / fully closed
         private const val REVEAL_EPS = 1f
-        private const val REVEAL_FLING_SPEED = 2f
+        private const val REVEAL_FLING_SPEED = 0.2f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
         private const val MGMT_SCALE_MIN = 0.9f
+        private const val STATE_NOTE_LIST_OPEN = "note_list_open"
     }
 }

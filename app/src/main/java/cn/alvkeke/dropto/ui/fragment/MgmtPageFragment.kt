@@ -13,7 +13,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.ui.activity.MainActivity
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.component.MgmtItemView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -39,7 +38,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
     private lateinit var itemNotes: MgmtItemView
     private lateinit var itemReactions: MgmtItemView
 
-    var revealGestureListener: HorizontalDragListener? = null
+    var horizontalDragListener: HorizontalDragListener? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -97,6 +96,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         private var downX = 0f
         private var downY = 0f
         private var dragging = false
+        private var dragStartDeltaX = 0f
 
         @SuppressLint("ClickableViewAccessibility")
         override fun onTouch(v: View, event: MotionEvent): Boolean {
@@ -116,7 +116,8 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
                     if (!dragging) {
                         if (abs(deltaX) > touchSlop && abs(deltaX) > abs(deltaY)) {
                             dragging = true
-                            revealGestureListener?.onDragStart(deltaX)
+                            dragStartDeltaX = deltaX
+                            horizontalDragListener?.onDragStart()
                             // the row is already pressed down, drop it, so no
                             // click is delivered when the finger lifts
                             v.isPressed = false
@@ -125,7 +126,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
                         }
                     }
                     if (dragging) {
-                        revealGestureListener?.onDragging(deltaX)
+                        horizontalDragListener?.onDragging(deltaX - dragStartDeltaX)
                         return true
                     }
                 }
@@ -134,8 +135,8 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
                     if (dragging) {
                         dragging = false
                         val velocity = velocitySampler.recentReleaseVelocity().first
-                        revealGestureListener
-                            ?.onDragEnd(event.rawX - downX, velocity)
+                        horizontalDragListener
+                            ?.onDragEnd(event.rawX - downX - dragStartDeltaX, velocity)
                         return true
                     }
                 }
@@ -156,7 +157,7 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
     }
 
     fun finish() {
-        (activity as? MainActivity)?.closeMgmtReveal()
+//        (activity as? MainActivity)?.animateCloseMgmt()
     }
 
 }

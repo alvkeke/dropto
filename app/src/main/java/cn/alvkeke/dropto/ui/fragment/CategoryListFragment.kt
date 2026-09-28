@@ -30,8 +30,6 @@ import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper.startFragmentAnime
-import cn.alvkeke.dropto.ui.activity.MainActivity
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
@@ -46,6 +44,12 @@ import java.util.Random
 import kotlin.time.Duration.Companion.milliseconds
 
 class CategoryListFragment : Fragment(), CoreServiceListener {
+
+    interface EventListener {
+        fun onCategoryShow(category: Category)
+        fun onNavigationClick()
+    }
+
     private val app: DroptoApplication
         get() = requireActivity().application as DroptoApplication
     private lateinit var context: Context
@@ -56,7 +60,8 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     private lateinit var toolbar: MaterialToolbar
     private lateinit var contentContainer: View
 
-    var revealGestureListener: HorizontalDragListener? = null
+    var horizontalDragListener: HorizontalDragListener? = null
+    var eventListener: EventListener? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -90,7 +95,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         UserInterfaceHelper.setSystemBarHeight(view, statusBar, navigationBar)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_menu)
-        toolbar.setNavigationOnClickListener(OnCategoryListMenuClick())
+        toolbar.setNavigationOnClickListener { eventListener?.onNavigationClick() }
         toolbar.inflateMenu(R.menu.category_toolbar)
         toolbar.setOnMenuItemClickListener(CategoryMenuListener())
 
@@ -148,12 +153,6 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         })
         itemTouchHelper.attachToRecyclerView(rlCategory)
         categoryListAdapter.setItemTouchHelper(itemTouchHelper)
-    }
-
-    private inner class OnCategoryListMenuClick : View.OnClickListener {
-        override fun onClick(view: View) {
-            (activity as? MainActivity)?.toggleMgmtReveal()
-        }
     }
 
     private fun throwErrorMessage(msg: String) {
@@ -270,43 +269,27 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
 
     private inner class OnListItemClickListener : OnRecyclerViewTouchListener(context) {
         override fun onItemClick(v: View, index: Int): Boolean {
-            if (getMainActivity()?.isMgmtRevealed() == true) {
-                getMainActivity()?.closeMgmtReveal()
-                return true
-            }
             if (rlCategory.isSelectMode) {
                 rlCategory.toggleSelectItems(index)
                 return true
             }
             val category = categoryListAdapter.get(index)
-            handleCategoryExpand(category)
+            eventListener?.onCategoryShow(category)
             return true
         }
 
         override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
-            if (getMainActivity()?.isMgmtRevealed() == true) {
-                getMainActivity()?.closeMgmtReveal()
-                return true
-            }
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             rlCategory.toggleSelectItems(index)
             return true
         }
 
         override fun onClick(v: View, e: MotionEvent): Boolean {
-            // a tap on the empty area of the list also closes the reveal
-            if (getMainActivity()?.isMgmtRevealed() == true) {
-                getMainActivity()?.closeMgmtReveal()
-                return true
-            }
             return false
         }
 
-        private fun getMainActivity(): MainActivity? =
-            activity as? MainActivity
-
-        override fun onDragHorizontalStart(v: View, e: MotionEvent, delta: Float) {
-            revealGestureListener?.onDragStart(delta)
+        override fun onDragHorizontalStart(v: View, e: MotionEvent) {
+            horizontalDragListener?.onDragStart()
         }
 
         override fun onDraggingHorizontal(
@@ -314,7 +297,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
             e: MotionEvent,
             delta: Float,
         ): Boolean {
-            revealGestureListener?.onDragging(delta)
+            horizontalDragListener?.onDragging(delta)
             return true
         }
 
@@ -324,56 +307,15 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
             delta: Float,
             speed: Float,
         ): Boolean {
-            revealGestureListener?.onDragEnd(delta, speed)
+            horizontalDragListener?.onDragEnd(delta, speed)
             return true
         }
-    }
-
-    private val noteListFragment: NoteListFragment by lazy {
-        NoteListFragment()
     }
 
     fun setContentAlpha(revealRatio: Float) {
         if (!::contentContainer.isInitialized) return
         val ratio = revealRatio.coerceIn(0f, 1f)
         contentContainer.alpha = 1f - ratio * (1f - CONTENT_FADE_MIN_ALPHA)
-    }
-
-    internal fun applyNoteCoverRate(rate: Float) {
-        if (!::contentContainer.isInitialized) return
-        val ratio = rate.coerceIn(0f, 1f)
-        contentContainer.pivotX = contentContainer.width / 2f
-        contentContainer.pivotY = contentContainer.height / 2f
-        contentContainer.animate().cancel()
-        val scale = NOTE_COVER_SCALE_MIN + (1f - NOTE_COVER_SCALE_MIN) * (1f - ratio)
-        contentContainer.scaleX = scale
-        contentContainer.scaleY = scale
-    }
-
-    private fun shrinkForNoteOpen() {
-        if (!::contentContainer.isInitialized) return
-        contentContainer.pivotX = contentContainer.width / 2f
-        contentContainer.pivotY = contentContainer.height / 2f
-        contentContainer.animate().cancel()
-        contentContainer.animate()
-            .scaleX(NOTE_COVER_SCALE_MIN)
-            .scaleY(NOTE_COVER_SCALE_MIN)
-            .setDuration(NOTE_COVER_ANIM_DURATION)
-            .start()
-    }
-
-    fun handleCategoryExpand(category: Category) {
-        val ret = DataLoader.loadCategoryNotes(context, category)
-        if (!ret) {
-            Log.e(this.toString(), "Failed to get noteList from database")
-        }
-        viewModel.setCategory(category)
-        noteListFragment.animateProcedure = { applyNoteCoverRate(it) }
-        parentFragmentManager.startFragmentAnime(
-            noteListFragment,
-            R.id.main_container,
-        )
-        shrinkForNoteOpen()
     }
 
     private val categoryDetailFragment: CategoryDetailFragment by lazy {
@@ -457,7 +399,5 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     companion object {
         const val TAG = "CategoryListFragment"
         private const val CONTENT_FADE_MIN_ALPHA = 0.3f
-        private const val NOTE_COVER_SCALE_MIN = 0.9f
-        private const val NOTE_COVER_ANIM_DURATION = 200L
     }
 }

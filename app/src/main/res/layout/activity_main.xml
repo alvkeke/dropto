@@ -13,7 +13,7 @@
         android:layout_gravity="start" />
 
     <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/main_container"
+        android:id="@+id/category_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:context=".ui.activity.MainActivity" />
@@ -25,5 +25,11 @@
         android:clickable="true"
         android:focusable="true"
         android:visibility="gone" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/note_container"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 </FrameLayout>

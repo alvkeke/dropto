@@ -259,7 +259,7 @@ class NoteItemView @JvmOverloads constructor(
             draggingPage = !draggingMedias
             if (draggingPage) {
                 pageDraggingAccepted = eventListener?.onDragStart(
-                    downRawX.toInt(), downRawY.toInt()
+                    lastRawX.toInt(), lastRawY.toInt()
                 ) ?: false
             }
         }
@@ -638,7 +638,7 @@ class NoteItemView @JvmOverloads constructor(
         fun onLongPressDrag(currentX: Int, currentY: Int)
         fun onLongPressRelease()
 
-        fun onDragStart(downX: Int, downY: Int): Boolean
+        fun onDragStart(startX: Int, startY: Int): Boolean
         fun onDragging(currentX: Int, currentY: Int): Boolean
 
         fun onDragEnd(currentX: Int, currentY: Int, speedX: Float, speedY: Float)
