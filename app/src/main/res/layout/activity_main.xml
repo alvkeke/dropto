@@ -11,12 +11,16 @@
         android:visibility="invisible"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:elevation="@dimen/elevation_mgmt_page"
+        android:outlineProvider="bounds"
         android:layout_gravity="start" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/category_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:elevation="@dimen/elevation_category_page"
+        android:outlineProvider="bounds"
         tools:context=".ui.activity.MainActivity" />
 
     <View
@@ -25,12 +29,16 @@
         android:layout_height="match_parent"
         android:clickable="true"
         android:focusable="true"
+        android:elevation="@dimen/elevation_category_page"
+        android:outlineProvider="none"
         android:visibility="gone" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/note_container"
         android:visibility="gone"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:elevation="@dimen/elevation_note_page"
+        android:outlineProvider="bounds" />
 
 </FrameLayout>

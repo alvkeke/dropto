@@ -3,8 +3,10 @@
     <dimen name="width_note_img">64dp</dimen>
     <dimen name="margin_note_items">8dp</dimen>
     <dimen name="size_image_guide_point">4dp</dimen>
-    <dimen name="elevation_category_page">8dp</dimen>
-    <dimen name="elevation_note_page">@dimen/elevation_category_page</dimen>
+    <dimen name="elevation_mgmt_page">8dp</dimen>
+    <dimen name="elevation_category_page">12dp</dimen>
+    <dimen name="elevation_note_page">16dp</dimen>
+    <dimen name="z_expand_dip_pages">4dp</dimen>
     <!-- the width of an attachment follows its ratio, the height is fixed -->
     <dimen name="size_note_item_media_height">150dp</dimen>
     <dimen name="size_note_item_media_min_width">100dp</dimen>

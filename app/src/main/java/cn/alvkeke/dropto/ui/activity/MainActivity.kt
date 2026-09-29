@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity(),
 
     private lateinit var movementGate: View
     private var categoryElevationPx = 0f
+    private var expandDipPx = 0f
 
     private val mgmtWidthRatio = 3f / 4f
     private var mgmtPanelWidth = 0
@@ -82,6 +83,7 @@ class MainActivity : AppCompatActivity(),
         noteContainer = findViewById(R.id.note_container)
         movementGate = findViewById(R.id.movement_gate)
         categoryElevationPx = resources.getDimension(R.dimen.elevation_category_page)
+        expandDipPx = resources.getDimension(R.dimen.z_expand_dip_pages)
 
         window.setFlags(
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -266,7 +268,7 @@ class MainActivity : AppCompatActivity(),
         view ?: return
         view.pivotX = view.width / 2f
         view.pivotY = view.height / 2f
-        val scale = FRAGMENT_SCALE_MIN + (1f - FRAGMENT_SCALE_MIN) * ratio
+        val scale = PAGE_SCALE_MIN + (1f - PAGE_SCALE_MIN) * ratio
         view.scaleX = scale
         view.scaleY = scale
     }
@@ -284,8 +286,8 @@ class MainActivity : AppCompatActivity(),
         if (panel <= 0) return
         val ratio = (categoryListLeft / panel).coerceIn(0f, 1f)
 
-        categoryListFragment.setContentAlpha(ratio)
-        applyPageScale(mgmtPageFragment.view, ratio)
+        applyPageScale(mgmtContainer, ratio)
+        mgmtContainer.translationZ = expandDipPx * (ratio - 1f)
         movementGate.translationX = categoryListLeft
         movementGate.isVisible = ratio > 0f
         mgmtContainer.visibility = if (ratio > 0f) View.VISIBLE else View.INVISIBLE
@@ -371,7 +373,8 @@ class MainActivity : AppCompatActivity(),
         if (width <= 0) return
         val ratio = (noteListLeft / width).coerceIn(0f, 1f)
 
-        applyPageScale(categoryListFragment.view, ratio)
+        applyPageScale(cateContainer, ratio)
+        cateContainer.translationZ = expandDipPx * (ratio - 1f)
     }
 
     private fun animateOpenNoteList(velocityPxPerMs: Float? = null) {
@@ -457,7 +460,7 @@ class MainActivity : AppCompatActivity(),
         private const val REVEAL_EPS = 1f
         private const val REVEAL_FLING_SPEED = 0.2f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
-        private const val FRAGMENT_SCALE_MIN = 0.9f
+        private const val PAGE_SCALE_MIN = 0.9f
         private const val STATE_NOTE_LIST_OPEN = "note_list_open"
     }
 }

@@ -312,12 +312,6 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         }
     }
 
-    fun setContentAlpha(revealRatio: Float) {
-        if (!::contentContainer.isInitialized) return
-        val ratio = revealRatio.coerceIn(0f, 1f)
-        contentContainer.alpha = 1f - ratio * (1f - CONTENT_FADE_MIN_ALPHA)
-    }
-
     private val categoryDetailFragment: CategoryDetailFragment by lazy {
         CategoryDetailFragment()
     }
@@ -398,6 +392,5 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
 
     companion object {
         const val TAG = "CategoryListFragment"
-        private const val CONTENT_FADE_MIN_ALPHA = 0.3f
     }
 }
