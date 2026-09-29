@@ -2,7 +2,7 @@ package cn.alvkeke.dropto.ui.activity
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Bundle
@@ -61,15 +61,16 @@ class MainActivity : AppCompatActivity(),
     private val mgmtWidthRatio = 3f / 4f
     private var mgmtPanelWidth = 0
 
-    private var dragBaseLeft = 0f
-
     private val viewModel: MainViewModel by lazy {
         ViewModelProvider(this)[MainViewModel::class.java]
     }
 
-    private var revealAnimation: ObjectAnimator? = null
-    private var noteAnimation: ObjectAnimator? = null
-    private var noteDragBase = 0f
+    private val mgmtSlide by lazy {
+        PageSlider(cateContainer, { mgmtPanelWidth.toFloat() }, ::onMgmtRevealProgress)
+    }
+    private val noteSlide by lazy {
+        PageSlider(noteContainer, { rootLayout.width.toFloat() }, ::onNoteListProgress)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,6 +122,7 @@ class MainActivity : AppCompatActivity(),
             onMgmtRevealProgress(cateContainer.translationX)
             if (noteListOpened) {
                 noteContainer.isVisible = true
+                onNoteListProgress(noteContainer.translationX)
             }
         }
         rootLayout.addOnLayoutChangeListener { _, left, top, right, bottom,
@@ -178,6 +180,97 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
+    private fun calcDuration(
+        velocityPxPerMs: Float?,
+        distancePx: Float,
+    ): Long {
+        if (velocityPxPerMs == null || velocityPxPerMs == 0f ||
+            distancePx <= 0f
+        ) {
+            return MAX_DURATION_FRAGMENT_ANIME
+        }
+        val ms = (distancePx / abs(velocityPxPerMs)).toLong()
+        return ms
+    }
+
+    private inner class PageSlider(
+        private val view: View,
+        private val maxOffset: () -> Float,
+        private val onProgress: (Float) -> Unit,
+    ) {
+        private var animator: ValueAnimator? = null
+        private var dragBase = 0f
+
+        fun translate(left: Float) {
+            val max = maxOffset()
+            if (max <= 0f) return
+            val target = left.coerceIn(0f, max)
+            view.translationX = target
+            onProgress(target)
+        }
+
+        fun cancel() {
+            animator?.let {
+                animator = null
+                it.cancel()
+            }
+        }
+
+        fun animateTo(targetX: Float, velocityPxPerMs: Float?, onEnd: () -> Unit = {}) {
+            val startX = view.translationX
+            if (startX == targetX) {
+                animator = null
+                translate(targetX)
+                onEnd()
+                return
+            }
+            cancel()
+            val anim = ValueAnimator.ofFloat(startX, targetX).apply {
+                duration = calcDuration(
+                    velocityPxPerMs,
+                    abs(targetX - startX),
+                ).coerceAtMost(MAX_DURATION_FRAGMENT_ANIME)
+                addUpdateListener {
+                    translate(it.animatedValue as Float)
+                }
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        if (animator !== animation) return
+                        animator = null
+                        onEnd()
+                    }
+                })
+            }
+            animator = anim
+            anim.start()
+        }
+
+        fun dragListener(onRelease: (left: Float, velocityPxPerMs: Float) -> Unit): HorizontalDragListener =
+            object : HorizontalDragListener {
+                override fun onDragStart() {
+                    cancel()
+                    dragBase = view.translationX
+                }
+
+                override fun onDragging(deltaX: Float) {
+                    translate(dragBase + deltaX)
+                }
+
+                override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
+                    onRelease(dragBase + deltaX, velocityPxPerMs)
+                }
+            }
+    }
+
+    private fun applyPageScale(view: View?, ratio: Float) {
+        view ?: return
+        view.pivotX = view.width / 2f
+        view.pivotY = view.height / 2f
+        val scale = FRAGMENT_SCALE_MIN + (1f - FRAGMENT_SCALE_MIN) * ratio
+        view.scaleX = scale
+        view.scaleY = scale
+    }
+
     private fun toggleMgmtReveal() {
         if (cateContainer.translationX > REVEAL_EPS) {
             animateCloseMgmt()
@@ -192,95 +285,27 @@ class MainActivity : AppCompatActivity(),
         val ratio = (categoryListLeft / panel).coerceIn(0f, 1f)
 
         categoryListFragment.setContentAlpha(ratio)
-        categoryListFragment.view?.elevation =
-            if (categoryListLeft > REVEAL_EPS) categoryElevationPx else 0f
-        mgmtPageFragment.view?.let { v ->
-            v.pivotX = v.width / 2f
-            v.pivotY = v.height / 2f
-            val scale = MGMT_SCALE_MIN + (1f - MGMT_SCALE_MIN) * ratio
-            v.scaleX = scale
-            v.scaleY = scale
-        }
-
+        applyPageScale(mgmtPageFragment.view, ratio)
         movementGate.translationX = categoryListLeft
         movementGate.isVisible = ratio > 0f
+        mgmtContainer.visibility = if (ratio > 0f) View.VISIBLE else View.INVISIBLE
     }
 
-    private fun animateRevealTo(open: Boolean, velocityPxPerMs: Float? = null) {
-        if (mgmtPanelWidth <= 0) return
-        val targetX = if (open) mgmtPanelWidth.toFloat() else 0f
-        val startX = cateContainer.translationX
-        if (startX == targetX) {
-            revealAnimation = null
-            onMgmtRevealProgress(targetX)
-            return
-        }
-        revealAnimation?.cancel()
-        revealAnimation = null
+    private fun animateOpenMgmt(velocityPxPerMs: Float? = null) =
+        mgmtSlide.animateTo(mgmtPanelWidth.toFloat(), velocityPxPerMs)
 
-        val anim = ObjectAnimator.ofFloat(
-            cateContainer, PROP_TRANSLATION_X, startX, targetX
-        ).apply {
-            duration = calcDuration(
-                velocityPxPerMs,
-                abs(targetX - startX),
-            ).coerceAtMost(MAX_DURATION_FRAGMENT_ANIME)
-            addUpdateListener {
-                onMgmtRevealProgress(animatedValue as Float)
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    if (revealAnimation != animation) return
-                    revealAnimation = null
-                    onMgmtRevealProgress(targetX)
-                }
-            })
-        }
-        revealAnimation = anim
-        anim.start()
-    }
+    private fun animateCloseMgmt(velocityPxPerMs: Float? = null) =
+        mgmtSlide.animateTo(0f, velocityPxPerMs)
 
-    private fun animateOpenMgmt(velocityPxPerMs: Float? = null) {
-        animateRevealTo(open = true, velocityPxPerMs = velocityPxPerMs)
-    }
-
-    private fun animateCloseMgmt(velocityPxPerMs: Float? = null) {
-        animateRevealTo(open = false, velocityPxPerMs = velocityPxPerMs)
-    }
-
-    private fun translateCategoryFragment(left: Float) {
-        val panel = mgmtPanelWidth
-        if (panel <= 0) return
-        val target = left.coerceIn(0f, panel.toFloat())
-        cateContainer.translationX = target
-        onMgmtRevealProgress(target)
-    }
-
-    private val mgmtDragListener = object : HorizontalDragListener {
-        override fun onDragStart() {
-            revealAnimation?.let {
-                revealAnimation = null
-                it.cancel()
-            }
-            dragBaseLeft = cateContainer.translationX
-        }
-
-        override fun onDragging(deltaX: Float) {
-            translateCategoryFragment(dragBaseLeft + deltaX)
-        }
-
-        override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
-            val left = dragBaseLeft + deltaX
+    private val mgmtDragListener by lazy {
+        mgmtSlide.dragListener { left, velocityPxPerMs ->
             val open = if (abs(velocityPxPerMs) > REVEAL_FLING_SPEED) {
                 velocityPxPerMs > 0f
             } else {
                 left > mgmtPanelWidth / 2f
             }
-            if (open) {
-                animateOpenMgmt(velocityPxPerMs)
-            } else {
-                animateCloseMgmt(velocityPxPerMs)
-            }
+            if (open) animateOpenMgmt(velocityPxPerMs)
+            else animateCloseMgmt(velocityPxPerMs)
         }
     }
 
@@ -341,62 +366,23 @@ class MainActivity : AppCompatActivity(),
         }
     }
 
-    private fun calcDuration(
-        velocityPxPerMs: Float?,
-        distancePx: Float,
-    ): Long {
-        if (velocityPxPerMs == null || velocityPxPerMs == 0f ||
-            distancePx <= 0f
-        ) {
-            return MAX_DURATION_FRAGMENT_ANIME
-        }
-        val ms = (distancePx / abs(velocityPxPerMs)).toLong()
-        return ms
-    }
+    private fun onNoteListProgress(noteListLeft: Float) {
+        val width = rootLayout.width
+        if (width <= 0) return
+        val ratio = (noteListLeft / width).coerceIn(0f, 1f)
 
-    private fun animateNoteListTo(
-        targetX: Float,
-        velocityPxPerMs: Float?,
-        hideOnEnd: Boolean,
-    ) {
-        val startX = noteContainer.translationX
-        if (startX == targetX) {
-            if (hideOnEnd) {
-                noteContainer.isVisible = false
-            }
-            return
-        }
-        cancelNoteAnimation()
-        val anim = ObjectAnimator.ofFloat(
-            noteContainer, PROP_TRANSLATION_X, startX, targetX
-        ).apply {
-            duration = calcDuration(
-                velocityPxPerMs,
-                abs(targetX - startX),
-            ).coerceAtMost(MAX_DURATION_FRAGMENT_ANIME)
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    if (noteAnimation !== animation) return
-                    noteAnimation = null
-                    if (hideOnEnd) {
-                        noteContainer.isVisible = false
-                    }
-                }
-            })
-        }
-        noteAnimation = anim
-        anim.start()
+        applyPageScale(categoryListFragment.view, ratio)
     }
 
     private fun animateOpenNoteList(velocityPxPerMs: Float? = null) {
         val width = rootLayout.width
         if (width <= 0) return
-        cancelNoteAnimation()
+        noteSlide.cancel()
         if (!noteContainer.isVisible) {
             noteContainer.isVisible = true
             noteContainer.translationX = width.toFloat()
         }
-        animateNoteListTo(0f, velocityPxPerMs, hideOnEnd = false)
+        noteSlide.animateTo(0f, velocityPxPerMs)
     }
 
     private fun animateCloseNoteList(velocityPxPerMs: Float? = null) {
@@ -406,46 +392,22 @@ class MainActivity : AppCompatActivity(),
             noteContainer.isVisible = false
             return
         }
-        animateNoteListTo(width.toFloat(), velocityPxPerMs, hideOnEnd = true)
-    }
-
-    private fun cancelNoteAnimation() {
-        noteAnimation?.let {
-            noteAnimation = null
-            it.cancel()
+        noteSlide.animateTo(width.toFloat(), velocityPxPerMs) {
+            noteContainer.isVisible = false
         }
     }
 
     private fun isNoteListOpen(): Boolean = noteContainer.isVisible
 
-    private fun translateNoteFragment(left: Float) {
-        val width = rootLayout.width
-        if (width <= 0) return
-        noteContainer.translationX = left.coerceIn(0f, width.toFloat())
-    }
-
-    private val noteDragListener = object : HorizontalDragListener {
-        override fun onDragStart() {
-            cancelNoteAnimation()
-            noteDragBase = noteContainer.translationX
-        }
-
-        override fun onDragging(deltaX: Float) {
-            translateNoteFragment(noteDragBase + deltaX)
-        }
-
-        override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
-            val left = noteDragBase + deltaX
+    private val noteDragListener by lazy {
+        noteSlide.dragListener { left, velocityPxPerMs ->
             val open = if (abs(velocityPxPerMs) > REVEAL_FLING_SPEED) {
                 velocityPxPerMs < 0f
             } else {
                 left < rootLayout.width / 3f
             }
-            if (open) {
-                animateOpenNoteList(velocityPxPerMs)
-            } else {
-                animateCloseNoteList(velocityPxPerMs)
-            }
+            if (open) animateOpenNoteList(velocityPxPerMs)
+            else animateCloseNoteList(velocityPxPerMs)
         }
     }
 
@@ -490,13 +452,12 @@ class MainActivity : AppCompatActivity(),
 
     companion object {
         const val TAG: String = "MainActivity"
-        private const val PROP_TRANSLATION_X = "translationX"
         private const val MAX_DURATION_FRAGMENT_ANIME = 200L
         // px tolerance used to treat the reveal as fully open / fully closed
         private const val REVEAL_EPS = 1f
         private const val REVEAL_FLING_SPEED = 0.2f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
-        private const val MGMT_SCALE_MIN = 0.9f
+        private const val FRAGMENT_SCALE_MIN = 0.9f
         private const val STATE_NOTE_LIST_OPEN = "note_list_open"
     }
 }
