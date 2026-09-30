@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity(),
 
         categoryListFragment.eventListener = this
         noteListFragment.eventListener = this
-        categoryListFragment.horizontalDragListener = mgmtDragListener
+        categoryListFragment.horizontalDragListener = categoryDragListener
         mgmtPageFragment.horizontalDragListener = mgmtDragListener
         noteListFragment.horizontalDragListener = noteDragListener
         movementGate.setOnClickListener { animateCloseMgmt() }
@@ -378,6 +378,7 @@ class MainActivity : AppCompatActivity(),
 
         applyPageScale(cateContainer, ratio)
         cateContainer.translationZ = expandDipPx * (ratio - 1f)
+        noteContainer.visibility = if (ratio < 1f) View.VISIBLE else View.GONE
     }
 
     private fun animateOpenNoteList(velocityPxPerMs: Float? = null) {
@@ -416,6 +417,43 @@ class MainActivity : AppCompatActivity(),
             else animateCloseNoteList(velocityPxPerMs)
         }
     }
+
+    private fun hasOpenedNoteList(): Boolean = viewModel.category.value != null
+
+    private inner class CategoryDragListener : HorizontalDragListener {
+        private var target: HorizontalDragListener? = null
+        private var resolved = false
+
+        override fun onDragStart() {
+            mgmtSlide.cancel()
+            noteSlide.cancel()
+            target = null
+            resolved = false
+        }
+
+        override fun onDragging(deltaX: Float) {
+            if (!resolved && deltaX != 0f) {
+                resolved = true
+                if (deltaX > 0f) {
+                    target = mgmtDragListener
+                } else if (hasOpenedNoteList()) {
+                    if (!noteContainer.isVisible) {
+                        noteContainer.translationX = rootLayout.width.toFloat()
+                    }
+                    target = noteDragListener
+                }
+                target?.onDragStart()
+            }
+            target?.onDragging(deltaX)
+        }
+
+        override fun onDragEnd(deltaX: Float, velocityPxPerMs: Float) {
+            target?.onDragEnd(deltaX, velocityPxPerMs)
+            target = null
+        }
+    }
+
+    private val categoryDragListener = CategoryDragListener()
 
     override fun onCategoryShow(category: Category) {
         lifecycleScope.launch(Dispatchers.IO) {
