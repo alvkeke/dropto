@@ -191,11 +191,11 @@ class NoteItemView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_MOVE -> return moveTouch(event)
             MotionEvent.ACTION_UP -> {
-                endTouch(false)
+                endTouch(event, false)
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
-                endTouch(true)
+                endTouch(event, true)
                 return true
             }
         }
@@ -305,7 +305,10 @@ class NoteItemView @JvmOverloads constructor(
     }
 
 
-    private fun endTouch(cancelled: Boolean) {
+    private fun endTouch(event: MotionEvent, cancelled: Boolean) {
+        if (!cancelled) {
+            velocityTracker?.addMovement(event)
+        }
         velocityTracker?.computeCurrentVelocity(1000)
         val speedX = (velocityTracker?.xVelocity ?: 0f) / 1000f
         val speedY = (velocityTracker?.yVelocity ?: 0f) / 1000f
