@@ -267,7 +267,15 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         setIMEViewChange(view)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_back)
-        toolbar.setNavigationOnClickListener { eventListener?.onNoteListClose() }
+        toolbar.setNavigationOnClickListener {
+            if (rlNoteList.isSelectMode) {
+                rlNoteList.unSelectAllItems()
+            } else if (isFilteringReaction) {
+                cancelReactionFilter()
+            } else {
+                eventListener?.onNoteListClose()
+            }
+        }
         toolbar.setOnMenuItemClickListener(NoteListMenuListener())
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar)
         setToolbarMenuBySelectedItems(0)
