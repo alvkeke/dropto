@@ -18,6 +18,12 @@ abstract class FilterableListAdapter<E, H : RecyclerView.ViewHolder> : RecyclerV
         notifyItemRangeInserted(0, itemCount)
     }
 
+    fun append(items: Collection<E>) {
+        val start = itemCount
+        this.elements.addAll(items)
+        notifyItemRangeInserted(start, itemCount - start)
+    }
+
     fun add(e: E): Int {
         if (elements.contains(e)) {
             return -1

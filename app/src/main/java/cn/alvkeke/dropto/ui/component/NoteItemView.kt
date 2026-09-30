@@ -20,16 +20,17 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.imageview.ShapeableImageView
-import androidx.compose.ui.graphics.asImageBitmap
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.storage.SenderInfoLoader
 import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
 import cn.alvkeke.dropto.ui.component.NoteItemChild.FileItemView
 import cn.alvkeke.dropto.ui.component.NoteItemChild.MediaItemView
@@ -39,6 +40,12 @@ import java.util.Locale
 import kotlin.math.abs
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.setMargins
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 class NoteItemView @JvmOverloads constructor(
@@ -95,17 +102,31 @@ class NoteItemView @JvmOverloads constructor(
         rebuildReactions(note?.reactions.orEmpty())
     }
 
+    private val senderScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var senderJob: Job? = null
     private fun bindSender(sender: String?) {
-        if (sender == null) {
-            avatarView.setImageDrawable(appIcon)
-            senderView.text = context.getString(R.string.string_note_sender_you)
-            avatarView.tag = null
-            return
+        senderJob?.cancel()
+        senderJob = senderScope.launch {
+            val (icon, label) = withContext(Dispatchers.IO) {
+                when (sender) {
+                    null -> {
+                        appIcon to context.getString(R.string.string_note_sender_you)
+                    }
+                    ShareRecvActivity.UNKNOWN_SENDER_PACKAGE -> {
+                        unknownSenderIcon to
+                                context.getString(R.string.string_note_sender_unknown)
+                    }
+                    else -> {
+                        val icon = SenderInfoLoader.loadSenderIcon(context, sender)
+                            ?: unknownSenderIcon
+                        icon to SenderInfoLoader.loadSenderLabel(context, sender)
+                    }
+                }
+            }
+            avatarView.setImageDrawable(icon)
+            senderView.text = label
+            avatarView.tag = sender?.let { ClickedContent(ClickedContent.Type.SENDER_ICON) }
         }
-
-        avatarView.setImageDrawable(getSenderIcon(sender))
-        senderView.text = getSenderLabel(sender)
-        avatarView.tag = ClickedContent(ClickedContent.Type.SENDER_ICON)
     }
 
     var eventListener: EventListener? = null
@@ -125,7 +146,7 @@ class NoteItemView @JvmOverloads constructor(
                 }
                 isVideo = file.isVideo
                 tag = ClickedContent(ClickedContent.Type.MEDIA, file, position)
-                mediaSizeCache[file.md5file.absolutePath]?.let {
+                ImageLoader.getMediaSize(file.md5file.absolutePath)?.let {
                     setMediaCellWidth(this, mediaCellWidth(it))
                 }
                 loadMediaThumbnail(file, this)
@@ -337,7 +358,7 @@ class NoteItemView @JvmOverloads constructor(
     private fun findHitView(group: ViewGroup, x: Float, y: Float): View? {
         for (i in group.childCount - 1 downTo 0) {
             val child = group.getChildAt(i)
-            if (child.visibility != View.VISIBLE) continue
+            if (child.visibility != VISIBLE) continue
 
             val childX = x + group.scrollX - child.left
             val childY = y + group.scrollY - child.top
@@ -406,7 +427,7 @@ class NoteItemView @JvmOverloads constructor(
         this.note?.reactions?.getOrNull(position) ?: ""
 
     private fun canScrollMedias(delta: Int): Boolean {
-        if (mediaScroll.visibility != View.VISIBLE) return false
+        if (mediaScroll.visibility != VISIBLE) return false
 
         val max = (mediaContainer.width - mediaScroll.width).coerceAtLeast(0)
         val target = mediaScroll.scrollX + delta
@@ -487,13 +508,13 @@ class NoteItemView @JvmOverloads constructor(
         // the view can be reused for another attachment before the bitmap is loaded,
         // so remember what was requested here and check it in the callback
         cell.boundPath = requestedPath
-        cell.thumbnail = ImageLoader.loadingBitmap.asImageBitmap()
+        cell.thumbnail = ImageLoader.loadingBitmap
 
         val listener = ImageLoader.ImageLoadListener { bitmap ->
             if (cell.boundPath != requestedPath) {
                 Log.v(TAG, "thumbnail of $requestedPath is not needed anymore, drop it")
             } else if (bitmap == null) {
-                cell.thumbnail = ImageLoader.errorBitmap.asImageBitmap()
+                cell.thumbnail = ImageLoader.errorBitmap
             } else {
                 applyMediaThumbnail(cell, requestedPath, bitmap)
             }
@@ -511,13 +532,10 @@ class NoteItemView @JvmOverloads constructor(
     private fun applyMediaThumbnail(cell: MediaItemView, path: String, bitmap: Bitmap) {
         val size = Size(bitmap.width, bitmap.height)
         if (size.width > 0 && size.height > 0) {
-            if (mediaSizeCache.size >= MEDIA_SIZE_CACHE_LIMIT) {
-                mediaSizeCache.clear()
-            }
-            mediaSizeCache[path] = size
+            ImageLoader.cacheMediaSize(path, size)
             setMediaCellWidth(cell, mediaCellWidth(size))
         }
-        cell.thumbnail = bitmap.asImageBitmap()
+        cell.thumbnail = bitmap
     }
 
     private fun mediaCellWidth(size: Size): Int {
@@ -538,45 +556,8 @@ class NoteItemView @JvmOverloads constructor(
         cell.layoutParams = params
     }
 
-    private fun getSenderIcon(sender: String): Drawable {
-        if (sender == ShareRecvActivity.UNKNOWN_SENDER_PACKAGE) {
-            return unknownSenderIcon
-        }
-        senderIconCache[sender]?.let { return it.freshCopy() }
-
-        val icon = try {
-            context.packageManager.getApplicationIcon(sender)
-        } catch (e: Exception) {
-            Log.e(TAG, "getSenderIcon: failed to get the icon of $sender, error: $e")
-            unknownSenderIcon
-        }
-        senderIconCache[sender] = icon
-        return icon.freshCopy()
-    }
-
-    private fun getSenderLabel(sender: String): String {
-        if (sender == ShareRecvActivity.UNKNOWN_SENDER_PACKAGE) {
-            return context.getString(R.string.string_note_sender_unknown)
-        }
-        senderLabelCache[sender]?.let { return it }
-
-        val label = try {
-            val info = context.packageManager.getApplicationInfo(sender, 0)
-            context.packageManager.getApplicationLabel(info).toString()
-        } catch (e: Exception) {
-            Log.e(TAG, "getSenderLabel: failed to get the label of $sender, error: $e")
-            sender
-        }
-        senderLabelCache[sender] = label
-        return label
-    }
-
-    /** a drawable instance cannot be used by more than one view at the same time */
-    private fun Drawable.freshCopy(): Drawable =
-        constantState?.newDrawable()?.mutate() ?: this
-
     private val unknownSenderIcon: Drawable by lazy {
-        context.getDrawable(R.drawable.icon_category_unknown)?.mutate() ?: appIcon
+        AppCompatResources.getDrawable(context, R.drawable.icon_category_unknown)?.mutate() ?: appIcon
     }
 
     private val errorDrawable: Drawable by lazy {
@@ -614,15 +595,7 @@ class NoteItemView @JvmOverloads constructor(
     companion object {
         const val TAG: String = "NoteItemView"
 
-
         private const val TEXT_SIZE_REACTION = 13f    // in sp
-
-        private const val MEDIA_SIZE_CACHE_LIMIT = 512
-
-        private val senderIconCache = HashMap<String, Drawable>()
-        private val senderLabelCache = HashMap<String, String>()
-
-        private val mediaSizeCache = HashMap<String, Size>()
         val dataFormatCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
         val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
         val dataFormatWeekly: SimpleDateFormat = SimpleDateFormat("EEE HH:mm", Locale.CHINESE)

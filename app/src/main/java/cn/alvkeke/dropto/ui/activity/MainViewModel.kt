@@ -29,6 +29,10 @@ class MainViewModel : ViewModel() {
         _category.value = category
         return this
     }
+    fun postCategory(category: Category) : MainViewModel{
+        _category.postValue(category)
+        return this
+    }
 
     private val _noteItem = MutableLiveData<NoteItem>()
     val noteItem: LiveData<NoteItem> = _noteItem

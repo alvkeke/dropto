@@ -20,6 +20,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.storage.DataLoader
@@ -29,6 +30,8 @@ import cn.alvkeke.dropto.ui.fragment.NoteListFragment
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
 import cn.alvkeke.dropto.ui.listener.ReleaseVelocitySampler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity(),
@@ -415,10 +418,12 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onCategoryShow(category: Category) {
-        if (!DataLoader.loadCategoryNotes(this, category)) {
-            Log.e(TAG, "Failed to get noteList from database")
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (!DataLoader.loadCategoryNotes(this@MainActivity, category)) {
+                Log.e(TAG, "Failed to get noteList from database")
+            }
+            viewModel.postCategory(category)
         }
-        viewModel.setCategory(category)
         animateOpenNoteList()
     }
 

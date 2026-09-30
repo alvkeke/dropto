@@ -40,6 +40,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.Fragment
@@ -80,11 +81,14 @@ import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 
 
 
@@ -114,6 +118,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private var category: Category? = null
     private var noteItemAdapter: NoteListAdapter = NoteListAdapter()
+    private var fillJob: Job? = null
 
     var horizontalDragListener: HorizontalDragListener? = null
     var eventListener: EventListener? = null
@@ -275,7 +280,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             if (this.category == category) return@observe
             this.category = category
             toolbar.setTitle(category.title)
-            noteItemAdapter.setList(category.noteItems)
+            fillNoteList(category.noteItems)
         }
 
         noteItemAdapter.showDeleted = false
@@ -337,6 +342,33 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         btnAttach.setOnLongClickListener(btnAttachListener)
     }
 
+    private fun fillNoteList(notes: List<NoteItem>) {
+        fillJob?.cancel()
+        noteItemAdapter.clear()
+        fillJob = viewLifecycleOwner.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                ImageLoader.prefetchMediaSizes(notes.flatMap { it.medias })
+            }
+            var index = 0
+            while (index < notes.size) {
+                val visible = noteItemAdapter.itemCount
+                val built = rlNoteList.childCount
+                noteItemAdapter.append(notes.subList(index, ++index))
+                if (index >= notes.size || noteItemAdapter.itemCount == visible) continue
+                awaitNextFrame()
+                if (rlNoteList.childCount <= built) {
+                    noteItemAdapter.append(notes.subList(index, notes.size))
+                    break
+                }
+            }
+        }
+    }
+
+    private suspend fun awaitNextFrame() {
+        suspendCancellableCoroutine { fill ->
+            rlNoteList.doOnPreDraw { rlNoteList.post { if (fill.isActive) fill.resume(Unit) } }
+        }
+    }
 
     override fun onBackPressed(): Boolean {
         if (rlNoteList.isSelectMode) {

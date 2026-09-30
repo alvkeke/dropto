@@ -8,16 +8,19 @@ import android.media.MediaMetadataRetriever
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.Size
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
 import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.LockedHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.Timer
 import java.util.TimerTask
 import kotlin.math.ceil
@@ -41,6 +44,9 @@ object ImageLoader {
 
     private val imagePool: LockedHashMap<String, WrappedBitmap> = LockedHashMap()
     private val videoPool: LockedHashMap<String, WrappedBitmap> = LockedHashMap()
+
+    private const val MEDIA_SIZE_CACHE_LIMIT = 512
+    private val mediaSizeCache = ConcurrentHashMap<String, Size>()
 
     private var imageTimeOut: Long = 5 * 60 * 1000 // 60 seconds
     private var imageMaxBytes:Int = 1048576 // 1*1024*1024;
@@ -361,6 +367,34 @@ object ImageLoader {
             return null
         } finally {
             retriever.release()
+        }
+    }
+
+    @JvmStatic
+    fun getMediaSize(path: String): Size? {
+        return mediaSizeCache[path]
+    }
+
+    @JvmStatic
+    fun cacheMediaSize(path: String, size: Size) {
+        if (mediaSizeCache.size >= MEDIA_SIZE_CACHE_LIMIT) {
+            mediaSizeCache.clear()
+        }
+        mediaSizeCache[path] = size
+    }
+
+    @JvmStatic
+    fun prefetchMediaSizes(files: List<AttachmentFile>) {
+        for (file in files) {
+            val path = file.md5file.absolutePath
+            if (mediaSizeCache.containsKey(path)) continue
+
+            val size = if (file.isVideo) {
+                getVideoSize(file.md5file)
+            } else {
+                getImageSize(file.md5file)
+            } ?: continue
+            cacheMediaSize(path, Size(size.first, size.second))
         }
     }
 
