@@ -187,7 +187,7 @@ class CoreService : Service() {
         serviceScope.launch { handleTaskCategoryUpdate(category) }
     }
 
-    private suspend fun handleTaskCategoryReorder(categories: List<Category>) {
+    private fun handleTaskCategoryReorder(categories: List<Category>) {
 
         var result = -1
         try {

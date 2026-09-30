@@ -19,7 +19,7 @@ class LockedHashMap<K, V>  {
 
     operator fun get(key: K): V? {
         lock.readLock().lock()
-        val value = map.get(key)
+        val value = map[key]
         lock.readLock().unlock()
         return value
     }

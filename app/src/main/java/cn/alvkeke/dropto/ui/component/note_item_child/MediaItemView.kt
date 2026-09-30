@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.ui.component.NoteItemChild
+package cn.alvkeke.dropto.ui.component.note_item_child
 
 import android.content.Context
 import android.content.res.ColorStateList

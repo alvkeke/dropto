@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @SuppressLint("ViewConstructor")
 class PopupMenu @JvmOverloads constructor(
@@ -206,7 +207,7 @@ class PopupMenu @JvmOverloads constructor(
                         .coerceIn(0f, 1f)
                     invalidate()
                     if (isEnd(animateRatio)) break
-                    kotlinx.coroutines.delay(ANIMATION_INTERVAL)
+                    kotlinx.coroutines.delay(ANIMATION_INTERVAL.milliseconds)
                 }
                 animationRunning = false
             }

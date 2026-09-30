@@ -5,7 +5,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import cn.alvkeke.dropto.service.CoreService.CoreSrvBinder
 
-open class CoreServiceConnection() : ServiceConnection {
+open class CoreServiceConnection : ServiceConnection {
 
     lateinit var binder: CoreSrvBinder
         private set

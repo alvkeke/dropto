@@ -19,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class SelectableRecyclerView @JvmOverloads constructor(
     context: Context,
@@ -185,7 +186,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
                 if (isEnd(info.ratio)) {
                     break
                 }
-                kotlinx.coroutines.delay(ANIMATION_INTERVAL)
+                kotlinx.coroutines.delay(ANIMATION_INTERVAL.milliseconds)
             }
             runOnFinish?.invoke()
             info.type = null
@@ -350,7 +351,7 @@ class SelectableRecyclerView @JvmOverloads constructor(
                 if (isEnd(highlightRatio)) {
                     break
                 }
-                kotlinx.coroutines.delay(ANIMATION_INTERVAL)
+                kotlinx.coroutines.delay(ANIMATION_INTERVAL.milliseconds)
             }
             highlightAnimating = false
             runOnFinish?.invoke()

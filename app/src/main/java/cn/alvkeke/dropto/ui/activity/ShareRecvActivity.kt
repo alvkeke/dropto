@@ -17,6 +17,7 @@ import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.FileHelper.getFileNameFromUri
 import cn.alvkeke.dropto.storage.FileHelper.saveUriToFile
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
+import androidx.core.net.toUri
 
 class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.CategorySelectListener {
 
@@ -79,7 +80,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
     private fun getPackageFromReferrerName(referrerName: String): String? {
         if (referrerName.isBlank()) return null
         return try {
-            val parsed = Uri.parse(referrerName)
+            val parsed = referrerName.toUri()
             when (parsed.scheme) {
                 null -> referrerName
                 "android-app" -> parsed.host

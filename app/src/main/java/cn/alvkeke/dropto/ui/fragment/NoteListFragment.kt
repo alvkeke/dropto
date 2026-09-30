@@ -89,7 +89,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
-
+import kotlin.time.Duration.Companion.milliseconds
 
 
 class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener,
@@ -571,8 +571,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             })
     }
 
-    private class AttachmentListAdapter(
-    ) : RecyclerView.Adapter<AttachmentListAdapter.ViewHolder>() {
+    private class AttachmentListAdapter : RecyclerView.Adapter<AttachmentListAdapter.ViewHolder>() {
 
         sealed class AttachmentItem(var deleteMarked: Boolean = false) {
             data class Attachment(
@@ -817,7 +816,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                                             val fMax = max.toFloat()
                                             for (a in 0..max) {
                                                 imageView.alpha = a / fMax
-                                                delay(10)
+                                                delay(10.milliseconds)
                                             }
                                         }
                                     }
@@ -931,7 +930,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    private inner class AttachmentListTouchListener() : OnRecyclerViewTouchListener(context) {
+    private inner class AttachmentListTouchListener : OnRecyclerViewTouchListener(context) {
 
         override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
             v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -954,7 +953,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    private inner class AttachButtonListener() : OnClickListener, OnLongClickListener {
+    private inner class AttachButtonListener : OnClickListener, OnLongClickListener {
 
         private var imagePicker = registerForActivityResult(
             // not going to limit the number of selected images/videos
@@ -1351,7 +1350,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private fun setupEditMode(note: NoteItem) {
         btnCancel.isVisible = true
         if (isEditingMode) {
-            // allow re-enter, replace the old one
+            // allow to re-enter, replace the old one
             attachmentListAdapter.clear()
         } else {
             etInputText.trySaveCurrentText()

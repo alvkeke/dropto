@@ -32,8 +32,8 @@ import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.storage.SenderInfoLoader
 import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
-import cn.alvkeke.dropto.ui.component.NoteItemChild.FileItemView
-import cn.alvkeke.dropto.ui.component.NoteItemChild.MediaItemView
+import cn.alvkeke.dropto.ui.component.note_item_child.FileItemView
+import cn.alvkeke.dropto.ui.component.note_item_child.MediaItemView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
