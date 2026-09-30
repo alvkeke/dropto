@@ -131,13 +131,14 @@
         <LinearLayout
             android:id="@+id/note_item_file_container"
             android:orientation="vertical"
-            android:layout_marginTop="2dp"
             android:visibility="gone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/note_item_reaction_container"
+            android:padding="4dp"
+            android:clipToPadding="false"
             android:layout_marginTop="6dp"
             app:chipSpacingHorizontal="6dp"
             app:chipSpacingVertical="2dp"

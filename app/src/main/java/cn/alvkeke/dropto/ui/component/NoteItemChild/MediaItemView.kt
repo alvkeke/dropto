@@ -1,7 +1,10 @@
 package cn.alvkeke.dropto.ui.component.NoteItemChild
 
 import android.content.Context
+import android.graphics.Outline
 import android.util.AttributeSet
+import android.view.View
+import android.view.ViewOutlineProvider
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,6 +33,14 @@ import cn.alvkeke.dropto.R
 class MediaItemView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : AbstractComposeView(context, attrs) {
+    init {
+        val cardRadius = resources.getDimension(R.dimen.radius_note_item_media)
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, cardRadius)
+            }
+        }
+    }
 
     var boundPath: String = ""
 

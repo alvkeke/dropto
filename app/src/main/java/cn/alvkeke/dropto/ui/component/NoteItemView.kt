@@ -38,6 +38,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import androidx.core.graphics.drawable.toDrawable
+import androidx.core.view.setMargins
 
 
 class NoteItemView @JvmOverloads constructor(
@@ -115,11 +116,12 @@ class NoteItemView @JvmOverloads constructor(
 
         medias.forEachIndexed { position, file ->
             val cell = MediaItemView(context).apply {
+                elevation = dimenPx(R.dimen.elevation_file_item).toFloat()
                 layoutParams = LinearLayout.LayoutParams(
                     dimenPx(R.dimen.size_note_item_media_default_width),
                     dimenPx(R.dimen.size_note_item_media_height)
                 ).apply {
-                    marginEnd = dimenPx(R.dimen.margin_note_item_element)
+                    setMargins(dimenPx(R.dimen.margin_note_item_file))
                 }
                 isVideo = file.isVideo
                 tag = ClickedContent(ClickedContent.Type.MEDIA, file, position)
@@ -429,10 +431,13 @@ class NoteItemView @JvmOverloads constructor(
 
         files.forEachIndexed { position, file ->
             val row = FileItemView(context).apply {
+                elevation = dimenPx(R.dimen.elevation_file_item).toFloat()
                 layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+                    LayoutParams.MATCH_PARENT,
+                    LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(dimenPx(R.dimen.margin_note_item_file))
+                }
                 fileName = file.name
                 tag = ClickedContent(
                     ClickedContent.Type.FILE, file, mediaCount + position
@@ -466,6 +471,7 @@ class NoteItemView @JvmOverloads constructor(
             chipBackgroundColor = ColorStateList.valueOf(context.getColor(R.color.reaction_background))
             chipStrokeWidth = 0f
             chipMinHeight = dimenPx(R.dimen.size_note_item_reaction_height).toFloat()
+            elevation = dimenPx(R.dimen.elevation_file_item).toFloat()
             val padding = dimenPx(R.dimen.padding_note_item_reaction)
             chipStartPadding = padding.toFloat()
             chipEndPadding = padding.toFloat()

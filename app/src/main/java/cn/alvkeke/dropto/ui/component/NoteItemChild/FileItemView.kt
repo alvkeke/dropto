@@ -1,10 +1,12 @@
 package cn.alvkeke.dropto.ui.component.NoteItemChild
 
 import android.content.Context
+import android.graphics.Outline
 import android.util.AttributeSet
+import android.view.View
+import android.view.ViewOutlineProvider
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,13 +28,21 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.alvkeke.dropto.R
 
 class FileItemView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : AbstractComposeView(context, attrs) {
+
+    init {
+        val cardRadius = resources.getDimension(R.dimen.radius_note_item_file)
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, cardRadius)
+            }
+        }
+    }
 
     var fileName: String by mutableStateOf("")
 
@@ -45,15 +55,11 @@ class FileItemView @JvmOverloads constructor(
 
         val cardShape = RoundedCornerShape(dimensionResource(R.dimen.radius_note_item_file))
         val cardPadding = dimensionResource(R.dimen.padding_note_item_file)
-        val cardSpacing = dimensionResource(R.dimen.margin_note_item_file)
-        val cardBorderColor = colorResource(R.color.color_text_sub).copy(CARD_BORDER_ALPHA)
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = cardSpacing)
                 .background(colorResource(R.color.note_bubble_background), cardShape)
-                .border(CARD_BORDER_WIDTH, cardBorderColor, cardShape)
                 .padding(cardPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -92,7 +98,5 @@ class FileItemView @JvmOverloads constructor(
 
     companion object {
         private val FILE_NAME_TEXT_SIZE = 14.sp
-        private val CARD_BORDER_WIDTH = 1.dp
-        private const val CARD_BORDER_ALPHA = 0.3f
     }
 }
