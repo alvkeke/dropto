@@ -19,6 +19,7 @@ import android.view.VelocityTracker
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.OverScroller
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -132,6 +133,7 @@ class NoteItemView @JvmOverloads constructor(
     var eventListener: EventListener? = null
 
     private fun rebuildMedias(medias: List<AttachmentFile>) {
+        mediaFling.abortAnimation()
         mediaScroll.scrollTo(0, 0)
         mediaContainer.removeAllViews()
 
@@ -176,6 +178,7 @@ class NoteItemView @JvmOverloads constructor(
     private var pressedInMedias = false                 // the finger is on the attachments strip
     private var longPressRunnable: Runnable? = null
     private var velocityTracker: VelocityTracker? = null
+    private var stoppedFling = false
 
     private enum class TouchAxis { NONE, HORIZONTAL, VERTICAL }
 
@@ -215,10 +218,17 @@ class NoteItemView @JvmOverloads constructor(
         pageDraggingAccepted = false
         longPressHandled = false
         longPressSliding = false
+        stoppedFling = false
+
+        if (!mediaFling.isFinished) {
+            mediaFling.abortAnimation()
+            stoppedFling = true
+        }
 
         velocityTracker?.recycle()
         velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
 
+        if (stoppedFling) return
         val runnable = Runnable {
             longPressRunnable = null
             if (axis != TouchAxis.NONE || longPressHandled || note == null) {
@@ -268,7 +278,9 @@ class NoteItemView @JvmOverloads constructor(
             }
             cancelLongPress()
 
-            if (abs(deltaY) > abs(deltaX)) {
+            val keepStrip = stoppedFling && pressedInMedias
+
+            if (!keepStrip && abs(deltaY) > abs(deltaX)) {
                 // the list owns the vertical scrolling, it can take the gesture over
                 axis = TouchAxis.VERTICAL
                 return false
@@ -278,8 +290,9 @@ class NoteItemView @JvmOverloads constructor(
             // the list must not take the gesture while the contents are dragged
             parent?.requestDisallowInterceptTouchEvent(true)
 
-            draggingMedias = pressedInMedias && canScrollMedias(-deltaX.toInt())
+            draggingMedias = keepStrip || (pressedInMedias && canScrollMedias(-deltaX.toInt()))
             draggingPage = !draggingMedias
+            lastMoveX = lastRawX
             if (draggingPage) {
                 pageDraggingAccepted = eventListener?.onDragStart(
                     lastRawX.toInt(), lastRawY.toInt()
@@ -316,12 +329,12 @@ class NoteItemView @JvmOverloads constructor(
         if (longPressHandled) {
             longPressHandled = false
             if (longPressSliding) eventListener?.onLongPressRelease()
-        } else if (axis == TouchAxis.NONE && !cancelled) {
+        } else if (axis == TouchAxis.NONE && !cancelled && !stoppedFling) {
             dispatchClick()
         } else if (axis == TouchAxis.HORIZONTAL) {
             if (draggingMedias) {
                 if (!cancelled) {
-                    mediaScroll.fling(-(speedX * 1000).toInt())
+                    flingMedias(-(speedX * 1000).toInt())
                 }
             } else if (draggingPage && pageDraggingAccepted) {
                 eventListener?.onDragEnd(lastRawX.toInt(), lastRawY.toInt(), speedX, speedY)
@@ -329,6 +342,24 @@ class NoteItemView @JvmOverloads constructor(
         }
 
         resetTouch()
+    }
+
+    private val mediaFling = OverScroller(context)
+
+    private val mediaFlingRunnable = object : Runnable {
+        override fun run() {
+            if (mediaFling.isFinished) return
+            mediaFling.computeScrollOffset()
+            mediaScroll.scrollTo(mediaFling.currX, 0)
+            postOnAnimation(this)
+        }
+    }
+
+    private fun flingMedias(velocityX: Int) {
+        val max = (mediaContainer.width - mediaScroll.width).coerceAtLeast(0)
+        if (max == 0) return
+        mediaFling.fling(mediaScroll.scrollX, 0, velocityX, 0, 0, max, 0, 0)
+        postOnAnimation(mediaFlingRunnable)
     }
 
 
@@ -444,6 +475,7 @@ class NoteItemView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         cancelLongPress()
+        mediaFling.abortAnimation()
         velocityTracker?.recycle()
         velocityTracker = null
         super.onDetachedFromWindow()
