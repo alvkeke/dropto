@@ -9,142 +9,176 @@
         android:id="@+id/note_item_avatar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_marginTop="@dimen/margin_note_item_element"
+        android:elevation="4dp"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/content_description_note_item_sender_avatar"
         app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.DropTo.Circle" />
 
+    <TextView
+        android:id="@+id/note_item_sender_name"
+        android:textColor="@color/color_text_main"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end"
+        app:layout_constraintStart_toEndOf="@id/note_item_avatar"
+        app:layout_constraintTop_toTopOf="@id/note_item_avatar"
+        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="DropTo" />
+
+    <TextView
+        android:id="@+id/note_item_create_time"
+        android:layout_marginStart="6dp"
+        android:textColor="@color/color_text_sub"
+        android:textSize="11sp"
+        android:maxLines="1"
+        app:layout_constraintStart_toEndOf="@id/note_item_sender_name"
+        app:layout_constraintTop_toTopOf="@id/note_item_sender_name"
+        app:layout_constraintBottom_toBottomOf="@id/note_item_sender_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="12:30" />
+
     <LinearLayout
-        android:id="@+id/note_item_content"
+        android:id="@+id/note_item_status_container"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="6dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toEndOf="@id/note_item_create_time"
+        app:layout_constraintTop_toTopOf="@id/note_item_sender_name"
+        app:layout_constraintBottom_toBottomOf="@id/note_item_sender_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:visibility="visible">
+
+        <ImageView
+            android:id="@+id/note_item_status_edited"
+            android:src="@drawable/img_note_item_edited"
+            app:tint="@color/color_text_sub"
+            android:contentDescription="@string/description_note_item_modify_icon"
+            android:visibility="gone"
+            android:layout_width="14dp"
+            android:layout_height="14dp" />
+
+        <ImageView
+            android:id="@+id/note_item_status_deleted"
+            android:layout_marginStart="4dp"
+            android:src="@drawable/icon_common_remove"
+            app:tint="@color/color_text_sub"
+            android:contentDescription="@string/description_note_item_deleted_icon"
+            android:visibility="gone"
+            android:layout_width="14dp"
+            android:layout_height="14dp" />
+
+        <ImageView
+            android:id="@+id/note_item_status_unsynced"
+            android:layout_marginStart="4dp"
+            android:src="@drawable/icon_common_not_sync"
+            app:tint="@color/color_text_sub"
+            android:contentDescription="@string/description_note_item_not_synced_icon"
+            android:visibility="gone"
+            android:layout_width="14dp"
+            android:layout_height="14dp" />
+    </LinearLayout>
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/note_item_header_barrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:barrierAllowsGoneWidgets="false"
+        app:constraint_referenced_ids="note_item_sender_name,note_item_create_time,note_item_status_container" />
+
+    <TextView
+        android:id="@+id/note_item_text"
+        android:textColor="@color/color_text_main"
+        android:textSize="15sp"
+        android:lineSpacingMultiplier="1.1"
+        android:visibility="gone"
         app:layout_constraintStart_toEndOf="@id/note_item_avatar"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:orientation="vertical"
+        app:layout_constraintTop_toBottomOf="@id/note_item_header_barrier"
+        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_marginEnd="@dimen/margin_note_item_element"
+        android:layout_marginTop="2dp"
         android:layout_width="0dp"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        tools:text="content of the note"
+        tools:visibility="visible" />
+
+    <HorizontalScrollView
+        android:id="@+id/note_item_media_scroll"
+        android:scrollbars="none"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/note_item_text"
+        android:layout_marginTop="@dimen/margin_note_item_element"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        tools:visibility="visible">
 
         <LinearLayout
-            android:id="@+id/note_item_header"
+            android:id="@+id/note_item_media_container"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <TextView
-                android:id="@+id/note_item_sender_name"
-                android:textColor="@color/color_text_main"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:text="DropTo" />
-
-            <TextView
-                android:id="@+id/note_item_create_time"
-                android:layout_marginStart="6dp"
-                android:textColor="@color/color_text_sub"
-                android:textSize="11sp"
-                android:maxLines="1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:text="12:30" />
-
-            <LinearLayout
-                android:id="@+id/note_item_status_container"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginStart="6dp"
-                android:visibility="gone"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:visibility="visible">
-
-                <ImageView
-                    android:id="@+id/note_item_status_edited"
-                    android:src="@drawable/img_note_item_edited"
-                    app:tint="@color/color_text_sub"
-                    android:contentDescription="@string/description_note_item_modify_icon"
-                    android:visibility="gone"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp" />
-
-                <ImageView
-                    android:id="@+id/note_item_status_deleted"
-                    android:layout_marginStart="4dp"
-                    android:src="@drawable/icon_common_remove"
-                    app:tint="@color/color_text_sub"
-                    android:contentDescription="@string/description_note_item_deleted_icon"
-                    android:visibility="gone"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp" />
-
-                <ImageView
-                    android:id="@+id/note_item_status_unsynced"
-                    android:layout_marginStart="4dp"
-                    android:src="@drawable/icon_common_not_sync"
-                    app:tint="@color/color_text_sub"
-                    android:contentDescription="@string/description_note_item_not_synced_icon"
-                    android:visibility="gone"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/note_item_text"
-            android:layout_marginTop="2dp"
-            android:textColor="@color/color_text_main"
-            android:textSize="15sp"
-            android:lineSpacingMultiplier="1.1"
-            android:visibility="gone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            tools:text="content of the note"
-            tools:visibility="visible" />
-
-        <HorizontalScrollView
-            android:id="@+id/note_item_media_scroll"
-            android:layout_marginTop="6dp"
-            android:scrollbars="none"
-            android:visibility="gone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            tools:visibility="visible">
-
-            <LinearLayout
-                android:id="@+id/note_item_media_container"
-                android:orientation="horizontal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </HorizontalScrollView>
-
-        <LinearLayout
-            android:id="@+id/note_item_file_container"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/note_item_reaction_container"
-            android:padding="4dp"
+            android:paddingStart="@dimen/padding_note_item_media_list_start"
+            android:paddingEnd="@dimen/margin_note_item_element"
             android:clipToPadding="false"
-            android:layout_marginTop="6dp"
-            app:chipSpacingHorizontal="6dp"
-            app:chipSpacingVertical="2dp"
-            android:visibility="gone"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
-    </LinearLayout>
+    </HorizontalScrollView>
+
+    <LinearLayout
+        android:id="@+id/note_item_file_container"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintStart_toEndOf="@id/note_item_avatar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/note_item_media_scroll"
+        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_marginEnd="@dimen/margin_note_item_element"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/note_item_reaction_container"
+        android:padding="4dp"
+        android:clipToPadding="false"
+        android:visibility="gone"
+        app:chipSpacingHorizontal="6dp"
+        app:chipSpacingVertical="2dp"
+        app:layout_constraintStart_toEndOf="@id/note_item_avatar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/note_item_file_container"
+        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_marginEnd="@dimen/margin_note_item_element"
+        android:layout_marginTop="6dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content" />
+
+    <!-- the bottom of everything the item shows, the gap to the item below is made by the
+         spacer which is pinned to this barrier and to the parent -->
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/note_item_content_barrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:barrierAllowsGoneWidgets="false"
+        app:constraint_referenced_ids="note_item_sender_name,note_item_status_container,note_item_text,note_item_media_scroll,note_item_file_container,note_item_reaction_container" />
+
+    <Space
+        android:id="@+id/note_item_bottom_gap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/note_item_content_barrier"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="@dimen/margin_note_item_element" />
 
 </merge>

@@ -31,4 +31,5 @@
 
     <!-- gap between the elements of a note item -->
     <dimen name="margin_note_item_element">8dp</dimen>
+    <dimen name="padding_note_item_media_list_start">56dp</dimen>
 </resources>
