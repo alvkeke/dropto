@@ -135,9 +135,8 @@
             android:layout_height="wrap_content" />
     </HorizontalScrollView>
 
-    <LinearLayout
+    <cn.alvkeke.dropto.ui.component.note_item_child.FileGridLayout
         android:id="@+id/note_item_file_container"
-        android:orientation="vertical"
         android:visibility="gone"
         app:layout_constraintStart_toEndOf="@id/note_item_avatar"
         app:layout_constraintEnd_toEndOf="parent"

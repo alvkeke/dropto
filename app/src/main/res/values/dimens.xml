@@ -25,6 +25,7 @@
     <dimen name="radius_note_item_file">8dp</dimen>
     <dimen name="padding_note_item_file">8dp</dimen>
     <dimen name="margin_note_item_file">4dp</dimen>
+    <dimen name="size_note_item_file_column_width">300dp</dimen>
 
     <dimen name="size_note_item_reaction_height">28dp</dimen>
     <dimen name="padding_note_item_reaction">12dp</dimen>

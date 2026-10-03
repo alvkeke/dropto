@@ -16,6 +16,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.VelocityTracker
+import android.widget.GridLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -33,6 +34,7 @@ import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.storage.SenderInfoLoader
 import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
+import cn.alvkeke.dropto.ui.component.note_item_child.FileGridLayout
 import cn.alvkeke.dropto.ui.component.note_item_child.FileItemView
 import cn.alvkeke.dropto.ui.component.note_item_child.MediaItemView
 import java.text.SimpleDateFormat
@@ -63,7 +65,7 @@ class NoteItemView @JvmOverloads constructor(
     private val textView: TextView
     private val mediaScroll: HorizontalScrollView
     private val mediaContainer: LinearLayout
-    private val fileContainer: LinearLayout
+    private val fileContainer: FileGridLayout
     private val reactionContainer: ChipGroup
 
     init {
@@ -79,6 +81,7 @@ class NoteItemView @JvmOverloads constructor(
         mediaScroll = findViewById(R.id.note_item_media_scroll)
         mediaContainer = findViewById(R.id.note_item_media_container)
         fileContainer = findViewById(R.id.note_item_file_container)
+        fileContainer.columnWidthExpect = dimenPx(R.dimen.size_note_item_file_column_width)
         reactionContainer = findViewById(R.id.note_item_reaction_container)
     }
 
@@ -488,10 +491,9 @@ class NoteItemView @JvmOverloads constructor(
         files.forEachIndexed { position, file ->
             val row = FileItemView(context).apply {
                 elevation = dimenPx(R.dimen.elevation_file_item).toFloat()
-                layoutParams = LinearLayout.LayoutParams(
-                    LayoutParams.MATCH_PARENT,
-                    LayoutParams.WRAP_CONTENT
-                ).apply {
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = 0
+                    height = LayoutParams.WRAP_CONTENT
                     setMargins(dimenPx(R.dimen.margin_note_item_file))
                 }
                 fileName = file.name
