@@ -21,6 +21,8 @@ import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.ImageLoader
 import kotlin.math.hypot
 
+private const val TAG = "PopupAttachmentCard"
+
 class PopupAttachmentCard @JvmOverloads constructor(
     val attachment: AttachmentFile,
     private val context: Context,
