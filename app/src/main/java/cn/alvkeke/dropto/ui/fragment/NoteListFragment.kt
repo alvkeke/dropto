@@ -268,15 +268,23 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         toolbar.inflateMenu(R.menu.fragment_note_list_toolbar)
         setToolbarMenuBySelectedItems(0)
 
-        var layoutManager = LinearLayoutManager(context)
+        val layoutManager = LinearLayoutManager(context)
         layoutManager.setReverseLayout(true)
         rlNoteList.setSelectListener(NoteListSelectListener())
 
         viewModel.category.observe(viewLifecycleOwner) { category ->
-            if (this.category == category) return@observe
+            // a value pushed in from the outside means a list is just opened, the value that is
+            // delivered again after a recreation is the one that is already there
+            val opening = viewModel.openingCategory
+            val sameCategory = this.category?.id == category.id
             this.category = category
             toolbar.setTitle(category.title)
-            fillNoteList(category.noteItems)
+            if (sameCategory) {
+                fillJob?.cancel()
+                noteItemAdapter.syncList(category.noteItems)
+            } else {
+                fillNoteList(category.noteItems, async = opening)
+            }
             restoreEditingNote(category)
         }
 
@@ -299,9 +307,17 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         capsuleInputBox.onAttachLongClick = attachListener
     }
 
-    private fun fillNoteList(notes: List<NoteItem>) {
+    private fun fillNoteList(notes: List<NoteItem>, async: Boolean = true) {
         fillJob?.cancel()
         noteItemAdapter.clear()
+        if (!async) {
+            // non-async loading, just load all of them
+            noteItemAdapter.append(notes)
+            fillJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                ImageLoader.prefetchMediaSizes(notes.flatMap { it.medias })
+            }
+            return
+        }
         fillJob = viewLifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 ImageLoader.prefetchMediaSizes(notes.flatMap { it.medias })

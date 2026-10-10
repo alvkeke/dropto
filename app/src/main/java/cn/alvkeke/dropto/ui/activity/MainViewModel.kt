@@ -25,11 +25,23 @@ class MainViewModel : ViewModel() {
 
     private val _category = MutableLiveData<Category>()
     val category: LiveData<Category> = _category
-    fun setCategory(category: Category) : MainViewModel{
+
+    @Volatile
+    private var _pendingFirstConsume = false
+    val openingCategory: Boolean
+        get() {
+            val pending = _pendingFirstConsume
+            _pendingFirstConsume = false
+            return pending
+        }
+
+    fun setCategory(category: Category, openingCategory: Boolean = false) : MainViewModel{
+        _pendingFirstConsume = openingCategory
         _category.value = category
         return this
     }
-    fun postCategory(category: Category) : MainViewModel{
+    fun postCategory(category: Category, openingCategory: Boolean = false) : MainViewModel{
+        _pendingFirstConsume = openingCategory
         _category.postValue(category)
         return this
     }

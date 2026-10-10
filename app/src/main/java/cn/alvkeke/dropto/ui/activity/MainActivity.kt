@@ -460,7 +460,7 @@ class MainActivity : AppCompatActivity(),
             if (!DataLoader.loadCategoryNotes(this@MainActivity, category)) {
                 Log.e(TAG, "Failed to get noteList from database")
             }
-            viewModel.postCategory(category)
+            viewModel.postCategory(category, true)
         }
         animateOpenNoteList()
     }

@@ -13,6 +13,8 @@ import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment
@@ -151,6 +153,34 @@ object UserInterfaceHelper {
     fun View.applyPadding(top: Int, bottom: Int) {
         if (paddingTop == top && paddingBottom == bottom) return
         setPadding(paddingLeft, top, paddingRight, bottom)
+    }
+
+    fun RecyclerView.applyPadding(top: Int, bottom: Int) {
+        if (paddingTop == top && paddingBottom == bottom) return
+
+        // A LinearLayoutManager anchors its items to the padding of the moment they are laid out,
+        // they would keep sitting in the new padding area (hidden behind the toolbars) unless they
+        // are anchored to the new padding again. That offset is related to the padding, so it has
+        // to be read before the padding changes.
+        val manager = layoutManager as? LinearLayoutManager
+        manager?.takeIf { it.orientation == LinearLayoutManager.VERTICAL }
+        val position = manager?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
+        val child = if (position == RecyclerView.NO_POSITION) null
+        else manager?.findViewByPosition(position)
+        var offset: Int? = null
+        if (manager != null && child != null) {
+            offset = if (manager.reverseLayout) {
+                height - paddingBottom - manager.getDecoratedBottom(child)
+            } else {
+                manager.getDecoratedTop(child) - paddingTop
+            }
+        }
+
+        setPadding(paddingLeft, top, paddingRight, bottom)
+
+        if (offset != null) {
+            manager?.scrollToPositionWithOffset(position, offset)
+        }
     }
 
     fun View.setTopMargin(margin: Int) {
