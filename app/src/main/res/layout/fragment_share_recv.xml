@@ -5,13 +5,15 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipToOutline="false"
+    android:clipToPadding="false"
+    android:clipChildren="false"
     tools:context=".ui.fragment.CategorySelectorFragment">
 
-    <com.google.android.material.appbar.MaterialToolbar
+    <cn.alvkeke.dropto.ui.component.CapsuleToolbar
         android:id="@+id/share_recv_toolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:background="?android:statusBarColor"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 

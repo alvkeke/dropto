@@ -3,6 +3,8 @@
     <color name="color_action_bar">#FF33333A</color>
     <color name="color_navigation_bar">#FF33333A</color>
     <color name="color_background">#292930</color>
+    <!-- background of the floating controls (toolbar buttons/title, input bar) -->
+    <color name="solid_control_background">#525252</color>
 
     <color name="colorMainTitle">#C1C1C1</color>
 

@@ -51,4 +51,5 @@
     <string name="description_note_item_deleted_icon">Icon to show this item was deleted</string>
     <string name="description_note_item_not_synced_icon">Icon to show this item was not synced</string>
     <string name="description_of_note_item_file_icon">Icon of a file attachment of the note</string>
+    <string name="description_input_mode_edit">The input box is editing an existing note</string>
 </resources>

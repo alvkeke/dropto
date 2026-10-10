@@ -13,6 +13,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.applyPadding
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.setTopMargin
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.component.MgmtItemView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -62,6 +65,12 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         itemStorage = view.findViewById(R.id.mgmt_page_item_storage)
         itemNotes = view.findViewById(R.id.mgmt_page_item_notes)
         itemReactions = view.findViewById(R.id.mgmt_page_item_reactions)
+
+        val itemList = view.findViewById<View>(R.id.mgmt_page_item_list)
+        view.observeSystemBarInsets { status, navi ->
+            toolbar.setTopMargin(status)
+            itemList.applyPadding(status + toolbar.height, navi)
+        }
 
         val dragListener = MgmtPageDragListener()
         view.setOnTouchListener(dragListener)

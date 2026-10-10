@@ -29,7 +29,9 @@ import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
 import cn.alvkeke.dropto.service.CoreServiceListener
 import cn.alvkeke.dropto.storage.DataLoader
 import cn.alvkeke.dropto.storage.FileHelper
-import cn.alvkeke.dropto.ui.UserInterfaceHelper
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.applyPadding
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.setTopMargin
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.CategoryListAdapter
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
@@ -58,7 +60,6 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     private lateinit var categoryListAdapter: CategoryListAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
     private lateinit var toolbar: MaterialToolbar
-    private lateinit var contentContainer: View
 
     var horizontalDragListener: HorizontalDragListener? = null
     var eventListener: EventListener? = null
@@ -86,13 +87,13 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
         super.onViewCreated(view, savedInstanceState)
         context = requireContext()
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
-        contentContainer = view.findViewById(R.id.category_list_content)
 
         rlCategory = view.findViewById(R.id.category_list_listview)
         toolbar = view.findViewById(R.id.category_list_toolbar)
-        val statusBar = view.findViewById<View>(R.id.category_list_status_bar)
-        val navigationBar = view.findViewById<View>(R.id.category_list_navigation_bar)
-        UserInterfaceHelper.setSystemBarHeight(view, statusBar, navigationBar)
+        view.observeSystemBarInsets { status, navi ->
+            toolbar.setTopMargin(status)
+            rlCategory.applyPadding(status + toolbar.height, navi)
+        }
 
         toolbar.setNavigationIcon(R.drawable.icon_common_menu)
         toolbar.setNavigationOnClickListener { eventListener?.onNavigationClick() }

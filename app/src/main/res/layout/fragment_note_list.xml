@@ -2,152 +2,71 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/note_list_fragment_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/backgroundColor"
+    android:clipToOutline="false"
+    android:clipToPadding="false"
+    android:clipChildren="false"
     tools:context=".ui.fragment.NoteListFragment">
 
+<!--    keep this layout for IME resizing -->
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/note_list_fragment_container"
-        android:background="?attr/backgroundColor"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:id="@+id/note_list_content_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:clipToOutline="false"
+        android:clipToPadding="false"
+        android:clipChildren="false"
+        android:layout_width="0dp"
+        android:layout_height="0dp">
 
-        <View
-            android:id="@+id/note_list_status_bar"
-            app:layout_constraintStart_toStartOf="parent"
+        <cn.alvkeke.dropto.ui.component.SelectableRecyclerView
+            android:id="@+id/note_list_listview"
+            android:scrollbars="vertical"
+            android:clipToPadding="false"
             app:layout_constraintTop_toTopOf="parent"
-            android:background="?android:statusBarColor"
-            android:layout_width="match_parent"
-            android:layout_height="24dp"/>
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/note_list_toolbar"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/note_list_status_bar"
-            android:background="?android:statusBarColor"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/note_list_content_container"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/note_list_toolbar"
-            app:layout_constraintBottom_toTopOf="@id/note_list_navigation_bar"
-            android:layout_width="match_parent"
-            android:layout_height="0dp">
-
-            <cn.alvkeke.dropto.ui.component.SelectableRecyclerView
-                android:id="@+id/note_list_listview"
-                android:scrollbars="vertical"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/note_list_input_container"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"/>
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/note_list_input_container"
-                android:orientation="horizontal"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:background="?android:navigationBarColor"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/note_list_input_detail_box"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <View
-                        android:id="@+id/note_list_input_edit_indicator"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent"
-                        android:background="@color/color_edit_indicator"
-                        android:visibility="gone"
-                        android:layout_width="8dp"
-                        android:layout_height="0dp" />
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/note_list_input_attachment_list"
-                        app:layout_constraintStart_toEndOf="@id/note_list_input_edit_indicator"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintEnd_toStartOf="@id/note_list_input_cancel_button"
-                        android:orientation="horizontal"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content" />
-
-                    <ImageButton
-                        android:id="@+id/note_list_input_cancel_button"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent"
-                        android:visibility="gone"
-                        android:layout_margin="8dp"
-                        android:src="@drawable/icon_common_cross"
-                        android:scaleType="fitCenter"
-                        android:background="@color/color_navigation_bar"
-                        android:contentDescription="@string/description_button_cancel_editing_or_attach"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"/>
-
-                </androidx.constraintlayout.widget.ConstraintLayout>
-
-                <cn.alvkeke.dropto.ui.component.CountableImageButton
-                    android:id="@+id/note_list_input_attach_attachment"
-                    app:layout_constraintTop_toBottomOf="@id/note_list_input_detail_box"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    android:layout_margin="8dp"
-                    android:src="@drawable/icon_btn_note_attach_file"
-                    android:background="@android:color/transparent"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:contentDescription="@string/description_button_attach_file" />
-
-                <EditText
-                    android:id="@+id/note_list_input_box"
-                    app:layout_constraintStart_toEndOf="@id/note_list_input_attach_attachment"
-                    app:layout_constraintTop_toBottomOf="@id/note_list_input_detail_box"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toStartOf="@id/note_list_input_button"
-                    android:layout_margin="8dp"
-                    android:layout_width="0dp"
-                    android:maxHeight="200dp"
-                    android:layout_height="wrap_content"
-                    android:inputType="textMultiLine"
-                    android:autofillHints="NoteText"
-                    tools:ignore="LabelFor" />
-
-                <ImageButton
-                    android:id="@+id/note_list_input_button"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="@id/note_list_input_box"
-                    app:layout_constraintBottom_toBottomOf="@id/note_list_input_box"
-                    android:layout_marginEnd="8dp"
-                    android:src="@drawable/img_btn_note_send"
-                    android:background="@android:color/transparent"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:contentDescription="@string/description_input_button" />
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-        </androidx.constraintlayout.widget.ConstraintLayout>
-
-        <View
-            android:id="@+id/note_list_navigation_bar"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:background="?android:navigationBarColor"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_width="0dp"
+            android:layout_height="0dp"/>
+
+        <FrameLayout
+            android:id="@+id/note_list_input_container"
+            android:clickable="true"
+            android:focusable="true"
+            android:clipToOutline="false"
+            android:clipToPadding="false"
+            android:clipChildren="false"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content">
+
+            <cn.alvkeke.dropto.ui.component.CapsuleInputBox
+                android:id="@+id/note_list_input_box"
+                android:layout_gravity="bottom"
+                android:elevation="2dp"
+                android:layout_margin="@dimen/capsule_spacing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </FrameLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <cn.alvkeke.dropto.ui.component.CapsuleToolbar
+        android:id="@+id/note_list_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

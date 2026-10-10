@@ -2,17 +2,19 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipToOutline="false"
+    android:clipToPadding="false"
+    android:clipChildren="false"
     android:focusable="true"
     android:clickable="true"
     android:background="@color/color_background"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <com.google.android.material.appbar.MaterialToolbar
+    <cn.alvkeke.dropto.ui.component.CapsuleToolbar
         android:id="@+id/mgmt_storage_toolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:navigationIcon="@drawable/icon_common_cross"
-        android:background="?android:statusBarColor"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

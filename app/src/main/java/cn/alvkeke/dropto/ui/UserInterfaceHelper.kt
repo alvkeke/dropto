@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -130,16 +131,39 @@ object UserInterfaceHelper {
         }
     }
 
-    fun setSystemBarHeight(parent: View, status: View, navi: View) {
-        ViewCompat.setOnApplyWindowInsetsListener(
-            parent
-        ) { _: View, insets: WindowInsetsCompat ->
-            val statusHei: Int = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            val naviHei: Int = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            status.layoutParams.height = statusHei
-            navi.layoutParams.height = naviHei
+    fun View.observeSystemBarInsets(onChange: (status: Int, navi: Int) -> Unit) {
+        var status = 0
+        var navi = 0
+        ViewCompat.setOnApplyWindowInsetsListener(this) { _, windowInsets ->
+            val newStatus = windowInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            val newNavi = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            if (newStatus != status || newNavi != navi) {
+                status = newStatus
+                navi = newNavi
+                onChange(status, navi)
+            }
             WindowInsetsCompat.CONSUMED
         }
+        ViewCompat.requestApplyInsets(this)
+        addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> onChange(status, navi) }
     }
 
+    fun View.applyPadding(top: Int, bottom: Int) {
+        if (paddingTop == top && paddingBottom == bottom) return
+        setPadding(paddingLeft, top, paddingRight, bottom)
+    }
+
+    fun View.setTopMargin(margin: Int) {
+        val lp = layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        if (lp.topMargin == margin) return
+        lp.topMargin = margin
+        requestLayout()
+    }
+
+    fun View.setBottomMargin(margin: Int) {
+        val lp = layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        if (lp.bottomMargin == margin) return
+        lp.bottomMargin = margin
+        requestLayout()
+    }
 }

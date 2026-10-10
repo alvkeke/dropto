@@ -1,41 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:background="?attr/backgroundColor"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipToOutline="false"
+    android:clipToPadding="false"
+    android:clipChildren="false"
     tools:context=".ui.fragment.CategoryListFragment">
 
-    <LinearLayout
-        android:id="@+id/category_list_content"
-        android:background="?attr/backgroundColor"
-        android:orientation="vertical"
+    <cn.alvkeke.dropto.ui.component.SelectableRecyclerView
+        android:id="@+id/category_list_listview"
+        android:clipToPadding="false"
+        android:scrollbars="none"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent" />
 
-        <View
-            android:id="@+id/category_list_status_bar"
-            android:background="?android:statusBarColor"
-            android:layout_width="match_parent"
-            android:layout_height="24dp"/>
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/category_list_toolbar"
-            android:background="?android:statusBarColor"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-
-        <cn.alvkeke.dropto.ui.component.SelectableRecyclerView
-            android:id="@+id/category_list_listview"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <View
-            android:id="@+id/category_list_navigation_bar"
-            android:background="?android:navigationBarColor"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"/>
-    </LinearLayout>
+    <cn.alvkeke.dropto.ui.component.CapsuleToolbar
+        android:id="@+id/category_list_toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

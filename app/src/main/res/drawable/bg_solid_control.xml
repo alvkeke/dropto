@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the floating controls are opaque, the corner radius is half of @dimen/capsule_size so every
+     control of that height (buttons, title, a single line input capsule) gets fully rounded ends;
+     a taller input capsule keeps this same corner radius instead of growing into a pill -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="@dimen/capsule_radius" />
+    <solid android:color="@color/solid_control_background" />
+</shape>

@@ -3,14 +3,6 @@ package cn.alvkeke.dropto.ui.fragment
 import android.annotation.SuppressLint
 import android.app.AlertDialog.Builder
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.ImageDecoder
-import android.graphics.Paint
-import android.graphics.Rect
-import android.graphics.RectF
-import android.graphics.drawable.Drawable
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -24,10 +16,6 @@ import android.view.View.OnClickListener
 import android.view.View.OnLongClickListener
 import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,19 +23,16 @@ import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVis
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
 import androidx.core.view.doOnPreDraw
-import androidx.core.view.isVisible
 import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
@@ -60,15 +45,18 @@ import cn.alvkeke.dropto.storage.DataLoader.categories
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.ImageLoader
 import cn.alvkeke.dropto.storage.getReactionList
-import cn.alvkeke.dropto.ui.UserInterfaceHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.applyPadding
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.setBottomMargin
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.setTopMargin
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareAttachmentFileToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFilesToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
-import cn.alvkeke.dropto.ui.component.CountableImageButton
+import cn.alvkeke.dropto.ui.component.CapsuleInputBox
 import cn.alvkeke.dropto.ui.component.NoteItemView
 import cn.alvkeke.dropto.ui.component.PopupAttachmentCard
 import cn.alvkeke.dropto.ui.component.PopupMenu
@@ -79,17 +67,12 @@ import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.intf.HorizontalDragListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import com.google.android.material.appbar.MaterialToolbar
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
-import kotlin.time.Duration.Companion.milliseconds
 
 
 class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener,
@@ -104,21 +87,18 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private lateinit var context: Context
     private lateinit var viewModel: MainViewModel
     private lateinit var fragmentParent: View
-    private lateinit var etInputText: EditText
-    private lateinit var rlAttachment: RecyclerView
-    private lateinit var attachmentListAdapter: AttachmentListAdapter
-    private lateinit var editIndicator: View
-    private lateinit var btnCancel: ImageButton
-    private lateinit var btnAttach: CountableImageButton
-    private lateinit var btnSend: ImageButton
+    private lateinit var capsuleInputBox: CapsuleInputBox
+    private lateinit var inputContainer: View
     private lateinit var contentContainer: ConstraintLayout
-    private lateinit var naviBar: View
+    private var navInset = 0
     private lateinit var toolbar: MaterialToolbar
     private lateinit var rlNoteList: SelectableRecyclerView
 
     private var category: Category? = null
     private var noteItemAdapter: NoteListAdapter = NoteListAdapter()
     private var fillJob: Job? = null
+    private var pendingEditNoteId = 0L
+    private var draftText: String? = null
 
     var horizontalDragListener: HorizontalDragListener? = null
     var eventListener: EventListener? = null
@@ -252,18 +232,26 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         viewModel = ViewModelProvider(requireActivity())[MainViewModel::class.java]
 
         rlNoteList = view.findViewById(R.id.note_list_listview)
-        btnSend = view.findViewById(R.id.note_list_input_button)
-        btnCancel = view.findViewById(R.id.note_list_input_cancel_button)
-        btnAttach = view.findViewById(R.id.note_list_input_attach_attachment)
-        rlAttachment = view.findViewById(R.id.note_list_input_attachment_list)
-        etInputText = view.findViewById(R.id.note_list_input_box)
-        editIndicator = view.findViewById(R.id.note_list_input_edit_indicator)
+        capsuleInputBox = view.findViewById(R.id.note_list_input_box)
+        inputContainer = view.findViewById(R.id.note_list_input_container)
+        pendingEditNoteId = savedInstanceState?.getLong(STATE_EDITING_NOTE_ID) ?: 0L
+        draftText = savedInstanceState?.getString(STATE_EDITING_DRAFT)
         contentContainer = view.findViewById(R.id.note_list_content_container)
-        val statusBar = view.findViewById<View>(R.id.note_list_status_bar)
-        naviBar = view.findViewById(R.id.note_list_navigation_bar)
         toolbar = view.findViewById(R.id.note_list_toolbar)
 
-        UserInterfaceHelper.setSystemBarHeight(view, statusBar, naviBar)
+        var topInset = 0
+        fun padNoteList() {
+            rlNoteList.applyPadding(
+                topInset + toolbar.height,
+                navInset + inputContainer.height)
+        }
+        view.observeSystemBarInsets { status, navi ->
+            topInset = status
+            navInset = navi
+            toolbar.setTopMargin(status)
+            inputContainer.setBottomMargin(navi)
+            padNoteList()
+        }
         setIMEViewChange(view)
 
         toolbar.setNavigationIcon(R.drawable.icon_common_back)
@@ -289,6 +277,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             this.category = category
             toolbar.setTitle(category.title)
             fillNoteList(category.noteItems)
+            restoreEditingNote(category)
         }
 
         noteItemAdapter.showDeleted = false
@@ -298,56 +287,16 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         rlNoteList.setLayoutManager(layoutManager)
         rlNoteList.setOnTouchListener(NoteListTouchListener())
 
-        attachmentListAdapter = AttachmentListAdapter().apply {
-            itemSize = (84 * context.resources.displayMetrics.density).toInt()
-        }
-        attachmentListAdapter.setDataChangeListener { count ->
-            if (count > 0) btnCancel.visibility = View.VISIBLE
-            // only show the button, the btnCancel will be hide:
-            // 1. create/update req done
-            // 2. click on the btnCancel
-        }
-        rlAttachment.adapter = attachmentListAdapter
-        layoutManager = LinearLayoutManager(
-            context,
-            RecyclerView.HORIZONTAL,
-            false
-        )
-        rlAttachment.layoutManager = layoutManager
-        rlAttachment.addItemDecoration(object : RecyclerView.ItemDecoration() {
-            override fun getItemOffsets(
-                outRect: Rect,
-                view: View,
-                parent: RecyclerView,
-                state: RecyclerView.State
-            ) {
-                val padding = (8 * context.resources.displayMetrics.density).toInt()
-                val pos = parent.getChildAdapterPosition(view)
-                val sizeHead = if (pos == 0) padding else 0
-                outRect.set(sizeHead, padding, padding, padding)
-            }
-        })
-        rlAttachment.setOnTouchListener(AttachmentListTouchListener())
-
-        btnCancel.setOnClickListener {
-            attachmentListAdapter.clear()
+        capsuleInputBox.onCancelClick = View.OnClickListener {
+            capsuleInputBox.clearAttachments()
             if (isEditingMode) {
                 exitEditMode()
             }
-            btnCancel.isVisible = false
         }
-        btnCancel.setOnLongClickListener {
-            if (!isEditingMode) {
-                return@setOnLongClickListener true
-            }
-
-            attachmentListAdapter.markAllRemoved(!attachmentListAdapter.isAllMarkDeleted)
-            true
-        }
-        btnSend.setOnClickListener(SendButtonClickListener())
-        val btnAttachListener = AttachButtonListener()
-        btnAttach.setOnClickListener(btnAttachListener)
-        btnAttach.setOnLongClickListener(btnAttachListener)
+        capsuleInputBox.onSendClick = SendButtonClickListener()
+        val attachListener = AttachButtonListener()
+        capsuleInputBox.onAttachClick = attachListener
+        capsuleInputBox.onAttachLongClick = attachListener
     }
 
     private fun fillNoteList(notes: List<NoteItem>) {
@@ -549,7 +498,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 private var naviHei = 0
                 override fun onPrepare(animation: WindowInsetsAnimationCompat) {
                     super.onPrepare(animation)
-                    naviHei = naviBar.height
+                    naviHei = navInset
                 }
 
                 override fun onProgress(
@@ -571,387 +520,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             })
     }
 
-    private class AttachmentListAdapter : RecyclerView.Adapter<AttachmentListAdapter.ViewHolder>() {
-
-        sealed class AttachmentItem(var deleteMarked: Boolean = false) {
-            data class Attachment(
-                val file: AttachmentFile,
-            ): AttachmentItem()
-            data class Unhandled(
-                val uri: Uri,
-                val type: AttachmentFile.Type,
-            ): AttachmentItem()
-        }
-        private val list = mutableListOf<AttachmentItem>()
-        val allList : List<AttachmentItem> = list
-        val nonDeleteList: List<AttachmentItem>
-            get() = list.filter { !it.deleteMarked }
-        val isAllMarkDeleted: Boolean
-            get() = list.isNotEmpty() && nonDeleteList.isEmpty()
-        var itemSize = 0
-
-        class ViewHolder(
-            itemView: ConstraintLayout,
-            val mainView: View,
-            val overlay: View,
-        ) : RecyclerView.ViewHolder(itemView)
-
-        private class OverlayView(context: Context) : View(context) {
-            private val stripePaint = Paint().apply {
-                color = Color.RED
-                alpha = 100
-                strokeWidth = 8f
-                isAntiAlias = true
-                style = Paint.Style.STROKE
-            }
-
-            override fun onDraw(canvas: Canvas) {
-                super.onDraw(canvas)
-
-                val w = width.toFloat()
-                val h = height.toFloat()
-                val stripeSpacing = 20f
-
-                var i = 0f
-                while (i < w + h) {
-                    val startX = if (i < w) w - i else 0f
-                    val startY = if (i < w) 0f else i - w
-                    val endX = if (i < h) w else w - (i - h)
-                    val endY = if (i < h) i else h
-
-                    canvas.drawLine(startX, startY, endX, endY, stripePaint)
-
-                    i += stripeSpacing
-                }
-            }
-        }
-
-        private var videoIconDrawable: Drawable? = null
-        private inner class MediaView(
-            context: Context,
-        ) : androidx.appcompat.widget.AppCompatImageView(context) {
-
-            var isVideo = false
-
-            val rect = RectF()
-            val paint = Paint().apply {
-                color = ContextCompat.getColor(context, R.color.video_play_icon_background)
-            }
-            override fun onDraw(canvas: Canvas) {
-                super.onDraw(canvas)
-
-                if (!isVideo) return
-
-                val width2 = width/2f
-                val height2 = height/2f
-                rect.set(
-                    width2,
-                    height2,
-                    width.toFloat(),
-                    height.toFloat()
-                )
-
-                canvas.drawRect(rect, paint)
-                if (videoIconDrawable == null) {
-                    videoIconDrawable = ContextCompat.getDrawable(
-                        context, R.drawable.icon_common_video
-                    )
-                    videoIconDrawable?.setTint(
-                        ContextCompat.getColor(
-                            context, R.color.video_play_icon_foreground
-                        )
-                    )
-                }
-                videoIconDrawable?.setBounds(
-                    width2.toInt(), height2.toInt(), width, height
-                )
-                videoIconDrawable?.draw(canvas)
-            }
-        }
-
-        override fun onCreateViewHolder(
-            parent: ViewGroup,
-            viewType: Int
-        ): ViewHolder {
-            val layout = ConstraintLayout(parent.context).apply {
-                id = View.generateViewId()
-                layoutParams = RecyclerView.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                )
-            }
-
-            val height: Int
-            val width: Int
-            val view = when (viewType) {
-                0 -> {
-                    height = itemSize
-                    width = itemSize
-                    MediaView(parent.context).apply {
-                        scaleType = ImageView.ScaleType.CENTER_CROP
-                    }
-                }
-                else -> {
-                    height = itemSize
-                    width = itemSize * 2
-                    TextView(parent.context).apply {
-                        setTextColor(ContextCompat.getColor(
-                            parent.context,
-                            R.color.color_text_main
-                        ))
-                        setBackgroundResource(R.color.note_bubble_background)
-                        textAlignment = TextView.TEXT_ALIGNMENT_CENTER
-                        gravity = Gravity.CENTER
-                    }
-                }
-            }.apply {
-                layoutParams = ConstraintLayout.LayoutParams(
-                    width,
-                    height
-                ).apply {
-                    startToStart = layout.id
-                    topToTop = layout.id
-                }
-            }
-
-            val overlay = OverlayView(parent.context).apply {
-                layoutParams = ConstraintLayout.LayoutParams(
-                    width,
-                    height
-                ).apply {
-                    startToStart = layout.id
-                    topToTop = layout.id
-                }
-            }
-            layout.addView(view)
-            layout.addView(overlay)
-
-            return ViewHolder(layout, view, overlay)
-        }
-
-        private lateinit var scope : CoroutineScope
-        override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-            super.onAttachedToRecyclerView(recyclerView)
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        }
-        override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
-            super.onDetachedFromRecyclerView(recyclerView)
-            scope.cancel()
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = list[position]
-            when (item) {
-                is AttachmentItem.Attachment -> {
-                    when (item.file.type) {
-                        AttachmentFile.Type.MEDIA -> {
-                            val imageView = holder.mainView as MediaView
-                            imageView.setImageBitmap(null)
-                            val key = item.file.md5file.absolutePath
-                            imageView.tag = key
-                            if (item.file.isVideo) {
-                                imageView.isVideo = true
-                                ImageLoader.loadVideoThumbnailAsync(item.file.md5file) {
-                                    it?.let { thumb ->
-                                        if (imageView.tag == key) {
-                                            imageView.setImageBitmap(thumb)
-                                            imageView.invalidate()
-                                        }
-                                    }
-                                }
-                            } else {
-                                imageView.isVideo = false
-                                ImageLoader.loadImageAsync(
-                                    item.file.md5file,
-                                ) { bitmap ->
-                                    bitmap?.let {
-                                        if (imageView.tag == key) {
-                                            imageView.setImageBitmap(it)
-                                            imageView.invalidate()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        AttachmentFile.Type.FILE -> {
-                            val textView = holder.mainView as TextView
-                            textView.text = item.file.name
-                        }
-                    }
-                }
-                is AttachmentItem.Unhandled -> {
-                    when (item.type) {
-                        AttachmentFile.Type.MEDIA -> {
-                            val imageView = holder.mainView as MediaView
-                            imageView.setImageBitmap(null)
-                            val fileName = FileHelper.getFileNameFromUri(
-                                imageView.context, item.uri
-                            )
-                            val mimeType = FileHelper.mimeTypeFromFileName(fileName)
-                            val isVideo = mimeType.startsWith("video/")
-                            val key = item.uri.toString()
-                            imageView.tag = key
-                            scope.launch {
-                                try {
-                                    val bitmap = if (isVideo) {
-                                        val retriever = MediaMetadataRetriever()
-                                        try {
-                                            retriever.setDataSource(imageView.context, item.uri)
-                                            val thumbnail =
-                                                retriever.frameAtTime // default is first frame, can specify time
-                                            thumbnail
-                                        } finally {
-                                            retriever.release()
-                                        }
-                                    } else {
-                                        val resolver = imageView.context.contentResolver
-                                        val source = ImageDecoder.createSource(resolver, item.uri)
-                                        ImageDecoder.decodeBitmap(source)
-                                    }
-                                    withContext(Dispatchers.Main) {
-                                        if (imageView.tag == key) {
-                                            imageView.isVideo = isVideo
-                                            imageView.setImageBitmap(bitmap)
-                                            val max = 30
-                                            val fMax = max.toFloat()
-                                            for (a in 0..max) {
-                                                imageView.alpha = a / fMax
-                                                delay(10.milliseconds)
-                                            }
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    withContext(Dispatchers.Main) {
-                                        if (imageView.tag == key) {
-                                            imageView.setImageBitmap(ImageLoader.errorBitmap)
-                                        }
-                                    }
-                                    Log.e(TAG, "Failed to load media", e)
-                                }
-                            }
-                        }
-                        AttachmentFile.Type.FILE -> {
-                            val textView = holder.mainView as TextView
-                            textView.text = FileHelper.getFileNameFromUri(textView.context, item.uri)
-                        }
-                    }
-                }
-            }
-            holder.overlay.isVisible = item.deleteMarked
-        }
-
-        override fun onViewRecycled(holder: ViewHolder) {
-            super.onViewRecycled(holder)
-            if (holder.mainView is MediaView) {
-                val imageView = holder.mainView
-                imageView.tag = null
-                imageView.setImageBitmap(null)
-            }
-        }
-
-        override fun getItemViewType(position: Int): Int {
-            return when (val e = list[position]) {
-                is AttachmentItem.Attachment -> {
-                    when (e.file.type) {
-                        AttachmentFile.Type.MEDIA -> 0
-                        AttachmentFile.Type.FILE -> 1
-                    }
-                }
-                is AttachmentItem.Unhandled -> {
-                    when (e.type) {
-                        AttachmentFile.Type.MEDIA -> 0
-                        AttachmentFile.Type.FILE -> 1
-                    }
-                }
-            }
-        }
-
-        override fun getItemCount(): Int {
-            return list.size
-        }
-
-        fun interface DataChangeListener {
-            fun onChanged(count: Int)
-        }
-        private var dataChangeListener: DataChangeListener? = null
-        fun setDataChangeListener(listener: DataChangeListener) {
-            dataChangeListener = listener
-        }
-
-        fun add(item: AttachmentItem) {
-            if (!list.contains(item)) {
-                list.add(item)
-                val index = list.indexOf(item)
-                if (index != -1) {
-                    this.notifyItemInserted(index)
-                }
-//            } else {
-//                val index = list.indexOf(item)
-//                list[index].deleteMarked = false
-//                this.notifyItemChanged(index)
-                dataChangeListener?.onChanged(list.size)
-            }
-        }
-
-        fun add(attachment: AttachmentFile) {
-            val newItem = AttachmentItem.Attachment(attachment)
-            add(newItem)
-        }
-
-        fun add(uri: Uri, type: AttachmentFile.Type) {
-            val newItem = AttachmentItem.Unhandled(uri, type)
-            add(newItem)
-        }
-
-        fun markRemoved(index: Int, set: Boolean) {
-            list[index].deleteMarked = set
-            notifyItemChanged(index)
-        }
-
-        fun markAllRemoved(set: Boolean) {
-            list.indices.forEach { index ->
-                val item = list[index]
-                item.deleteMarked = set
-                notifyItemChanged(index)
-            }
-        }
-
-        fun removeAt(index: Int) {
-            list.removeAt(index)
-            notifyItemRemoved(index)
-            dataChangeListener?.onChanged(list.size)
-        }
-
-        fun clear() {
-            val size = list.size
-            list.clear()
-            notifyItemRangeRemoved(0, size)
-            dataChangeListener?.onChanged(list.size)
-        }
-    }
-
-    private inner class AttachmentListTouchListener : OnRecyclerViewTouchListener(context) {
-
-        override fun onItemLongClick(v: View, index: Int, rawX: Float, rawY: Float): Boolean {
-            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            if (isEditingMode) {
-                val isDeleted = attachmentListAdapter.allList[index].deleteMarked
-                attachmentListAdapter.markRemoved(index, !isDeleted)
-            } else {
-                attachmentListAdapter.removeAt(index)
-            }
-            return true
-        }
-
-        override fun onItemClick(v: View, index: Int): Boolean {
-            if (isEditingMode) {
-                v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                val isDeleted = attachmentListAdapter.allList[index].deleteMarked
-                attachmentListAdapter.markRemoved(index, !isDeleted)
-            }
-            return true
-        }
-    }
 
     private inner class AttachButtonListener : OnClickListener, OnLongClickListener {
 
@@ -959,13 +527,13 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             // not going to limit the number of selected images/videos
         PickMultipleVisualMedia(99)) {
             it.forEach { uri ->
-                attachmentListAdapter.add(uri, AttachmentFile.Type.MEDIA)
+                capsuleInputBox.addAttachment(uri, AttachmentFile.Type.MEDIA)
             }
         }
         private var filePicker = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()) {
             it.forEach { uri ->
-                attachmentListAdapter.add(uri, AttachmentFile.Type.FILE)
+                capsuleInputBox.addAttachment(uri, AttachmentFile.Type.FILE)
             }
         }
 
@@ -983,9 +551,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private inner class SendButtonClickListener : OnClickListener {
         override fun onClick(v: View) {
-            val content = etInputText.text.toString().trim { it <= ' ' }
+            val content = capsuleInputBox.text.trim { it <= ' ' }
 
-            if (attachmentListAdapter.nonDeleteList.isEmpty() && content.isEmpty()) {
+            if (capsuleInputBox.attachments.isEmpty() && content.isEmpty()) {
                 if (isEditingMode) {
                     // warning empty item after editing
                     v.performHapticFeedback(
@@ -1008,12 +576,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             }
 
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                attachmentListAdapter.nonDeleteList.forEach {
+                capsuleInputBox.attachments.forEach {
                     when (it) {
-                        is AttachmentListAdapter.AttachmentItem.Attachment -> {
+                        is CapsuleInputBox.AttachmentItem.Attachment -> {
                             item.attachments.add(it.file)
                         }
-                        is AttachmentListAdapter.AttachmentItem.Unhandled -> {
+                        is CapsuleInputBox.AttachmentItem.Unhandled -> {
                             val folder = FileHelper.attachmentStorage
                             val md5file = FileHelper.saveUriToFile(context, it.uri, folder)
                             val imgName = FileHelper.getFileNameFromUri(context, it.uri)
@@ -1318,65 +886,33 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         forwardFragment.show(parentFragmentManager, null)
     }
 
-    private fun EditText.trySaveCurrentText() {
-        if (this.text.isNotEmpty()) {
-            val value = this.text.toString()
-            this.setTag(R.id.tag_note_saved_text_for_edit, value)
-        }
-    }
-    private fun EditText.restoreSavedText() {
-        val value = this.getTag(R.id.tag_note_saved_text_for_edit) as String?
-        value?.let { v ->
-            this.setText(v)
-            this.setTag(R.id.tag_note_saved_text_for_edit, null)
-        }
-    }
-    private val EditText.haveSavedText: Boolean
-        get() {
-            val value = this.getTag(R.id.tag_note_saved_text_for_edit) as String?
-            return value != null
-        }
+    private val isEditingMode: Boolean
+        get() = editingItem != null
 
-    private var isEditingMode: Boolean
-        get() = editIndicator.isVisible
+    private var editingItem: NoteItem? = null
         set(value) {
-            editIndicator.isVisible = value
-        }
-    private var editingItem: NoteItem?
-        get() = editIndicator.tag as NoteItem?
-        set(value) {
-            editIndicator.tag = value
+            field = value
+            capsuleInputBox.editing = value != null
         }
     private fun setupEditMode(note: NoteItem) {
-        btnCancel.isVisible = true
         if (isEditingMode) {
             // allow to re-enter, replace the old one
-            attachmentListAdapter.clear()
+            capsuleInputBox.clearAttachments()
         } else {
-            etInputText.trySaveCurrentText()
+            draftText = capsuleInputBox.text.ifEmpty { null }
         }
 
-        isEditingMode = true
         editingItem = note
 
-        if (note.attachments.isNotEmpty()) {
-            note.attachments.forEach {
-                attachmentListAdapter.add(it)
-            }
-        }
-        etInputText.setText(note.text)
-        etInputText.setSelection(note.text.length)
-        btnSend.setImageResource(R.drawable.icon_common_check)
+        note.attachments.forEach { capsuleInputBox.addAttachment(it) }
+        capsuleInputBox.setText(note.text)
     }
     private fun exitEditMode() {
-        isEditingMode = false
         editingItem = null
-        if (etInputText.haveSavedText) {
-            etInputText.restoreSavedText()
-        } else {
-            etInputText.text.clear()
-        }
-        btnSend.setImageResource(R.drawable.img_btn_note_send)
+        // give the text that was there before the editing back, or empty the box
+        val draft = draftText
+        draftText = null
+        if (draft != null) capsuleInputBox.setText(draft) else capsuleInputBox.clearText()
     }
 
     private var reqPendingItem : NoteItem? = null
@@ -1410,14 +946,31 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         app.service?.restoreNote(item)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        editingItem?.let {
+            outState.putLong(STATE_EDITING_NOTE_ID, it.id)
+            outState.putString(STATE_EDITING_DRAFT, draftText)
+        }
+    }
+
+    private fun restoreEditingNote(category: Category) {
+        val id = pendingEditNoteId
+        if (id == 0L) return
+        pendingEditNoteId = 0L
+        val note = category.noteItems.find { it.id == id } ?: return
+        // the text comes back through the view state, and the draft is kept as it was
+        editingItem = note
+        note.attachments.forEach { capsuleInputBox.addAttachment(it) }
+    }
+
     override fun onNoteCreated(result: Int, noteItem: NoteItem) {
         noteItemAdapter.add(result, noteItem)
         rlNoteList.smoothScrollToPosition(0)
         if (noteItem == reqPendingItem) {
             reqPendingItem = null
-            etInputText.text.clear()
-            attachmentListAdapter.clear()
-            btnCancel.isVisible = false
+            capsuleInputBox.clearText()
+            capsuleInputBox.clearAttachments()
         }
     }
 
@@ -1427,8 +980,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             if (isEditingMode) {
                 exitEditMode()
             }
-            attachmentListAdapter.clear()
-            btnCancel.isVisible = false
+            capsuleInputBox.clearAttachments()
         }
         noteItemAdapter.update(noteItem)
     }
@@ -1447,6 +999,8 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     companion object {
         const val TAG: String = "NoteListFragment"
+        private const val STATE_EDITING_NOTE_ID = "editing_note_id"
+        private const val STATE_EDITING_DRAFT = "editing_draft"
     }
 }
 

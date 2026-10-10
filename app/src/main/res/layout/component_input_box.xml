@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="cn.alvkeke.dropto.ui.component.CapsuleLayout">
+
+    <ImageButton
+        android:id="@+id/input_box_attach"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:src="@drawable/icon_btn_note_attach_file"
+        android:scaleType="center"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_width="@dimen/capsule_size"
+        android:layout_height="@dimen/capsule_size"
+        android:contentDescription="@string/description_button_attach_file" />
+
+    <EditText
+        android:id="@+id/input_box_text"
+        app:layout_constraintStart_toEndOf="@id/input_box_attach"
+        app:layout_constraintEnd_toStartOf="@id/input_box_send"
+        app:layout_constraintBottom_toBottomOf="@id/input_box_attach"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/capsule_size"
+        android:maxHeight="200dp"
+        android:background="@android:color/transparent"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="8dp"
+        android:gravity="center_vertical"
+        android:inputType="textMultiLine"
+        android:autofillHints="NoteText"
+        tools:ignore="LabelFor" />
+
+    <ImageButton
+        android:id="@+id/input_box_send"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/input_box_attach"
+        app:layout_constraintBottom_toBottomOf="@id/input_box_attach"
+        android:src="@drawable/img_btn_note_send"
+        android:scaleType="center"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_width="@dimen/capsule_size"
+        android:layout_height="@dimen/capsule_size"
+        android:contentDescription="@string/description_input_button" />
+
+    <LinearLayout
+        android:id="@+id/input_box_extra"
+        android:orientation="vertical"
+        android:visibility="visible"
+        app:layout_constraintStart_toStartOf="@id/input_box_attach"
+        app:layout_constraintEnd_toEndOf="@id/input_box_send"
+        app:layout_constraintBottom_toTopOf="@id/input_box_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <ImageButton
+                android:id="@+id/input_box_mode_icon"
+                android:src="@drawable/icon_common_edit"
+                app:tint="@color/color_text_main"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/description_input_mode_edit"
+                android:layout_width="@dimen/capsule_size"
+                android:layout_height="@dimen/capsule_size" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/input_box_cancel"
+                android:src="@drawable/icon_common_cross"
+                android:scaleType="center"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/description_button_cancel_editing_or_attach"
+                android:layout_width="@dimen/capsule_size"
+                android:layout_height="@dimen/capsule_size" />
+
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/input_box_attachments"
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+
+</merge>

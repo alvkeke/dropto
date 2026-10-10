@@ -2,16 +2,18 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipToOutline="false"
+    android:clipToPadding="false"
+    android:clipChildren="false"
     android:background="@color/color_background"
     android:focusable="true"
     android:clickable="true"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <com.google.android.material.appbar.MaterialToolbar
+    <cn.alvkeke.dropto.ui.component.CapsuleToolbar
         android:id="@+id/mgmt_reaction_toolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:background="?android:statusBarColor"
         app:title="Reactions"
         app:navigationIcon="@drawable/icon_common_cross"
         app:menu="@menu/mgmt_reaction_toolbar"

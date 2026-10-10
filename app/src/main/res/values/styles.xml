@@ -6,7 +6,7 @@
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
 
-    <style name="Theme.DropTo" parent="Theme.MaterialComponents.Light">
+    <style name="Theme.DropTo" parent="Theme.MaterialComponents.DayNight">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/color_action_bar</item>
         <item name="colorPrimaryVariant">@color/color_navigation_bar</item>
@@ -16,15 +16,37 @@
         <item name="colorSecondaryVariant">@color/teal_700</item>
         <item name="colorOnSecondary">@color/colorMainTitle</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimary</item>
-        <item name="android:navigationBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <!-- Customize your theme here. -->
         <item name="backgroundColor">@color/color_background</item>
+        <!-- every toolbar only floats its controls, it never paints a bar of its own -->
+        <item name="toolbarStyle">@style/Widget.DropTo.Toolbar</item>
+        <item name="toolbarNavigationButtonStyle">@style/Widget.DropTo.Toolbar.NavigationButton</item>
     </style>
 
     <style name="Theme.DropTo.NoActionBar" parent="Theme.DropTo">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="Widget.DropTo.Toolbar" parent="Widget.MaterialComponents.Toolbar">
+        <item name="android:background">@android:color/transparent</item>
+        <!-- the Toolbar lays its children out from its padding, this is the room they keep -->
+        <item name="android:paddingStart">@dimen/capsule_spacing</item>
+        <item name="android:paddingEnd">@dimen/capsule_spacing</item>
+        <item name="maxButtonHeight">@dimen/capsule_size</item>
+        <item name="android:clipToOutline">false</item>
+        <item name="android:clipToPadding">false</item>
+        <item name="android:clipChildren">false</item>
+    </style>
+
+    <style name="Widget.DropTo.Toolbar.NavigationButton" parent="Widget.AppCompat.Toolbar.Button.Navigation">
+        <item name="android:background">@drawable/bg_solid_control</item>
+        <item name="android:scaleType">center</item>
+        <item name="android:minWidth">@dimen/capsule_size</item>
+        <item name="android:minHeight">@dimen/capsule_size</item>
+        <item name="android:elevation">8dp</item>
     </style>
 
     <!-- animation for popup menu in NoteList -->
