@@ -15,7 +15,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
-import android.view.VelocityTracker
 import android.widget.GridLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -37,6 +36,7 @@ import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
 import cn.alvkeke.dropto.ui.component.note_item_child.FileGridLayout
 import cn.alvkeke.dropto.ui.component.note_item_child.FileItemView
 import cn.alvkeke.dropto.ui.component.note_item_child.MediaItemView
+import cn.alvkeke.dropto.ui.listener.ReleaseVelocitySampler
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -180,7 +180,7 @@ class NoteItemView @JvmOverloads constructor(
     private var pressedContent = ClickedContent(ClickedContent.Type.NONE)
     private var pressedInMedias = false                 // the finger is on the attachments strip
     private var longPressRunnable: Runnable? = null
-    private var velocityTracker: VelocityTracker? = null
+    private val velocitySampler = ReleaseVelocitySampler()
     private var stoppedFling = false
 
     private enum class TouchAxis { NONE, HORIZONTAL, VERTICAL }
@@ -228,8 +228,8 @@ class NoteItemView @JvmOverloads constructor(
             stoppedFling = true
         }
 
-        velocityTracker?.recycle()
-        velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
+        velocitySampler.clear()
+        velocitySampler.add(event.rawX, event.rawY)
 
         if (stoppedFling) return
         val runnable = Runnable {
@@ -256,12 +256,10 @@ class NoteItemView @JvmOverloads constructor(
         pageDraggingAccepted = false
         longPressHandled = false
         longPressSliding = false
-        velocityTracker?.recycle()
-        velocityTracker = null
     }
 
     private fun moveTouch(event: MotionEvent): Boolean {
-        velocityTracker?.addMovement(event)
+        velocitySampler.add(event.rawX, event.rawY)
         lastRawX = event.rawX
         lastRawY = event.rawY
 
@@ -323,11 +321,9 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun endTouch(event: MotionEvent, cancelled: Boolean) {
         if (!cancelled) {
-            velocityTracker?.addMovement(event)
+            velocitySampler.add(event.rawX, event.rawY)
         }
-        velocityTracker?.computeCurrentVelocity(1000)
-        val speedX = (velocityTracker?.xVelocity ?: 0f) / 1000f
-        val speedY = (velocityTracker?.yVelocity ?: 0f) / 1000f
+        val (speedX, speedY) = velocitySampler.recentReleaseVelocity()
 
         if (longPressHandled) {
             longPressHandled = false
@@ -480,8 +476,6 @@ class NoteItemView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         cancelLongPress()
         mediaFling.abortAnimation()
-        velocityTracker?.recycle()
-        velocityTracker = null
         super.onDetachedFromWindow()
     }
 

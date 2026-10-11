@@ -411,7 +411,7 @@ class MainActivity : AppCompatActivity(),
             val open = if (abs(velocityPxPerMs) > REVEAL_FLING_SPEED) {
                 velocityPxPerMs < 0f
             } else {
-                left < rootLayout.width / 3f
+                left < rootLayout.width / 2f
             }
             if (open) animateOpenNoteList(velocityPxPerMs)
             else animateCloseNoteList(velocityPxPerMs)
