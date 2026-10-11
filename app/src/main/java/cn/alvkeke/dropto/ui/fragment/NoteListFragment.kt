@@ -115,12 +115,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             .show()
     }
 
-    override fun onBackgroundClick(note: NoteItem, anchorY: Int) {
+    override fun onBackgroundClick(note: NoteItem, anchorX: Int, anchorY: Int) {
         if (rlNoteList.isSelectMode) {
             rlNoteList.toggleSelectItems(positionOf(note))
             return
         }
-        showItemPopMenu(note, anchorY)
+        showItemPopMenu(note, anchorX, anchorY)
     }
 
     override fun onMediaClick(note: NoteItem, file: AttachmentFile) {
@@ -671,7 +671,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private lateinit var popupMenu: PopupMenu
     @SuppressLint("RestrictedApi")
-    private fun showItemPopMenu(note: NoteItem, anchorY: Int) {
+    private fun showItemPopMenu(note: NoteItem, anchorX: Int, anchorY: Int) {
         if (!::popupMenu.isInitialized) {
             popupMenu = PopupMenu(context)
             val menu = MenuBuilder(context)
@@ -683,27 +683,27 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 rlNoteList.clearHighLight()
             }
         }
-        Log.v(TAG, "show popup menu for note-${note.id} at y:$anchorY")
+        Log.v(TAG, "show popup menu for note-${note.id} at ($anchorX, $anchorY)")
         noteItemForMenu = note
         val isDeleted = note.isDeleted
         popupMenu.setMenuItemVisible(R.id.item_pop_m_restore, isDeleted)
         popupMenu.setMenuItemVisible(R.id.item_pop_m_delete, !isDeleted)
 
-        val targetTop = anchorY - popupMenu.height / 3
-        val targetBottom = targetTop + popupMenu.height
-        val xShow = rlNoteList.width / 5
-        var yShow = targetTop
+        val listOnScreen = IntArray(2)
+        val listInWindow = IntArray(2)
+        rlNoteList.getLocationOnScreen(listOnScreen)
+        rlNoteList.getLocationInWindow(listInWindow)
+        val windowOffsetX = listOnScreen[0] - listInWindow[0]
+        val windowOffsetY = listOnScreen[1] - listInWindow[1]
 
-        val location = IntArray(2)
-        rlNoteList.getLocationOnScreen(location)
-        val topLimit = location[1]
-        val bottomLimit = topLimit + rlNoteList.bottom
-
-        if (targetTop < topLimit) {
-            yShow = topLimit
-        } else if (targetBottom > bottomLimit) {
-            yShow = bottomLimit - popupMenu.height
-        }
+        val leftLimit = listInWindow[0]
+        val topLimit = listInWindow[1]
+        val rightLimit = leftLimit + rlNoteList.width
+        val bottomLimit = topLimit + rlNoteList.height
+        val xShow = (anchorX - windowOffsetX - popupMenu.width / 2)
+            .coerceIn(leftLimit, (rightLimit - popupMenu.width).coerceAtLeast(leftLimit))
+        val yShow = (anchorY - windowOffsetY - popupMenu.height / 3)
+            .coerceIn(topLimit, (bottomLimit - popupMenu.height).coerceAtLeast(topLimit))
 
         rlNoteList.highLight(positionOf(note))
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
@@ -724,7 +724,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             rlNoteList,
             Gravity.NO_GRAVITY,
             xShow,
-            yShow - reactionView.height
+            (yShow - reactionView.height).coerceAtLeast(0)
         )
     }
 

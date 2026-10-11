@@ -418,6 +418,7 @@ class NoteItemView @JvmOverloads constructor(
         val listener = eventListener ?: return
         val note = this.note ?: return
         val content = pressedContent
+        val anchorX = lastRawX.toInt()
         val anchorY = lastRawY.toInt()
         when (content.type) {
             ClickedContent.Type.SENDER_ICON -> listener.onSenderClick(note)
@@ -426,7 +427,7 @@ class NoteItemView @JvmOverloads constructor(
             ClickedContent.Type.REACTION -> {
                 listener.onReactionClick(note, reactionOf(content.index))
             }
-            else -> listener.onBackgroundClick(note, anchorY)
+            else -> listener.onBackgroundClick(note, anchorX, anchorY)
         }
     }
 
@@ -642,7 +643,7 @@ class NoteItemView @JvmOverloads constructor(
 
     interface EventListener {
         fun onSenderClick(note: NoteItem)
-        fun onBackgroundClick(note: NoteItem, anchorY: Int)
+        fun onBackgroundClick(note: NoteItem, anchorX: Int, anchorY: Int)
         fun onMediaClick(note: NoteItem, file: AttachmentFile)
         fun onMediaLongClick(note: NoteItem, file: AttachmentFile, anchorY: Int)
         fun onFileClick(note: NoteItem, file: AttachmentFile)

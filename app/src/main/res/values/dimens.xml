@@ -37,4 +37,7 @@
     <dimen name="capsule_size">48dp</dimen>
     <dimen name="capsule_radius">24dp</dimen>
     <dimen name="capsule_spacing">8dp</dimen>
+
+    <dimen name="width_popup_menu">192dp</dimen>
+    <dimen name="height_popup_menu_item">48dp</dimen>
 </resources>

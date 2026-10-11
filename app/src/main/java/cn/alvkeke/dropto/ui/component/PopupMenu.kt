@@ -47,10 +47,10 @@ class PopupMenu @JvmOverloads constructor(
     }
 
     private val menuWidth: Float by lazy {
-        context.resources.displayMetrics.widthPixels / 2f
+        context.resources.getDimension(R.dimen.width_popup_menu)
     }
     private val menuItemHeight: Float by lazy {
-        menuWidth / 4
+        context.resources.getDimension(R.dimen.height_popup_menu_item)
     }
 
     private val menuHeight: Float
