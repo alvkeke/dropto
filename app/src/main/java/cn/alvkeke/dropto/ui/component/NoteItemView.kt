@@ -67,6 +67,9 @@ class NoteItemView @JvmOverloads constructor(
     private val mediaContainer: LinearLayout
     private val fileContainer: FileGridLayout
     private val reactionContainer: ChipGroup
+    private val bottomGap: View
+    private val itemBottomMargin: Int
+    private val defaultTextTopMargin: Int
 
     init {
         LayoutInflater.from(context).inflate(R.layout.rlist_item_note, this, true)
@@ -81,14 +84,32 @@ class NoteItemView @JvmOverloads constructor(
         mediaScroll = findViewById(R.id.note_item_media_scroll)
         mediaContainer = findViewById(R.id.note_item_media_container)
         fileContainer = findViewById(R.id.note_item_file_container)
-        fileContainer.columnWidthExpect = dimenPx(R.dimen.size_note_item_file_column_width)
         reactionContainer = findViewById(R.id.note_item_reaction_container)
+        bottomGap = findViewById(R.id.note_item_bottom_gap)
+
+        itemBottomMargin = dimenPx(R.dimen.margin_note_item_element)
+        fileContainer.columnWidthExpect = dimenPx(R.dimen.size_note_item_file_column_width)
+        defaultTextTopMargin = dimenPx(R.dimen.margin_note_item_text_top)
     }
 
     var note: NoteItem? = null
         set(value) {
             field = value
             bindNote(value)
+        }
+
+    enum class Type {
+        NON_GROUP,
+        GROUP_HEAD,
+        GROUP_BODY,
+        GROUP_END,
+    }
+
+    var groupType: Type = Type.NON_GROUP
+        set(value) {
+            if (field == value) return
+            field = value
+            applyGroupLayout()
         }
 
     private fun bindNote(note: NoteItem?) {
@@ -104,6 +125,32 @@ class NoteItemView @JvmOverloads constructor(
         rebuildMedias(note?.medias.orEmpty())
         rebuildFiles(note?.files.orEmpty(), note?.medias?.size ?: 0)
         rebuildReactions(note?.reactions.orEmpty())
+        applyGroupLayout()
+    }
+
+    private fun applyGroupLayout() {
+        val showHeader = groupType == Type.NON_GROUP || groupType == Type.GROUP_HEAD
+        avatarView.isVisible = showHeader
+        senderView.isVisible = showHeader
+        timeView.isVisible = showHeader
+        // only try to make it invisible
+        if (!showHeader) statusContainer.isVisible = false
+
+        val needBottomMargin = groupType == Type.NON_GROUP || groupType == Type.GROUP_END
+        (bottomGap.layoutParams as MarginLayoutParams).bottomMargin =
+                if (needBottomMargin) itemBottomMargin else 0
+
+        val textParams = textView.layoutParams as LayoutParams
+        if (showHeader) {
+            textParams.topToTop = LayoutParams.UNSET
+            textParams.topToBottom = R.id.note_item_header_barrier
+            textParams.topMargin = defaultTextTopMargin
+        } else {
+            textParams.topToTop = LayoutParams.PARENT_ID
+            textParams.topToBottom = LayoutParams.UNSET
+            textParams.topMargin = 0
+        }
+        requestLayout()
     }
 
     private val senderScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

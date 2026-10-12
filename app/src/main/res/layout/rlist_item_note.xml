@@ -102,12 +102,12 @@
         android:textSize="15sp"
         android:lineSpacingMultiplier="1.1"
         android:visibility="gone"
-        app:layout_constraintStart_toEndOf="@id/note_item_avatar"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/note_item_header_barrier"
-        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_marginStart="@dimen/indent_start_note_item_content"
         android:layout_marginEnd="@dimen/margin_note_item_element"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="@dimen/margin_note_item_text_top"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         tools:text="content of the note"
@@ -120,7 +120,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/note_item_text"
-        android:layout_marginTop="@dimen/margin_note_item_element"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         tools:visibility="visible">
@@ -128,7 +127,7 @@
         <LinearLayout
             android:id="@+id/note_item_media_container"
             android:orientation="horizontal"
-            android:paddingStart="@dimen/padding_note_item_media_list_start"
+            android:paddingStart="@dimen/indent_start_note_item_content"
             android:paddingEnd="@dimen/margin_note_item_element"
             android:clipToPadding="false"
             android:layout_width="wrap_content"
@@ -138,10 +137,10 @@
     <cn.alvkeke.dropto.ui.component.note_item_child.FileGridLayout
         android:id="@+id/note_item_file_container"
         android:visibility="gone"
-        app:layout_constraintStart_toEndOf="@id/note_item_avatar"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/note_item_media_scroll"
-        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_marginStart="@dimen/indent_start_note_item_content"
         android:layout_marginEnd="@dimen/margin_note_item_element"
         android:layout_width="0dp"
         android:layout_height="wrap_content" />
@@ -153,10 +152,10 @@
         android:visibility="gone"
         app:chipSpacingHorizontal="6dp"
         app:chipSpacingVertical="2dp"
-        app:layout_constraintStart_toEndOf="@id/note_item_avatar"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/note_item_file_container"
-        android:layout_marginStart="@dimen/margin_note_item_element"
+        android:layout_marginStart="@dimen/indent_start_note_item_content"
         android:layout_marginEnd="@dimen/margin_note_item_element"
         android:layout_marginTop="6dp"
         android:layout_width="0dp"
@@ -170,7 +169,9 @@
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
         app:barrierAllowsGoneWidgets="false"
-        app:constraint_referenced_ids="note_item_sender_name,note_item_status_container,note_item_text,note_item_media_scroll,note_item_file_container,note_item_reaction_container" />
+        app:constraint_referenced_ids="note_item_sender_name,note_item_status_container,
+                        note_item_text,note_item_media_scroll,
+                        note_item_file_container,note_item_reaction_container" />
 
     <Space
         android:id="@+id/note_item_bottom_gap"

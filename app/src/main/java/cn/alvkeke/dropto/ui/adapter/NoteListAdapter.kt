@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.ui.component.NoteItemView
 import java.util.IdentityHashMap
+import kotlin.math.abs
 
 class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHolder>() {
 
@@ -73,7 +74,49 @@ class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHold
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val view = holder.itemView as NoteItemView
         view.eventListener = eventListener
-        view.note = this.get(position)
+        val note = this.get(position)
+        view.groupType = groupTypeOf(position, note)
+        view.note = note
+    }
+
+    private fun isGroupContinuation(position: Int, note: NoteItem): Boolean {
+        if (position + 1 >= itemCount) return false
+        val above = get(position + 1)
+        return note.sender == above.sender &&
+                abs(note.createTime - above.createTime) <= GROUP_MERGE_INTERVAL
+    }
+
+    private fun groupTypeOf(position: Int, note: NoteItem): NoteItemView.Type {
+        val mergedAbove = isGroupContinuation(position, note)
+        val mergedBelow = position > 0 && isGroupContinuation(position - 1, get(position - 1))
+        return when {
+            mergedAbove && mergedBelow -> NoteItemView.Type.GROUP_BODY
+            mergedAbove -> NoteItemView.Type.GROUP_END
+            mergedBelow -> NoteItemView.Type.GROUP_HEAD
+            else -> NoteItemView.Type.NON_GROUP
+        }
+    }
+
+    init {
+        registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                rebindGroup(positionStart - 1)
+                rebindGroup(positionStart + itemCount)
+            }
+
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                rebindGroup(positionStart - 1)
+                rebindGroup(positionStart)
+            }
+        })
+    }
+
+    private fun rebindGroup(position: Int) {
+        if (position in 0 until itemCount) notifyItemChanged(position)
+    }
+
+    companion object {
+        private const val GROUP_MERGE_INTERVAL = 5 * 60 * 1000L
     }
 
 }

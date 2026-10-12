@@ -32,7 +32,8 @@
 
     <!-- gap between the elements of a note item -->
     <dimen name="margin_note_item_element">8dp</dimen>
-    <dimen name="padding_note_item_media_list_start">56dp</dimen>
+    <dimen name="margin_note_item_text_top">2dp</dimen>
+    <dimen name="indent_start_note_item_content">56dp</dimen>
 
     <dimen name="capsule_size">48dp</dimen>
     <dimen name="capsule_radius">24dp</dimen>
