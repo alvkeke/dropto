@@ -90,6 +90,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     private lateinit var capsuleInputBox: CapsuleInputBox
     private lateinit var inputContainer: View
     private lateinit var contentContainer: ConstraintLayout
+    private var topInset = 0
     private var navInset = 0
     private lateinit var toolbar: MaterialToolbar
     private lateinit var rlNoteList: SelectableRecyclerView
@@ -239,7 +240,6 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         contentContainer = view.findViewById(R.id.note_list_content_container)
         toolbar = view.findViewById(R.id.note_list_toolbar)
 
-        var topInset = 0
         fun padNoteList() {
             rlNoteList.applyPadding(
                 topInset + toolbar.height,
@@ -681,9 +681,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             popupMenu.animationStyle = R.style.PopupMenuAnimation
             popupMenu.setOnDismissListener {
                 rlNoteList.clearHighLight()
+                _reactionView?.dismiss()
             }
         }
         Log.v(TAG, "show popup menu for note-${note.id} at ($anchorX, $anchorY)")
+        if (popupMenu.isShowing) popupMenu.dismiss()
+        _reactionView?.dismiss()
         noteItemForMenu = note
         val isDeleted = note.isDeleted
         popupMenu.setMenuItemVisible(R.id.item_pop_m_restore, isDeleted)
@@ -700,16 +703,20 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         val topLimit = listInWindow[1]
         val rightLimit = leftLimit + rlNoteList.width
         val bottomLimit = topLimit + rlNoteList.height
+        val safeTop = maxOf(topLimit, topInset)
+        val safeBottom = bottomLimit - navInset
         val xShow = (anchorX - windowOffsetX - popupMenu.width / 2)
             .coerceIn(leftLimit, (rightLimit - popupMenu.width).coerceAtLeast(leftLimit))
         val yShow = (anchorY - windowOffsetY - popupMenu.height / 3)
-            .coerceIn(topLimit, (bottomLimit - popupMenu.height).coerceAtLeast(topLimit))
+            .coerceIn(safeTop, (safeBottom - popupMenu.height).coerceAtLeast(safeTop))
 
         rlNoteList.highLight(positionOf(note))
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
-        DataBaseHelper(context).writableDatabase.use {
-            reactionView.setReactions(it.getReactionList())
+        val reactions = DataBaseHelper(context).writableDatabase.use {
+            it.getReactionList()
         }
+        if (reactions.isEmpty()) return
+        reactionView.setReactions(reactions)
         reactionView.onReactionClick = { reaction ->
             if (note.reactions.contains(reaction)) {
                 note.reactions.remove(reaction)
@@ -720,12 +727,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             app.service?.updateNote(note)
             popupMenu.dismiss()
         }
-        reactionView.showAtLocation(
-            rlNoteList,
-            Gravity.NO_GRAVITY,
-            xShow,
-            (yShow - reactionView.height).coerceAtLeast(0)
-        )
+        val reactionY = (yShow - reactionView.height)
+            .takeIf { it >= safeTop }
+            ?: (yShow + popupMenu.height)
+        reactionView.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, reactionY)
     }
 
     private var _reactionView: ReactionDialog? = null
