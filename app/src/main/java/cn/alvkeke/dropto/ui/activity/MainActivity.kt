@@ -195,7 +195,7 @@ class MainActivity : AppCompatActivity(),
             return MAX_DURATION_FRAGMENT_ANIME
         }
         val ms = (distancePx / abs(velocityPxPerMs)).toLong()
-        return ms
+        return ms.coerceAtLeast(MIN_DURATION_FRAGMENT_ANIME)
     }
 
     private inner class PageSlider(
@@ -498,6 +498,7 @@ class MainActivity : AppCompatActivity(),
 
     companion object {
         const val TAG: String = "MainActivity"
+        private const val MIN_DURATION_FRAGMENT_ANIME = 50L
         private const val MAX_DURATION_FRAGMENT_ANIME = 200L
         // px tolerance used to treat the reveal as fully open / fully closed
         private const val REVEAL_EPS = 1f
