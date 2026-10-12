@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.Log
 import android.util.Size
@@ -67,9 +68,11 @@ class NoteItemView @JvmOverloads constructor(
     private val mediaContainer: LinearLayout
     private val fileContainer: FileGridLayout
     private val reactionContainer: ChipGroup
+    private val foldedView: ImageView
     private val bottomGap: View
     private val itemBottomMargin: Int
     private val defaultTextTopMargin: Int
+    private val defaultTextMaxLines: Int
 
     init {
         LayoutInflater.from(context).inflate(R.layout.rlist_item_note, this, true)
@@ -85,11 +88,13 @@ class NoteItemView @JvmOverloads constructor(
         mediaContainer = findViewById(R.id.note_item_media_container)
         fileContainer = findViewById(R.id.note_item_file_container)
         reactionContainer = findViewById(R.id.note_item_reaction_container)
+        foldedView = findViewById(R.id.note_item_status_folded)
         bottomGap = findViewById(R.id.note_item_bottom_gap)
 
         itemBottomMargin = dimenPx(R.dimen.margin_note_item_element)
         fileContainer.columnWidthExpect = dimenPx(R.dimen.size_note_item_file_column_width)
         defaultTextTopMargin = dimenPx(R.dimen.margin_note_item_text_top)
+        defaultTextMaxLines = textView.maxLines
     }
 
     var note: NoteItem? = null
@@ -112,20 +117,28 @@ class NoteItemView @JvmOverloads constructor(
             applyGroupLayout()
         }
 
+    /** the item shows the text in a single line and the counts of its attachments only */
+    var folded: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            applyFoldedLayout()
+        }
+
     private fun bindNote(note: NoteItem?) {
-        textView.text = note?.text.orEmpty()
-        textView.isVisible = !note?.text.isNullOrEmpty()
         timeView.text = note?.createTime?.format().orEmpty()
         editedView.isVisible = note?.isEdited == true
         deletedView.isVisible = note?.isDeleted == true
         unsyncedView.isVisible = note?.isSynced == false
+        foldedView.isVisible = note?.folded == true
         statusContainer.isVisible = note != null &&
-                (note.isEdited || note.isDeleted || !note.isSynced)
+                (note.isEdited || note.isDeleted || !note.isSynced || note.folded)
         bindSender(note?.sender)
         rebuildMedias(note?.medias.orEmpty())
         rebuildFiles(note?.files.orEmpty(), note?.medias?.size ?: 0)
         rebuildReactions(note?.reactions.orEmpty())
         applyGroupLayout()
+        applyFoldedLayout()
     }
 
     private fun applyGroupLayout() {
@@ -151,6 +164,56 @@ class NoteItemView @JvmOverloads constructor(
             textParams.topMargin = 0
         }
         requestLayout()
+    }
+
+    private fun applyFoldedLayout() {
+        val note = this.note
+        val text = if (folded) foldedText(note) else note?.text.orEmpty()
+
+        textView.maxLines = if (folded) FOLDED_TEXT_LINES else defaultTextMaxLines
+        textView.ellipsize = if (folded) TextUtils.TruncateAt.END else null
+        textView.text = text
+        textView.isVisible = text.isNotEmpty()
+
+        // the attachments keep their place in the constraints while the text takes the two
+        // lines of a folded item, the reactions follow the text
+        mediaScroll.isVisible = !folded && note?.medias?.isNotEmpty() == true
+        fileContainer.isVisible = !folded && note?.files?.isNotEmpty() == true
+    }
+
+    /** the lines of a folded item: the text of the note, then the counts of the attachments */
+    private fun foldedText(note: NoteItem?): CharSequence {
+        if (note == null) return ""
+        val lines = ArrayList<CharSequence>(2)
+        if (note.text.isNotEmpty()) {
+            lines.add(foldedTextLine(note.text))
+        }
+        val counts = attachmentCounts(note)
+        if (counts.isNotEmpty()) {
+            lines.add(counts)
+        }
+        return lines.joinToString("\n")
+    }
+
+    /** the text of the note cut to the single line which a folded item gives to it */
+    private fun foldedTextLine(text: String): CharSequence {
+        val line = text.lineSequence().first()
+        val width = textView.width - textView.paddingStart - textView.paddingEnd
+        if (width <= 0) return line
+        return TextUtils.ellipsize(line, textView.paint, width.toFloat(), TextUtils.TruncateAt.END)
+    }
+
+    /** the counts of the attachments which the note has, "file x 2, media x 1" */
+    private fun attachmentCounts(note: NoteItem?): String {
+        if (note == null) return ""
+        val parts = ArrayList<String>(2)
+        if (note.files.isNotEmpty()) {
+            parts.add(context.getString(R.string.string_note_item_folded_file, note.files.size))
+        }
+        if (note.medias.isNotEmpty()) {
+            parts.add(context.getString(R.string.string_note_item_folded_media, note.medias.size))
+        }
+        return parts.joinToString(", ")
     }
 
     private val senderScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -226,6 +289,7 @@ class NoteItemView @JvmOverloads constructor(
     private var longPressSliding = false
     private var pressedContent = ClickedContent(ClickedContent.Type.NONE)
     private var pressedInMedias = false                 // the finger is on the attachments strip
+    private var pressedInAvatar = false                 // the finger is on the avatar
     private var longPressRunnable: Runnable? = null
     private val velocitySampler = ReleaseVelocitySampler()
     private var stoppedFling = false
@@ -426,9 +490,11 @@ class NoteItemView @JvmOverloads constructor(
         var view: View? = findHitView(this, x, y)
         var content: ClickedContent? = null
         pressedInMedias = false
+        pressedInAvatar = false
 
         while (view != null && view !== this) {
             if (view === mediaScroll) pressedInMedias = true
+            if (view === avatarView) pressedInAvatar = true
             if (content == null) content = view.tag as? ClickedContent
             view = view.parent as? View
         }
@@ -484,6 +550,11 @@ class NoteItemView @JvmOverloads constructor(
         val note = this.note ?: return false
         val content = pressedContent
         val anchorY = lastRawY.toInt()
+        // the avatar folds the item instead of starting the sliding of the selection
+        if (pressedInAvatar) {
+            listener.onSenderLongClick(note)
+            return false
+        }
         return when (content.type) {
             ClickedContent.Type.MEDIA -> {
                 content.data?.let { listener.onMediaLongClick(note, it, anchorY) }
@@ -524,6 +595,12 @@ class NoteItemView @JvmOverloads constructor(
         cancelLongPress()
         mediaFling.abortAnimation()
         super.onDetachedFromWindow()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // the line of a folded item is cut for the width of the item, it is known only now
+        if (folded && w != oldw) applyFoldedLayout()
     }
 
 
@@ -675,6 +752,7 @@ class NoteItemView @JvmOverloads constructor(
         const val TAG: String = "NoteItemView"
 
         private const val TEXT_SIZE_REACTION = 13f    // in sp
+        private const val FOLDED_TEXT_LINES = 2       // the text of the note and the counts
         val dataFormatCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
         val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
         val dataFormatWeekly: SimpleDateFormat = SimpleDateFormat("EEE HH:mm", Locale.CHINESE)
@@ -684,6 +762,7 @@ class NoteItemView @JvmOverloads constructor(
 
     interface EventListener {
         fun onSenderClick(note: NoteItem)
+        fun onSenderLongClick(note: NoteItem)
         fun onBackgroundClick(note: NoteItem, anchorX: Int, anchorY: Int)
         fun onMediaClick(note: NoteItem, file: AttachmentFile)
         fun onMediaLongClick(note: NoteItem, file: AttachmentFile, anchorY: Int)

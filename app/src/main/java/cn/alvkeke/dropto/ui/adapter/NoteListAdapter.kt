@@ -77,8 +77,32 @@ class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHold
         view.eventListener = eventListener
         val note = this.get(position)
         view.groupType = groupTypeOf(position, note)
+        view.folded = groupHead(position).folded
         view.note = note
     }
+
+    /** folding and unfolding the notes of [note], the whole group it belongs to follows */
+    fun toggleFolded(note: NoteItem) {
+        val position = indexOf(note)
+        if (position < 0) return
+        val range = groupRange(position)
+        // the head of the group is the one which the flag of the whole group is kept on
+        val head = get(range.last)
+        head.folded = !head.folded
+        notifyItemRangeChanged(range.first, range.last - range.first + 1)
+    }
+
+    /** the notes which are merged together, they are always next to each other */
+    private fun groupRange(position: Int): IntRange {
+        var start = position
+        while (start > 0 && isGroupContinuation(start - 1, get(start - 1))) start--
+        var end = position
+        while (end + 1 < itemCount && isGroupContinuation(end, get(end))) end++
+        return start..end
+    }
+
+    /** the note which holds the header of the group of [position], it is the one above */
+    private fun groupHead(position: Int): NoteItem = get(groupRange(position).last)
 
     private fun isGroupContinuation(position: Int, note: NoteItem): Boolean {
         if (position + 1 >= itemCount) return false

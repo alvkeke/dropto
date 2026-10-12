@@ -86,6 +86,16 @@
             android:visibility="gone"
             android:layout_width="14dp"
             android:layout_height="14dp" />
+
+        <ImageView
+            android:id="@+id/note_item_status_folded"
+            android:layout_marginStart="4dp"
+            android:src="@drawable/icon_common_folded"
+            app:tint="@color/color_text_sub"
+            android:contentDescription="@string/description_note_item_folded_icon"
+            android:visibility="gone"
+            android:layout_width="14dp"
+            android:layout_height="14dp" />
     </LinearLayout>
 
     <androidx.constraintlayout.widget.Barrier

@@ -51,5 +51,9 @@
     <string name="description_note_item_deleted_icon">Icon to show this item was deleted</string>
     <string name="description_note_item_not_synced_icon">Icon to show this item was not synced</string>
     <string name="description_of_note_item_file_icon">Icon of a file attachment of the note</string>
+    <!-- the attachment counts on the second line of a folded note item -->
+    <string name="string_note_item_folded_file">file x %1$d</string>
+    <string name="string_note_item_folded_media">media x %1$d</string>
+    <string name="description_note_item_folded_icon">Icon to show this note is folded</string>
     <string name="description_input_mode_edit">The input box is editing an existing note</string>
 </resources>

@@ -116,6 +116,10 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
             .show()
     }
 
+    override fun onSenderLongClick(note: NoteItem) {
+        noteItemAdapter.toggleFolded(note)
+    }
+
     override fun onBackgroundClick(note: NoteItem, anchorX: Int, anchorY: Int) {
         if (rlNoteList.isSelectMode) {
             rlNoteList.toggleSelectItems(positionOf(note))

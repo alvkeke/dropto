@@ -18,6 +18,7 @@ class NoteItem : Serializable, Cloneable {
     var isEdited: Boolean = false
     var isDeleted: Boolean = false
     var isSynced: Boolean = false
+    var folded: Boolean = false
 
     val reactions: MutableList<String> = mutableListOf()
 
