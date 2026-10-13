@@ -168,50 +168,35 @@ class NoteItemView @JvmOverloads constructor(
 
     private fun applyFoldedLayout() {
         val note = this.note
-        val text = if (folded) foldedText(note) else note?.text.orEmpty()
+        // a folded item tells how much the note has instead of the text of the note
+        val text = if (folded) foldedSummary(note) else note?.text.orEmpty()
 
         textView.maxLines = if (folded) FOLDED_TEXT_LINES else defaultTextMaxLines
         textView.ellipsize = if (folded) TextUtils.TruncateAt.END else null
         textView.text = text
         textView.isVisible = text.isNotEmpty()
 
-        // the attachments keep their place in the constraints while the text takes the two
-        // lines of a folded item, the reactions follow the text
+        // the attachments keep their place in the constraints while the folded item takes
+        // the single line it gives to the summary, the reactions follow the text
         mediaScroll.isVisible = !folded && note?.medias?.isNotEmpty() == true
         fileContainer.isVisible = !folded && note?.files?.isNotEmpty() == true
     }
 
-    /** the lines of a folded item: the text of the note, then the counts of the attachments */
-    private fun foldedText(note: NoteItem?): CharSequence {
+    /** what a folded item shows: "char: 12, media: 1, files: 2", the counts of 0 are left out */
+    private fun foldedSummary(note: NoteItem?): String {
         if (note == null) return ""
-        val lines = ArrayList<CharSequence>(2)
-        if (note.text.isNotEmpty()) {
-            lines.add(foldedTextLine(note.text))
+        val parts = ArrayList<String>(3)
+        val chars = note.text.length
+        val medias = note.medias.size
+        val files = note.files.size
+        if (chars > 0) {
+            parts.add(context.getString(R.string.string_note_item_folded_char, chars))
         }
-        val counts = attachmentCounts(note)
-        if (counts.isNotEmpty()) {
-            lines.add(counts)
+        if (medias > 0) {
+            parts.add(context.getString(R.string.string_note_item_folded_media, medias))
         }
-        return lines.joinToString("\n")
-    }
-
-    /** the text of the note cut to the single line which a folded item gives to it */
-    private fun foldedTextLine(text: String): CharSequence {
-        val line = text.lineSequence().first()
-        val width = textView.width - textView.paddingStart - textView.paddingEnd
-        if (width <= 0) return line
-        return TextUtils.ellipsize(line, textView.paint, width.toFloat(), TextUtils.TruncateAt.END)
-    }
-
-    /** the counts of the attachments which the note has, "file x 2, media x 1" */
-    private fun attachmentCounts(note: NoteItem?): String {
-        if (note == null) return ""
-        val parts = ArrayList<String>(2)
-        if (note.files.isNotEmpty()) {
-            parts.add(context.getString(R.string.string_note_item_folded_file, note.files.size))
-        }
-        if (note.medias.isNotEmpty()) {
-            parts.add(context.getString(R.string.string_note_item_folded_media, note.medias.size))
+        if (files > 0) {
+            parts.add(context.getString(R.string.string_note_item_folded_file, files))
         }
         return parts.joinToString(", ")
     }
@@ -752,7 +737,7 @@ class NoteItemView @JvmOverloads constructor(
         const val TAG: String = "NoteItemView"
 
         private const val TEXT_SIZE_REACTION = 13f    // in sp
-        private const val FOLDED_TEXT_LINES = 2       // the text of the note and the counts
+        private const val FOLDED_TEXT_LINES = 1       // the summary of the note, nothing else
         val dataFormatCommon: SimpleDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.CHINESE)
         val dataFormatToday: SimpleDateFormat = SimpleDateFormat("HH:mm", Locale.CHINESE)
         val dataFormatWeekly: SimpleDateFormat = SimpleDateFormat("EEE HH:mm", Locale.CHINESE)
