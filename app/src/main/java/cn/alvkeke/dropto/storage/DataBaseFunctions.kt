@@ -29,6 +29,7 @@ import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_TEXT
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_IS_DELETED
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_IS_EDITED
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_IS_SYNCED
+import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_FORCE_NEW_GROUP
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.REACTION_COLUMN_SEQUENCE
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.REACTION_COLUMN_TEXT
 import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.TABLE_CATEGORY
@@ -248,6 +249,7 @@ private fun NoteItem.generateFlags(): Long {
     if (isDeleted) flags = NOTE_FLAG_IS_DELETED
     if (isEdited) flags = flags.set(NOTE_FLAG_IS_EDITED)
     if (isSynced) flags = flags.set(NOTE_FLAG_IS_SYNCED)
+    if (forceNewGroup) flags = flags.set(NOTE_FLAG_FORCE_NEW_GROUP)
     return flags
 }
 
@@ -255,6 +257,7 @@ private fun NoteItem.parseFlags(flags: Long) {
     isDeleted = flags.isSet(NOTE_FLAG_IS_DELETED)
     isEdited = flags.isSet(NOTE_FLAG_IS_EDITED)
     isSynced = flags.isSet(NOTE_FLAG_IS_SYNCED)
+    forceNewGroup = flags.isSet(NOTE_FLAG_FORCE_NEW_GROUP)
 }
 
 private fun NoteItem.generateReactionString(): String? {

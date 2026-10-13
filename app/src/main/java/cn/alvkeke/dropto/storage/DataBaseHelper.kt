@@ -51,6 +51,7 @@ class DataBaseHelper(private val context: Context) :
         const val NOTE_FLAG_IS_DELETED: Long = 1 shl 0
         const val NOTE_FLAG_IS_EDITED:Long = 1 shl 1
         const val NOTE_FLAG_IS_SYNCED:Long = 1 shl 2
+        const val NOTE_FLAG_FORCE_NEW_GROUP: Long = 1 shl 3
         const val NOTE_COLUMN_SENDER = "sender"
         const val NOTE_COLUMN_SENDER_TYPE = "TEXT DEFAULT NULL"
         const val NOTE_COLUMN_REACTION = "reaction"

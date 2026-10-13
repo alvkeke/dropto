@@ -62,6 +62,7 @@ class NoteItemView @JvmOverloads constructor(
     private val editedView: ImageView
     private val deletedView: ImageView
     private val unsyncedView: ImageView
+    private val newGroupView: ImageView
     private val textView: TextView
     private val mediaScroll: HorizontalScrollView
     private val mediaContainer: LinearLayout
@@ -80,6 +81,7 @@ class NoteItemView @JvmOverloads constructor(
         editedView = findViewById(R.id.note_item_status_edited)
         deletedView = findViewById(R.id.note_item_status_deleted)
         unsyncedView = findViewById(R.id.note_item_status_unsynced)
+        newGroupView = findViewById(R.id.note_item_status_new_group)
         textView = findViewById(R.id.note_item_text)
         mediaScroll = findViewById(R.id.note_item_media_scroll)
         mediaContainer = findViewById(R.id.note_item_media_container)
@@ -119,8 +121,9 @@ class NoteItemView @JvmOverloads constructor(
         editedView.isVisible = note?.isEdited == true
         deletedView.isVisible = note?.isDeleted == true
         unsyncedView.isVisible = note?.isSynced == false
+        newGroupView.isVisible = note?.forceNewGroup == true
         statusContainer.isVisible = note != null &&
-                (note.isEdited || note.isDeleted || !note.isSynced)
+                (note.isEdited || note.isDeleted || !note.isSynced || note.forceNewGroup)
         bindSender(note?.sender)
         rebuildMedias(note?.medias.orEmpty())
         rebuildFiles(note?.files.orEmpty(), note?.medias?.size ?: 0)

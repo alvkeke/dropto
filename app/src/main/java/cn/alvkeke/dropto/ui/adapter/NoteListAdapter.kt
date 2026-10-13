@@ -81,6 +81,7 @@ class NoteListAdapter : FilterableListAdapter<NoteItem, NoteListAdapter.ViewHold
     }
 
     private fun isGroupContinuation(position: Int, note: NoteItem): Boolean {
+        if (note.forceNewGroup) return false    // end last group
         if (position + 1 >= itemCount) return false
         val above = get(position + 1)
         return note.sender == above.sender &&

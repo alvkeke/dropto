@@ -18,6 +18,7 @@ class NoteItem : Serializable, Cloneable {
     var isEdited: Boolean = false
     var isDeleted: Boolean = false
     var isSynced: Boolean = false
+    var forceNewGroup: Boolean = false
 
     val reactions: MutableList<String> = mutableListOf()
 
@@ -259,6 +260,7 @@ class NoteItem : Serializable, Cloneable {
         this.isDeleted = src.isDeleted
         this.isEdited = src.isEdited
         this.isSynced = src.isSynced
+        this.forceNewGroup = src.forceNewGroup
         this.categoryId = src.categoryId
     }
 

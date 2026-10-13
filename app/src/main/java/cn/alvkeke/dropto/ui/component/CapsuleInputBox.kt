@@ -67,6 +67,7 @@ class CapsuleInputBox @JvmOverloads constructor(
     private var sendButton: ImageButton
 
     var onSendClick: OnClickListener? = null
+    var onSendLongClick: OnLongClickListener? = null
     var onAttachClick: OnClickListener? = null
     var onAttachLongClick: OnLongClickListener? = null
     var onCancelClick: OnClickListener? = null
@@ -117,6 +118,7 @@ class CapsuleInputBox @JvmOverloads constructor(
         attachmentList.setOnTouchListener(AttachmentTouchListener())
 
         sendButton.setOnClickListener { onSendClick?.onClick(it) }
+        sendButton.setOnLongClickListener { onSendLongClick?.onLongClick(it) ?: false }
         attachButton.setOnClickListener { onAttachClick?.onClick(it) }
         attachButton.setOnLongClickListener { onAttachLongClick?.onLongClick(it) ?: false }
         cancelButton.setOnClickListener { onCancelClick?.onClick(it) }

@@ -59,7 +59,17 @@
         tools:visibility="visible">
 
         <ImageView
+            android:id="@+id/note_item_status_new_group"
+            android:src="@drawable/img_note_item_new_group"
+            app:tint="@color/color_text_sub"
+            android:contentDescription="@string/description_note_item_new_group_icon"
+            android:visibility="gone"
+            android:layout_width="14dp"
+            android:layout_height="14dp" />
+
+        <ImageView
             android:id="@+id/note_item_status_edited"
+            android:layout_marginStart="@dimen/margin_note_item_status"
             android:src="@drawable/img_note_item_edited"
             app:tint="@color/color_text_sub"
             android:contentDescription="@string/description_note_item_modify_icon"
@@ -69,7 +79,7 @@
 
         <ImageView
             android:id="@+id/note_item_status_deleted"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="@dimen/margin_note_item_status"
             android:src="@drawable/icon_common_remove"
             app:tint="@color/color_text_sub"
             android:contentDescription="@string/description_note_item_deleted_icon"
@@ -79,7 +89,7 @@
 
         <ImageView
             android:id="@+id/note_item_status_unsynced"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="@dimen/margin_note_item_status"
             android:src="@drawable/icon_common_not_sync"
             app:tint="@color/color_text_sub"
             android:contentDescription="@string/description_note_item_not_synced_icon"

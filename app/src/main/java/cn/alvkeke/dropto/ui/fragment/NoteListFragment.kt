@@ -301,7 +301,9 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 exitEditMode()
             }
         }
-        capsuleInputBox.onSendClick = SendButtonClickListener()
+        val sendListener = SendButtonClickListener()
+        capsuleInputBox.onSendClick = sendListener
+        capsuleInputBox.onSendLongClick = sendListener
         val attachListener = AttachButtonListener()
         capsuleInputBox.onAttachClick = attachListener
         capsuleInputBox.onAttachLongClick = attachListener
@@ -565,8 +567,19 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
         }
     }
 
-    private inner class SendButtonClickListener : OnClickListener {
+    private inner class SendButtonClickListener : OnClickListener, OnLongClickListener {
         override fun onClick(v: View) {
+            send(v)
+        }
+
+        override fun onLongClick(v: View): Boolean {
+            // only a brand-new note can be marked, editing does not change the grouping
+            if (isEditingMode) return false
+            send(v, forceNewGroup = true)
+            return true
+        }
+
+        private fun send(v: View, forceNewGroup: Boolean = false) {
             val content = capsuleInputBox.text.trim { it <= ' ' }
 
             if (capsuleInputBox.attachments.isEmpty() && content.isEmpty()) {
@@ -588,6 +601,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 if (category == null) return
                 val e = NoteItem(content)
                 e.categoryId = category!!.id
+                e.forceNewGroup = forceNewGroup
                 e
             }
 
