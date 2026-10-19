@@ -57,6 +57,7 @@
     <string name="string_share_database_title">Share database file</string>
     <string name="string_export">Export</string>
     <string name="string_later">Later</string>
+    <string name="string_login_required">Login required, open DropTo first</string>
     <string name="dialog_legacy_database_title">Older database found</string>
     <string name="dialog_legacy_database_message">The database now lives in the folder of the user, and the notes were copied into it. The older file \"%1$s\" is kept aside and is not used any more. You can export it as a backup or delete it; this question comes back on every start until the file is deleted.</string>
     <string name="dialog_legacy_database_share_title">Share older database file</string>

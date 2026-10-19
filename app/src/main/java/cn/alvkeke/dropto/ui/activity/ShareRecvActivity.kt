@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.Category
@@ -130,12 +131,24 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         Log.e(TAG, "received type: $type")
         pendingUris = handleReceivedUris(intent)
 
-        // cold start entry of its own: log the user in and prepare the data before the selector
+        // cold start entry of its own: migrate, log in and prepare the data before the selector
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                DataManager.loadActiveUser()
+            val ready = withContext(Dispatchers.IO) {
+                DataManager.migrateLegacyDatabase()
+                if (!DataManager.loadActiveUser()) return@withContext false
                 DataManager.loadCategories()
                 FileHelper.folderInitAndMigrate(this@ShareRecvActivity)
+                true
+            }
+
+            if (!ready) {
+                Toast.makeText(
+                    this@ShareRecvActivity,
+                    R.string.string_login_required,
+                    Toast.LENGTH_SHORT
+                ).show()
+                finish()
+                return@launch
             }
 
             categorySelectorFragment.prepare(categories, this@ShareRecvActivity)

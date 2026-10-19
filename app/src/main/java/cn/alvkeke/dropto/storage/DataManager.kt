@@ -52,7 +52,6 @@ object DataManager {
             return@withContext false
         }
         currentUser = user
-        migrateLegacyDatabase()
         Log.i(TAG, "User logged in: ${user.id}")
         true
     }
@@ -87,8 +86,10 @@ object DataManager {
         }
     }
 
-    fun databaseFile(): File {
-        val dir = File(databasesDir(), currentUser.id)
+    fun databaseFile(): File = databaseFile(currentUser)
+
+    private fun databaseFile(user: User): File {
+        val dir = File(databasesDir(), user.id)
         if (!dir.isDirectory) dir.mkdirs()
         return File(dir, DATABASE_NAME)
     }
@@ -104,16 +105,12 @@ object DataManager {
         SQLiteDatabase.deleteDatabase(databaseFile())
     }
 
-    /**
-     * Copies the database of the pre-user layout into the folder of the logged in user and keeps
-     * the old file, so it can still be exported or recovered. Called by [loadActiveUser], copies once.
-     */
-    private fun migrateLegacyDatabase() {
-        val oldDb = legacyDatabaseFile() ?: return
-        val target = databaseFile()
+    suspend fun migrateLegacyDatabase() = withContext(Dispatchers.IO) {
+        val oldDb = legacyDatabaseFile() ?: return@withContext
+        val target = databaseFile(User.LOCAL)
         if (target.isFile) {
             Log.i(TAG, "Database of the local user already exists, nothing to migrate")
-            return
+            return@withContext
         }
 
         // the wal may hold committed notes that were never written back to the file
@@ -126,7 +123,7 @@ object DataManager {
             if (!tmp.renameTo(target)) {
                 Log.e(TAG, "Failed to put the copied database in place: ${target.absolutePath}")
                 tmp.delete()
-                return
+                return@withContext
             }
             Log.i(TAG, "Database copied to ${target.absolutePath}")
         } catch (e: Exception) {
