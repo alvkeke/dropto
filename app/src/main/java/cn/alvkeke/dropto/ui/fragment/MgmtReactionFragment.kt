@@ -17,9 +17,7 @@ import androidx.core.view.forEach
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.DataBaseHelper
-import cn.alvkeke.dropto.storage.getReactionList
-import cn.alvkeke.dropto.storage.updateReactionList
+import cn.alvkeke.dropto.storage.DataManager
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
@@ -56,10 +54,7 @@ class MgmtReactionFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
         toolbar.setNavigationOnClickListener { finish() }
         toolbar.setOnMenuItemClickListener(ReactionMenuItemClickListener())
 
-        val reactionList = mutableListOf<String>()
-        DataBaseHelper(requireContext()).writableDatabase.use {
-            reactionList.addAll(it.getReactionList())
-        }
+        val reactionList = DataManager.getReactionList()
 
         adapter = ReactionListAdapter(reactionList)
         rlReaction.adapter = adapter
@@ -111,9 +106,7 @@ class MgmtReactionFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
         }
 
         btnSave.setOnClickListener {
-            DataBaseHelper(requireContext()).writableDatabase.use { db ->
-                db.updateReactionList(reactionList)
-            }
+            DataManager.saveReactionList(reactionList)
         }
 
         rlReaction.setOnTouchListener(ReactionListTouchListener(requireContext()))

@@ -34,17 +34,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
-import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.service.CoreServiceListener
-import cn.alvkeke.dropto.storage.DataBaseHelper
-import cn.alvkeke.dropto.storage.DataLoader.categories
+import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.storage.DataManagerListener
+import cn.alvkeke.dropto.storage.DataManager.categories
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.ImageLoader
-import cn.alvkeke.dropto.storage.getReactionList
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
@@ -75,14 +73,11 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
 
-class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener,
+class NoteListFragment : Fragment(), FragmentOnBackListener, DataManagerListener,
     NoteItemView.EventListener {
     interface EventListener {
         fun onNoteListClose()
     }
-
-    private val app: DroptoApplication
-        get() = requireActivity().application as DroptoApplication
 
     private lateinit var context: Context
     private lateinit var viewModel: MainViewModel
@@ -218,11 +213,11 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     override fun onStart() {
         super.onStart()
-        app.addTaskListener(this)
+        DataManager.addTaskListener(this)
     }
 
     override fun onStop() {
-        app.delTaskListener(this)
+        DataManager.delTaskListener(this)
         super.onStop()
     }
 
@@ -726,9 +721,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
         rlNoteList.highLight(positionOf(note))
         popupMenu.showAtLocation(rlNoteList, Gravity.NO_GRAVITY, xShow, yShow)
-        val reactions = DataBaseHelper(context).writableDatabase.use {
-            it.getReactionList()
-        }
+        val reactions = DataManager.getReactionList()
         if (reactions.isEmpty()) return
         reactionView.setReactions(reactions)
         reactionView.onReactionClick = { reaction ->
@@ -738,7 +731,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 note.reactions.add(reaction)
             }
             rlNoteList.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            app.service?.updateNote(note)
+            DataManager.updateNote(note)
             popupMenu.dismiss()
         }
         val reactionY = (yShow - reactionView.height)
@@ -754,9 +747,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 _reactionView = ReactionDialog(context).apply {
                     height = 64 * (resources.displayMetrics.density).toInt()
                     setMaxWidth(resources.displayMetrics.widthPixels  / 4)
-                    DataBaseHelper(context).readableDatabase.use {
-                        reactionList.addAll(it.getReactionList())
-                    }
+                    reactionList.addAll(DataManager.getReactionList())
                 }
             }
             return _reactionView!!
@@ -824,7 +815,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private fun removeReaction(note: NoteItem, reaction: String) {
         note.reactions.remove(reaction)
-        app.service?.updateNote(note)
+        DataManager.updateNote(note)
     }
 
     private fun handleShareMultipleNotes(items: ArrayList<NoteItem>) {
@@ -895,7 +886,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 Log.d(TAG, "Category-$index[${category.title}] selected for forwarding")
                 val item = note.clone()
                 item.categoryId = category.id
-                app.service?.createNote(item)
+                DataManager.createNote(item)
             }
 
             override fun onCancel() { }
@@ -913,7 +904,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
                 for (note in notes) {
                     val item = note.clone()
                     item.categoryId = category.id
-                    app.service?.createNote(item)
+                    DataManager.createNote(item)
                 }
             }
             override fun onCancel() { }
@@ -954,12 +945,12 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
 
     private fun requestCreateNote(item: NoteItem) {
         reqPendingItem = item  // pending item, will be cleared after created successfully
-        app.service?.createNote(item)
+        DataManager.createNote(item)
     }
 
     private fun requestUpdateNote(item: NoteItem) {
         reqPendingItem = item  // pending item, will be cleared after updated successfully
-        app.service?.updateNote(item)
+        DataManager.updateNote(item)
     }
 
     private fun requestRemoveAttachment(item: NoteItem, attachment: AttachmentFile) {
@@ -968,7 +959,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     }
 
     private fun requestRemoveNote(item: NoteItem) {
-        app.service?.removeNote(item)
+        DataManager.removeNote(item)
     }
 
     private fun requestRemoveNotes(items: ArrayList<NoteItem>) {
@@ -978,7 +969,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, CoreServiceListener
     }
 
     private fun requestRestoreNote(item: NoteItem) {
-        app.service?.restoreNote(item)
+        DataManager.restoreNote(item)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

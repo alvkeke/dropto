@@ -11,7 +11,6 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.applyPadding
@@ -30,8 +29,6 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
         const val TAG = "MgmtPageFragment"
     }
 
-    private val app: DroptoApplication
-        get() = requireActivity().application as DroptoApplication
     private lateinit var context: Context
     private lateinit var viewModel: MainViewModel
     private lateinit var fragmentParent: View

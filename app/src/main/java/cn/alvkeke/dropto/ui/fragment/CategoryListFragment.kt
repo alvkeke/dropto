@@ -20,14 +20,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 import cn.alvkeke.dropto.debug.DebugFunction.tryExtractResImages
-import cn.alvkeke.dropto.service.CoreServiceListener
-import cn.alvkeke.dropto.storage.DataLoader
+import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.storage.DataManagerListener
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.applyPadding
@@ -45,15 +44,13 @@ import kotlinx.coroutines.launch
 import java.util.Random
 import kotlin.time.Duration.Companion.milliseconds
 
-class CategoryListFragment : Fragment(), CoreServiceListener {
+class CategoryListFragment : Fragment(), DataManagerListener {
 
     interface EventListener {
         fun onCategoryShow(category: Category)
         fun onNavigationClick()
     }
 
-    private val app: DroptoApplication
-        get() = requireActivity().application as DroptoApplication
     private lateinit var context: Context
     private lateinit var viewModel: MainViewModel
     private lateinit var rlCategory: SelectableRecyclerView
@@ -74,11 +71,11 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
 
     override fun onStart() {
         super.onStart()
-        app.addTaskListener(this)
+        DataManager.addTaskListener(this)
     }
 
     override fun onStop() {
-        app.delTaskListener(this)
+        DataManager.delTaskListener(this)
         super.onStop()
     }
 
@@ -143,7 +140,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
                 x: Int,
                 y: Int
             ) {
-                app.service?.reorderCategory(categoryListAdapter.categories)
+                DataManager.reorderCategory(categoryListAdapter.categories)
             }
 
             override fun isLongPressDragEnabled(): Boolean {
@@ -204,7 +201,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
                         .setPositiveButton(R.string.string_ok
                         ) { _: DialogInterface, _: Int ->
                             for (c in selected) {
-                                app.service?.removeCategory(c)
+                                DataManager.removeCategory(c)
                             }
                         }.create().show()
                 }
@@ -331,15 +328,15 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
     }
 
     private fun addDebugData() {
-        app.service?.createCategory(Category("Local(Debug)", Category.Type.LOCAL_CATEGORY))
-        app.service?.createCategory(Category("REMOTE USERS", Category.Type.REMOTE_USERS))
-        app.service?.createCategory(Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV))
+        DataManager.createCategory(Category("Local(Debug)", Category.Type.LOCAL_CATEGORY))
+        DataManager.createCategory(Category("REMOTE USERS", Category.Type.REMOTE_USERS))
+        DataManager.createCategory(Category("REMOTE SELF DEVICE", Category.Type.REMOTE_SELF_DEV))
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             delay(1000.milliseconds)
             val imgFolder = FileHelper.attachmentStorage
             val imgFiles = tryExtractResImages(context, imgFolder) ?: return@launch
-            val categories: ArrayList<Category> = DataLoader.categories
+            val categories: ArrayList<Category> = DataManager.categories
             if (categories.isEmpty()) return@launch
 
             val r = Random()
@@ -365,7 +362,7 @@ class CategoryListFragment : Fragment(), CoreServiceListener {
                         e.attachments.add(imageFile)
                     }
                 }
-                app.service?.createNote(e)
+                DataManager.createNote(e)
             }
         }
     }

@@ -13,12 +13,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
-import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.service.CoreServiceListener
-import cn.alvkeke.dropto.storage.DataLoader
+import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.storage.DataManagerListener
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
@@ -55,7 +54,7 @@ class MgmtNotesFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
         viewPager = view.findViewById(R.id.mgmt_note_viewpager)
 
 
-        val categories = DataLoader.loadCategories(requireContext())
+        val categories = DataManager.loadCategories()
         pagerAdapter = NoteCategoryPagerAdapter(this, categories)
         viewPager.adapter = pagerAdapter as RecyclerView.Adapter<*>
         tabMediator = TabLayoutMediator(tabLayout, viewPager) { tab, position ->
@@ -89,10 +88,7 @@ class MgmtNotesFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
 
     }
 
-    class SimpleNoteListFragment(val category: Category) : Fragment(), CoreServiceListener {
-        private val app: DroptoApplication
-            get() = requireActivity().application as DroptoApplication
-
+    class SimpleNoteListFragment(val category: Category) : Fragment(), DataManagerListener {
         val adapter = NoteListAdapter()
         lateinit var noteList : SelectableRecyclerView
 
@@ -115,7 +111,7 @@ class MgmtNotesFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
             super.onViewCreated(view, savedInstanceState)
 
             adapter.showDeleted = true
-            DataLoader.loadCategoryNotes(requireContext(), category)
+            DataManager.loadCategoryNotes(category)
             adapter.setList(category.noteItems)
             noteList.adapter = adapter
             val layoutManager = LinearLayoutManager(requireContext())
@@ -123,12 +119,12 @@ class MgmtNotesFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
             noteList.layoutManager = layoutManager
 
             noteList.setOnTouchListener(OnListTouchListener(requireContext()))
-            app.addTaskListener(this)
+            DataManager.addTaskListener(this)
         }
 
         override fun onDestroyView() {
             super.onDestroyView()
-            app.delTaskListener(this)
+            DataManager.delTaskListener(this)
         }
 
         override fun onNoteCreated(result: Int, noteItem: NoteItem) {
@@ -153,9 +149,9 @@ class MgmtNotesFragment: MgmtBottomSheetFragment(), FragmentOnBackListener {
                 v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 val item = adapter.get(index)
                 if (item.isDeleted) {
-                    app.service?.restoreNote(item)
+                    DataManager.restoreNote(item)
                 } else {
-                    app.service?.removeNote(item)
+                    DataManager.removeNote(item)
                 }
 
                 return true

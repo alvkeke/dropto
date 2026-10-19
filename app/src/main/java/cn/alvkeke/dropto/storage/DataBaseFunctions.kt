@@ -64,7 +64,6 @@ fun SQLiteDatabase.insertCategory(title: String, type: Category.Type, preview: S
     return this.insertOrThrow(TABLE_CATEGORY, null, values)
 }
 
-@Suppress("unused")
 @Throws(SQLiteException::class)
 fun SQLiteDatabase.insertCategory(c: Category): Long {
     val id: Long = if (c.id == Category.ID_NOT_ASSIGNED) {
@@ -639,5 +638,14 @@ fun SQLiteDatabase.updateReactionList(reactions: List<String>) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update reaction list", e)
         }
+    }
+}
+
+// write back the committed operations into database file
+fun SQLiteDatabase.checkpoint() {
+    try {
+        rawQuery("PRAGMA wal_checkpoint(TRUNCATE);", null).use { it.moveToFirst() }
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to checkpoint database", e)
     }
 }

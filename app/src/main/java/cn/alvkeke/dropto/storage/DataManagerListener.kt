@@ -1,9 +1,9 @@
-package cn.alvkeke.dropto.service
+package cn.alvkeke.dropto.storage
 
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
 
-interface CoreServiceListener {
+interface DataManagerListener {
 
     fun onCategoryCreated(result: Int, category: Category) {}
     fun onCategoryUpdated(result: Int, category: Category) {}

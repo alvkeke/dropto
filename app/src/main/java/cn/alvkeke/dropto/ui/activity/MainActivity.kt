@@ -23,7 +23,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.storage.DataLoader
+import cn.alvkeke.dropto.storage.DataManager
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.MgmtPageFragment
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment
@@ -141,7 +141,7 @@ class MainActivity : AppCompatActivity(),
 
         if (savedInstanceState == null) {
             Log.v(TAG, "onCreate: fresh start")
-            val categories: ArrayList<Category> = DataLoader.loadCategories(this)
+            val categories: ArrayList<Category> = DataManager.loadCategories()
             viewModel.setCategoriesList(categories)
         } else {
             Log.v(TAG, "onCreate: restore from savedInstanceState")
@@ -457,7 +457,7 @@ class MainActivity : AppCompatActivity(),
 
     override fun onCategoryShow(category: Category) {
         lifecycleScope.launch(Dispatchers.IO) {
-            if (!DataLoader.loadCategoryNotes(this@MainActivity, category)) {
+            if (!DataManager.loadCategoryNotes(category)) {
                 Log.e(TAG, "Failed to get noteList from database")
             }
             viewModel.postCategory(category, true)

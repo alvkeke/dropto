@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.DataBaseHelper
+import cn.alvkeke.dropto.storage.DataManager
 import cn.alvkeke.dropto.storage.FileHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -88,9 +88,7 @@ class StartupActivity : AppCompatActivity() {
         setContentView(initView)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            DataBaseHelper(this@StartupActivity).writableDatabase.use {
-                // do nothing, just to trigger database creation / upgrade / downgrade
-            }
+            DataManager.prepareDatabase()
             FileHelper.folderInitAndMigrate(this@StartupActivity)
 
             withContext(Dispatchers.Main) {

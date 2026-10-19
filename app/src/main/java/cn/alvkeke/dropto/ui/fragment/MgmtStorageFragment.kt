@@ -19,7 +19,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.DataBaseHelper
+import cn.alvkeke.dropto.storage.DataManager
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.AttachmentListAdapter
@@ -28,7 +28,6 @@ import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.IOException
 import java.util.LinkedList
 
 class MgmtStorageFragment : MgmtBottomSheetFragment(), FragmentOnBackListener {
@@ -94,34 +93,21 @@ class MgmtStorageFragment : MgmtBottomSheetFragment(), FragmentOnBackListener {
         }
 
         buttonExportDb.setOnClickListener { _ ->
-            val dbFile = DataBaseHelper(requireContext()).exportDatabaseFile()
-            Log.e(TAG, "exported db file to " + dbFile.absolutePath)
-            val shareFolder = FileHelper.attachmentCacheShare
+            viewLifecycleOwner.lifecycleScope.launch {
+                val dbFile = DataManager.prepareDatabaseForExport()
+                Log.e(TAG, "exported db file to " + dbFile.absolutePath)
 
-            try {
-                val tmpFile = File(shareFolder, "dropto_database_exported.sqlite3")
-                dbFile.copyTo(tmpFile, true)
-
-                val uri = androidx.core.content.FileProvider.getUriForFile(
-                    requireContext(),
-                    requireContext().packageName + ".fileprovider",
-                    tmpFile
+                val shared = FileHelper.shareFileOut(
+                    context,
+                    dbFile,
+                    EXPORTED_DATABASE_NAME,
+                    getString(R.string.string_share_database_title)
                 )
-                val intent = android.content.Intent(android.content.Intent.ACTION_SEND)
-                intent.type = "application/octet-stream"
-                intent.putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                startActivity(android.content.Intent.createChooser(intent, "Share database file"))
-
-            } catch (e: IOException) {
-                val msg = "Failed to copy file for export database: $e"
-                Log.e(this.toString(), msg)
-                Toast.makeText(
-                    requireContext(),
-                    msg,
-                    Toast.LENGTH_SHORT
-                ).show()
-                return@setOnClickListener
+                if (!shared) {
+                    Toast.makeText(
+                        context, R.string.string_export_database_failed, Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
 
@@ -284,6 +270,8 @@ class MgmtStorageFragment : MgmtBottomSheetFragment(), FragmentOnBackListener {
     companion object {
 
         const val TAG = "MgmtStorageFragment"
+
+        private const val EXPORTED_DATABASE_NAME = "dropto_database_exported.sqlite3"
 
         private fun getSizeType(size: Long): Int {
             return if (size < 1000L) 0

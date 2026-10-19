@@ -10,17 +10,15 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Spinner
 import androidx.appcompat.widget.Toolbar
-import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
+import cn.alvkeke.dropto.storage.DataManager
 import cn.alvkeke.dropto.ui.adapter.CategoryTypeSpinnerAdapter
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class CategoryDetailFragment : BottomSheetDialogFragment {
-    private val app: DroptoApplication
-        get() = requireActivity().application as DroptoApplication
 
     private lateinit var etCategoryTitle: EditText
     private lateinit var spinnerType: Spinner
@@ -114,11 +112,11 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         val type = spinnerType.selectedItem as Category.Type
         if (category == null) {
             category = Category(title, type)
-            app.service?.createCategory(category!!)
+            DataManager.createCategory(category!!)
         } else {
             category!!.title = title
             category!!.type = type
-            app.service?.updateCategory(category!!)
+            DataManager.updateCategory(category!!)
         }
         finish()
     }
@@ -144,7 +142,7 @@ class CategoryDetailFragment : BottomSheetDialogFragment {
         builder.setPositiveButton(
             R.string.string_ok
         ) { _: DialogInterface, _: Int ->
-            app.service?.removeCategory(category!!)
+            DataManager.removeCategory(category!!)
             finish()
         }
 

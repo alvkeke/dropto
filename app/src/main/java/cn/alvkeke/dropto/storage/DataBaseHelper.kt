@@ -4,10 +4,9 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
-import java.io.File
 
 
-class DataBaseHelper(private val context: Context) :
+class DataBaseHelper(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
     fun interface IterateCallback<T> {
         fun onIterate(o: T)
@@ -16,7 +15,8 @@ class DataBaseHelper(private val context: Context) :
     companion object {
         const val TAG = "DataBaseHelper"
 
-        private const val DATABASE_NAME = "note.db"
+        const val DATABASE_NAME = "note.db"
+
         private const val DATABASE_VERSION = 5
 
         const val TABLE_CATEGORY = "category"
@@ -209,10 +209,6 @@ class DataBaseHelper(private val context: Context) :
         cursor.close()
     }
 
-    fun exportDatabaseFile(): File {
-        return context.getDatabasePath(DATABASE_NAME)
-    }
-
     private fun createCategoryTable(db: SQLiteDatabase) {
         db.execSQL(
             String.format(
@@ -269,11 +265,6 @@ class DataBaseHelper(private val context: Context) :
         """.trimIndent()
 
         db.execSQL(sql)
-    }
-
-    @Suppress("unused")
-    fun destroyDatabase() {
-        context.deleteDatabase(DATABASE_NAME)
     }
 
 }

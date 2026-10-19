@@ -7,12 +7,12 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import cn.alvkeke.dropto.DroptoApplication
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.DataLoader.categories
+import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.storage.DataManager.categories
 import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.FileHelper.getFileNameFromUri
 import cn.alvkeke.dropto.storage.FileHelper.saveUriToFile
@@ -20,9 +20,6 @@ import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
 import androidx.core.net.toUri
 
 class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.CategorySelectListener {
-
-    private val app: DroptoApplication
-        get() = application as DroptoApplication
 
     private val categorySelectorFragment: CategorySelectorFragment by lazy {
         CategorySelectorFragment()
@@ -175,7 +172,7 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
             Log.e(TAG, message)
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         } else {
-            app.service?.createNote(recvNote)
+            DataManager.createNote(recvNote)
         }
         finish()
     }

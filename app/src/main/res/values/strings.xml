@@ -53,4 +53,6 @@
     <string name="description_note_item_new_group_icon">Icon to show this item was manually put into a new group</string>
     <string name="description_of_note_item_file_icon">Icon of a file attachment of the note</string>
     <string name="description_input_mode_edit">The input box is editing an existing note</string>
+    <string name="string_export_database_failed">Failed to export database</string>
+    <string name="string_share_database_title">Share database file</string>
 </resources>

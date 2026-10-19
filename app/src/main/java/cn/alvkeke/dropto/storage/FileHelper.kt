@@ -2,6 +2,7 @@ package cn.alvkeke.dropto.storage
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -352,6 +353,29 @@ object FileHelper {
             context,
             "${context.packageName}.fileprovider", file
         )
+    }
+
+    fun shareFileOut(
+        context: Context,
+        file: File,
+        displayName: String,
+        chooserTitle: String
+    ): Boolean {
+        return try {
+            val tmpFile = File(attachmentCacheShare, displayName)
+            file.copyTo(tmpFile, true)
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/octet-stream"
+                putExtra(Intent.EXTRA_STREAM, getUriForFile(context, tmpFile))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, chooserTitle))
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to share file: ${file.absolutePath}", e)
+            false
+        }
     }
 
     fun generateShareFile(
