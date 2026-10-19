@@ -30,6 +30,9 @@ object FileHelper {
     lateinit var attachmentCacheShare: File
         private set
 
+    // the folders are resolved once per process, see folderInitAndMigrate()
+    private var foldersReady = false
+
     private const val ATTACHMENT_FOLDER_OLD = "imgs"
     private const val ATTACHMENT_FOLDER_NEW = "attachments"
     private val ATTACHMENT_FOLDER_AVAILABLE = ArrayList<String>().apply {
@@ -153,7 +156,10 @@ object FileHelper {
         return this.exists() && this.isDirectory
     }
 
+    @Synchronized
     fun folderInitAndMigrate(context: Context) {
+        if (foldersReady) return
+
         attachmentStorage = context.getExternalFilesDir(ATTACHMENT_FOLDER)!!
         Log.e(TAG, "migrating attachment folders to ${attachmentStorage.absolutePath}")
 
@@ -206,6 +212,8 @@ object FileHelper {
         if (!attachmentCacheShare.exists()) {
             Log.i(TAG, "share folder not exist, create: " + attachmentCacheShare.mkdir())
         }
+
+        foldersReady = true
     }
 
     fun mimeTypeFromFileName(name: String): String {

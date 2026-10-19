@@ -126,6 +126,9 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         Log.e(TAG, "received type: $type")
         pendingUris = handleReceivedUris(intent)
 
+        // load categories for cold boot
+        DataManager.loadCategories()
+        FileHelper.folderInitAndMigrate(this)
         categorySelectorFragment.prepare(categories, this)
         supportFragmentManager.beginTransaction()
             .add(categorySelectorFragment, null)
