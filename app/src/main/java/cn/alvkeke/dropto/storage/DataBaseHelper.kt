@@ -4,18 +4,17 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
+import java.io.File
 
 
-class DataBaseHelper(context: Context) :
-    SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+class DataBaseHelper(context: Context, databaseFile: File) :
+    SQLiteOpenHelper(context, databaseFile.absolutePath, null, DATABASE_VERSION) {
     fun interface IterateCallback<T> {
         fun onIterate(o: T)
     }
 
     companion object {
         const val TAG = "DataBaseHelper"
-
-        const val DATABASE_NAME = "note.db"
 
         private const val DATABASE_VERSION = 5
 

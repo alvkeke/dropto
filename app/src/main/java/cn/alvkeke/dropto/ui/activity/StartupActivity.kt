@@ -88,6 +88,9 @@ class StartupActivity : AppCompatActivity() {
         setContentView(initView)
 
         lifecycleScope.launch(Dispatchers.IO) {
+            DataManager.loadActiveUser()
+            // TODO: check ret value from loadActiveUser, if no active user, then go to login path
+
             DataManager.prepareDatabase()
             FileHelper.folderInitAndMigrate(this@StartupActivity)
 

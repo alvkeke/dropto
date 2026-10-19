@@ -12,8 +12,10 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.isVisible
@@ -24,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.MgmtPageFragment
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment
@@ -143,9 +146,56 @@ class MainActivity : AppCompatActivity(),
             Log.v(TAG, "onCreate: fresh start")
             val categories: ArrayList<Category> = DataManager.loadCategories()
             viewModel.setCategoriesList(categories)
+            // only on a real start, a rotated activity should not ask the same thing again
+            checkLegacyDatabase()
         } else {
             Log.v(TAG, "onCreate: restore from savedInstanceState")
         }
+    }
+
+    private fun checkLegacyDatabase() {
+        val oldDb = DataManager.legacyDatabaseFile() ?: return
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_legacy_database_title)
+            .setMessage(getString(R.string.dialog_legacy_database_message, oldDb.name))
+            .setPositiveButton(R.string.string_export) { _, _ -> exportLegacyDatabase() }
+            .setNeutralButton(R.string.string_delete) { _, _ -> confirmDeleteLegacyDatabase() }
+            .setNegativeButton(R.string.string_later, null)
+            .create()
+            .show()
+    }
+
+    private fun exportLegacyDatabase() {
+        lifecycleScope.launch {
+            val oldDb = DataManager.prepareLegacyDatabaseForExport()
+            if (oldDb == null) {
+                Log.e(TAG, "Legacy database is gone, skip exporting it")
+                return@launch
+            }
+
+            val shared = FileHelper.shareFileOut(
+                this@MainActivity, oldDb, LEGACY_DATABASE_EXPORT_NAME,
+                getString(R.string.dialog_legacy_database_share_title)
+            )
+            if (!shared) {
+                Toast.makeText(
+                    this@MainActivity, R.string.string_export_database_failed, Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun confirmDeleteLegacyDatabase() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_legacy_database_delete_title)
+            .setMessage(R.string.dialog_legacy_database_delete_message)
+            .setNegativeButton(R.string.string_cancel, null)
+            .setPositiveButton(R.string.string_delete) { _, _ ->
+                lifecycleScope.launch { DataManager.deleteLegacyDatabase() }
+            }
+            .create()
+            .show()
     }
 
     private fun bindFragment(viewId: Int, fragment: Fragment) {
@@ -505,6 +555,7 @@ class MainActivity : AppCompatActivity(),
         private const val REVEAL_FLING_SPEED = 2f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
         private const val PAGE_SCALE_MIN = 0.9f
+        private const val LEGACY_DATABASE_EXPORT_NAME = "dropto_legacy_database.sqlite3"
         private const val STATE_NOTE_LIST_OPEN = "note_list_open"
     }
 }

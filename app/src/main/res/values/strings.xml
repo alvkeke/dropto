@@ -55,4 +55,11 @@
     <string name="description_input_mode_edit">The input box is editing an existing note</string>
     <string name="string_export_database_failed">Failed to export database</string>
     <string name="string_share_database_title">Share database file</string>
+    <string name="string_export">Export</string>
+    <string name="string_later">Later</string>
+    <string name="dialog_legacy_database_title">Older database found</string>
+    <string name="dialog_legacy_database_message">The database now lives in the folder of the user, and the notes were copied into it. The older file \"%1$s\" is kept aside and is not used any more. You can export it as a backup or delete it; this question comes back on every start until the file is deleted.</string>
+    <string name="dialog_legacy_database_share_title">Share older database file</string>
+    <string name="dialog_legacy_database_delete_title">Delete older database</string>
+    <string name="dialog_legacy_database_delete_message">The older database file will be removed from this device. This can not be undone.</string>
 </resources>

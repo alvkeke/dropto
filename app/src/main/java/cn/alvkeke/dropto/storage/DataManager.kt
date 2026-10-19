@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.data.User
 import cn.alvkeke.dropto.service.CoreService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,13 +15,20 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * The only entry point to the data of the app: queries and write tasks all happen here, and the
- * network sync will be driven from here as well. Business code must not use [DataBaseHelper], the
- * SQL extensions or [CoreService] directly.
+ * The only entry point to the data of the app, every query and write task goes through here.
+ * Business code must not use [DataBaseHelper], the SQL extensions or [CoreService] directly.
  */
 object DataManager {
 
     const val TAG: String = "DataManager"
+
+    private const val DATABASE_NAME = "data.db"
+
+    // the layout used before users existed
+    private const val LEGACY_DATABASE_NAME = "note.db"
+
+    // sqlite derives these names from the database file name, they can only be handled together
+    private val DATABASE_SIDE_SUFFIX = arrayOf("-journal", "-wal", "-shm")
 
     private lateinit var appContext: Context
 
@@ -32,6 +40,22 @@ object DataManager {
     // the network side is not implemented yet, this is the seam where it will be driven from
     @Suppress("unused")
     var coreService: CoreService? = null
+
+    // must be set by loadActiveUser() before anything else touches the data
+    private lateinit var currentUser: User
+
+    suspend fun loadActiveUser(): Boolean = withContext(Dispatchers.IO) {
+        // TODO: ask the account layer instead, once network sync (TODO.md 12) exists
+        val user = User.LOCAL
+        if (!User.isValidId(user.id)) {
+            Log.e(TAG, "Invalid user id: ${user.id}")
+            return@withContext false
+        }
+        currentUser = user
+        migrateLegacyDatabase()
+        Log.i(TAG, "User logged in: ${user.id}")
+        true
+    }
 
     @JvmStatic
     var categories: ArrayList<Category> = ArrayList()
@@ -64,10 +88,13 @@ object DataManager {
     }
 
     fun databaseFile(): File {
-        return appContext.getDatabasePath(DataBaseHelper.DATABASE_NAME)
+        val dir = File(databasesDir(), currentUser.id)
+        if (!dir.isDirectory) dir.mkdirs()
+        return File(dir, DATABASE_NAME)
     }
 
-    /** Creates or upgrades the database, so that it is ready before the first real access. */
+    private fun databasesDir(): File = File(appContext.dataDir, "databases")
+
     fun prepareDatabase() {
         write { }
     }
@@ -75,6 +102,72 @@ object DataManager {
     @Suppress("unused")
     fun destroyDatabase() {
         SQLiteDatabase.deleteDatabase(databaseFile())
+    }
+
+    /**
+     * Copies the database of the pre-user layout into the folder of the logged in user and keeps
+     * the old file, so it can still be exported or recovered. Called by [loadActiveUser], copies once.
+     */
+    private fun migrateLegacyDatabase() {
+        val oldDb = legacyDatabaseFile() ?: return
+        val target = databaseFile()
+        if (target.isFile) {
+            Log.i(TAG, "Database of the local user already exists, nothing to migrate")
+            return
+        }
+
+        // the wal may hold committed notes that were never written back to the file
+        checkpoint(oldDb)
+
+        // copy aside first: a half written database next to the real one is worse than no copy
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        try {
+            oldDb.copyTo(tmp, true)
+            if (!tmp.renameTo(target)) {
+                Log.e(TAG, "Failed to put the copied database in place: ${target.absolutePath}")
+                tmp.delete()
+                return
+            }
+            Log.i(TAG, "Database copied to ${target.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to copy the legacy database: $e")
+            tmp.delete()
+        }
+    }
+
+    fun legacyDatabaseFile(): File? {
+        val oldDb = File(databasesDir(), LEGACY_DATABASE_NAME)
+        return if (oldDb.isFile) oldDb else null
+    }
+
+    /** Same as [prepareDatabaseForExport], for the database left behind by the migration. */
+    suspend fun prepareLegacyDatabaseForExport(): File? = withContext(Dispatchers.IO) {
+        val oldDb = legacyDatabaseFile() ?: return@withContext null
+        checkpoint(oldDb)
+        oldDb
+    }
+
+    suspend fun deleteLegacyDatabase() = withContext(Dispatchers.IO) {
+        val oldDb = legacyDatabaseFile() ?: return@withContext
+        (listOf(oldDb) + sideFiles(oldDb)).forEach { file ->
+            if (file.isFile && !file.delete()) {
+                Log.e(TAG, "Failed to delete legacy database file: ${file.absolutePath}")
+            }
+        }
+    }
+
+    private fun checkpoint(dbFile: File) {
+        try {
+            SQLiteDatabase.openDatabase(
+                dbFile.absolutePath, null, SQLiteDatabase.OPEN_READWRITE
+            ).use { it.checkpoint() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to checkpoint database ${dbFile.name}: $e")
+        }
+    }
+
+    private fun sideFiles(db: File): List<File> {
+        return DATABASE_SIDE_SUFFIX.map { File(db.parentFile, db.name + it) }
     }
 
     @JvmStatic
@@ -350,10 +443,10 @@ object DataManager {
     }
 
     private fun <T> read(block: (SQLiteDatabase) -> T): T {
-        return DataBaseHelper(appContext).readableDatabase.use(block)
+        return DataBaseHelper(appContext, databaseFile()).readableDatabase.use(block)
     }
 
     private fun <T> write(block: (SQLiteDatabase) -> T): T {
-        return DataBaseHelper(appContext).writableDatabase.use(block)
+        return DataBaseHelper(appContext, databaseFile()).writableDatabase.use(block)
     }
 }

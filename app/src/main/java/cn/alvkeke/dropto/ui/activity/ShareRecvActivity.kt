@@ -7,6 +7,8 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.data.AttachmentFile
 import cn.alvkeke.dropto.data.AttachmentFile.Type
 import cn.alvkeke.dropto.data.Category
@@ -17,7 +19,9 @@ import cn.alvkeke.dropto.storage.FileHelper
 import cn.alvkeke.dropto.storage.FileHelper.getFileNameFromUri
 import cn.alvkeke.dropto.storage.FileHelper.saveUriToFile
 import cn.alvkeke.dropto.ui.fragment.CategorySelectorFragment
-import androidx.core.net.toUri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.CategorySelectListener {
 
@@ -126,13 +130,19 @@ class ShareRecvActivity : AppCompatActivity(), CategorySelectorFragment.Category
         Log.e(TAG, "received type: $type")
         pendingUris = handleReceivedUris(intent)
 
-        // load categories for cold boot
-        DataManager.loadCategories()
-        FileHelper.folderInitAndMigrate(this)
-        categorySelectorFragment.prepare(categories, this)
-        supportFragmentManager.beginTransaction()
-            .add(categorySelectorFragment, null)
-            .commit()
+        // cold start entry of its own: log the user in and prepare the data before the selector
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                DataManager.loadActiveUser()
+                DataManager.loadCategories()
+                FileHelper.folderInitAndMigrate(this@ShareRecvActivity)
+            }
+
+            categorySelectorFragment.prepare(categories, this@ShareRecvActivity)
+            supportFragmentManager.beginTransaction()
+                .add(categorySelectorFragment, null)
+                .commit()
+        }
     }
 
     private fun isActionAllow(action: String): Boolean {
