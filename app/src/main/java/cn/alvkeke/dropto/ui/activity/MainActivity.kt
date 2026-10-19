@@ -502,7 +502,7 @@ class MainActivity : AppCompatActivity(),
         private const val MAX_DURATION_FRAGMENT_ANIME = 200L
         // px tolerance used to treat the reveal as fully open / fully closed
         private const val REVEAL_EPS = 1f
-        private const val REVEAL_FLING_SPEED = 3f
+        private const val REVEAL_FLING_SPEED = 2f
         // mgmt page scale when the reveal just starts (fully open scale = 1)
         private const val PAGE_SCALE_MIN = 0.9f
         private const val STATE_NOTE_LIST_OPEN = "note_list_open"
