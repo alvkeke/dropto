@@ -1,5 +1,6 @@
 package cn.alvkeke.dropto.storage
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
@@ -30,6 +31,9 @@ object DataManager {
     // sqlite derives these names from the database file name, they can only be handled together
     private val DATABASE_SIDE_SUFFIX = arrayOf("-journal", "-wal", "-shm")
 
+    private const val PREFERENCE_NAME = "active_user"
+    private const val KEY_USER_ID = "active_user_id"
+
     private lateinit var appContext: Context
 
     /** Called once from the application, operations may outlive the UI that asked for them. */
@@ -44,16 +48,30 @@ object DataManager {
     // must be set by loadActiveUser() before anything else touches the data
     private lateinit var currentUser: User
 
+    private fun userPreference() =
+        appContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+
     suspend fun loadActiveUser(): Boolean = withContext(Dispatchers.IO) {
-        // TODO: ask the account layer instead, once network sync (TODO.md 12) exists
-        val user = User.LOCAL
-        if (!User.isValidId(user.id)) {
-            Log.e(TAG, "Invalid user id: ${user.id}")
+        val prefs = userPreference()
+        val id = prefs.getString(KEY_USER_ID, null)
+        if (id == null) {
+            Log.i(TAG, "No active user saved in the preference")
             return@withContext false
         }
-        currentUser = user
-        Log.i(TAG, "User logged in: ${user.id}")
+        if (!User.isValidId(id)) {
+            Log.e(TAG, "Invalid saved user id: $id")
+            return@withContext false
+        }
+        currentUser = User(id, id)  // TODO: username load from user database
+        Log.i(TAG, "User logged in: $id")
         true
+    }
+
+    @SuppressLint("UseKtx")
+    suspend fun activeLocalUser(): Boolean = withContext(Dispatchers.IO) {
+        userPreference().edit()
+            .putString(KEY_USER_ID, User.LOCAL.id)
+            .commit()
     }
 
     @JvmStatic

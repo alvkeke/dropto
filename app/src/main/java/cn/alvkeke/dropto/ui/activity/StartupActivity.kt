@@ -6,7 +6,9 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.os.Bundle
+import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -15,8 +17,13 @@ import cn.alvkeke.dropto.R
 import cn.alvkeke.dropto.storage.DataManager
 import cn.alvkeke.dropto.storage.FileHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
+
+
+const val TAG = "StartupActivity"
 
 class StartupActivity : AppCompatActivity() {
 
@@ -88,17 +95,64 @@ class StartupActivity : AppCompatActivity() {
         setContentView(initView)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            DataManager.migrateLegacyDatabase()
-            DataManager.loadActiveUser()
-            // TODO: check ret value from loadActiveUser, if no active user, then go to login path
-
-            DataManager.prepareDatabase()
             FileHelper.folderInitAndMigrate(this@StartupActivity)
+            DataManager.migrateLegacyDatabase()
+            val success = DataManager.loadActiveUser()
 
-            withContext(Dispatchers.Main) {
-                startActivity(Intent(this@StartupActivity, MainActivity::class.java))
-                finish()
+            if (success) {
+                postLoginExec()
+            } else {
+                showLogin {
+                    postLoginExec()
+                }
             }
         }
     }
+
+    private suspend fun showLogin(done: suspend () -> Unit) = withContext(Dispatchers.Main) {
+        // TODO: invoke Login Fragment here, for now, active local user
+
+        Toast.makeText(this@StartupActivity,
+            "Activating Local User",
+            Toast.LENGTH_SHORT).show()
+
+        val ret = withContext(Dispatchers.IO) {
+            delay(3000.milliseconds)
+            if (!DataManager.activeLocalUser()) {
+                Log.e(TAG, "Failed to Active Local User")
+                return@withContext false
+            }
+            if (!DataManager.loadActiveUser()) {
+                Log.e(TAG, "Failed to Load Active User")
+                return@withContext false
+            }
+            true
+        }
+
+        if (!ret) {
+            Toast.makeText(this@StartupActivity,
+                "Failed to Active Local User/Load Local User",
+                Toast.LENGTH_SHORT).show()
+            finish()
+            return@withContext
+        }
+
+        done()
+    }
+
+    /**
+     * exec Post login
+     * - prepareDatabase()
+     * - jump to MainActivity
+     */
+    private suspend fun postLoginExec() {
+        withContext(Dispatchers.IO) {
+            DataManager.prepareDatabase()
+        }
+        withContext(Dispatchers.Main) {
+            startActivity(Intent(this@StartupActivity, MainActivity::class.java))
+            finish()
+        }
+    }
+
 }
