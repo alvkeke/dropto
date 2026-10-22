@@ -17,7 +17,8 @@ import java.io.File
 
 /**
  * The only entry point to the data of the app, every query and write task goes through here.
- * Business code must not use [DataBaseHelper], the SQL extensions or [CoreService] directly.
+ * Business code must not use [DataBaseHelper], the SQL extensions or [CoreService] directly, the local
+ * accounts are handled by [LocalUserManager] and exposed here as user operations.
  */
 object DataManager {
 
@@ -72,11 +73,32 @@ object DataManager {
     }
 
     @SuppressLint("UseKtx")
-    suspend fun activeLocalUser(): Boolean = withContext(Dispatchers.IO) {
-        userPreference().edit()
-            .putString(KEY_USER_ID, User.DEFAULT_LOCAL_ID)
-            .putString(KEY_USER_DOMAIN, User.LOCAL_DOMAIN)
+    suspend fun activateUser(user: User): Boolean = withContext(Dispatchers.IO) {
+        if (!LocalUserManager.isLocalUser(user)) {
+            Log.i(TAG, "Unsupported user: ${user.fullUserId}")
+            return@withContext false
+        }
+
+        // commit, the database path is derived from this record as soon as the login returns
+        val saved = userPreference().edit()
+            .putString(KEY_USER_DOMAIN, user.domain)
+            .putString(KEY_USER_ID, user.id)
             .commit()
+        if (!saved) {
+            Log.e(TAG, "Failed to save the active user: ${user.fullUserId}")
+            return@withContext false
+        }
+
+        loadActiveUser()
+    }
+
+    // TODO: only Local user available now, implement network user in feature
+    suspend fun registerUser(user: User, password: String): Boolean {
+        return LocalUserManager.create(user, password)
+    }
+
+    suspend fun verifyUser(user: User, password: String): Boolean {
+        return LocalUserManager.verifyUser(user, password)
     }
 
     @JvmStatic
@@ -133,6 +155,7 @@ object DataManager {
         val target = databaseFile(User.LOCAL)
         if (target.isFile) {
             Log.i(TAG, "Database of the local user already exists, nothing to migrate")
+            addDefaultLocalUser()
             return@withContext
         }
 
@@ -149,10 +172,17 @@ object DataManager {
                 return@withContext
             }
             Log.i(TAG, "Database copied to ${target.absolutePath}")
+            addDefaultLocalUser()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to copy the legacy database: $e")
             tmp.delete()
         }
+    }
+
+    /** The migrated notes belong to the default user, that account has to exist and be active. */
+    private suspend fun addDefaultLocalUser() {
+        val created = LocalUserManager.create(User.LOCAL, User.DEFAULT_LOCAL_USER_PWD)
+        if (created) activateUser(User.LOCAL)
     }
 
     fun legacyDatabaseFile(): File? {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- forwarded to the inner EditText, so <PasswordInputBox android:hint=".." android:imeOptions=".." /> works -->
+    <declare-styleable name="PasswordInputBox">
+        <attr name="android:hint" />
+        <attr name="android:imeOptions" />
+    </declare-styleable>
+
+</resources>

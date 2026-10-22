@@ -58,6 +58,26 @@
     <string name="string_export">Export</string>
     <string name="string_later">Later</string>
     <string name="string_login_required">Login required, open DropTo first</string>
+    <string name="string_login_subtitle">Sign in with your local user</string>
+    <string name="string_login_domain">Domain</string>
+    <string name="string_login_domain_local">local</string>
+    <string name="hint_login_user_id">User ID</string>
+    <string name="string_user_id_digits" translatable="false">abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_</string>
+    <string name="string_login">Login</string>
+    <string name="string_login_id_invalid">Invalid user ID, use \"user\" or 6–10 letters, digits or underscore</string>
+    <string name="string_login_failed">Failed to sign in with this user</string>
+    <string name="string_login_create_user">Create a new user</string>
+    <string name="string_register_subtitle">Create a new local user</string>
+    <string name="string_register">Register</string>
+    <string name="string_register_failed">Register failed: the user ID may already be in use</string>
+    <string name="string_register_back">Back to sign in</string>
+    <string name="hint_login_password">Password</string>
+    <string name="hint_login_password_repeat">Repeat password</string>
+    <string name="string_login_password_required">Enter a password (long press to skip password)</string>
+    <string name="string_login_wrong_password">Login failed: no such user or wrong password</string>
+    <string name="string_register_password_mismatch">The passwords do not match</string>
+    <string name="description_password_show">Show password</string>
+    <string name="description_password_hide">Hide password</string>
     <string name="dialog_legacy_database_title">Older database found</string>
     <string name="dialog_legacy_database_message">The database now lives in the folder of the user, and the notes were copied into it. The older file \"%1$s\" is kept aside and is not used any more. You can export it as a backup or delete it; this question comes back on every start until the file is deleted.</string>
     <string name="dialog_legacy_database_share_title">Share older database file</string>

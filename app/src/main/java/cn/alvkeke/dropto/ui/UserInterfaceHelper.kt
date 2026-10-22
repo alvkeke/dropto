@@ -9,6 +9,7 @@ import android.net.Uri
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -195,5 +196,10 @@ object UserInterfaceHelper {
         if (lp.bottomMargin == margin) return
         lp.bottomMargin = margin
         requestLayout()
+    }
+
+    fun View.hideSoftKeyboard() {
+        val manager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        manager.hideSoftInputFromWindow(windowToken, 0)
     }
 }

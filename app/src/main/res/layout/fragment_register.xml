@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/register_form"
+    android:fillViewport="true"
+    android:scrollbarStyle="outsideOverlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.fragment.RegisterFragment">
+
+    <LinearLayout
+        android:id="@+id/register_content"
+        android:orientation="vertical"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
+        android:gravity="center_vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/register_title"
+            android:text="@string/app_name"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="@color/color_text_main"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/register_subtitle"
+            android:text="@string/string_register_subtitle"
+            android:textSize="14sp"
+            android:textColor="@color/color_text_sub"
+            android:layout_marginTop="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/register_domain_label"
+            android:text="@string/string_login_domain"
+            android:textSize="12sp"
+            android:textColor="@color/color_text_sub"
+            android:layout_marginTop="32dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/register_domain"
+            android:text="@string/string_login_domain_local"
+            android:textSize="16sp"
+            android:textColor="@color/color_text_sub"
+            android:background="@drawable/bg_solid_control"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:importantForAutofill="no"
+            android:layout_marginTop="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/capsule_size" />
+
+        <TextView
+            android:id="@+id/register_user_id_label"
+            android:text="@string/hint_login_user_id"
+            android:textSize="12sp"
+            android:textColor="@color/color_text_sub"
+            android:layout_marginTop="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <EditText
+            android:id="@+id/register_user_id"
+            android:hint="@string/hint_login_user_id"
+            android:textSize="16sp"
+            android:textColor="@color/color_text_main"
+            android:textColorHint="@color/color_text_sub"
+            android:background="@drawable/bg_solid_control"
+            android:inputType="textNoSuggestions"
+            android:digits="@string/string_user_id_digits"
+            android:gravity="center_vertical"
+            android:maxLength="10"
+            android:maxLines="1"
+            android:imeOptions="actionNext"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:importantForAutofill="no"
+            android:layout_marginTop="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/capsule_size"
+            tools:ignore="TextFields" />
+
+        <TextView
+            android:id="@+id/register_password_label"
+            android:text="@string/hint_login_password"
+            android:textSize="12sp"
+            android:textColor="@color/color_text_sub"
+            android:layout_marginTop="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <cn.alvkeke.dropto.ui.component.PasswordInputBox
+            android:id="@+id/register_password"
+            android:hint="@string/hint_login_password"
+            android:imeOptions="actionNext"
+            android:layout_marginTop="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/capsule_size" />
+
+        <TextView
+            android:id="@+id/register_password_repeat_label"
+            android:text="@string/hint_login_password_repeat"
+            android:textSize="12sp"
+            android:textColor="@color/color_text_sub"
+            android:layout_marginTop="16dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <cn.alvkeke.dropto.ui.component.PasswordInputBox
+            android:id="@+id/register_password_repeat"
+            android:hint="@string/hint_login_password_repeat"
+            android:imeOptions="actionDone"
+            android:layout_marginTop="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/capsule_size" />
+
+        <TextView
+            android:id="@+id/register_error"
+            android:textSize="12sp"
+            android:textColor="@color/color_text_error"
+            android:visibility="gone"
+            android:layout_marginTop="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:text="This user already has a password"
+            tools:visibility="visible" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/register_button"
+            android:text="@string/string_register"
+            android:textSize="16sp"
+            android:textAllCaps="false"
+            android:textColor="@color/color_text_main"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:backgroundTint="@color/solid_control_background"
+            app:cornerRadius="@dimen/capsule_radius"
+            android:layout_marginTop="24dp"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/capsule_size" />
+
+        <TextView
+            android:id="@+id/register_back"
+            android:text="@string/string_register_back"
+            android:textSize="14sp"
+            android:textColor="@color/color_text_sub"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
+            android:padding="8dp"
+            android:layout_marginTop="16dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+
+</ScrollView>

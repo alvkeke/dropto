@@ -41,6 +41,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.activity.LoginActivity"
+            android:exported="false"
+            android:configChanges="uiMode"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.DropTo.NoActionBar" />
         <service
             android:name=".service.CoreService"
             android:enabled="true"
