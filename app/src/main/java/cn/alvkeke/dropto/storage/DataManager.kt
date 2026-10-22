@@ -31,9 +31,6 @@ object DataManager {
     // sqlite derives these names from the database file name, they can only be handled together
     private val DATABASE_SIDE_SUFFIX = arrayOf("-journal", "-wal", "-shm")
 
-    private const val PREFERENCE_NAME = "active_user"
-    private const val KEY_USER_ID = "active_user_id"
-
     private lateinit var appContext: Context
 
     /** Called once from the application, operations may outlive the UI that asked for them. */
@@ -48,29 +45,37 @@ object DataManager {
     // must be set by loadActiveUser() before anything else touches the data
     private lateinit var currentUser: User
 
+    private const val PREFERENCE_NAME = "active_user"
+    private const val KEY_USER_DOMAIN = "active_user_domain"
+    private const val KEY_USER_ID = "active_user_id"
+
     private fun userPreference() =
         appContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
 
     suspend fun loadActiveUser(): Boolean = withContext(Dispatchers.IO) {
         val prefs = userPreference()
-        val id = prefs.getString(KEY_USER_ID, null)
-        if (id == null) {
+        val userId = prefs.getString(KEY_USER_ID, null)
+        val userDomain = prefs.getString(KEY_USER_DOMAIN, null)
+        if (userDomain == null || userId == null) {
             Log.i(TAG, "No active user saved in the preference")
             return@withContext false
         }
-        if (!User.isValidId(id)) {
-            Log.e(TAG, "Invalid saved user id: $id")
+
+        if (!User.isValidId(userId)) {
+            Log.i(TAG, "Invalid User ID")
             return@withContext false
         }
-        currentUser = User(id, id)  // TODO: username load from user database
-        Log.i(TAG, "User logged in: $id")
+
+        currentUser = User(userDomain, userId)
+        Log.i(TAG, "User logged in: ${currentUser.fullUserId}")
         true
     }
 
     @SuppressLint("UseKtx")
     suspend fun activeLocalUser(): Boolean = withContext(Dispatchers.IO) {
         userPreference().edit()
-            .putString(KEY_USER_ID, User.LOCAL.id)
+            .putString(KEY_USER_ID, User.DEFAULT_LOCAL_ID)
+            .putString(KEY_USER_DOMAIN, User.LOCAL_DOMAIN)
             .commit()
     }
 
@@ -107,7 +112,7 @@ object DataManager {
     fun databaseFile(): File = databaseFile(currentUser)
 
     private fun databaseFile(user: User): File {
-        val dir = File(databasesDir(), user.id)
+        val dir = File(databasesDir(), user.fullUserId)
         if (!dir.isDirectory) dir.mkdirs()
         return File(dir, DATABASE_NAME)
     }

@@ -1,17 +1,17 @@
 package cn.alvkeke.dropto.data
 
-/** The id is used as the name of the folder that holds the data of that user. */
-data class User(val id: String, val name: String) {
+data class User(val domain: String, val id: String, var name: String? = null) {
+
+    val fullUserId: String get() = "$domain.$id"
 
     companion object {
 
-        const val LOCAL_ID: String = "local.user"
+        const val LOCAL_DOMAIN: String = "local"
+        const val DEFAULT_LOCAL_ID: String = "user"
 
-        val LOCAL: User = User(LOCAL_ID, "Local User")
+        val LOCAL: User = User(LOCAL_DOMAIN, DEFAULT_LOCAL_ID, "Local User")
 
-        // only the local id may contain a dot, so a remote id can never become "." or ".."
-        private val ID_PATTERN = Regex("^[A-Za-z0-9_]{6,18}$")
-
-        fun isValidId(id: String): Boolean = id == LOCAL_ID || ID_PATTERN.matches(id)
+        private val ID_PATTERN = Regex("^[A-Za-z0-9_]{6,10}$")
+        fun isValidId(id: String): Boolean = id == DEFAULT_LOCAL_ID || ID_PATTERN.matches(id)
     }
 }
