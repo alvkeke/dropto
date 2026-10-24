@@ -64,3 +64,19 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
+
+// kotlin-lsp wires only main-variant generators into its import task, so nested
+// components (androidTest/unitTest) get their task-backed sources queried before
+// the producing tasks run, which aborts the whole import: Kotlin/kotlin-lsp#233.
+// Drop this block once that fix is released.
+// =====================================================================================================
+def projectTasks = tasks
+projectTasks.matching { it.name == "prepareKotlinIdeaImport" }.configureEach { prepare ->
+    prepare.dependsOn(projectTasks.matching { candidate ->
+        def name = candidate.name
+        (name.contains("AndroidTest") || name.contains("UnitTest")) && !name.contains("Lint") &&
+            (name.startsWith("generate") || name.startsWith("javaPreCompile") ||
+                name.startsWith("map") || name.startsWith("merge"))
+    })
+}
+// =====================================================================================================
