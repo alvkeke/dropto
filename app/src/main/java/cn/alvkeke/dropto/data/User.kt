@@ -1,6 +1,11 @@
 package cn.alvkeke.dropto.data
 
-data class User(val domain: String, val id: String, var name: String? = null) {
+data class User(
+    val domain: String,
+    val id: String,
+    var name: String? = null,
+    var avatar: String? = null,
+) {
 
     val fullUserId: String get() = "$domain.$id"
 

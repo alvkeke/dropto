@@ -3,6 +3,7 @@ package cn.alvkeke.dropto.storage
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.graphics.drawable.Drawable
 import android.util.Log
 import cn.alvkeke.dropto.data.Category
 import cn.alvkeke.dropto.data.NoteItem
@@ -43,8 +44,22 @@ object DataManager {
     @Suppress("unused")
     var coreService: CoreService? = null
 
-    // must be set by loadActiveUser() before anything else touches the data
-    private lateinit var currentUser: User
+    var currentUser: User? = null
+        private set
+    var currentUserAvator: Drawable? = null
+        private set
+
+    private suspend fun getUserAvatar(user: User): Drawable? = withContext(Dispatchers.IO) {
+        when (user.domain) {
+            User.LOCAL_DOMAIN -> {
+                appContext.applicationInfo.loadIcon(appContext.packageManager)
+            }
+            else -> {
+                Log.i(TAG, "Unsupported user domain: ${user.domain}")
+                null
+            }
+        }
+    }
 
     private const val PREFERENCE_NAME = "active_user"
     private const val KEY_USER_DOMAIN = "active_user_domain"
@@ -67,8 +82,26 @@ object DataManager {
             return@withContext false
         }
 
-        currentUser = User(userDomain, userId)
-        Log.i(TAG, "User logged in: ${currentUser.fullUserId}")
+        val user = User(userDomain, userId)
+        when (user.domain) {
+            User.LOCAL_DOMAIN -> {
+                val profile = LocalUserManager.profile(user)
+                if (profile == null) {
+                    Log.i(TAG, "No such local user: ${user.fullUserId}")
+                    return@withContext false
+                }
+                user.name = profile.nickname
+                user.avatar = profile.avatar
+                currentUserAvator = getUserAvatar(user)
+            }
+            else -> {
+                Log.i(TAG, "Unsupported user domain: ${user.domain}")
+                return@withContext false
+            }
+        }
+
+        currentUser = user
+        Log.i(TAG, "User logged in: ${user.fullUserId}")
         true
     }
 
@@ -90,6 +123,21 @@ object DataManager {
         }
 
         loadActiveUser()
+    }
+
+    suspend fun deactivateUser(): Boolean = withContext(Dispatchers.IO) {
+        val cleared = userPreference().edit()
+            .remove(KEY_USER_DOMAIN)
+            .remove(KEY_USER_ID)
+            .commit()
+        if (!cleared) {
+            Log.e(TAG, "Failed to clear the active user")
+            return@withContext false
+        }
+
+        currentUser = null
+        Log.i(TAG, "User logged out")
+        true
     }
 
     // TODO: only Local user available now, implement network user in feature
@@ -131,7 +179,7 @@ object DataManager {
         }
     }
 
-    fun databaseFile(): File = databaseFile(currentUser)
+    private fun databaseFile(): File = databaseFile(currentUser ?: error("No active user"))
 
     private fun databaseFile(user: User): File {
         val dir = File(databasesDir(), user.fullUserId)
