@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background"
+    android:clickable="true"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:clipToOutline="false"
+    android:focusable="true">
+
+    <cn.alvkeke.dropto.ui.component.CapsuleToolbar
+        android:id="@+id/user_profile_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:navigationIcon="@drawable/icon_common_cross" />
+
+    <TextView
+        android:id="@+id/user_profile_name_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:text="@string/string_user_profile_name_label"
+        android:textColor="@color/color_text_sub"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/user_profile_toolbar" />
+
+    <EditText
+        android:id="@+id/user_profile_name"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/capsule_size"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/bg_solid_control"
+        android:gravity="center_vertical"
+        android:hint="@string/string_user_profile_name_hint"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:singleLine="true"
+        android:textColor="@color/color_text_main"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/user_profile_name_label" />
+
+    <TextView
+        android:id="@+id/user_profile_user_id_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
+        android:text="@string/string_user_profile_user_id_label"
+        android:textColor="@color/color_text_sub"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/user_profile_name" />
+
+    <TextView
+        android:id="@+id/user_profile_user_id"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/capsule_size"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="20dp"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:textColor="@color/color_text_sub"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/user_profile_user_id_label"
+        tools:text="default@local" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/user_profile_save"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/capsule_size"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="20dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="@string/string_user_profile_save"
+        android:textAllCaps="false"
+        android:textColor="@color/color_text_main"
+        android:textSize="16sp"
+        app:backgroundTint="@color/solid_control_background"
+        app:cornerRadius="@dimen/capsule_radius"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/user_profile_user_id" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

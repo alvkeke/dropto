@@ -136,7 +136,26 @@ object DataManager {
         }
 
         currentUser = null
+        currentUserAvator = null
         Log.i(TAG, "User logged out")
+        true
+    }
+
+    suspend fun updateActiveUserName(name: String?): Boolean = withContext(Dispatchers.IO) {
+        if (name.isNullOrEmpty()) {
+            Log.i(TAG, "Invalid name")
+            return@withContext false
+        }
+        val user = currentUser ?: return@withContext false
+        val updated = LocalUserManager.updateProfile(
+            LocalUserInfo(userId = user.id, nickname = name, avatar = user.avatar)
+        )
+        if (!updated) {
+            Log.e(TAG, "Failed to update the name of ${user.fullUserId}")
+            return@withContext false
+        }
+
+        user.name = name
         true
     }
 

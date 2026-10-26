@@ -49,6 +49,12 @@
     <string name="content_description_note_item_sender_avatar">Application icon of the sender of the note</string>
     <string name="content_description_user_avatar">Avatar of the active user</string>
     <string name="content_description_user_logout">Log out the active user</string>
+    <string name="string_user_profile_title">User Profile</string>
+    <string name="string_user_profile_name_label">Nickname</string>
+    <string name="string_user_profile_name_hint">Name shown with the notes</string>
+    <string name="string_user_profile_name_empty">Nickname can not be empty</string>
+    <string name="string_user_profile_user_id_label">User ID</string>
+    <string name="string_user_profile_save">Save</string>
     <string name="content_description_note_item_media_play_icon">This attachment is a video</string>
     <string name="description_note_item_deleted_icon">Icon to show this item was deleted</string>
     <string name="description_note_item_not_synced_icon">Icon to show this item was not synced</string>

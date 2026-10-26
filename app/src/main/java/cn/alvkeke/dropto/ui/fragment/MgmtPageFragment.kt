@@ -110,13 +110,14 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
             openMgmtPage(MgmtReactionFragment())
         }
 
-        lifecycleScope.launch {
-            DataManager.currentUser?.let { user ->
-                userAvatar.setImageDrawable(DataManager.currentUserAvator)
-                userName.text = user.name ?: user.id
-                userId.text = "${user.id}@${user.domain}"
-            }
+        userAvatar.setOnClickListener {
+            openMgmtPage(UserProfileFragment())
         }
+        parentFragmentManager.setFragmentResultListener(
+            UserProfileFragment.RESULT_PROFILE_UPDATED, viewLifecycleOwner
+        ) { _, _ -> bindActiveUser() }
+
+        bindActiveUser()
 
         userLogout.setOnClickListener {
             lifecycleScope.launch {
@@ -185,6 +186,13 @@ class MgmtPageFragment : Fragment(), FragmentOnBackListener {
             }
             return false
         }
+    }
+
+    private fun bindActiveUser() {
+        val user = DataManager.currentUser ?: return
+        userAvatar.setImageDrawable(DataManager.currentUserAvator)
+        userName.text = user.name ?: user.id
+        userId.text = "${user.id}@${user.domain}"
     }
 
     private fun openMgmtPage(fragment: MgmtBottomSheetFragment) {
