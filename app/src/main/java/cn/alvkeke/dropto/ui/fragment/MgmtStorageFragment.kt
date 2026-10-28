@@ -19,8 +19,8 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.DataManager
-import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.runtime.DataManager
+import cn.alvkeke.dropto.provider.local.FileHelper
 import cn.alvkeke.dropto.ui.activity.MainViewModel
 import cn.alvkeke.dropto.ui.adapter.AttachmentListAdapter
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener

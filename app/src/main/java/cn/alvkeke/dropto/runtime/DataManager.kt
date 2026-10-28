@@ -1,13 +1,14 @@
-package cn.alvkeke.dropto.storage
+package cn.alvkeke.dropto.runtime
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
 import android.graphics.drawable.Drawable
 import android.util.Log
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.data.User
+import cn.alvkeke.dropto.provider.local.LocalProvider
+import cn.alvkeke.dropto.provider.model.UserRecord
+import cn.alvkeke.dropto.runtime.model.Category
+import cn.alvkeke.dropto.runtime.model.NoteItem
+import cn.alvkeke.dropto.runtime.model.User
 import cn.alvkeke.dropto.service.CoreService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,26 +19,22 @@ import java.io.File
 
 /**
  * The only entry point to the data of the app, every query and write task goes through here.
- * Business code must not use [DataBaseHelper], the SQL extensions or [CoreService] directly, the local
- * accounts are handled by [LocalUserManager] and exposed here as user operations.
+ * It owns the runtime data the UI observes, drives the provider, and translates between the provider
+ * records and the runtime models, so business code never touches a provider, its SQL extensions or
+ * [CoreService] directly.
  */
 object DataManager {
 
     const val TAG: String = "DataManager"
 
-    private const val DATABASE_NAME = "data.db"
-
-    // the layout used before users existed
-    private const val LEGACY_DATABASE_NAME = "note.db"
-
-    // sqlite derives these names from the database file name, they can only be handled together
-    private val DATABASE_SIDE_SUFFIX = arrayOf("-journal", "-wal", "-shm")
-
     private lateinit var appContext: Context
+
+    private lateinit var localProvider: LocalProvider
 
     /** Called once from the application, operations may outlive the UI that asked for them. */
     fun init(context: Context) {
         appContext = context.applicationContext
+        localProvider = LocalProvider(appContext)
     }
 
     // the network side is not implemented yet, this is the seam where it will be driven from
@@ -85,7 +82,7 @@ object DataManager {
         val user = User(userDomain, userId)
         when (user.domain) {
             User.LOCAL_DOMAIN -> {
-                val profile = LocalUserManager.profile(user)
+                val profile = localProvider.profile(user.id)
                 if (profile == null) {
                     Log.i(TAG, "No such local user: ${user.fullUserId}")
                     return@withContext false
@@ -100,6 +97,7 @@ object DataManager {
             }
         }
 
+        localProvider.openUser(user.fullUserId)
         currentUser = user
         Log.i(TAG, "User logged in: ${user.fullUserId}")
         true
@@ -107,7 +105,7 @@ object DataManager {
 
     @SuppressLint("UseKtx")
     suspend fun activateUser(user: User): Boolean = withContext(Dispatchers.IO) {
-        if (!LocalUserManager.isLocalUser(user)) {
+        if (!isLocalUser(user)) {
             Log.i(TAG, "Unsupported user: ${user.fullUserId}")
             return@withContext false
         }
@@ -137,6 +135,7 @@ object DataManager {
 
         currentUser = null
         currentUserAvator = null
+        localProvider.closeUser()
         Log.i(TAG, "User logged out")
         true
     }
@@ -147,8 +146,8 @@ object DataManager {
             return@withContext false
         }
         val user = currentUser ?: return@withContext false
-        val updated = LocalUserManager.updateProfile(
-            LocalUserInfo(userId = user.id, nickname = name, avatar = user.avatar)
+        val updated = localProvider.updateProfile(
+            UserRecord(userId = user.id, nickname = name, avatar = user.avatar)
         )
         if (!updated) {
             Log.e(TAG, "Failed to update the name of ${user.fullUserId}")
@@ -161,12 +160,18 @@ object DataManager {
 
     // TODO: only Local user available now, implement network user in feature
     suspend fun registerUser(user: User, password: String): Boolean {
-        return LocalUserManager.create(user, password)
+        if (!isLocalUser(user)) return false
+        return localProvider.createUser(user.toRecord(), password)
     }
 
     suspend fun verifyUser(user: User, password: String): Boolean {
-        return LocalUserManager.verifyUser(user, password)
+        if (!isLocalUser(user)) return false
+        return localProvider.verifyUser(user.id, password)
     }
+
+    /** The domain rules of this device, only the local accounts can be activated here. */
+    private fun isLocalUser(user: User): Boolean =
+        user.domain == User.LOCAL_DOMAIN && User.isValidId(user.id)
 
     @JvmStatic
     var categories: ArrayList<Category> = ArrayList()
@@ -198,93 +203,42 @@ object DataManager {
         }
     }
 
-    private fun databaseFile(): File = databaseFile(currentUser ?: error("No active user"))
-
-    private fun databaseFile(user: User): File {
-        val dir = File(databasesDir(), user.fullUserId)
-        if (!dir.isDirectory) dir.mkdirs()
-        return File(dir, DATABASE_NAME)
-    }
-
-    private fun databasesDir(): File = File(appContext.dataDir, "databases")
-
     fun prepareDatabase() {
-        write { }
+        localProvider.prepare()
     }
 
     @Suppress("unused")
     fun destroyDatabase() {
-        SQLiteDatabase.deleteDatabase(databaseFile())
+        localProvider.destroy()
     }
 
     suspend fun migrateLegacyDatabase() = withContext(Dispatchers.IO) {
-        val oldDb = legacyDatabaseFile() ?: return@withContext
-        val target = databaseFile(User.LOCAL)
-        if (target.isFile) {
-            Log.i(TAG, "Database of the local user already exists, nothing to migrate")
-            addDefaultLocalUser()
-            return@withContext
-        }
-
-        // the wal may hold committed notes that were never written back to the file
-        checkpoint(oldDb)
-
-        // copy aside first: a half written database next to the real one is worse than no copy
-        val tmp = File(target.parentFile, target.name + ".tmp")
-        try {
-            oldDb.copyTo(tmp, true)
-            if (!tmp.renameTo(target)) {
-                Log.e(TAG, "Failed to put the copied database in place: ${target.absolutePath}")
-                tmp.delete()
-                return@withContext
-            }
-            Log.i(TAG, "Database copied to ${target.absolutePath}")
-            addDefaultLocalUser()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to copy the legacy database: $e")
-            tmp.delete()
+        // the notes of the old layout only belong to the local user, they land in its database
+        when (localProvider.migrateLegacy(User.LOCAL.fullUserId)) {
+            LocalProvider.LegacyMigration.NO_LEGACY,
+            LocalProvider.LegacyMigration.FAILED -> return@withContext
+            LocalProvider.LegacyMigration.ALREADY_MIGRATED,
+            LocalProvider.LegacyMigration.COPIED -> addDefaultLocalUser()
         }
     }
 
     /** The migrated notes belong to the default user, that account has to exist and be active. */
     private suspend fun addDefaultLocalUser() {
-        val created = LocalUserManager.create(User.LOCAL, User.DEFAULT_LOCAL_USER_PWD)
+        val created = localProvider.createUser(
+            User.LOCAL.toRecord(), User.DEFAULT_LOCAL_USER_PWD
+        )
         if (created) activateUser(User.LOCAL)
     }
 
-    fun legacyDatabaseFile(): File? {
-        val oldDb = File(databasesDir(), LEGACY_DATABASE_NAME)
-        return if (oldDb.isFile) oldDb else null
-    }
+    fun legacyDatabaseFile(): File? = localProvider.legacyFile()
 
     /** Same as [prepareDatabaseForExport], for the database left behind by the migration. */
     suspend fun prepareLegacyDatabaseForExport(): File? = withContext(Dispatchers.IO) {
-        val oldDb = legacyDatabaseFile() ?: return@withContext null
-        checkpoint(oldDb)
-        oldDb
+        localProvider.prepareLegacyExport()
     }
 
     suspend fun deleteLegacyDatabase() = withContext(Dispatchers.IO) {
-        val oldDb = legacyDatabaseFile() ?: return@withContext
-        (listOf(oldDb) + sideFiles(oldDb)).forEach { file ->
-            if (file.isFile && !file.delete()) {
-                Log.e(TAG, "Failed to delete legacy database file: ${file.absolutePath}")
-            }
-        }
-    }
-
-    private fun checkpoint(dbFile: File) {
-        try {
-            SQLiteDatabase.openDatabase(
-                dbFile.absolutePath, null, SQLiteDatabase.OPEN_READWRITE
-            ).use { it.checkpoint() }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to checkpoint database ${dbFile.name}: $e")
-        }
-    }
-
-    private fun sideFiles(db: File): List<File> {
-        return DATABASE_SIDE_SUFFIX.map { File(db.parentFile, db.name + it) }
+        localProvider.deleteLegacy()
     }
 
     @JvmStatic
@@ -292,7 +246,7 @@ object DataManager {
         // loading replaces the runtime list, callers may reload after the activity was recreated
         categories.clear()
         try {
-            read { db -> db.queryCategory(categories) }
+            categories.addAll(localProvider.loadCategories().map { it.toRuntime() })
         } catch (e: Exception) {
             Log.e(TAG, "Failed to retrieve category data from database: $e")
         }
@@ -305,7 +259,7 @@ object DataManager {
             return true
 
         try {
-            read { db -> db.queryNote(category.id, category.noteItems) }
+            category.noteItems.addAll(localProvider.loadNotes(category.id).map { it.toRuntime() })
             category.isInitialized = true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load notes for category, $e")
@@ -317,7 +271,7 @@ object DataManager {
 
     fun getReactionList(): MutableList<String> {
         return try {
-            read { db -> db.getReactionList() }
+            localProvider.loadReactions().toMutableList()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get reaction list: $e")
             mutableListOf()
@@ -383,7 +337,7 @@ object DataManager {
 
     private fun doCreateCategory(category: Category): Int {
         return try {
-            write { db -> db.insertCategory(category) }
+            category.id = localProvider.insertCategory(category.toRecord())
             categories.add(category)
             categories.indexOf(category)
         } catch (e: Exception) {
@@ -399,11 +353,9 @@ object DataManager {
             return -1
         }
         return try {
-            write { db ->
-                db.deleteNotes(category.id)
-                if (0 == db.deleteCategory(category.id)) {
-                    Log.e(TAG, "no category row be deleted in database")
-                }
+            // the store removes the notes of the category along with it
+            if (0 == localProvider.deleteCategory(category.id)) {
+                Log.e(TAG, "no category row be deleted in database")
             }
             categories.remove(category)
             index
@@ -416,14 +368,12 @@ object DataManager {
     private fun doUpdateCategory(category: Category): Int {
         val index = categories.indexOf(category)
         if (index == -1) {
-            Log.e(TAG, "category not exist in list, abort")
+            Log.i(TAG, "category not exist in list, abort")
             return -1
         }
         return try {
-            write { db ->
-                if (0 == db.updateCategory(category)) {
-                    Log.e(TAG, "no category row be updated")
-                }
+            if (0 == localProvider.updateCategory(category.toRecord())) {
+                Log.e(TAG, "no category row be updated")
             }
             index
         } catch (e: Exception) {
@@ -434,7 +384,7 @@ object DataManager {
 
     private fun doReorderCategories(categories: List<Category>): Boolean {
         return try {
-            write { db -> db.reorderCategories(categories) }
+            localProvider.reorderCategories(categories.map { it.id })
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to reorder categories: $e")
@@ -452,7 +402,7 @@ object DataManager {
 
         note.categoryId = category.id
         try {
-            write { db -> db.insertNote(note) }
+            note.id = localProvider.insertNote(note.toRecord())
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add new item to database!", e)
             return -1
@@ -476,9 +426,7 @@ object DataManager {
         if (index == -1) return null
 
         return try {
-            write { db ->
-                if (0 == db.deleteNote(note.id)) Log.e(TAG, "no row be deleted")
-            }
+            if (0 == localProvider.setNoteDeleted(note.id, true)) Log.e(TAG, "no row be deleted")
             // TODO: need to think how to treat the deleted item, mark it as deleted now
             note.isDeleted = true
             index
@@ -499,10 +447,8 @@ object DataManager {
         if (index == -1) return null
 
         return try {
-            write { db ->
-                if (0 == db.restoreNote(note.id)) {
-                    Log.e(TAG, "no row be restored in database")
-                }
+            if (0 == localProvider.setNoteDeleted(note.id, false)) {
+                Log.e(TAG, "no row be restored in database")
             }
             note.isDeleted = false
             index
@@ -528,7 +474,7 @@ object DataManager {
         val index = category.indexNoteItem(oldItem)
         newItem.id = oldItem.id
         return try {
-            val updated = write { db -> db.updateNote(newItem) }
+            val updated = localProvider.updateNote(newItem.toRecord())
             if (0 == updated) {
                 Log.i(TAG, "no item was updated")
                 -1
@@ -544,7 +490,7 @@ object DataManager {
 
     private fun doSaveReactionList(reactions: List<String>) {
         try {
-            write { db -> db.updateReactionList(reactions) }
+            localProvider.saveReactions(reactions)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save reaction list: $e")
         }
@@ -555,15 +501,6 @@ object DataManager {
      * complete.
      */
     suspend fun prepareDatabaseForExport(): File = withContext(Dispatchers.IO) {
-        write { db -> db.checkpoint() }
-        databaseFile()
-    }
-
-    private fun <T> read(block: (SQLiteDatabase) -> T): T {
-        return DataBaseHelper(appContext, databaseFile()).readableDatabase.use(block)
-    }
-
-    private fun <T> write(block: (SQLiteDatabase) -> T): T {
-        return DataBaseHelper(appContext, databaseFile()).writableDatabase.use(block)
+        localProvider.exportFile()
     }
 }

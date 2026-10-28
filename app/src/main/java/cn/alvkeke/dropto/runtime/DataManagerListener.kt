@@ -1,7 +1,7 @@
-package cn.alvkeke.dropto.storage
+package cn.alvkeke.dropto.runtime
 
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.runtime.model.Category
+import cn.alvkeke.dropto.runtime.model.NoteItem
 
 interface DataManagerListener {
 

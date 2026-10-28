@@ -24,9 +24,9 @@ import androidx.fragment.app.FragmentContainerView
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.storage.DataManager
-import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.runtime.model.Category
+import cn.alvkeke.dropto.runtime.DataManager
+import cn.alvkeke.dropto.provider.local.FileHelper
 import cn.alvkeke.dropto.ui.fragment.CategoryListFragment
 import cn.alvkeke.dropto.ui.fragment.MgmtPageFragment
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment

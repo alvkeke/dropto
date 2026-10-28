@@ -17,8 +17,8 @@ import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.withClip
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.runtime.model.AttachmentFile
+import cn.alvkeke.dropto.ui.loader.ImageLoader
 import kotlin.math.hypot
 
 private const val TAG = "PopupAttachmentCard"

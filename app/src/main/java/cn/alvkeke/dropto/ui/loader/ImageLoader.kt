@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.storage
+package cn.alvkeke.dropto.ui.loader
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -13,8 +13,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.LockedHashMap
+import cn.alvkeke.dropto.runtime.model.AttachmentFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

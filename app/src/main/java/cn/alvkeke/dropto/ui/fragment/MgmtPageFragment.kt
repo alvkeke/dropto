@@ -16,7 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.runtime.DataManager
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.applyPadding
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.setTopMargin

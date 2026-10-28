@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.storage
+package cn.alvkeke.dropto.provider.local
 
 import android.content.ContentValues
 import android.database.Cursor
@@ -7,35 +7,35 @@ import android.database.sqlite.SQLiteException
 import android.util.Base64
 import android.util.Log
 import androidx.core.database.sqlite.transaction
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.AttachmentFile.Companion.from
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_ID
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_NAME
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_PREVIEW
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_SEQUENCE
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.CATEGORY_COLUMN_TYPE
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_ATTACHMENT_PREFIX_FILE
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_ATTACHMENT_PREFIX_IMAGE
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_ATTACHMENT_INFO
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_CATE_ID
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_C_TIME
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_FLAGS
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_ID
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_REACTION
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_SENDER
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_COLUMN_TEXT
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_IS_DELETED
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_IS_EDITED
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_IS_SYNCED
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.NOTE_FLAG_FORCE_NEW_GROUP
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.REACTION_COLUMN_SEQUENCE
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.REACTION_COLUMN_TEXT
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.TABLE_CATEGORY
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.TABLE_NOTE
-import cn.alvkeke.dropto.storage.DataBaseHelper.Companion.TABLE_REACTION
-import cn.alvkeke.dropto.storage.DataBaseHelper.IterateCallback
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.CATEGORY_COLUMN_ID
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.CATEGORY_COLUMN_NAME
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.CATEGORY_COLUMN_PREVIEW
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.CATEGORY_COLUMN_SEQUENCE
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.CATEGORY_COLUMN_TYPE
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_ATTACHMENT_PREFIX_FILE
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_ATTACHMENT_PREFIX_IMAGE
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_ATTACHMENT_INFO
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_CATE_ID
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_C_TIME
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_FLAGS
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_ID
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_REACTION
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_SENDER
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_COLUMN_TEXT
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_FLAG_FORCE_NEW_GROUP
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_FLAG_IS_DELETED
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_FLAG_IS_EDITED
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.NOTE_FLAG_IS_SYNCED
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.REACTION_COLUMN_SEQUENCE
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.REACTION_COLUMN_TEXT
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.TABLE_CATEGORY
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.TABLE_NOTE
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.Companion.TABLE_REACTION
+import cn.alvkeke.dropto.provider.local.DataBaseHelper.IterateCallback
+import cn.alvkeke.dropto.provider.model.AttachmentRecord
+import cn.alvkeke.dropto.provider.model.CategoryRecord
+import cn.alvkeke.dropto.provider.model.ID_NOT_ASSIGNED
+import cn.alvkeke.dropto.provider.model.NoteRecord
 
 private const val TAG = "DataBaseFunctions"
 
@@ -44,38 +44,36 @@ private const val NOTE_WHERE_CLAUSE_ID: String = "$NOTE_COLUMN_ID = ?"
 private const val NOTE_WHERE_CLAUSE_CATE_ID: String = "$NOTE_COLUMN_CATE_ID = ?"
 
 @Throws(SQLiteException::class)
-fun SQLiteDatabase.insertCategory(id: Long, title: String, type: Category.Type, preview: String?): Long {
+fun SQLiteDatabase.insertCategory(id: Long, title: String, type: Int, preview: String?): Long {
     val values = ContentValues()
     values.put(CATEGORY_COLUMN_ID, id)
     values.put(CATEGORY_COLUMN_NAME, title)
-    values.put(CATEGORY_COLUMN_TYPE, type.ordinal)
+    values.put(CATEGORY_COLUMN_TYPE, type)
     values.put(CATEGORY_COLUMN_PREVIEW, preview)
 
     return this.insertOrThrow(TABLE_CATEGORY, null, values)
 }
 
 @Throws(SQLiteException::class)
-fun SQLiteDatabase.insertCategory(title: String, type: Category.Type, preview: String?): Long {
+fun SQLiteDatabase.insertCategory(title: String, type: Int, preview: String?): Long {
     val values = ContentValues()
     values.put(CATEGORY_COLUMN_NAME, title)
-    values.put(CATEGORY_COLUMN_TYPE, type.ordinal)
+    values.put(CATEGORY_COLUMN_TYPE, type)
     values.put(CATEGORY_COLUMN_PREVIEW, preview)
 
     return this.insertOrThrow(TABLE_CATEGORY, null, values)
 }
 
 @Throws(SQLiteException::class)
-fun SQLiteDatabase.insertCategory(c: Category): Long {
-    val id: Long = if (c.id == Category.ID_NOT_ASSIGNED) {
+fun SQLiteDatabase.insertCategory(c: CategoryRecord): Long {
+    val id: Long = if (c.id == ID_NOT_ASSIGNED) {
         insertCategory(c.title, c.type, c.previewText)
     } else {
         insertCategory(c.id, c.title, c.type, c.previewText)
     }
     if (id < 0) {
         Log.e(TAG, "Failed to insert category")
-        return -1
     }
-    c.id = id
     return id
 }
 
@@ -84,16 +82,16 @@ fun SQLiteDatabase.deleteCategory(id: Long): Int {
     return this.delete(TABLE_CATEGORY, CATEGORY_WHERE_CLAUSE_ID, args)
 }
 
-fun SQLiteDatabase.updateCategory(id: Long, title: String?, type: Category.Type, previewText: String?): Int {
+fun SQLiteDatabase.updateCategory(id: Long, title: String?, type: Int, previewText: String?): Int {
     val values = ContentValues()
     values.put(CATEGORY_COLUMN_NAME, title)
-    values.put(CATEGORY_COLUMN_TYPE, type.ordinal)
+    values.put(CATEGORY_COLUMN_TYPE, type)
     values.put(CATEGORY_COLUMN_PREVIEW, previewText)
     val args = arrayOf(id.toString())
     return this.update(TABLE_CATEGORY, values, CATEGORY_WHERE_CLAUSE_ID, args)
 }
 
-fun SQLiteDatabase.updateCategory(category: Category): Int {
+fun SQLiteDatabase.updateCategory(category: CategoryRecord): Int {
     return updateCategory(
         category.id, category.title,
         category.type, category.previewText
@@ -102,9 +100,9 @@ fun SQLiteDatabase.updateCategory(category: Category): Int {
 
 @JvmOverloads
 fun SQLiteDatabase.queryCategory(
-    categories: ArrayList<Category>,
+    categories: ArrayList<CategoryRecord>,
     maxNum: Int = -1,
-    cb: IterateCallback<Category>? = null
+    cb: IterateCallback<CategoryRecord>? = null
 ) {
 
     var selection: String? = null
@@ -125,7 +123,6 @@ fun SQLiteDatabase.queryCategory(
         null,
         "$CATEGORY_COLUMN_SEQUENCE ASC"
     )
-    val vv = Category.Type.entries.toTypedArray()
 
     var nCategory = 0
     while (cursor.moveToNext()) {
@@ -156,15 +153,8 @@ fun SQLiteDatabase.queryCategory(
             continue
         }
         val typeNum = cursor.getInt(idx)
-        if (typeNum < 0 || typeNum >= vv.size) {
-            Log.e(TAG, "invalid type_num: $typeNum")
-            continue
-        }
-        val type = Category.Type.entries[typeNum]
 
-        val c = Category(name, type)
-        c.id = id
-        c.previewText = preview
+        val c = CategoryRecord(id, name, typeNum, preview)
         categories.add(c)
         cb?.onIterate(c)
     }
@@ -172,28 +162,27 @@ fun SQLiteDatabase.queryCategory(
     cursor.close()
 }
 
-fun SQLiteDatabase.reorderCategories(categories: List<Category>) {
+fun SQLiteDatabase.reorderCategories(categoryIds: List<Long>) {
     this.transaction {
-        for (i in categories.indices) {
-            val c = categories[i]
+        for (i in categoryIds.indices) {
             val values = ContentValues()
             values.put(CATEGORY_COLUMN_SEQUENCE, i)
-            val args = arrayOf(c.id.toString())
+            val args = arrayOf(categoryIds[i].toString())
             this.update(TABLE_CATEGORY, values, CATEGORY_WHERE_CLAUSE_ID, args)
         }
     }
 }
 
-private fun NoteItem.generateAttachmentString(): String? {
+private fun NoteRecord.generateAttachmentString(): String? {
     if (this.attachments.isEmpty()) return null
 
     val sb = StringBuilder()
 
-    this.attachments.iterator().forEach { f ->
-        sb.append(when(f.type) {
-            AttachmentFile.Type.MEDIA -> NOTE_ATTACHMENT_PREFIX_IMAGE
-            AttachmentFile.Type.FILE -> NOTE_ATTACHMENT_PREFIX_FILE
-        })
+    this.attachments.forEach { f ->
+        sb.append(
+            if (f.type == AttachmentRecord.TYPE_FILE) NOTE_ATTACHMENT_PREFIX_FILE
+            else NOTE_ATTACHMENT_PREFIX_IMAGE
+        )
         sb.append(':')
         sb.append(f.md5)
         sb.append(':')
@@ -205,7 +194,7 @@ private fun NoteItem.generateAttachmentString(): String? {
     return sb.toString()
 }
 
-private fun parseAttachmentFile(info: String): AttachmentFile? {
+private fun parseAttachmentFile(info: String): AttachmentRecord? {
     val infoS = info.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
 
     val idxType = 0
@@ -213,8 +202,8 @@ private fun parseAttachmentFile(info: String): AttachmentFile? {
     val idxName = 2
 
     val sType = when(infoS[idxType]) {
-        NOTE_ATTACHMENT_PREFIX_IMAGE -> AttachmentFile.Type.MEDIA
-        NOTE_ATTACHMENT_PREFIX_FILE -> AttachmentFile.Type.FILE
+        NOTE_ATTACHMENT_PREFIX_IMAGE -> AttachmentRecord.TYPE_MEDIA
+        NOTE_ATTACHMENT_PREFIX_FILE -> AttachmentRecord.TYPE_FILE
         else -> {
             Log.e(TAG, "Got unknown attachment type: ${infoS[0]}, return null")
             return null
@@ -228,7 +217,29 @@ private fun parseAttachmentFile(info: String): AttachmentFile? {
             Base64.DEFAULT
         )
     )
-    return from(FileHelper.attachmentStorage, sMd5, sName, sType)
+    return AttachmentRecord(sMd5, sName, sType)
+}
+
+private fun parseAttachmentString(attachInfoAll: String?): List<AttachmentRecord> {
+    if (attachInfoAll.isNullOrEmpty()) {
+        Log.d(TAG, "no attachment info")
+        return emptyList()
+    }
+    Log.d(TAG, "imgInfoAll: $attachInfoAll")
+
+    val result = ArrayList<AttachmentRecord>()
+    attachInfoAll.split(",".toRegex())
+        .dropLastWhile { it.isEmpty() }
+        .filter { it.isNotEmpty() }
+        .forEach { info ->
+            val attachment = parseAttachmentFile(info)
+            if (attachment == null) {
+                Log.e(TAG, "Failed to parse attachment file: $info")
+            } else {
+                result.add(attachment)
+            }
+        }
+    return result
 }
 
 private fun Long.set(flag: Long): Long {
@@ -243,23 +254,16 @@ private fun Long.isSet(flag: Long): Boolean {
     return this and flag == flag
 }
 
-private fun NoteItem.generateFlags(): Long {
+private fun NoteRecord.generateFlags(): Long {
     var flags = 0L
-    if (isDeleted) flags = NOTE_FLAG_IS_DELETED
-    if (isEdited) flags = flags.set(NOTE_FLAG_IS_EDITED)
-    if (isSynced) flags = flags.set(NOTE_FLAG_IS_SYNCED)
+    if (deleted) flags = NOTE_FLAG_IS_DELETED
+    if (edited) flags = flags.set(NOTE_FLAG_IS_EDITED)
+    if (synced) flags = flags.set(NOTE_FLAG_IS_SYNCED)
     if (forceNewGroup) flags = flags.set(NOTE_FLAG_FORCE_NEW_GROUP)
     return flags
 }
 
-private fun NoteItem.parseFlags(flags: Long) {
-    isDeleted = flags.isSet(NOTE_FLAG_IS_DELETED)
-    isEdited = flags.isSet(NOTE_FLAG_IS_EDITED)
-    isSynced = flags.isSet(NOTE_FLAG_IS_SYNCED)
-    forceNewGroup = flags.isSet(NOTE_FLAG_FORCE_NEW_GROUP)
-}
-
-private fun NoteItem.generateReactionString(): String? {
+private fun NoteRecord.generateReactionString(): String? {
     if (reactions.isEmpty()) return null
 
     val sb = StringBuilder()
@@ -271,12 +275,13 @@ private fun NoteItem.generateReactionString(): String? {
     return sb.toString()
 }
 
-private fun NoteItem.parseReactions(reactionInfo: String?) {
-    if (reactionInfo == null) return
-    val reactionS = reactionInfo.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-    for (r in reactionS) {
-        reactions.add(String(Base64.decode(r, Base64.DEFAULT)))
-    }
+private fun parseReactionString(reactionInfo: String?): List<String> {
+    if (reactionInfo.isNullOrEmpty()) return emptyList()
+
+    return reactionInfo.split(",".toRegex())
+        .dropLastWhile { it.isEmpty() }
+        .filter { it.isNotEmpty() }
+        .map { String(Base64.decode(it, Base64.DEFAULT)) }
 }
 
 @Throws(SQLiteException::class)
@@ -313,14 +318,13 @@ fun SQLiteDatabase.insertNote(
 }
 
 /**
- * insert a note item into database, if noteItem.getId() == ID_NOT_ASSIGNED, will generate a
- * new ID for it, and return that new id
- * @param n the noteItem need to be insert
+ * insert a note into database, a new ID is generated when the note has none assigned
+ * @param n the note need to be insert
  * @return the id in database
  */
 @Throws(SQLiteException::class)
-fun SQLiteDatabase.insertNote(n: NoteItem): Long {
-    val id: Long = if (n.id == NoteItem.ID_NOT_ASSIGNED) {
+fun SQLiteDatabase.insertNote(n: NoteRecord): Long {
+    val id: Long = if (n.id == ID_NOT_ASSIGNED) {
         insertNote(n.categoryId, n.text, n.createTime, n.sender,
             n.generateAttachmentString(), n.generateFlags(),
             n.generateReactionString())
@@ -333,9 +337,7 @@ fun SQLiteDatabase.insertNote(n: NoteItem): Long {
     }
     if (id < 0) {
         Log.e(TAG, "Failed to insert note")
-        return -1
     }
-    n.id = id
     return id
 }
 
@@ -408,8 +410,8 @@ fun SQLiteDatabase.restoreNotes(categoryId: Long): Int {
 }
 
 /**
- * delete a noteItem in database with specific id
- * @param id ID of target noteItem
+ * delete a note in database with specific id
+ * @param id ID of target note
  * @return number of deleted entries
  */
 fun SQLiteDatabase.realDeleteNote(id: Long): Int {
@@ -424,7 +426,7 @@ fun SQLiteDatabase.realDeleteNotes(categoryId: Long): Int {
 
 /**
  * update note info in database with specific ID, all data apart of ID will be changed
- * @param id ID of noteItem need to be updated
+ * @param id ID of note need to be updated
  * @param categoryId the ID of the new category
  * @param text new note text
  * @param ctime new create time
@@ -452,7 +454,7 @@ fun SQLiteDatabase.updateNote(
  * @param note item object contain updated info
  * @return count of affected rows
  */
-fun SQLiteDatabase.updateNote(note: NoteItem): Int {
+fun SQLiteDatabase.updateNote(note: NoteRecord): Int {
     return updateNote(
         note.id, note.categoryId, note.text,
         note.createTime,
@@ -461,7 +463,7 @@ fun SQLiteDatabase.updateNote(note: NoteItem): Int {
     )
 }
 
-private fun Cursor.parseCurrentNoteItem(): NoteItem? {
+private fun Cursor.parseCurrentNoteItem(): NoteRecord? {
     var idx: Int = getColumnIndex(NOTE_COLUMN_ID)
     if (idx == -1) {
         Log.e(TAG, "invalid idx for id")
@@ -511,29 +513,19 @@ private fun Cursor.parseCurrentNoteItem(): NoteItem? {
     }
     val reactionInfo: String? = getString(idx)
 
-    val e = NoteItem(text, ctime, sender)
-    e.parseFlags(flags)
-    e.parseReactions(reactionInfo)
-    e.id = id
-    e.categoryId = categoryId
-    if (!attachInfoAll.isNullOrEmpty()) {
-        Log.d(TAG, "imgInfoAll: $attachInfoAll")
-
-        val imgInfoAllS =
-            attachInfoAll.split(",".toRegex())
-                .dropLastWhile { it.isEmpty() }
-                .toTypedArray()
-        for (info in imgInfoAllS) {
-            if (info.isEmpty()) continue
-            val imageFile = parseAttachmentFile(info) ?: continue
-            if (!e.attachments.add(imageFile)) {
-                Log.e(TAG, "Failed to set image file: $attachInfoAll")
-            }
-        }
-    } else {
-        Log.d(TAG, "no attachment info")
-    }
-    return e
+    return NoteRecord(
+        id = id,
+        categoryId = categoryId,
+        text = text,
+        createTime = ctime,
+        sender = sender,
+        deleted = flags.isSet(NOTE_FLAG_IS_DELETED),
+        edited = flags.isSet(NOTE_FLAG_IS_EDITED),
+        synced = flags.isSet(NOTE_FLAG_IS_SYNCED),
+        forceNewGroup = flags.isSet(NOTE_FLAG_FORCE_NEW_GROUP),
+        reactions = parseReactionString(reactionInfo),
+        attachments = parseAttachmentString(attachInfoAll),
+    )
 }
 
 /**
@@ -545,9 +537,9 @@ private fun Cursor.parseCurrentNoteItem(): NoteItem? {
 @JvmOverloads
 fun SQLiteDatabase.queryNote(
     targetCategoryId: Long,
-    noteItems: ArrayList<NoteItem>,
+    noteItems: ArrayList<NoteRecord>,
     maxNum: Int = -1,
-    cb: IterateCallback<NoteItem>? = null
+    cb: IterateCallback<NoteRecord>? = null
 ) {
 
     var selection: String? = null

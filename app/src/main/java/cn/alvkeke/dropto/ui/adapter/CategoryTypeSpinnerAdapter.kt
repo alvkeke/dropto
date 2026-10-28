@@ -8,9 +8,9 @@ import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.TextView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.Category.Companion.typeToIconResource
-import cn.alvkeke.dropto.data.Category.Companion.typeToName
+import cn.alvkeke.dropto.runtime.model.Category
+import cn.alvkeke.dropto.runtime.model.Category.Companion.typeToIconResource
+import cn.alvkeke.dropto.runtime.model.Category.Companion.typeToName
 
 class CategoryTypeSpinnerAdapter(
     context: Context,

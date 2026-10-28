@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.runtime.model.NoteItem
 import cn.alvkeke.dropto.ui.component.NoteItemView
 import java.util.IdentityHashMap
 import kotlin.math.abs

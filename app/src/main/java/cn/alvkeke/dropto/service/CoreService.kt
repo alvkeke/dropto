@@ -16,7 +16,7 @@ import androidx.core.app.NotificationCompat
  * Foreground service reserved for the network side.
  *
  * It holds no data logic: every data operation is served by
- * [cn.alvkeke.dropto.storage.DataManager], which keeps a reference to this service and will drive
+ * [cn.alvkeke.dropto.runtime.DataManager], which keeps a reference to this service and will drive
  * the sync from there.
  */
 class CoreService : Service() {

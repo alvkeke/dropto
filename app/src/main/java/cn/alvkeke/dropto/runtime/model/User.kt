@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.data
+package cn.alvkeke.dropto.runtime.model
 
 data class User(
     val domain: String,

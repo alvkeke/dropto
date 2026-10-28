@@ -6,9 +6,8 @@ import android.content.Intent
 import android.util.Log
 import cn.alvkeke.dropto.service.CoreService
 import cn.alvkeke.dropto.service.CoreServiceConnection
-import cn.alvkeke.dropto.storage.DataManager
-import cn.alvkeke.dropto.storage.ImageLoader
-import cn.alvkeke.dropto.storage.LocalUserManager
+import cn.alvkeke.dropto.runtime.DataManager
+import cn.alvkeke.dropto.ui.loader.ImageLoader
 
 class DroptoApplication : Application() {
 
@@ -32,7 +31,6 @@ class DroptoApplication : Application() {
         super.onCreate()
         Log.d(TAG, "DroptoApplication onCreate")
         DataManager.init(this)
-        LocalUserManager.init(this)
         // FIXME: workaround: set to dark mode always now, need to support light mode later
 //        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         ImageLoader.initImageLoader(this)

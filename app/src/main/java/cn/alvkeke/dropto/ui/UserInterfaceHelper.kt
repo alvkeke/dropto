@@ -16,8 +16,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.storage.FileHelper
+import cn.alvkeke.dropto.runtime.model.AttachmentFile
+import cn.alvkeke.dropto.provider.local.FileHelper
 import cn.alvkeke.dropto.ui.fragment.ImageViewerFragment
 import cn.alvkeke.dropto.ui.fragment.NoteListFragment.Companion.TAG
 
@@ -66,11 +66,19 @@ object UserInterfaceHelper {
     }
 
     fun Context.shareAttachmentFileToExternal(attachment: AttachmentFile) {
-        val uri = FileHelper.generateShareFile(this, attachment)
+        val uri = generateShareUri(attachment)
         val text = attachment.name
         val mimeType = attachment.mimeType
 
         shareFileToExternal(text, mimeType, uri)
+    }
+
+    fun Context.generateShareUri(attachment: AttachmentFile): Uri {
+        return FileHelper.generateShareFile(this, attachment.md5file, attachment.name)
+    }
+
+    fun Context.generateShareUris(attachments: Collection<AttachmentFile>): ArrayList<Uri> {
+        return ArrayList(attachments.map { generateShareUri(it) })
     }
 
     fun Context.copyText(text: String) {

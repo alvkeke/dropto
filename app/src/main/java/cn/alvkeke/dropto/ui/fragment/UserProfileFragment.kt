@@ -10,7 +10,7 @@ import android.widget.TextView
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.runtime.DataManager
 import cn.alvkeke.dropto.ui.component.CapsuleToolbar
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import kotlinx.coroutines.launch

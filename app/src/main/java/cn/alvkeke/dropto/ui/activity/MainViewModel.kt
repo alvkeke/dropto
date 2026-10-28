@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.NoteItem
+import cn.alvkeke.dropto.runtime.model.Category
+import cn.alvkeke.dropto.runtime.model.NoteItem
 import java.io.File
 
 class MainViewModel : ViewModel() {

@@ -24,7 +24,7 @@ import android.widget.Toast
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.DialogFragment
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.ui.loader.ImageLoader
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.GestureListener
 import java.io.File

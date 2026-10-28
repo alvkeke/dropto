@@ -30,9 +30,9 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.storage.FileHelper
-import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.runtime.model.AttachmentFile
+import cn.alvkeke.dropto.provider.local.FileHelper
+import cn.alvkeke.dropto.ui.loader.ImageLoader
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

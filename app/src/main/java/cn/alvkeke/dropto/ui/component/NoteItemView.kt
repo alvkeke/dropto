@@ -28,10 +28,10 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.imageview.ShapeableImageView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.ImageLoader
-import cn.alvkeke.dropto.storage.SenderInfoLoader
+import cn.alvkeke.dropto.runtime.model.AttachmentFile
+import cn.alvkeke.dropto.runtime.model.NoteItem
+import cn.alvkeke.dropto.ui.loader.ImageLoader
+import cn.alvkeke.dropto.ui.loader.SenderInfoLoader
 import cn.alvkeke.dropto.ui.activity.ShareRecvActivity
 import cn.alvkeke.dropto.ui.component.note_item_child.FileGridLayout
 import cn.alvkeke.dropto.ui.component.note_item_child.FileItemView

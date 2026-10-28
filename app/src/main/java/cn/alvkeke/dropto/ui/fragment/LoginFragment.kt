@@ -11,8 +11,8 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.User
-import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.runtime.model.User
+import cn.alvkeke.dropto.runtime.DataManager
 import cn.alvkeke.dropto.ui.activity.LoginActivity
 import cn.alvkeke.dropto.ui.component.PasswordInputBox
 import kotlinx.coroutines.launch

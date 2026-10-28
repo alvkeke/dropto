@@ -35,20 +35,22 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.DataManager
-import cn.alvkeke.dropto.storage.DataManagerListener
-import cn.alvkeke.dropto.storage.DataManager.categories
-import cn.alvkeke.dropto.storage.FileHelper
-import cn.alvkeke.dropto.storage.ImageLoader
+import cn.alvkeke.dropto.runtime.model.AttachmentFile
+import cn.alvkeke.dropto.runtime.model.Category
+import cn.alvkeke.dropto.runtime.model.NoteItem
+import cn.alvkeke.dropto.runtime.DataManager
+import cn.alvkeke.dropto.runtime.DataManagerListener
+import cn.alvkeke.dropto.runtime.DataManager.categories
+import cn.alvkeke.dropto.provider.local.FileHelper
+import cn.alvkeke.dropto.ui.loader.ImageLoader
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.copyText
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.observeSystemBarInsets
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.openFileWithExternalApp
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.applyPadding
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.setBottomMargin
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.setTopMargin
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.generateShareUri
+import cn.alvkeke.dropto.ui.UserInterfaceHelper.generateShareUris
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareAttachmentFileToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.shareFilesToExternal
 import cn.alvkeke.dropto.ui.UserInterfaceHelper.showMediaFragment
@@ -824,7 +826,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, DataManagerListener
         val sb = StringBuilder()
         var typeMain: String? = null
         for (e in items) {
-            FileHelper.generateShareFiles(context,e, uris)
+            uris.addAll(context.generateShareUris(e.attachments))
             if (e.text.isNotEmpty()) {
                 sb.append(e.text)
                 sb.append('\n')
@@ -846,7 +848,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, DataManagerListener
     private fun handleNoteShare(item: NoteItem, index: Int = -1) {
         if (index >= 0) {
             val attachment = item.attachments[index]
-            val uri = FileHelper.generateShareFile(context, attachment)
+            val uri = context.generateShareUri(attachment)
             val text = attachment.name
             val mimeType = attachment.mimeType
             context.shareFilesToExternal(text, mimeType, arrayListOf(uri))
@@ -856,7 +858,7 @@ class NoteListFragment : Fragment(), FragmentOnBackListener, DataManagerListener
 
         FileHelper.emptyShareFolder()
         val uris = ArrayList<Uri>()
-        FileHelper.generateShareFiles(context, item, uris)
+        uris.addAll(context.generateShareUris(item.attachments))
         val text = item.text
         val mimeType = item.getAttachmentMimeType()
         context.shareFilesToExternal(text, mimeType, uris)

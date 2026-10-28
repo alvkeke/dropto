@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.storage
+package cn.alvkeke.dropto.ui.loader
 
 import android.content.Context
 import android.graphics.drawable.Drawable

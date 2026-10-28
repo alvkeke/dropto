@@ -14,10 +14,10 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.data.Category
-import cn.alvkeke.dropto.data.NoteItem
-import cn.alvkeke.dropto.storage.DataManager
-import cn.alvkeke.dropto.storage.DataManagerListener
+import cn.alvkeke.dropto.runtime.model.Category
+import cn.alvkeke.dropto.runtime.model.NoteItem
+import cn.alvkeke.dropto.runtime.DataManager
+import cn.alvkeke.dropto.runtime.DataManagerListener
 import cn.alvkeke.dropto.ui.adapter.NoteListAdapter
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener

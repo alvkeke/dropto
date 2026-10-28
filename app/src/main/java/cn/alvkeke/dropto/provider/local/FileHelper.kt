@@ -1,4 +1,4 @@
-package cn.alvkeke.dropto.storage
+package cn.alvkeke.dropto.provider.local
 
 import android.content.ContentValues
 import android.content.Context
@@ -9,15 +9,12 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.content.FileProvider
-import cn.alvkeke.dropto.data.AttachmentFile
-import cn.alvkeke.dropto.data.NoteItem
 import java.io.File
 import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.security.MessageDigest
-import java.util.function.Consumer
 
 object FileHelper {
 
@@ -339,16 +336,13 @@ object FileHelper {
         }
     }
 
-    private fun generateShareFile(imageFile: AttachmentFile): File? {
+    private fun copyToShareCache(sourceFile: File, shareName: String): File? {
         try {
-            val imageName = imageFile.name
-            val fileToShare: File?
-            if (imageName.isEmpty()) {
-                fileToShare = imageFile.md5file
-            } else {
-                fileToShare = File(attachmentCacheShare, imageName)
-                imageFile.md5file.copyTo(fileToShare, true)
+            if (shareName.isEmpty()) {
+                return sourceFile
             }
+            val fileToShare = File(attachmentCacheShare, shareName)
+            sourceFile.copyTo(fileToShare, true)
             return fileToShare
         } catch (e: IOException) {
             Log.e(this.toString(), "Failed to copy file: $e")
@@ -386,24 +380,15 @@ object FileHelper {
         }
     }
 
+    /** Put a copy of the attachment content into the share folder and return the uri of the copy. */
     fun generateShareFile(
         context: Context,
-        attachment: AttachmentFile,
+        sourceFile: File,
+        shareName: String,
     ) : Uri {
-        val ff = generateShareFile(attachment)
+        val ff = copyToShareCache(sourceFile, shareName)
         val uri = getUriForFile(context, ff!!)
         return uri
-    }
-
-    fun generateShareFiles(
-        context: Context,
-        note: NoteItem,
-        uris: ArrayList<Uri>
-    ) {
-        note.attachments.iterator().forEachRemaining(Consumer { f: AttachmentFile ->
-            val uri = generateShareFile(context, f)
-            uris.add(uri)
-        })
     }
 
     fun emptyShareFolder() {

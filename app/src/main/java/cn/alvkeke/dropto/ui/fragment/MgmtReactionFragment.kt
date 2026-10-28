@@ -17,7 +17,7 @@ import androidx.core.view.forEach
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import cn.alvkeke.dropto.R
-import cn.alvkeke.dropto.storage.DataManager
+import cn.alvkeke.dropto.runtime.DataManager
 import cn.alvkeke.dropto.ui.component.SelectableRecyclerView
 import cn.alvkeke.dropto.ui.intf.FragmentOnBackListener
 import cn.alvkeke.dropto.ui.listener.OnRecyclerViewTouchListener
