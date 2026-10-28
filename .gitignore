@@ -34,3 +34,7 @@ google-services.json
 app/release/*
 /.vscode/
 .pi/
+
+.stignore
+.stignore-shared
+
